@@ -1,0 +1,19 @@
+# ID-Compiler
+
+#. lift file > fileLifted.fcy (Case-Lifting)
+#. Compile fileLifted SEARCHMODE > C_file (Compilation nach Haskell)
+#. PrettyND C_file > C_file.hs (Ausgabe Haskell-Programm)
+#. ghc --make C_file.hs (Kompilation)
+
+## Vorgehen
+
+#. Einlesen des Curry-Moduls durch das Frontend (cymake), Erzeugen von FlatCurry-Dateien
+#. Case-Lifting des Curry-Programms (Modul LiftCase.curry)
+#. Erweiterung der Datenstrukturen um Konstruktoren und Typklasseninstanzen
+   für Nichtdeterminismus, Show, Ord, Eq
+#. Transformation der Funktionen
+   * Hinzufügen des ID-Generators
+   * Erzeugen (nicht)deterministischer Funktionsvarianten
+   * ...
+#. Zusammenfügen der Datenstrukturen und transformierter Funktionen
+#. Umbenennen von Datentypen und Funktionen
