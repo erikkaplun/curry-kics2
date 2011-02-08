@@ -4,45 +4,52 @@ import Prelude hiding (lookup)
 import FiniteMap hiding (mapFM, filterFM)
 import Maybe (fromJust)
 import List (intersperse, find)
-import Read (readInt)
-import System (getArgs)
 import Unsafe (trace)
+import FileGoodies
 
 import FlatCurry
 import FlatCurryGoodies (funcName, consName)
 
 import CallGraph
+import LiftCase (liftCases)
+import PrettyND (prettyNd)
 import Splits
 import SearchMode
+import CompilerOpts
 
 traceM :: String -> M ()
 traceM s = trace (s ++ "\n") $ returnM ()
 
+info :: Options -> String -> IO ()
+info opts msg = if opts -> quiet then return () else putStrLn msg
+
 main :: IO ()
 main = do
-  cmd <- getArgs
-  case cmd of
-   [p]   -> compile def Nothing p
-   (p:n:args) -> compile (addArgs args def) (Just (readInt n)) p
+  (opts, files) <- compilerOpts
+  compile opts files
 
-addArgs :: [String] -> State -> State
-addArgs [] st = st
-addArgs ("HO":as) st = addArgs as (setDetMode True st)
-addArgs ("DFS":as) st = addArgs as (setSearchMode DFS st)
-addArgs ("BFS":as) st = addArgs as (setSearchMode BFS st)
-addArgs ("IterDFS":as) st = addArgs as (setSearchMode IterDFS st)
-addArgs ("PAR":as) st = addArgs as (setSearchMode PAR st)
+compile :: Options -> [String] -> IO ()
+compile opts (fn:_) = do
+  info opts "Reading FlatCurry ..."
+  prog <- readFlatCurry fn
 
-compile :: State -> Maybe Int -> String -> IO ()
-compile st m fn = do
-  p <- readFlatCurry fn
-  -- p' <- liftCases True p
+  info opts "Lifting case expressions ..."
+  let pLifted = liftCases True prog
 
-  -- writeFile "Prog.dot" (dotGraph p)
-  --print $ analyse p
-  let p' = run st (transProg m p)
-  --print p'
-  writeFile ("C_" ++ fn ++ ".fcy") (show p')
+  info opts "Transforming program ..."
+  let p' = run initState (transProg pLifted)
+
+  info opts "Generating Haskell module ..."
+  hsProg <- prettyNd p'
+
+  info opts $ "writing to file " ++ destFile ++ "..."
+  writeFile destFile hsProg
+
+    where
+      destFile = dir ++ separatorChar : "C_" ++ basename ++ ".hs"
+      dir = dirName fn
+      basename = stripSuffix (baseName fn)
+      initState = setSearchMode (opts -> searchMode) $ setDetMode (opts -> hoOpt) def
 
 data Mo st a = M (st -> (st, a))
 
@@ -63,13 +70,6 @@ mapM _ [] = returnM []
 mapM f (m:ms) = f m       `bindM` \m' ->
                 mapM f ms `bindM` \ms' ->
                 returnM (m':ms')
-
-{-
-instance Monad (Mo st) where
-  return x = M (\st -> (st,x))
-  f >>= g = M (\st -> case unM f st of
-                        (st',x) -> unM (g x) st')
--}
 
 type TypeMap = FM QName QName
 
@@ -116,18 +116,6 @@ detMode (State _ _ _ _ _ b _) = b
 
 searchMode :: State -> SearchMode
 searchMode (State _ _ _ _ _ _ s) = s
-
-{-
-data State = State {
-  typeMap     :: TypeMap
-  ,cont       :: Maybe (Bool,QName,[VarIndex])
-  ,matchPos   :: Int
-  ,ndResult   :: NDResult
-  ,nextID     :: VarIndex
-  ,detMode    :: Bool
-  ,searchMode :: SearchMode
-  }
--}
 
 primTypes :: [(QName,QName)]
 primTypes = map (\ (x,y) -> ((prelude,x),(prelude,y)))
@@ -195,8 +183,8 @@ type M a = Mo State a
 run :: State -> M a -> a
 run st f = snd (unM f st)
 
-transProg :: Maybe Int -> Prog -> M Prog
-transProg m p@(Prog n _ ts fs _) =
+transProg :: Prog -> M Prog
+transProg p@(Prog _ _ ts fs _) =
   isDetMode  `bindM` \dm ->
   setDetModeM False  `bindM_`
   updState (setNdResult (analyse p)) `bindM_`
@@ -204,7 +192,6 @@ transProg m p@(Prog n _ ts fs _) =
   mapM transFunc (filter ((\ x -> not (elem x ["main_","searchTree"])) . snd . funcName) fs)  `bindM` \fss ->
   let fs0 = concat fss in
   setDetModeM dm `bindM_`
-  maybe (returnM fs0) (addPrintGoal n fs0) m `bindM` \fs' ->
   returnM (Prog "Main"
                ["GHC.Prim",
                 "Data.IORef",
@@ -218,9 +205,10 @@ transProg m p@(Prog n _ ts fs _) =
                 "qualified Control.Monad.SearchTree as ST",
                 "qualified Data.FMList as FM"]
                ts'
-               fs'
+               fs0
                [])
 
+{-
 addPrintGoal :: String -> [FuncDecl] -> Int -> M [FuncDecl]
 addPrintGoal m fs n =
  getState `bindM`
@@ -241,6 +229,7 @@ addPrintGoal m fs n =
      f = Func ("","main") 0 Public (tcons "IO" [tcons "()" []])
               (Rule [] (body ndCl))
  in returnM (f : fs)
+-}
 
 transData :: TypeDecl -> M TypeDecl
 transData (Type qn v vs cs) =

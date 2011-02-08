@@ -1,3 +1,5 @@
+data List a = Nil | Cons a (List a)
+
 coin = True ? False
 
 selfEq x = iff x x
