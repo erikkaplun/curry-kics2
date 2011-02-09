@@ -8,7 +8,7 @@ import Char (isAlphaNum)
 import List (intersperse)
 
 mkConFunNameM :: String -> String
-mkConFunNameM x = "consM_" ++ mkConNameM x 
+mkConFunNameM x = "consM_" ++ mkConNameM x
 
 mkConNameM :: String -> String
 mkConNameM = replaceNonIdChars "CM_" "OPM_"
@@ -49,21 +49,21 @@ mkExtFunName = ("external_" ++) . mkFunNameM
 -- | if there were no characters replaced, the first prefix,
 -- | otherwise the snd prefix ist prepended
 replaceNonIdChars :: String -> String -> String -> String
-replaceNonIdChars pfxNonOp pfxOp str = 
+replaceNonIdChars pfxNonOp pfxOp str =
    case strings of
      []  -> error "replaceNonIdChars: empty identifier"
-     [s] -> if isAlphaNum (head str) 
+     [s] -> if isAlphaNum (head str)
                then pfxNonOp ++ s
                else pfxOp    ++ s
-     _   -> pfxOp ++ concat (intersperse "_" strings)   
+     _   -> pfxOp ++ concat (intersperse "_" strings)
 
  where strings = separateAndReplace isAlphaNum showOpChar str
-    
+
 
 separateAndReplace :: (a -> Bool) -> (a -> [a]) -> [a] -> [[a]]
 separateAndReplace pred f list =
   case rest of
-    [] -> case sep of 
+    [] -> case sep of
            [] -> []
            _  -> [sep]
     (x:xs) -> case sep of
@@ -71,6 +71,8 @@ separateAndReplace pred f list =
                _  -> sep : f x : separateAndReplace pred f xs
  where (sep,rest) = break  (not . pred) list
 
+isInfixName :: String -> Bool
+isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")
 
 showOpChar :: Char -> String
 showOpChar c = case c of
@@ -80,25 +82,25 @@ showOpChar c = case c of
   '@' -> "at"
   '#' -> "hash"
   '$' -> "dollar"
-  '%' -> "percent" 
-  '^' -> "caret" 
-  '&' -> "ampersand" 
-  '*' -> "star" 
-  '+' -> "plus" 
-  '-' -> "minus" 
-  '=' -> "eq" 
-  '<' -> "lt" 
-  '>' -> "gt" 
-  '?' -> "qmark" 
-  '.' -> "dot" 
-  '/' -> "slash" 
-  '|' -> "bar" 
-  '\\' ->"backslash" 
-  ':' -> "colon" 
-  '(' -> "oparen" 
-  ')' -> "cparen" 
-  '[' -> "obracket" 
-  ']' -> "cbracket" 
-  ',' -> "comma" 
+  '%' -> "percent"
+  '^' -> "caret"
+  '&' -> "ampersand"
+  '*' -> "star"
+  '+' -> "plus"
+  '-' -> "minus"
+  '=' -> "eq"
+  '<' -> "lt"
+  '>' -> "gt"
+  '?' -> "qmark"
+  '.' -> "dot"
+  '/' -> "slash"
+  '|' -> "bar"
+  '\\' ->"backslash"
+  ':' -> "colon"
+  '(' -> "oparen"
+  ')' -> "cparen"
+  '[' -> "obracket"
+  ']' -> "cbracket"
+  ',' -> "comma"
   '\'' -> "tick"
-  _   -> error ("unexpected symbol: " ++ show c) 
+  _   -> error ("unexpected symbol: " ++ show c)

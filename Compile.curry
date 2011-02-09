@@ -2,57 +2,93 @@ module Compile where
 
 import Prelude hiding (lookup)
 import FiniteMap hiding (mapFM, filterFM)
-import Maybe (fromJust)
+import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
-import Unsafe (trace)
 import FileGoodies
-
 import FlatCurry
 import FlatCurryGoodies (funcName, consName)
 
 import CallGraph
 import LiftCase (liftCases)
+import Names (isInfixName, showOpChar)
 import PrettyND (prettyNd)
-import Splits
-import SearchMode
+import Splits (mkSplits)
 import CompilerOpts
 
-traceM :: String -> M ()
-traceM s = trace (s ++ "\n") $ returnM ()
-
-info :: Options -> String -> IO ()
-info opts msg = if opts -> quiet then return () else putStrLn msg
-
 main :: IO ()
-main = do
-  (opts, files) <- compilerOpts
-  compile opts files
+main = compilerOpts >>= uncurry compile
 
 compile :: Options -> [String] -> IO ()
-compile opts (fn:_) = do
-  info opts "Reading FlatCurry ..."
-  prog <- readFlatCurry fn
+compile _ [] = return ()
+compile opts (fn:fns) = do
+  info opts "Reading FlatCurry"
+  fcy <- readFlatCurry (stripSuffix fn)
+  dumpLevel DumpFlat opts fcyName (show fcy)
 
-  info opts "Lifting case expressions ..."
-  let pLifted = liftCases True prog
+  info opts "Lifting case expressions"
+  let pLifted = liftCases True fcy
+  dumpLevel DumpLifted opts liftedName (show pLifted)
 
-  info opts "Transforming program ..."
-  let p' = run initState (transProg pLifted)
+  info opts "Transforming program"
+  let ahs = transform opts pLifted
+  dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
-  info opts "Generating Haskell module ..."
-  hsProg <- prettyNd p'
+  info opts $ "Generating Haskell module '" ++ destFile ++ "'"
+  prettyNd ahs "IDSupplyIORef.hs" >>= writeFile destFile
 
-  info opts $ "writing to file " ++ destFile ++ "..."
-  writeFile destFile hsProg
+  compile opts fns -- no mapM_ :(
 
     where
-      destFile = dir ++ separatorChar : "C_" ++ basename ++ ".hs"
-      dir = dirName fn
-      basename = stripSuffix (baseName fn)
-      initState = setSearchMode (opts -> searchMode) $ setDetMode (opts -> hoOpt) def
+    fcyName = withExtension (const ".fcy") $ withBaseName (++ "Dump") fn
+    liftedName = withExtension (const ".fcy") $ withBaseName (++ "Lifted") fn
+    abstractHsName = withExtension (const ".ahs") fn
+    destFile = withExtension (const ".hs") $ withBaseName ("C_" ++) fn
 
+-- Show an info message unless the quiet flag is set
+info :: Options -> String -> IO ()
+info opts msg = if opts -> optQuiet
+  then return ()
+  else putStrLn (msg ++ " ...")
+
+-- Dump an intermediate result to a file
+dumpLevel :: Dump -> Options -> String -> String -> IO ()
+dumpLevel level opts file src = if level `elem` opts -> dump
+  then info opts ("Dumping " ++ file) >> writeFile file src
+  else return ()
+
+-- ---------------------------------------------------------------------------
+-- Internal state
+-- ---------------------------------------------------------------------------
+
+type TypeMap = FM QName QName
+
+type State =
+  { typeMap    :: TypeMap
+  , cont       :: (Maybe (Bool, QName, [VarIndex]))
+  , matchPos   :: Int
+  , ndResult   :: NDResult
+  , nextID     :: VarIndex
+  , detMode    :: Bool
+  , searchMode :: SearchMode
+  }
+
+defaultState :: State
+defaultState =
+  { typeMap    = (listToFM (<) primTypes)
+  , cont       = Nothing
+  , matchPos   = (-1)
+  , ndResult   = (emptyFM (<))
+  , nextID     = idVar
+  , detMode    = False
+  , searchMode = NoSearch
+  }
+
+-- ---------------------------------------------------------------------------
+-- state monad
+-- ---------------------------------------------------------------------------
 data Mo st a = M (st -> (st, a))
 
+unM :: Mo st a -> (st -> (st, a))
 unM (M x) = x
 
 returnM :: a -> Mo st a
@@ -71,244 +107,178 @@ mapM f (m:ms) = f m       `bindM` \m' ->
                 mapM f ms `bindM` \ms' ->
                 returnM (m':ms')
 
-type TypeMap = FM QName QName
-
-data State = State TypeMap (Maybe (Bool,QName,[VarIndex])) Int NDResult VarIndex Bool SearchMode
-
-setTypeMap    :: TypeMap -> State -> State
-setTypeMap t (State _ m i n v b s) = State t m i n v b s
-
-setCont       :: Maybe (Bool,QName,[VarIndex]) -> State -> State
-setCont m (State t _ i n v b s) = State t m i n v b s
-
-setMatchPos   :: Int -> State -> State
-setMatchPos i (State t m _ n v b s) = State t m i n v b s
-
-setNdResult   :: NDResult -> State -> State
-setNdResult n (State t m i _ v b s) = State t m i n v b s
-
-setNextID     :: VarIndex -> State -> State
-setNextID v (State t m i n _ b s) = State t m i n v b s
-
-setDetMode    :: Bool -> State -> State
-setDetMode b (State t m i n v _ s) = State t m i n v b s
-
-setSearchMode :: SearchMode -> State -> State
-setSearchMode s (State t m i n v b _) = State t m i n v b s
-
-typeMap    :: State -> TypeMap
-typeMap (State t _ _ _ _ _ _) = t
-
-cont       :: State -> Maybe (Bool,QName,[VarIndex])
-cont (State _ m _ _ _ _ _) = m
-
-matchPos   :: State -> Int
-matchPos (State _ _ i _ _ _ _) = i
-
-ndResult   :: State -> NDResult
-ndResult (State _ _ _ n _ _ _) = n
-
-nextID     :: State -> VarIndex
-nextID (State _ _ _ _ v _ _) = v
-
-detMode    :: State -> Bool
-detMode (State _ _ _ _ _ b _) = b
-
-searchMode :: State -> SearchMode
-searchMode (State _ _ _ _ _ _ s) = s
-
-primTypes :: [(QName,QName)]
-primTypes = map (\ (x,y) -> ((prelude,x),(prelude,y)))
-                [("True","Bool"),("False","Bool")
-                ,("[]","List"),(":","List"),("(,)","T2"),("(,,)","T3")]
-def :: State
-def = State (listToFM (<) primTypes) Nothing (-1) (emptyFM (<)) idVar False NoSearch
-
-getState :: M State
-getState = M (\st -> (st,st))
-
-putState :: State -> M ()
-putState st = M (\ _ -> (st,()))
-
-updState :: (State -> State) -> M ()
-updState f = getState `bindM` \st -> putState (f st)
-
-getTypeMap :: M TypeMap
-getTypeMap = getState `bindM` (returnM . typeMap)
-
-getNextID :: M Int
-getNextID = getState `bindM` (returnM . nextID)
-
-isDetMode :: M Bool
-isDetMode = getState `bindM` (returnM . detMode)
-
-inDetMode :: M a -> M a -> M a
-inDetMode a b = isDetMode `bindM` \dm -> if dm then a else b
-
-setDetModeM :: Bool -> M ()
-setDetModeM dm = updState (\st -> setDetMode dm st)
-
-takeNextID :: M Int
-takeNextID =
-  getState `bindM` \st ->
-  let i = nextID st in
-  putState (setNextID (i+1) st) `bindM_`
-  returnM i
-
-takeNextIDs :: Int -> M [Int]
-takeNextIDs n =
-  getState `bindM` \st ->
-  let i = nextID st in
-  putState (setNextID (i+n) st) `bindM_`
-  returnM [i .. i+n-1]
-
-
-putTypeMap :: TypeMap -> M ()
-putTypeMap m = getState `bindM` \st -> putState (setTypeMap m st)
-
-updTypeMap :: (TypeMap -> TypeMap) -> M ()
-updTypeMap f =
-  getTypeMap `bindM` \m ->
-  putTypeMap (f m)
-
-getNDClass :: QName -> M NDClass
-getNDClass qn = getState `bindM`
-  (returnM . maybe (error $ show qn ++ " not analysed" ) id . (flip lookupFM) qn . ndResult ) `bindM` \nd ->
-  case nd of
-    HO -> isDetMode `bindM` \dm -> returnM $ if dm then Pure else HO
-    _ -> returnM nd
 
 type M a = Mo State a
 
 run :: State -> M a -> a
 run st f = snd (unM f st)
 
+getState :: M State
+getState = M (\st -> (st, st))
+
+putState :: State -> M ()
+putState st = M (\ _ -> (st, ()))
+
+updState :: (State -> State) -> M ()
+updState f = getState `bindM` \st -> putState (f st)
+
+getTypeMap :: M TypeMap
+getTypeMap = getState `bindM` \st -> returnM (st -> typeMap)
+
+getNextID :: M Int
+getNextID = getState `bindM` \st -> returnM (st -> nextID)
+
+setNextID :: Int -> M ()
+setNextID i = updState (\st -> { nextID := i | st })
+
+isDetMode :: M Bool
+isDetMode = getState `bindM` \st -> returnM (st -> detMode)
+
+ifDetMode :: M a -> M a -> M a
+ifDetMode a b = isDetMode `bindM` \dm -> if dm then a else b
+
+setDetMode :: Bool -> M ()
+setDetMode dm = updState (\st -> { detMode := dm | st})
+
+getJustCont :: M (Bool, QName, [VarIndex])
+getJustCont = getState `bindM` \st -> returnM (fromJust (st -> cont))
+
+getMatchPos :: M Int
+getMatchPos = getState `bindM` \st -> returnM (st -> matchPos)
+
+-- Perform an action in a given detMode and restore the original mode
+-- afterwards
+doInDetMode :: Bool -> M a -> M a
+doInDetMode dm action =
+  isDetMode `bindM` \ oldDm ->
+  setDetMode dm `bindM_`
+  action `bindM` \ retVal ->
+  setDetMode oldDm `bindM_`
+  returnM retVal
+
+takeNextID :: M Int
+takeNextID =
+  getState `bindM` \st ->
+  let i = st -> nextID in
+  putState ({ nextID := (i+1) | st }) `bindM_`
+  returnM i
+
+takeNextIDs :: Int -> M [Int]
+takeNextIDs n =
+  getState `bindM` \st ->
+  let i = st -> nextID in
+  putState ({ nextID := (i+n) | st }) `bindM_`
+  returnM [i .. i+n-1]
+
+putTypeMap :: TypeMap -> M ()
+putTypeMap m = updState (\st -> { typeMap := m | st })
+
+updTypeMap :: (TypeMap -> TypeMap) -> M ()
+updTypeMap f = getTypeMap `bindM` \m -> putTypeMap (f m)
+
+getNDClass :: QName -> M NDClass
+getNDClass qn = getState `bindM` \st ->
+  ( returnM $ fromMaybe (error $ show qn ++ " not analysed" )
+  $ (flip lookupFM) qn $ (st -> ndResult) ) `bindM` \nd ->
+  case nd of
+    HO -> ifDetMode (returnM Pure) (returnM HO)
+    _ -> returnM nd
+
+-- ---------------------------------------------------------------------------
+-- Program transformation
+-- ---------------------------------------------------------------------------
+
+transform :: Options -> Prog -> Prog
+transform opts prog = run initState (transProg prog) where
+  initState = { searchMode := opts -> optSearchMode
+              , detMode    := opts -> optHoDetMode
+              , ndResult   := analyseNd prog
+              | defaultState
+              }
+
 transProg :: Prog -> M Prog
-transProg p@(Prog _ _ ts fs _) =
-  isDetMode  `bindM` \dm ->
-  setDetModeM False  `bindM_`
-  updState (setNdResult (analyse p)) `bindM_`
+transProg (Prog _ _ ts fs _) = doInDetMode False $
   mapM transData ts `bindM` \ts' ->
-  mapM transFunc (filter ((\ x -> not (elem x ["main_","searchTree"])) . snd . funcName) fs)  `bindM` \fss ->
-  let fs0 = concat fss in
-  setDetModeM dm `bindM_`
-  returnM (Prog "Main"
-               ["GHC.Prim",
-                "Data.IORef",
-                "qualified Data.Map",
-                "qualified Data.List",
-                "Data.DeriveTH",
-                "System.IO.Unsafe",
-                "Control.Monad",
-                "Control.Parallel.TreeSearch",
-                "qualified Data.Foldable as Fold",
-                "qualified Control.Monad.SearchTree as ST",
-                "qualified Data.FMList as FM"]
-               ts'
-               fs0
-               [])
+  mapM transFunc ( filter ((`notElem` ["main_","searchTree"])
+                 . snd . funcName) fs) `bindM` \fss ->
+  returnM $ Prog "Main" -- module name
+                [ "GHC.Prim"  -- import list
+                , "Data.IORef"
+                , "qualified Data.Map"
+                , "qualified Data.List"
+                , "Data.DeriveTH"
+                , "System.IO.Unsafe"
+                , "Control.Monad"
+                , "Control.Parallel.TreeSearch"
+                , "qualified Data.Foldable as Fold"
+                , "qualified Control.Monad.SearchTree as ST"
+                , "qualified Data.FMList as FM"
+                ]
+               ts' -- types
+               (concat fss) -- functions
+               []  -- operators
 
-{-
-addPrintGoal :: String -> [FuncDecl] -> Int -> M [FuncDecl]
-addPrintGoal m fs n =
- getState `bindM`
- (returnM . searchMode) `bindM` \search ->
- let qn = (m,"goal" ++ show n) in
- getNDClass qn `bindM` \ndCl ->
- renameFun qn `bindM` \qn' ->
- let body nd = case nd of
-       Pure -> prinT (funcCall qn' [])
-       _    -> if search==IterDFS
-                 then idfs0 (fun 1 qn' [])
-                 else bind initSupply (addSearch search .* funcCall qn' [])
-
-     addSearch NoSearch = prinT0
-     addSearch DFS      = dfs0
-     addSearch BFS      = bfs0
-     addSearch PAR      = par0
-     f = Func ("","main") 0 Public (tcons "IO" [tcons "()" []])
-              (Rule [] (body ndCl))
- in returnM (f : fs)
--}
-
+-- TODO add support for type synonyms. Currently the Prelude can not be processed
 transData :: TypeDecl -> M TypeDecl
 transData (Type qn v vs cs) =
   mapM addToMap cs      `bindM_`
-  renameType qn         `bindM` \ qn' ->
   mapM transCons cs     `bindM` \ cs' ->
   newConstructors qn vs `bindM` \ new ->
-  returnM (Type qn' v vs (new++cs'))
-  where
-    addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
+  returnM (Type (renameType qn) v vs (new ++ cs'))
+  where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
+transData (TypeSyn _ _ _ _) = error "transData with type synonym"
 
-renameType, renameCons, renameFun :: QName -> M QName
-renameType (_, n) = case n of
-  "[]" -> renameType ("","List")
-  "(,)" -> renameType ("","T2")
-  "(,,)" -> renameType ("","T3")
-  _ -> returnM ("","C_"++n)
+renameType :: QName -> QName
+renameType (_, n)
+  | n == "[]"        = renameType  ("", "List")
+  | isJust tupleArty = renameType  ("", 'T':show (fromJust tupleArty))
+  | otherwise        = renameCurry ("", n)
+    where tupleArty = tupleArity n
 
-renameCons x = case x of
- (_,":") -> renameType ("","Cons")
- (_,"[]") -> renameType ("","Nil")
- (_,"(,)") -> renameType ("","T2")
- (_,"(,,)") -> renameType ("","T3")
- _ -> renameType x
+renameCons :: QName -> QName
+renameCons (_, n)
+  | n == ":"         = renameType  ("", "Cons")
+  | n == "[]"        = renameType  ("", "Nil")
+  | isJust tupleArty = renameType  ("", 'T':show (fromJust tupleArty))
+  | otherwise        = renameCurry ("", n)
+    where tupleArty = tupleArity n
 
+renameCurry :: QName -> QName
+renameCurry (q, n) = (q, "C_" ++ n)
+
+-- TODO Awkward use of detMode
+renameFun :: QName -> M QName
 renameFun qn@(_,n) =
   isDetMode `bindM` \dm ->
-  setDetModeM False `bindM_`
+  setDetMode False `bindM_`
   getNDClass qn `bindM` \ndCl ->
-  setDetModeM dm `bindM_`
+  setDetMode dm `bindM_`
   let prefix s = (if dm && ndCl == HO then "d_" else "c_") ++ s in
-  if isInfixName n
-   then returnM ("",prefix $ "op_"
-                     ++ (concat $ intersperse "_" $ map nameOfChar n))
-   else returnM ("",prefix $ concatMap nameOfChar n)
-
-isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")
-
-nameOfChar c = case c of
-  '<' -> "lt"
-  '-' -> "minus"
-  '+' -> "plus"
-  '*' -> "mult"
-  '!' -> "bang"
-  '=' -> "eq"
-  '/' -> "slash"
-  '?' -> "qmark"
-  '&' -> "and"
-  '>' -> "gt"
-  ':' -> "colon"
-  '.' -> "point"
-  '#' -> "hash"
-  '|' -> "bar"
-  c'   -> [c'] --error $ "rename char " ++ [c']
+  returnM $ if isInfixName n
+    then ("", prefix $ "op_" ++ (intercalate "_" $ map showOpChar n))
+    else ("", prefix n)
 
 transCons :: ConsDecl -> M ConsDecl
 transCons (Cons qn a v ts) =
-  renameCons qn `bindM` \qn' ->
   mapM transTypeExpr ts `bindM` \ts' ->
-  returnM (Cons qn' a v ts')
+  returnM (Cons (renameCons qn) a v ts')
 
 check42 :: (TypeExpr -> M TypeExpr) -> TypeExpr -> M TypeExpr
 check42 f t = case t of
-  (TVar n) -> if n == -42 then returnM t else f t
-  _        -> f t
+  (TVar (-42)) -> returnM t
+  _            -> f t
 
 transTypeExpr :: TypeExpr -> M TypeExpr
-transTypeExpr (TCons qn ts) =
-  renameType qn `bindM` \qn' ->
-  mapM transTypeExpr ts `bindM` \ts' ->
-  returnM (TCons qn' ts')
+transTypeExpr t@(TVar _) = returnM t
 transTypeExpr (FuncType t1 t2) =
   transTypeExpr t1 `bindM` \t1' ->
   transTypeExpr t2 `bindM` \t2' ->
   returnM (FuncType t1' t2')
-transTypeExpr t@(TVar _) = returnM t
+transTypeExpr (TCons qn ts) =
+  mapM transTypeExpr ts `bindM` \ts' ->
+  returnM (TCons (renameType qn) ts')
 
 transFuncType :: NDClass -> Int -> TypeExpr -> M TypeExpr
-
 transFuncType nd n t = case nd of
   Pure -> transTypeExpr t
   _    -> case n of
@@ -357,38 +327,37 @@ newConstructors qn@(_,_) vs =
 
 cons  n xs    = Cons n (length xs) Public xs
 pcons n xs    = Pattern n xs
-tcons n = TCons ("",n)
+tcons n = TCons ("", n)
 consCall n xs = Comb ConsCall n xs
 funcCall n xs = Comb FuncCall n xs
-funCall n = funcCall ("",n)
+funCall n = funcCall ("", n)
 
 
 s +|+ t = s ++ "_" ++ t
 
 transFunc :: FuncDecl -> M [FuncDecl]
-transFunc (Func qn@(_,n) a v t r) =
+transFunc (Func qn a v t r) =
   getNDClass qn `bindM` \ndCl ->
-  traceM (n ++ " is " ++ (show ndCl)) `bindM_`
   case ndCl of
     Pure -> transPureFunc qn a v t r `bindM` (returnM . (:[]))
     HO   ->
-      setDetModeM True  `bindM_`
+      setDetMode True  `bindM_`
       transPureFunc qn a v t r `bindM` \fd ->
-      setDetModeM False `bindM_`
-      transNDFunc   qn a v t r `bindM` \fn ->
+      setDetMode False `bindM_`
+      transNDFunc qn a v t r `bindM` \fn ->
       returnM [fd,fn]
     ND ->
-      setDetModeM True `bindM_`
-      transNDFunc   qn a v t r  `bindM` \res ->
-      setDetModeM False `bindM_`
+      setDetMode True `bindM_`
+      transNDFunc qn a v t r `bindM` \res ->
+      setDetMode False `bindM_`
       returnM [res]
-
 
 transPureFunc qn a v t r =
       renameFun qn `bindM` \qn' ->
       transTypeExpr t `bindM` \t' ->
       transRule False qn' r `bindM` \r' ->
       returnM (Func qn' a v t' r')
+
 transNDFunc qn a v t r =
       getNDClass qn `bindM` \ndCl ->
       renameFun qn `bindM` \qn' ->
@@ -398,50 +367,50 @@ transNDFunc qn a v t r =
 
 transRule :: Bool -> QName -> Rule -> M Rule
 transRule addArg qn (Rule vs e) =
-  updState (setCont (Just (addArg,qn,vs)))  `bindM_`
+  updState (\st -> { cont := Just (addArg,qn,vs) | st })  `bindM_`
   transBody e `bindM` \e' ->
-  returnM (Rule (if addArg then vs++[suppVarIdx] else vs) e')
+  returnM $ Rule (if addArg then vs ++ [suppVarIdx] else vs) e'
 
 transBody :: Expr -> M Expr
 transBody exp = case exp of
     (Case m e@(Var i) bs)->
-      getState `bindM` (returnM . fromJust . cont)  `bindM` \(_,_,vs) ->
+      getJustCont `bindM` \(_,_,vs) ->
       let Just idx = find (==i) vs in
-      updState (setMatchPos idx) `bindM_`
+      updState (\st -> { matchPos := idx | st }) `bindM_`
       mapM transBranch bs `bindM` \bs' ->
       newBranches bs `bindM` \ns ->
       transExpr e `bindM` \(_,e') ->
       returnM (Case m e' (bs'++ns))
     _ ->
       getNextID `bindM` \i ->
-      transExpr exp `bindM` \(g,e') ->
-      getState `bindM_`
-      getNextID `bindM_`
+      transExpr exp `bindM` \(g, e') ->
+      getState `bindM_`  -- No effect ???
+      getNextID `bindM_` -- Just to increase the id ???
       let e'' = case g of
                   []  -> e'
                   [v] -> Let [(v,Var suppVarIdx)] e' in
-      updState (setNextID i)  `bindM_`
+      setNextID i `bindM_`
       returnM e''
 
 transBranch :: BranchExpr -> M BranchExpr
 transBranch (Branch (Pattern p vs) e) =
   getNextID `bindM` \i ->
-  renameCons p `bindM` \p' ->
   transExpr e `bindM` \(g,e') ->
   getState `bindM_`
   getNextID `bindM_`
   let e'' = case g of
               []  -> e'
               [v] -> Let [(v,Var suppVarIdx)] e' in
-  updState (setNextID i) `bindM_`
-  returnM (Branch (Pattern p' vs) e'')
+  setNextID i `bindM_`
+  returnM (Branch (Pattern (renameCons p) vs) e'')
 
 newBranches :: [BranchExpr] -> M [BranchExpr]
 newBranches (Branch (Pattern qn _) _:_) =
   getTypeMap  `bindM` \m ->
-  let qnMatch = maybe (error $ "not in type map "++show qn) id (lookupFM m qn) in
-  getState `bindM` (returnM . fromJust . cont) `bindM` \(addArg,qn',vs) ->
-  getState `bindM` (returnM . matchPos) `bindM` \pos ->
+  let qnMatch = fromMaybe (error $ "not in type map "++show qn)
+                (lookupFM m qn) in
+  getJustCont `bindM` \(addArg, qn', vs) ->
+  getMatchPos `bindM` \pos ->
   let is = if addArg then [Var suppVarIdx] else []
       (vs1,_:vs2) = break (==pos) vs
       c e = funcCall qn' (map Var vs1 ++ [e] ++ map Var vs2 ++ is) in
@@ -454,15 +423,11 @@ newBranches (Branch (Pattern qn _) _:_) =
          ] -- TODO Magic numbers?
 
 transExpr :: Expr -> M ([VarIndex],Expr)
-
-transExpr e@(Var _) = returnM ([],e)
-transExpr (Lit (Intc i)) = returnM ([],int i)
-
+transExpr e@(Var _) = returnM ([], e)
+transExpr (Lit (Intc i)) = returnM ([], int i)
 transExpr (Comb ConsCall qn es) =
-  renameCons qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g,es') ->
-  genIds g (Comb ConsCall qn' es')
-
+  genIds g (Comb ConsCall (renameCons qn) es')
 transExpr (Comb FuncCall qn es) =
   getNDClass qn `bindM` \ndCl ->
   renameFun qn `bindM` \qn' ->
@@ -472,7 +437,6 @@ transExpr (Comb FuncCall qn es) =
     Pure -> genIds g (Comb FuncCall qn' es')
     _    -> takeNextID  `bindM` \i ->
       genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
-
 transExpr (Comb (FuncPartCall i) qn es) =
   getNDClass qn `bindM` \ndCl ->
   isDetMode `bindM` \dm ->
@@ -484,45 +448,37 @@ transExpr (Comb (FuncPartCall i) qn es) =
     -- TODO: we do not care about higher order calls to nd functions right now
     -- _    -> takeNextID `bindM` \i ->
     --   genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
-
 transExpr (Let vses e) =
   let (vs,es) = unzip vses in
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g,es') ->
   transExpr e `bindM` \(ge,e') ->
   genIds (g ++ ge) (Let (zip vs es') e')
-
 transExpr (Or e1 e2) = transExpr (Comb FuncCall ("Prelude","?") [e1,e2])
-
 transExpr (Free vs e) =
   transExpr e `bindM` \(g,e') ->
   takeNextIDs (length vs) `bindM` \is ->
   genIds (g++is) (Let (zipWith (\ v i -> (v,generate (Var i))) vs is) e')
+transExpr e@(Case _ _ _) = returnM ([], e)
+transExpr e@(Comb (ConsPartCall _) _ _) = returnM ([], e)
 
-transExpr e@(Case _ _ _) = returnM ([],e)
-transExpr e@(Comb (ConsPartCall _) _ _) = returnM ([],e)
-  -- trace ("other: "++show e) $ return ()
-
-
-unzipArgs :: [([VarIndex],e)] -> M ([VarIndex],[e])
+unzipArgs :: [([VarIndex], e)] -> M ([VarIndex], [e])
 unzipArgs ises = let (is,es) = unzip ises in returnM (concat is,es)
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex],Expr)
 genIds ns e =
-    getNextID  `bindM` \i ->
+    getNextID `bindM` \i ->
     let (v',vs) = mkSplits i ns in
     case vs of
-        [] -> returnM (ns,e)
-        _  -> updState (setNextID (v'+1))  `bindM_` returnM ([v'],foldr addSplit e vs)
+        [] -> returnM (ns, e)
+        _  -> setNextID (v'+1) `bindM_` returnM ([v'], foldr addSplit e vs)
  where
-   addSplit (v,v1,v2) e' =
-     Let [(v1,fstSplit v)] (Let [(v2,sndSplit v)] e')
+   addSplit (v,v1,v2) e' = Let [(v1, fstSplit v)] (Let [(v2, sndSplit v)] e')
    fstSplit v = funCall "leftSupply"  [Var v]
    sndSplit v = funCall "rightSupply" [Var v]
 
+-- TODO magic numbers
 idVar      = 2000
 suppVarIdx = 3000
-
-
 
 orName (_,n) = ("",n +|+ "Choice")
 failName (_,n) = ("",n +|+ "Fail")
@@ -539,33 +495,31 @@ splitSupply = funcCall ("","splitSupply")
 initSupply  = funcCall ("","initIDSupply") []
 
 int :: Integer -> Expr
-int i = consCall ("","(C_Int " ++ show i ++ "#)") []
+int i = consCall ("", "(C_Int " ++ show i ++ "#)") []
 
 wrap :: Bool -> NDClass -> Int -> Expr -> Expr
 wrap True _ _ e = e
 wrap False nd a e = wrap'' (fun 1 (wrapName nd) []) e a
 
+wrap' nd n e = case n of
+  0 -> e
+  1 -> funcCall (wrapName nd) [e]
+  _ -> funcCall (wrapName Pure) [wrap' nd (n-1) e]
 {-
 wrap' _  0     e = e
 wrap' nd 1     e = funcCall (wrapName nd) [e]
 wrap' nd (n+1) e = funcCall (wrapName Pure) [wrap' nd n e]
 -}
 
-wrap' nd n e = case n of
-  0 -> e
-  1 -> funcCall (wrapName nd) [e]
-  _ -> funcCall (wrapName Pure) [wrap' nd (n-1) e]
-
 wrapName ndMode = case ndMode of
-                    Pure -> ("","wrapD")
-                    _    -> ("","wrapN")
+  Pure -> ("", "wrapD")
+  _    -> ("", "wrapN")
 
+wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
 {-
 wrap'' _ e 0     = e
 wrap'' f e (n+1) = apply f (wrap'' (point [f]) e n)
 -}
-
-wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
 
 point = fun 2 ("",".")
 
@@ -585,3 +539,34 @@ bfs0 = Comb (FuncPartCall 1) ("","bfs") []
 par0 = Comb (FuncPartCall 1) ("","par") []
 idfs0 g = Comb FuncCall  ("","idfs") [g]
 generate i = Comb FuncCall  ("","generate") [i]
+
+primTypes :: [(QName, QName)]
+primTypes = map (\ (x, y) -> ((prelude, x), (prelude, y))) $
+  [ ("True", "Bool"), ("False", "Bool")
+  , ("[]", "List")  , (":", "List")
+  ] ++ map (\n -> (tupleType n, 'T':show n)) [2 .. maxTupleArity]
+
+-- Return Nothing if type is no tuple and Just arity otherwise
+tupleArity :: String -> Maybe Int
+tupleArity s
+  | arity > 1 && s == '(' : replicate (arity -1) ',' ++ ")" = Just arity
+  | otherwise                                               = Nothing
+  where arity = length s - 1
+
+maxTupleArity :: Int
+maxTupleArity = 15
+
+tupleType :: Int -> String
+tupleType arity = '(' : replicate (arity - 1) ',' ++ ")"
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate xs xss = concat (intersperse xs xss)
+
+-- file utils
+withBaseName :: (String -> String) -> String -> String
+withBaseName f fn = dirName fn
+  ++ separatorChar : (f $ stripSuffix $ baseName fn)
+  ++ suffixSeparatorChar : fileSuffix fn
+
+withExtension :: (String -> String) -> String -> String
+withExtension f fn = stripSuffix fn ++ f (fileSuffix fn)

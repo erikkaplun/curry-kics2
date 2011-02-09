@@ -1,4 +1,4 @@
-module CallGraph (NDClass (..), analyse, NDResult) where
+module CallGraph (NDClass (..), analyseNd, NDResult) where
 
 import Char (isDigit)
 import Maybe (fromJust)
@@ -22,8 +22,8 @@ data QN = QN QName
 showQN :: QN -> String
 showQN (QN (q,m)) = q ++ "." ++ m
 
-analyse :: Prog -> NDResult
-analyse p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
+analyseNd :: Prog -> NDResult
+analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
   where
    (funs,graph) = callGraph p
    qmarkNode    = find qmark funs
