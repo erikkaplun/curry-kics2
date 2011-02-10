@@ -49,10 +49,10 @@ fcy2acRule (FC.External ename) = External ename
 fcy2acExpr (FC.Var i) = Var (var2ac i)
 fcy2acExpr (FC.Lit l) = Lit (lit2ac l)
 fcy2acExpr (FC.Comb _ qf es) = applyF qf (map fcy2acExpr es)
-fcy2acExpr (FC.Let bs expr) = LetDecl (map ldecl bs) (fcy2acExpr expr)
+fcy2acExpr (FC.Let bs expr) = Let (map ldecl bs) (fcy2acExpr expr)
  where ldecl (i,e) = LocalPat (PVar (var2ac i)) (fcy2acExpr e) []
-fcy2acExpr (FC.Free vs expr) = LetDecl (map (LocalVar . var2ac) vs)
-                                       (fcy2acExpr expr)
+fcy2acExpr (FC.Free vs expr) = Let (map (LocalVar . var2ac) vs)
+                                   (fcy2acExpr expr)
 fcy2acExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2acExpr [e1,e2])
 fcy2acExpr (FC.Case FC.Flex _ _) = error "fcy2acExpr: Flex Case occurred!"
 fcy2acExpr (FC.Case FC.Rigid e brs) = Case (fcy2acExpr e) (map trBranch brs)

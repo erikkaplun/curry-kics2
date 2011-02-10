@@ -178,7 +178,7 @@ data Expr =
  | Symbol   QName                  -- a defined symbol with module and name
  | Apply    Expr Expr            -- application (e1 e2)
  | Lambda   [Pattern] Expr       -- lambda abstraction
- | LetDecl  [LocalDecl] Expr     -- local let declarations
+ | Let      [LocalDecl] Expr     -- local let declarations
  | DoExpr   [Statement]           -- do expression
  | ListComp Expr [Statement]     -- list comprehension
  | Case     Expr [BranchExpr]    -- case expression
@@ -187,8 +187,8 @@ data Expr =
 --- list comprehensions.
 
 data Statement = SExpr Expr         -- an expression (I/O action or boolean)
-                | SPat Pattern Expr -- a pattern definition
-                | SLet [LocalDecl]   -- a local let declaration
+               | SPat Pattern Expr -- a pattern definition
+               | SLet [LocalDecl]   -- a local let declaration
 
 --- Data type for representing pattern expressions.
 

@@ -261,7 +261,7 @@ showExprOpt opts (Symbol name)
                                 else showSymbol opts name
 showExprOpt opts (Apply func arg) = showApplication opts (Apply func arg)
 showExprOpt opts (Lambda patts expr) = showLambdaOrSection opts patts expr
-showExprOpt opts (LetDecl localdecls expr)
+showExprOpt opts (Let localdecls expr)
    = "let\n" ++ showBlock ((combineMap (showLocalDecl opts) localdecls "\n") 
      ++ "\n in " ++ (showBoxedExpr opts expr))
 showExprOpt opts (DoExpr stmts)

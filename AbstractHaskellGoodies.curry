@@ -107,7 +107,7 @@ cvar s = Var (1,s)
 
 -- let declaration (with possibly empty local delcarations):
 clet :: [LocalDecl] -> Expr -> Expr
-clet locals cexp = if null locals then cexp else LetDecl locals cexp
+clet locals cexp = if null locals then cexp else Let locals cexp
 
 ctvar :: String -> TypeExpr
 ctvar s = TVar (1,s)
@@ -150,8 +150,8 @@ renameSymbolInExpr ren exp = case exp of
                               (renameSymbolInExpr ren e2)
   Lambda pats e    -> Lambda (map (renameSymbolInPat ren) pats)
                                (renameSymbolInExpr ren e)
-  LetDecl locals e -> LetDecl (map (renameSymbolInLocal ren) locals)
-                                (renameSymbolInExpr ren e)
+  Let locals e     -> Let (map (renameSymbolInLocal ren) locals)
+                               (renameSymbolInExpr ren e)
   DoExpr stats     -> DoExpr (map (renameSymbolInStat ren) stats)
   ListComp e stats -> ListComp (renameSymbolInExpr ren e)
                                  (map (renameSymbolInStat ren) stats)
