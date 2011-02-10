@@ -1,16 +1,16 @@
 ------------------------------------------------------------------------
 --- Generation of data and instance declarations for the Curry->Haskell
 --- compiler.
---- The input is a FlatCurry program and the output is an AbstractCurry
+--- The input is a FlatCurry program and the output is an AbstractHaskell
 --- program with instance declarations that can be easily pretty printed
 ------------------------------------------------------------------------
 
 import qualified FlatCurry as FC
 import FlatCurryGoodies
-import AbstractCurry
+import AbstractHaskell
 --import PrettyAbstract
-import AbstractCurryPrinter
-import AbstractCurryGoodies
+import AbstractHaskellPrinter
+import AbstractHaskellGoodies
 import System
 import FileGoodies(stripSuffix)
 import List
@@ -21,7 +21,7 @@ import Names
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 04/02/11)"
+   bannerText = "ID-based Curry->Haskell Compiler (Version of 10/02/11)"
    bannerLine = take (length bannerText) (repeat '=')
 
 ------------------------------------------------------------------------
@@ -78,36 +78,36 @@ showGeneratedTypes (FC.Prog _ _ tdecls _ _) =
                            (filter (not . isPrimTypeDecl) tdecls))
 
 
-transProg :: CParam -> FC.Prog -> CurryProg
+transProg :: CParam -> FC.Prog -> Prog
 transProg _ (FC.Prog mname imps tdecls _ _) =
-  CurryProg (mkModName mname)
-            (nub ("ID":"Basics":map mkModName imps))
-            (concatMap genTypeDefinitions
-                       (filter (not . isPrimTypeDecl) tdecls))
-            []
-            []
+  Prog (mkModName mname)
+       (nub ("ID":"Basics":map mkModName imps))
+       (concatMap genTypeDefinitions
+                  (filter (not . isPrimTypeDecl) tdecls))
+       []
+       []
 
 
 ------------------------------------------------------------------------
 -- Generate code for user-defined types.
 
-genTypeDefinitions :: FC.TypeDecl -> [CTypeDecl]
+genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
-  [CTypeSyn (renType qf) (visibility2ac vis) (map tvar2ac targs) (texp2ac texp)]
+  [TypeSyn (renType qf) (visibility2ac vis) (map tvar2ac targs) (texp2ac texp)]
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
-  [CType (renType (mn,tc)) acvis targs
+  [Type (renType (mn,tc)) acvis targs
          (map tcons2ac cdecls ++
-          [CCons choiceConsName 3 acvis [idType,ctype,ctype],
-           CCons failConsName   0 acvis [],
-           CCons guardConsName  3 acvis [constraintType,ctype]]),
+          [Cons choiceConsName 3 acvis [idType,ctype,ctype],
+           Cons failConsName   0 acvis [],
+           Cons guardConsName  3 acvis [constraintType,ctype]]),
    nondetInstance,
    generableInstance,
    showInstance]
  where
   acvis = visibility2ac vis
   targs = map tvar2ac tnums
-  ctype = CTCons (renType (mn,tc)) (map CTVar targs)
+  ctype = TCons (renType (mn,tc)) (map TVar targs)
 
   choiceConsName = (mn,"Choice_"++mkTypeName tc)
   failConsName   = (mn,"Fail_"++mkTypeName tc)
@@ -115,63 +115,63 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
   -- Generate instance of NonDet class:
   nondetInstance =
-   CInstance (basics "NonDet") ctype []
-     ([((basics "choiceCons"), CRule [] [noGuard (constF choiceConsName)] []),
-       ((basics "failCons"),   CRule [] [noGuard (constF failConsName)] []),
-       ((basics "guardCons"),  CRule [] [noGuard (constF guardConsName)] [])] ++
+   Instance (basics "NonDet") ctype []
+     ([((basics "choiceCons"), Rule [] [noGuard (constF choiceConsName)] []),
+       ((basics "failCons"),   Rule [] [noGuard (constF failConsName)] []),
+       ((basics "guardCons"),  Rule [] [noGuard (constF guardConsName)] [])] ++
       map (\r->(basics "try",r)) tryRules)
 
   tryRules =
-   [CRule [CPComb choiceConsName [CPVar (1,"i"),CPVar (2,"x"),CPVar (3,"y")]]
+   [Rule [PComb choiceConsName [PVar (1,"i"),PVar (2,"x"),PVar (3,"y")]]
           [noGuard (applyF (basics "tryChoice")
-                           [CVar (1,"i"),CVar (2,"x"),CVar (3,"y")])] [],
-    CRule [CPComb guardConsName [CPVar (1,"c"),CPVar (2,"e")]]
-          [noGuard (applyF (basics "Guard") [CVar (1,"c"),CVar (2,"e")])] [],
-    CRule [CPVar (1,"x")] [noGuard (applyF (basics "Val") [cvar "x"])] []]
+                           [Var (1,"i"),Var (2,"x"),Var (3,"y")])] [],
+    Rule [PComb guardConsName [PVar (1,"c"),PVar (2,"e")]]
+          [noGuard (applyF (basics "Guard") [Var (1,"c"),Var (2,"e")])] [],
+    Rule [PVar (1,"x")] [noGuard (applyF (basics "Val") [cvar "x"])] []]
 
   -- Generate instance of Generable class:
   generableInstance =
-   CInstance (basics "Generable") ctype
-      (map (\tv -> CContext (basics "Generable") [tv]) targs)
+   Instance (basics "Generable") ctype
+      (map (\tv -> Context (basics "Generable") [tv]) targs)
       [((basics "generate"),
-        CRule [CPVar (1,"i")] [noGuard genBody] [])]
+        Rule [PVar (1,"i")] [noGuard genBody] [])]
  
   genBody =
     if null cdecls
     then applyF (pre "error")
                 [string2ac $ "No constructors for "++tc]
     else foldr1 (\x y -> applyF choiceConsName
-                                [applyF (basics "freeID") [CVar (1,"i")], x, y])
+                                [applyF (basics "freeID") [Var (1,"i")], x, y])
                 (cons2genCons 0 cdecls)
 
   cons2genCons _ [] = []
   cons2genCons i (FC.Cons qn _ _ texps : cs) = let ar = length texps in
     applyF (renCons qn) (map (\j -> applyF (basics "generate")
-                                           [freshID (i+j) (CVar (1,"i"))])
+                                           [freshID (i+j) (Var (1,"i"))])
                    [0 .. ar-1])
      : cons2genCons (i+ar) cs
 
   -- Generate instance of Show class:
   showInstance =
-   CInstance (basics "Show") ctype
-     (map (\tv -> CContext (basics "Show") [tv]) targs)
+   Instance (basics "Show") ctype
+     (map (\tv -> Context (basics "Show") [tv]) targs)
      ([(pre "showsPrec",
-        CRule [CPVar (1,"d"),
-               CPComb choiceConsName
-                      [CPVar (2,"i"),CPVar (3,"x"),CPVar (4,"y")]]
+        Rule [PVar (1,"d"),
+               PComb choiceConsName
+                      [PVar (2,"i"),PVar (3,"x"),PVar (4,"y")]]
               [noGuard (applyF (pre "showsChoice")
-                               [CVar (1,"d"),CVar (2,"i"),
-                                CVar (3,"x"),CVar (4,"y")])] []),
+                               [Var (1,"d"),Var (2,"i"),
+                                Var (3,"x"),Var (4,"y")])] []),
        (pre "showsPrec",
-        CRule [CPVar (1,"d"), CPComb failConsName []]
-              [noGuard (applyF (pre "showChar") [CLit (CCharc '!')])] [])]
+        Rule [PVar (1,"d"), PComb failConsName []]
+              [noGuard (applyF (pre "showChar") [Lit (Charc '!')])] [])]
        ++ map showConsRule cdecls)
 
   -- Generate Show instance rule for a data constructor:
   showConsRule (FC.Cons qn _ _ texps) = let carity = length texps in
     (pre "showsPrec",
-     CRule [CPVar (0,"d"),
-            CPComb (renCons qn) (map (\i -> CPVar (i,'x':show i)) [1..carity])]
+     Rule [PVar (0,"d"),
+            PComb (renCons qn) (map (\i -> PVar (i,'x':show i)) [1..carity])]
            [noGuard (showBody carity)] [])
    where
      showBody ar =
@@ -181,10 +181,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                   [applyF (pre "showString") 
                           [string2ac ('(':snd qn)],
                    foldr (\x xs -> applyF (pre ".")
-                                    [applyF (pre ":") [CLit (CCharc ' ')],
+                                    [applyF (pre ":") [Lit (Charc ' ')],
                                      applyF (pre ".") [x,xs]])
-                         (applyF (pre "showChar") [CLit (CCharc ')')])
-                         (map (\i->applyF (pre "shows") [CVar (i,'x':show i)])
+                         (applyF (pre "showChar") [Lit (Charc ')')])
+                         (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
                               [1..ar])]
 
 freshID n i =
@@ -201,21 +201,21 @@ basics n = ("Basics",n)
 idmod n = ("ID",n)
 
 ------------------------------------------------------------------------
--- Translating FlatCurry to AbstractCurry
-visibility2ac :: FC.Visibility -> CVisibility
-visibility2ac FC.Public  = AbstractCurry.Public
-visibility2ac FC.Private = AbstractCurry.Private
+-- Translating FlatCurry to AbstractHaskell
+visibility2ac :: FC.Visibility -> Visibility
+visibility2ac FC.Public  = AbstractHaskell.Public
+visibility2ac FC.Private = AbstractHaskell.Private
 
-tvar2ac :: FC.TVarIndex -> CTVarIName
+tvar2ac :: FC.TVarIndex -> TVarIName
 tvar2ac i = (i, "t"++show i)
 
-tcons2ac :: FC.ConsDecl -> CConsDecl
+tcons2ac :: FC.ConsDecl -> ConsDecl
 tcons2ac (FC.Cons qf ar vis texps) =
-   CCons (renCons qf) ar (visibility2ac vis) (map texp2ac texps)
+   Cons (renCons qf) ar (visibility2ac vis) (map texp2ac texps)
 
-texp2ac :: FC.TypeExpr -> CTypeExpr
-texp2ac (FC.TVar i) = CTVar (tvar2ac i)
-texp2ac (FC.FuncType t1 t2) = CFuncType (texp2ac t1) (texp2ac t2)
-texp2ac (FC.TCons qf texps) = CTCons (renType qf) (map texp2ac texps)
+texp2ac :: FC.TypeExpr -> TypeExpr
+texp2ac (FC.TVar i) = TVar (tvar2ac i)
+texp2ac (FC.FuncType t1 t2) = FuncType (texp2ac t1) (texp2ac t2)
+texp2ac (FC.TCons qf texps) = TCons (renType qf) (map texp2ac texps)
 
 ------------------------------------------------------------------------
