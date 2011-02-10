@@ -7,15 +7,18 @@ module Names where
 import Char (isAlphaNum)
 import List (intersperse)
 
-mkConFunNameM :: String -> String
-mkConFunNameM x = "consM_" ++ mkConNameM x
+--- Rename qualified type constructor.
+renType (mn,fn) = (mkModName mn, mkTypeName fn)
 
-mkConNameM :: String -> String
-mkConNameM = replaceNonIdChars "CM_" "OPM_"
+-- Rename qualified data constructor.
+renCons (mn,fn) = (mkModName mn, mkConName fn)
+
+-- Rename qualified defined function.
+renFunc (mn,fn) = (mkModName mn, mkFunName fn)
 
 -- rename defined functions
-mkFunNameM :: String -> String
-mkFunNameM = replaceNonIdChars "cM_" "op_"
+mkFunName :: String -> String
+mkFunName = replaceNonIdChars "" "op_"
 
 -- rename data constructors
 mkConName :: String -> String
@@ -43,9 +46,9 @@ compareNameForType :: String -> String
 compareNameForType = (++ "_compare")
 
 mkExtFunName :: String -> String
-mkExtFunName = ("external_" ++) . mkFunNameM
+mkExtFunName = ("external_" ++) . mkFunName
 
--- | replaces characters that are not valid haskell identifiers,
+-- | replaces characters that are not valid Haskell identifiers,
 -- | if there were no characters replaced, the first prefix,
 -- | otherwise the snd prefix ist prepended
 replaceNonIdChars :: String -> String -> String -> String
@@ -57,7 +60,8 @@ replaceNonIdChars pfxNonOp pfxOp str =
                else pfxOp    ++ s
      _   -> pfxOp ++ concat (intersperse "_" strings)
 
- where strings = separateAndReplace isAlphaNum showOpChar str
+ where strings = separateAndReplace isAlphaNumOrUS showOpChar str
+       isAlphaNumOrUS c = isAlphaNum c || c=='_'
 
 
 separateAndReplace :: (a -> Bool) -> (a -> [a]) -> [a] -> [[a]]
@@ -76,7 +80,7 @@ isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")
 
 showOpChar :: Char -> String
 showOpChar c = case c of
-  '_' -> "underscore"
+  '_' -> "_" --"underscore"
   '~' -> "tilde"
   '!' -> "bang"
   '@' -> "at"

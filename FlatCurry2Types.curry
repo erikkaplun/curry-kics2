@@ -13,6 +13,7 @@ import FlatCurryGoodies
 import AbstractHaskell
 import AbstractHaskellPrinter
 import AbstractHaskellGoodies
+--import AbstractHaskellRename
 import System
 import FileGoodies(stripSuffix)
 import List
@@ -49,12 +50,6 @@ main = do
                      unwords args ++ "\n" ++
                      "Usage: idc [-q] <module_name>\n"++
                      "-q : quiet mode\n"
-
--- Transform a qname of the source program into a qname of the target program
--- Rename type constructors:
-renType (mn,fn) = (mkModName mn, mkTypeName fn)
--- Rename data constructors
-renCons (mn,fn) = (mkModName mn, mkConName fn)
 
 
 mtest = transform defaultCParam "Test"
