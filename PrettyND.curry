@@ -4,13 +4,10 @@ import FlatCurryGoodies
 import System
 import StyledText
 
-prettyNd :: Prog -> String -> IO String
-prettyNd prog idSupplyFile = do
-  let pragmas = "{-# LANGUAGE MagicHash, TemplateHaskell, MultiParamTypeClasses, FlexibleInstances #-}"
+prettyNd :: Prog -> IO String
+prettyNd prog = do
   let instances = concatMap genInstance (progTypes prog)
-  foot <- readFile "./foot.hs"
-  idsupply <- readFile idSupplyFile
-  return $ unlines [pragmas, showProg prog, instances, foot, idsupply]
+  return $ unlines [showProg prog, instances]
 
 genInstance :: TypeDecl -> String
 genInstance (Type (_, n) _ vs _) = inst
@@ -18,7 +15,7 @@ genInstance (Type (_, n) _ vs _) = inst
 genInstance (TypeSyn _ _ _ _)  = ""
 
 inst :: String -> String -> String
-inst s t = "instance NonDet (" ++ s ++ ") where\n" ++
+inst s t = "\ninstance NonDet (" ++ s ++ ") where\n" ++
            "  choiceCons = " ++ t ++ "_Choice\n" ++
            "  failCons   = " ++ t ++ "_Fail\n" ++
            "  guardCons  = " ++ t ++ "_Guard\n" ++

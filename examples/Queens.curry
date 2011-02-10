@@ -1,7 +1,5 @@
 -- import Benchmark
 
-data List a = Nil | Cons a (List a)
-
 nsoln :: Int -> Int
 nsoln x1 = mylength (gen x1 x1)
 

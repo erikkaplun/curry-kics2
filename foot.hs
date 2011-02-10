@@ -271,7 +271,7 @@ d_apply :: (a -> b) -> a -> b
 d_apply f x = f x
 
 wrapD :: (a -> b) -> Func a b
-wrapD f = Func (\ x s -> f x)
+wrapD f = Func (\ x _s -> f x)
 
 wrapN :: (a -> IDSupply -> b) -> Func a b
 wrapN = Func

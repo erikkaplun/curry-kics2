@@ -34,6 +34,7 @@ data SearchMode
 data Dump
   = DumpFlat        -- dump flat curry
   | DumpLifted      -- dump flat curry after case lifting
+  | DumpRenamed     -- dump renamed flat curry
   | DumpAbstractHs  -- dump abstract Haskell
 
 defaultOptions :: Options
@@ -74,8 +75,11 @@ options =
   , Option [] ["dump-abstract-hs"]
       (NoArg (\opts -> { dump := nub (DumpAbstractHs : opts -> dump) | opts }))
       "dump abstract Haskell representation"
+  , Option [] ["dump-renamed"]
+      (NoArg (\opts -> { dump := nub (DumpRenamed : opts -> dump) | opts }))
+      "dump renamed abstract Haskell representation"
   , Option [] ["dump-all"]
-      (NoArg (\opts -> { dump := [DumpFlat, DumpLifted, DumpAbstractHs] | opts }))
+      (NoArg (\opts -> { dump := [DumpFlat, DumpLifted, DumpRenamed, DumpAbstractHs] | opts }))
       "dump all intermediate results"
   ]
 
