@@ -1,11 +1,15 @@
 ------------------------------------------------------------------------
 --- Transformation from FlatCurry programs into AbstractHaskell programs.
 ---
+--- Restrictions and hacks:
+--- * Flexible case expressions are considered as rigid.
+--- * A function having type (TVar (-42)) is considered as untyped.
+---
 --- @author Michael Hanus
 --- @version February 2011
 ------------------------------------------------------------------------
 
-module FlatCurry2AbstractHaskell where
+module FlatCurry2AbstractHaskell(fcy2abs) where
 
 import qualified FlatCurry as FC
 import AbstractHaskell
@@ -14,78 +18,79 @@ import AbstractHaskellGoodies
 ------------------------------------------------------------------------
 
 --- Translates a FlatCurry program into an AbstractHaskell program.
-fcy2ac :: FC.Prog -> Prog
-fcy2ac (FC.Prog mname imps tdecls fdecls ops) =
+fcy2abs :: FC.Prog -> Prog
+fcy2abs (FC.Prog mname imps tdecls fdecls ops) =
   Prog mname
        imps
-       (map fcy2acTDecl tdecls)
-       (map fcy2acFDecl fdecls)
-       (map fcy2acOp ops)
+       (map fcy2absTDecl tdecls)
+       (map fcy2absFDecl fdecls)
+       (map fcy2absOp ops)
 
 
 ------------------------------------------------------------------------
--- Generate code for user-defined types.
 
-fcy2acTDecl :: FC.TypeDecl -> TypeDecl
-fcy2acTDecl (FC.TypeSyn qf vis targs texp) =
-  TypeSyn qf (visibility2ac vis) (map tvar2ac targs) (texp2ac texp)
-fcy2acTDecl (FC.Type qf vis targs cdecls) =
-  Type qf (visibility2ac vis) (map tvar2ac targs) (map tcons2ac cdecls)
+fcy2absTDecl :: FC.TypeDecl -> TypeDecl
+fcy2absTDecl (FC.TypeSyn qf vis targs texp) =
+  TypeSyn qf (vis2abs vis) (map tvar2abs targs) (texp2abs texp)
+fcy2absTDecl (FC.Type qf vis targs cdecls) =
+  Type qf (vis2abs vis) (map tvar2abs targs) (map tcons2abs cdecls)
 
-fcy2acOp (FC.Op qf fix prio) = Op qf (fcy2acFix fix) prio
+fcy2absOp (FC.Op qf fix prio) = Op qf (fcy2absFix fix) prio
 
-fcy2acFix FC.InfixOp = InfixOp
-fcy2acFix FC.InfixlOp = InfixlOp
-fcy2acFix FC.InfixrOp = InfixrOp
+fcy2absFix FC.InfixOp = InfixOp
+fcy2absFix FC.InfixlOp = InfixlOp
+fcy2absFix FC.InfixrOp = InfixrOp
 
-fcy2acFDecl (FC.Func qf ar vis texp rule) =
-  Func qf ar (visibility2ac vis) (texp2ac texp) (fcy2acRule rule)
+fcy2absFDecl (FC.Func qf ar vis texp rule) =
+  if texp == FC.TVar (-42)  -- see module comment
+  then Func "" qf ar (vis2abs vis) Nothing (fcy2absRule rule)
+  else Func "" qf ar (vis2abs vis) (Just (texp2abs texp)) (fcy2absRule rule)
 
-fcy2acRule (FC.Rule numargs expr) =
-  Rules [Rule (map (PVar . var2ac) numargs)
-              [noGuard (fcy2acExpr expr)] []]
-fcy2acRule (FC.External ename) = External ename
+fcy2absRule (FC.Rule numargs expr) =
+  Rules [Rule (map (PVar . var2abs) numargs)
+              [noGuard (fcy2absExpr expr)] []]
+fcy2absRule (FC.External ename) = External ename
 
-fcy2acExpr (FC.Var i) = Var (var2ac i)
-fcy2acExpr (FC.Lit l) = Lit (lit2ac l)
-fcy2acExpr (FC.Comb _ qf es) = applyF qf (map fcy2acExpr es)
-fcy2acExpr (FC.Let bs expr) = Let (map ldecl bs) (fcy2acExpr expr)
- where ldecl (i,e) = LocalPat (PVar (var2ac i)) (fcy2acExpr e) []
-fcy2acExpr (FC.Free vs expr) = Let (map (LocalVar . var2ac) vs)
-                                   (fcy2acExpr expr)
-fcy2acExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2acExpr [e1,e2])
-fcy2acExpr (FC.Case FC.Flex _ _) = error "fcy2acExpr: Flex Case occurred!"
-fcy2acExpr (FC.Case FC.Rigid e brs) = Case (fcy2acExpr e) (map trBranch brs)
+fcy2absExpr (FC.Var i) = Var (var2abs i)
+fcy2absExpr (FC.Lit l) = Lit (lit2abs l)
+fcy2absExpr (FC.Comb _ qf es) = applyF qf (map fcy2absExpr es)
+fcy2absExpr (FC.Let bs expr) = Let (map ldecl bs) (fcy2absExpr expr)
+ where ldecl (i,e) = LocalPat (PVar (var2abs i)) (fcy2absExpr e) []
+fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . var2abs) vs)
+                                   (fcy2absExpr expr)
+fcy2absExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2absExpr [e1,e2])
+--fcy2absExpr (FC.Case FC.Flex _ _) = error "fcy2absExpr: Flex Case occurred!"
+fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map trBranch brs)
  where
-  trBranch (FC.Branch pat expr) = Branch (trPattern pat) (fcy2acExpr expr)
+  trBranch (FC.Branch pat expr) = Branch (trPattern pat) (fcy2absExpr expr)
 
-  trPattern (FC.Pattern qf nums) = PComb qf (map (PVar . var2ac) nums)
-  trPattern (FC.LPattern lit)    = PLit (lit2ac lit)
+  trPattern (FC.Pattern qf nums) = PComb qf (map (PVar . var2abs) nums)
+  trPattern (FC.LPattern lit)    = PLit (lit2abs lit)
 
 ------------------------------------------------------------------------
 -- Translating FlatCurry to AbstractHaskell
-visibility2ac :: FC.Visibility -> Visibility
-visibility2ac FC.Public  = Public
-visibility2ac FC.Private = Private
+vis2abs :: FC.Visibility -> Visibility
+vis2abs FC.Public  = Public
+vis2abs FC.Private = Private
 
-tvar2ac :: FC.TVarIndex -> TVarIName
-tvar2ac i = (i, "t"++show i)
+tvar2abs :: FC.TVarIndex -> TVarIName
+tvar2abs i = (i, "t"++show i)
 
-tcons2ac :: FC.ConsDecl -> ConsDecl
-tcons2ac (FC.Cons qf ar vis texps) =
-   Cons qf ar (visibility2ac vis) (map texp2ac texps)
+tcons2abs :: FC.ConsDecl -> ConsDecl
+tcons2abs (FC.Cons qf ar vis texps) =
+   Cons qf ar (vis2abs vis) (map texp2abs texps)
 
-texp2ac :: FC.TypeExpr -> TypeExpr
-texp2ac (FC.TVar i) = TVar (tvar2ac i)
-texp2ac (FC.FuncType t1 t2) = FuncType (texp2ac t1) (texp2ac t2)
-texp2ac (FC.TCons qf texps) = TCons qf (map texp2ac texps)
+texp2abs :: FC.TypeExpr -> TypeExpr
+texp2abs (FC.TVar i) = TVar (tvar2abs i)
+texp2abs (FC.FuncType t1 t2) = FuncType (texp2abs t1) (texp2abs t2)
+texp2abs (FC.TCons qf texps) = TCons qf (map texp2abs texps)
 
-var2ac :: FC.VarIndex -> VarIName
-var2ac i = (i, "x"++show i)
+var2abs :: FC.VarIndex -> VarIName
+var2abs i = (i, "x"++show i)
 
-lit2ac :: FC.Literal -> Literal
-lit2ac (FC.Intc   i) = Intc i
-lit2ac (FC.Floatc f) = Floatc f
-lit2ac (FC.Charc  c) = Charc c
+lit2abs :: FC.Literal -> Literal
+lit2abs (FC.Intc   i) = Intc i
+lit2abs (FC.Floatc f) = Floatc f
+lit2abs (FC.Charc  c) = Charc c
 
 ------------------------------------------------------------------------

@@ -83,13 +83,18 @@ boolType = baseType (pre "Bool")
 dateType :: TypeExpr
 dateType = baseType ("Time", "CalendarTime")
 
+--- A typed function declaration.
+tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
+tfunc name arity v t rules = Func "" name arity v (Just t) (Rules rules)
 
-cfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-cfunc name arity v t rules = Func name arity v t (Rules rules)
+--- An untyped function declaration.
+ufunc :: QName -> Int -> Visibility -> [Rule] -> FuncDecl
+ufunc name arity v rules = Func "" name arity v Nothing (Rules rules)
 
+--- A typed function declaration with a documentation comment.
 cmtfunc :: String -> QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
 cmtfunc comment name arity v t rules = 
-  CmtFunc comment name arity v t (Rules rules)
+  Func comment name arity v (Just t) (Rules rules)
 
 -- transform a string constant into AbstractHaskell term:
 string2ac :: String -> Expr
@@ -186,12 +191,10 @@ renameSymbolInLocal ren local = case local of
   _ -> local -- LoalVar
 
 renameSymbolInFunc :: (QName -> QName) -> FuncDecl -> FuncDecl
-renameSymbolInFunc ren (Func qf ar vis ctype rules) =
-  Func (ren qf) ar vis (renameSymbolInTypeExpr ren ctype)
-        (renameSymbolInRules ren rules)
-renameSymbolInFunc ren (CmtFunc cmt qf ar vis ctype rules) =
-  CmtFunc cmt (ren qf) ar vis (renameSymbolInTypeExpr ren ctype)
-          (renameSymbolInRules ren rules)
+renameSymbolInFunc ren (Func cmt qf ar vis ctype rules) =
+  Func cmt (ren qf) ar vis
+       (maybe Nothing (Just . renameSymbolInTypeExpr ren) ctype)
+       (renameSymbolInRules ren rules)
 
 renameSymbolInRules :: (QName -> QName) -> Rules -> Rules
 renameSymbolInRules ren (Rules rules) =
@@ -210,25 +213,14 @@ renameOpDecl ren (Op qf fix prio) = Op (ren qf) fix prio
 
 
 -----------------------------------------------------------------
+-- Some selector functions.
+
 funcDecls (Prog _ _ _ fdecls _) = fdecls
 
-funcName (Func f _ _ _ _) = f
-funcName (CmtFunc _ f _ _ _ _) = f
+funcName (Func _ f _ _ _ _) = f
 
-typeOf (Func     _ _ _ texp _) = texp
-typeOf (CmtFunc _ _ _ _ texp _) = texp
+typeOf (Func _ _ _ _ texp _) = texp
 
-commentOf (Func       _ _ _ _ _) = ""
-commentOf (CmtFunc cmt _ _ _ _ _) = cmt
-
---- Deletes the comment in a function declaration.
-deleteCmt (Func     qn ar vis texp rules) = Func qn ar vis texp rules
-deleteCmt (CmtFunc _ qn ar vis texp rules) = Func qn ar vis texp rules
-
---- Deletes the comment in a function declaration if it is the empty string.
-deleteCmtIfEmpty (Func qn ar vis texp rules)     = Func qn ar vis texp rules
-deleteCmtIfEmpty (CmtFunc cmt qn ar vis texp rules) =
-  if null cmt then Func qn ar vis texp rules
-              else CmtFunc cmt qn ar vis texp rules
+commentOf (Func cmt _ _ _ _ _) = cmt
 
 -----------------------------------------------------------------

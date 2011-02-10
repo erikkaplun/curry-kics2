@@ -71,8 +71,7 @@ showExports types funcs =
     isPublicType (Instance _ _ _ _) = False
 
     isPublicFunc :: FuncDecl -> Bool
-    isPublicFunc (Func _ _ visibility _ _) = visibility==Public 
-    isPublicFunc (CmtFunc _ _ _ visibility _ _) = visibility==Public 
+    isPublicFunc (Func _ _ _ visibility _ _) = visibility==Public 
 
     getTypeName :: TypeDecl -> String
     getTypeName (Type (_,name) _ _ _) = name
@@ -86,9 +85,7 @@ showExports types funcs =
     allPublicCons (Instance _ _ _ _) = False
 
     getFuncName :: FuncDecl -> String
-    getFuncName (Func (_,name) _ _ _ _) =
-        if isInfixOpName name then "("++name++")" else name
-    getFuncName (CmtFunc _ (_,name) _ _ _ _) =
+    getFuncName (Func _ (_,name) _ _ _ _) =
         if isInfixOpName name then "("++name++")" else name
 
 
@@ -183,29 +180,28 @@ isFuncType t = case t of
 showFuncDecl = showFuncDeclOpt defaultOptions
 
 showFuncDeclOpt :: Options -> FuncDecl -> String
-showFuncDeclOpt opts (CmtFunc cmt qname ar vis typeexpr rules) =
-  showCmtFunc opts cmt (Func qname ar vis typeexpr rules)
-showFuncDeclOpt opts cfunc@(Func _ _ _ _ _) = showCmtFunc opts "" cfunc
-
-showCmtFunc :: Options -> String -> FuncDecl -> String
-showCmtFunc opts cmt (Func (_,name) arity _ typeexpr (Rules rules))=
+showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
   funcComment cmt ++
-  (if isUntyped typeexpr then "\n" 
-      else bolName ++ " :: " ++ (showTypeExpr False typeexpr)++"\n") ++
+  (maybe "" 
+         (\texp -> bolName ++ " :: " ++ (showTypeExpr False texp)++"\n")
+         ftype) ++
   (if funcIsInfixOp then rulePrints arity
       else name ++ (prefixInter (showRule opts) rules ("\n"++name)))
    where
      funcIsInfixOp = isInfixOpName name
      bolName = if funcIsInfixOp then "("++name++")" else name
-     rulePrints arity' = concat $ intersperse "\n" 
-                    $ map (insertName arity' . (span (/=' ')) . tail . (showRule opts)) rules
+     rulePrints arity' =
+       concat $ intersperse "\n" $
+         map (insertName arity' . (span (/=' ')) . tail . (showRule opts)) rules
      insertName arity' (fstArg,rest) = 
          if arity'/=0
            then fstArg++" "++name++rest
            else bolName++" "++fstArg++rest
-showCmtFunc _ cmt (Func (_,name) _ _ typeexpr (External _)) =
+showFuncDeclOpt _ (Func cmt (_,name) _ _ ftype (External _)) =
   funcComment cmt ++
-  bolName ++ " :: " ++ (showTypeExpr False typeexpr) ++"\n"++
+  (maybe ""
+         (\texp -> bolName ++ " :: " ++ (showTypeExpr False texp) ++"\n")
+         ftype) ++
   bolName ++ " external"
  where
   bolName = if isInfixOpName name then "("++name++")" else name
@@ -579,12 +575,6 @@ isAtom expr
        (Symbol (_, name)) -> not $ isInfixOpName name
        _ -> False
 
-isUntyped :: TypeExpr -> Bool
-isUntyped typeexpr
-   = case typeexpr of
-       (TCons (mod,name) []) -> mod == prelude && name == "untyped"
-       _                    -> False
-
 isTuple :: String -> Bool
 isTuple [] = False
 isTuple (x:xs) = (x == '(') && (p1_isTuple xs)
@@ -614,7 +604,6 @@ nameFM :: [FuncDecl] -> NameFM
 nameFM = foldr addName (emptyFM lessString) 
 
 addName :: FuncDecl -> NameFM -> NameFM
-addName (Func (_,n) _ _ _ _) fm = addToFM fm n () 
-addName (CmtFunc _ (_,n) _ _ _ _) fm = addToFM fm n () 
+addName (Func _ (_,n) _ _ _ _) fm = addToFM fm n () 
 
 lessString s1 s2 = LT==cmpString s1 s2

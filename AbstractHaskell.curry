@@ -46,7 +46,7 @@ type QName = (String,String)
 -- Data type to specify the visibility of various entities.
 
 data Visibility = Public    -- exported entity
-                 | Private   -- private entity
+                | Private   -- private entity
 
 
 --- The data type for representing type variables.
@@ -77,8 +77,8 @@ type TVarIName = (Int,String)
 ---
 
 data TypeDecl = Type     QName Visibility [TVarIName] [ConsDecl]
-               | TypeSyn  QName Visibility [TVarIName] TypeExpr
-               | Instance QName TypeExpr [Context] [(QName,Rule)]
+              | TypeSyn  QName Visibility [TVarIName] TypeExpr
+              | Instance QName TypeExpr [Context] [(QName,Rule)]
 
 --- A single type context is class name applied to type variables.
 
@@ -98,11 +98,10 @@ data ConsDecl = Cons QName Int Visibility [TypeExpr]
 ---       "Int", "Float", "Bool", "Char", "IO", "Success",
 ---       "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
 
-data TypeExpr =
-    TVar TVarIName               -- type variable
-  | FuncType TypeExpr TypeExpr  -- function type t1->t2
-  | TCons QName [TypeExpr]       -- type constructor application
-                                   -- (TCons (module,name) arguments)
+data TypeExpr = TVar TVarIName              -- type variable
+              | FuncType TypeExpr TypeExpr  -- function type t1->t2
+              | TCons QName [TypeExpr]      -- type constructor application
+                                            -- (TCons (module,name) arguments)
 
 
 --- Data type for operator declarations.
@@ -127,7 +126,7 @@ type VarIName = (Int,String)
 --- 
 --- A function declaration in AbstractHaskell is a term of the form
 ---
---- <code>(Func name arity visibility type (Rules eval [Rule rule1,...,rulek]))</code>
+--- <code>(Func cmt name arity visibility type (Rules eval [Rule rule1,...,rulek]))</code>
 ---
 --- and represents the function <code>name</code> defined by the rules
 --- <code>rule1,...,rulek</code>.
@@ -135,20 +134,16 @@ type VarIName = (Int,String)
 --- Note: the variable indices are unique inside each rule
 ---
 --- External functions are represented as
---- <code>(Func name arity type (External s))</code>
+--- <code>(Func cmt name arity type (External s))</code>
 --- where s is the external name associated to this function.
 ---
---- Thus, a function declaration consists of the name, arity, type, and
---- a list of rules.
----
---- A function declaration with the constructor <code>CmtFunc</code>
---- is similarly to <code>Func</code> but has a comment
---- as an additional first argument. This comment could be used
+--- Thus, a function declaration consists of the comment, name, arity, type, and
+--- a list of rules. The type is optional according to its occurrence in
+--- the source text. The comment could be used
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
 
-data FuncDecl = Func QName Int Visibility TypeExpr Rules
-              | CmtFunc String QName Int Visibility TypeExpr Rules
+data FuncDecl = Func String QName Int Visibility (Maybe TypeExpr) Rules
 
 
 --- A rule is either a list of formal parameters together with an expression

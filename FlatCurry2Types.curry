@@ -3,12 +3,14 @@
 --- compiler.
 --- The input is a FlatCurry program and the output is an AbstractHaskell
 --- program with instance declarations that can be easily pretty printed
+---
+--- @author Michael Hanus
+--- @version February 2011
 ------------------------------------------------------------------------
 
 import qualified FlatCurry as FC
 import FlatCurryGoodies
 import AbstractHaskell
---import PrettyAbstract
 import AbstractHaskellPrinter
 import AbstractHaskellGoodies
 import System
@@ -49,7 +51,9 @@ main = do
                      "-q : quiet mode\n"
 
 -- Transform a qname of the source program into a qname of the target program
+-- Rename type constructors:
 renType (mn,fn) = (mkModName mn, mkTypeName fn)
+-- Rename data constructors
 renCons (mn,fn) = (mkModName mn, mkConName fn)
 
 
@@ -63,33 +67,37 @@ transform cparam modname = do
   let saveprog  = transProg cparam prog
       savefile  = mkModName modname ++ ".hs"
   putStrLn $ "Writing compiled module to '" ++ savefile ++ "'..."
-  --putStr (showGeneratedTypes prog)
+  putStr (showGeneratedTypes prog)
   writeFile savefile (showProg saveprog)
-
-isPrimTypeDecl tdecl = case tdecl of
-  FC.TypeSyn (_,n) _ _ _ -> n == "String"
-  FC.Type (mn,tc) _ _ _ ->
-        mn=="Prelude" &&
-        (tc `elem` ["Int","Float","Char","Success","IO","IOError"])
 
 showGeneratedTypes :: FC.Prog -> String
 showGeneratedTypes (FC.Prog _ _ tdecls _ _) =
-  showTypeDecls (concatMap genTypeDefinitions
-                           (filter (not . isPrimTypeDecl) tdecls))
+  showTypeDecls (fcyTypes2abs tdecls)
 
 
 transProg :: CParam -> FC.Prog -> Prog
 transProg _ (FC.Prog mname imps tdecls _ _) =
   Prog (mkModName mname)
        (nub ("ID":"Basics":map mkModName imps))
-       (concatMap genTypeDefinitions
-                  (filter (not . isPrimTypeDecl) tdecls))
+       (fcyTypes2abs tdecls)
        []
        []
 
 
 ------------------------------------------------------------------------
 -- Generate code for user-defined types.
+
+--- Translate a list of FlatCurry type declarations into the
+--- corresponding type and instance declarations for Haskell.
+fcyTypes2abs :: [FC.TypeDecl] -> [TypeDecl]
+fcyTypes2abs = concatMap genTypeDefinitions . filter (not . isPrimTypeDecl)
+
+--- Is the type declaration primitive, i.e., should not be translated?
+isPrimTypeDecl tdecl = case tdecl of
+  FC.TypeSyn (_,n) _ _ _ -> n == "String"
+  FC.Type (mn,tc) _ _ _ ->
+        mn=="Prelude" &&
+        (tc `elem` ["Int","Float","Char","Success","IO","IOError"])
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
