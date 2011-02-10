@@ -8,12 +8,17 @@
 ## Vorgehen
 
 #. Einlesen des Curry-Moduls durch das Frontend (cymake), Erzeugen von FlatCurry-Dateien
+   [flat curry]
 #. Case-Lifting des Curry-Programms (Modul LiftCase.curry)
-#. Erweiterung der Datenstrukturen um Konstruktoren und Typklasseninstanzen
-   für Nichtdeterminismus, Show, Ord, Eq
+   [case-lifted flat curry]
 #. Transformation der Funktionen
    * Hinzufügen des ID-Generators
    * Erzeugen (nicht)deterministischer Funktionsvarianten
-   * ...
-#. Zusammenfügen der Datenstrukturen und transformierter Funktionen
+   [flat curry]
+#. Erweiterung der Datenstrukturen um Konstruktoren und Typklasseninstanzen
+   für Nichtdeterminismus, Show, Ord, Eq
+   [abstract haskell]
 #. Umbenennen von Datentypen und Funktionen
+   [abstract haskell]
+#. Ausgabe
+   [Haskell]

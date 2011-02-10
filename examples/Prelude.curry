@@ -10,6 +10,7 @@ module Prelude where
 
 -- Infix operator declarations:
 
+
 infixl 9 !!
 infixr 9 .
 infixl 7 *, `div`, `mod`
@@ -22,6 +23,7 @@ infixr 3 &&
 infixr 2 ||
 infixl 1 >>, >>=
 infixr 0 $, $!, $!!, $#, $##, `seq`, &, &>, ?
+
 
 -- externally defined types for numbers and characters
 data Int
@@ -109,9 +111,8 @@ prim_error external
 --- A non-reducible polymorphic function.
 --- It is useful to express a failure in a search branch of the execution.
 --- It could be defined by: <code>failed = head []</code>
-failed :: _ 
+failed :: _
 failed external
-
 
 -- Boolean values
 -- already defined as builtin, since it is required for if-then-else
@@ -121,13 +122,13 @@ data Bool = False | True
 (&&)            :: Bool -> Bool -> Bool
 True  && x      = x
 False && _      = False
- 
+
 
 --- Sequential disjunction on Booleans.
 (||)            :: Bool -> Bool -> Bool
 True  || _      = True
 False || x      = x
- 
+
 
 --- Negation on Booleans.
 not             :: Bool -> Bool
@@ -144,7 +145,6 @@ if_then_else           :: Bool -> a -> a -> a
 if_then_else b t f = case b of True  -> t
                                False -> f
 
-
 --- Equality on finite ground data terms.
 (==)            :: a -> a -> Bool
 (==) external
@@ -152,7 +152,6 @@ if_then_else b t f = case b of True  -> t
 --- Disequality.
 (/=)            :: a -> a -> Bool
 x /= y          = not (x==y)
-
 
 --- Ordering type. Useful as a result of comparison functions.
 data Ordering = LT | EQ | GT
@@ -188,7 +187,6 @@ max x y = if x >= y then x else y
 --- Minimum of ground data terms.
 min :: a -> a -> a
 min x y = if x <= y then x else y
-
 
 -- Pairs
 
@@ -449,6 +447,7 @@ enumFrom n             = n : enumFrom (n+1)
 enumFromThen           :: Int -> Int -> [Int]            -- [n1,n2..]
 enumFromThen n1 n2     = iterate ((n2-n1)+) n1
 
+
 --- Generates a sequence of ascending integers.
 enumFromTo             :: Int -> Int -> [Int]            -- [n..m]
 enumFromTo n m         = if n>m then [] else n : enumFromTo (n+1) m
@@ -646,7 +645,7 @@ prim_appendFile external
 putStr            :: String -> IO ()
 putStr []         = done
 putStr (c:cs)     = putChar c >> putStr cs
- 
+
 --- Action to print a string with a newline on stdout.
 putStrLn          :: String -> IO ()
 putStrLn cs       = putStr cs >> putChar '\n'
@@ -782,7 +781,7 @@ try external
 --- procedure p to the search variable to the search goal
 --- taken from Oz. p x comes before g x to enable a test+generate
 --- form in a sequential implementation.
-inject  :: (a->Success) -> (a->Success) -> (a->Success) 
+inject  :: (a->Success) -> (a->Success) -> (a->Success)
 inject g p = \x -> p x & g x
 
 --- Computes all solutions via a a depth-first strategy.
@@ -802,12 +801,12 @@ solveAll     :: (a->Success) -> [a->Success]
 solveAll g = evalall (try g)
   where
     evalall []      = []
-    evalall [a]     = [a] 
+    evalall [a]     = [a]
     evalall (a:b:c) = evalall3 (try a) (b:c)
 
     evalall2 []    = []
     evalall2 (a:b) = evalall3 (try a) b
-    
+
     evalall3 []      b  = evalall2 b
     evalall3 [l]     b  = l : evalall2 b
     evalall3 (c:d:e) b  = evalall3 (try c) (d:e ++b)
@@ -836,15 +835,15 @@ best g cmp = bestHelp [] (try g) []
    bestHelp [] []     curbest = curbest
    bestHelp [] (y:ys) curbest = evalY (try (constrain y curbest)) ys curbest
    bestHelp (x:xs) ys curbest = evalX (try x) xs ys curbest
-   
+
    evalY []        ys curbest = bestHelp [] ys curbest
    evalY [newbest] ys _       = bestHelp [] ys [newbest]
    evalY (c:d:xs)  ys curbest = bestHelp (c:d:xs) ys curbest
-   
+
    evalX []        xs ys curbest = bestHelp xs ys curbest
    evalX [newbest] xs ys _       = bestHelp [] (xs++ys) [newbest]
    evalX (c:d:e)   xs ys curbest = bestHelp ((c:d:e)++xs) ys curbest
-   
+
    constrain y []        = y
    constrain y [curbest] =
        inject y (\v -> let w free in curbest w & cmp v w =:= True)
@@ -866,7 +865,7 @@ findfirst g = head (findall g)
 browse  :: (_->Success) -> IO ()
 browse g = putStr (show (unpack g))
 
---- Unpacks solutions from a list of lambda abstractions and write 
+--- Unpacks solutions from a list of lambda abstractions and write
 --- them to the screen.
 browseList :: [_ -> Success] -> IO ()
 browseList [] = done

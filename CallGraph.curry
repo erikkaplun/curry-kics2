@@ -11,9 +11,9 @@ import GraphAlgorithms
 import GraphInductive
 
 data NDClass
-  = ND   -- non-deterministic function
-  | HO   -- higher-order function
-  | Pure -- deterministic first-order function
+  = ND  -- non-deterministic function
+  | DHO -- deterministic higher-order function
+  | DFO -- deterministic first-order function
 
 type NDResult = FM QName NDClass
 
@@ -29,9 +29,9 @@ analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
    qmarkNode    = find qmark funs
    applyNode    = find apply funs
    ndClass f    | elem qmarkNode deps = ND
-                | take 3 (snd f) == "set" && (isDigit $ snd f !! 3) = ND
-                | elem applyNode deps = HO
-                | otherwise           = Pure
+--                | take 3 (snd f) == "set" && (isDigit $ snd f !! 3) = ND -- TODO hack?
+                | elem applyNode deps = DHO
+                | otherwise           = DFO
      where
        deps = reachable [find f funs] graph
 
@@ -52,7 +52,10 @@ toEdges funs (f,fs) = map (\ f' -> (i,find f' funs,())) fs
 funs2graph :: FuncDecl -> (QN,[QN])
 funs2graph f = (QN (funcName f),nub called)
   where
-    called = trExpr var lit comb leT freE oR casE branch (ruleBody $ funcRule f)
+    called = if isRuleExternal rule
+      then []
+      else trExpr var lit comb leT freE oR casE branch (ruleBody rule)
+    rule = funcRule f
 
     var _ = []
     lit _ = []

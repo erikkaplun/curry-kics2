@@ -17,7 +17,7 @@ lowerFirst []     = [] -- this case should not occur, but one never knows...
 
 --- An application of a qualified function name to a list of arguments.
 applyF :: QName -> [Expr] -> Expr
-applyF f es = foldl Apply (Symbol f) es 
+applyF f es = foldl Apply (Symbol f) es
 
 --- A constant, i.e., an application without arguments.
 constF :: QName -> Expr
@@ -25,7 +25,7 @@ constF f = applyF f []
 
 --- An application of a variable to a list of arguments.
 applyV :: VarIName -> [Expr] -> Expr
-applyV v es = foldl Apply (Var v) es 
+applyV v es = foldl Apply (Var v) es
 
 --- Constructs a tuple expression from list of component expressions.
 tupleExpr :: [Expr] -> Expr
@@ -93,7 +93,7 @@ ufunc name arity v rules = Func "" name arity v Nothing (Rules rules)
 
 --- A typed function declaration with a documentation comment.
 cmtfunc :: String -> QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-cmtfunc comment name arity v t rules = 
+cmtfunc comment name arity v t rules =
   Func comment name arity v (Just t) (Rules rules)
 
 -- transform a string constant into AbstractHaskell term:
@@ -123,6 +123,15 @@ list2ac []     = applyF (pre "[]") []
 list2ac (c:cs) = applyF (pre ":") [c, list2ac cs]
 
 -----------------------------------------------------------------
+renameSymbolInProg :: (QName -> QName) -> Prog -> Prog
+renameSymbolInProg ren (Prog name imports typedecls fundecls opdecls) =
+  Prog
+    (fst (ren (name, "")))
+    (map (\mod -> fst $ ren (mod, "")) imports)
+    (map (renameSymbolInTypeDecl ren) typedecls)
+    (map (renameSymbolInFunc ren) fundecls)
+    (map (renameOpDecl ren) opdecls)
+
 renameSymbolInTypeDecl :: (QName -> QName) -> TypeDecl -> TypeDecl
 renameSymbolInTypeDecl ren tdecl = case tdecl of
   Type qf vis tvars cdecls  -> Type (ren qf) vis tvars

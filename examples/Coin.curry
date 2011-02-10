@@ -1,4 +1,4 @@
-data List a = Nil | Cons a (List a)
+module Coin where
 
 coin = True ? False
 
@@ -11,4 +11,3 @@ mynot True  = False
 mynot False = True
 
 goal0 = selfEq coin
-

@@ -131,3 +131,5 @@ separateAndReplace pred f list =
                [] -> f x : separateAndReplace pred f xs
                _  -> sep : f x : separateAndReplace pred f xs
  where (sep,rest) = break  (not . pred) list
+
+

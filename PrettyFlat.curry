@@ -81,7 +81,7 @@ block = group . hang 1
 def :: Doc -> [Doc] -> Doc -> Doc
 def name params body = block (name <> paramDoc <$> body)
  where
-  paramDoc = if null params then empty 
+  paramDoc = if null params then empty
               else space <> align (fillSep params) --(map varDoc params))
 {-
 fillMulti :: (Doc -> Doc) -> (Doc -> Doc) -> [Doc] -> Doc
@@ -103,18 +103,18 @@ qname prog mn@(mod,name)
   | mn == (prelude,"[]") || isTupleName mn = operator (text name)
   | isInfixName mn = parens (operator (text name))
   | otherwise -- do not show module names for Haskell generation
-    = if -- True 
-         mod `elem` [prelude,prog,""] 
-       then txt (correctName name) 
+    = if -- True
+         mod `elem` [prelude,prog,""]
+       then txt (correctName name)
        else consname mod <> dot <> (txt name)
  where
   txt (n:ame) = if isUpper n then consname (n:ame) else text (n:ame)
 
 correctName :: String -> String
-correctName name = 
+correctName name =
   let name' = name --filter (not . flip elem ['#','.']) name
   in
-  case name' of 
+  case name' of
        ('_':xs) -> xs
        _        -> name'
 
@@ -142,7 +142,7 @@ exportedNames mod (Prog _ _ types funcs _)
 
 moduleHeaderDoc :: String -> [Doc] -> Doc
 moduleHeaderDoc name exports
-  = keyword "module" <+> consname name <+> 
+  = keyword "module" <+> consname name <+>
     keyword "where"
 
 exportsDoc :: [Doc] -> Doc
@@ -169,12 +169,12 @@ typesDoc mod = vcat . map (typeDoc mod)
 
 typeDoc :: String -> TypeDecl -> Doc
 typeDoc mod (Type name _ params cs)
-  = def (keyword "data" <+> qname mod name) 
-        (map tvarDoc params) 
+  = def (keyword "data" <+> qname mod name)
+        (map tvarDoc params)
         (consDeclsDoc mod cs)
 
 typeDoc mod (TypeSyn name _ params syn)
-  = def (keyword "type" <+> qname mod name) 
+  = def (keyword "type" <+> qname mod name)
         (map varDoc params)
         (operator equals <+> typeExprDoc mod False syn)
 
@@ -203,13 +203,13 @@ typeExprDoc mod br (TCons name args)
   | null args = qname mod name
   | name == (prelude,"[]") = brackets (typeExprDoc mod False (head args))
   | isTupleName name = tupled (map (typeExprDoc mod False) args)
-  | otherwise 
+  | otherwise
     = par br $ app (qname mod name) (map (typeExprDoc mod True) args)
 
 typeExprDoc mod br typ@(FuncType _ _)
   = par br $ fillEncloseSep empty empty (space<>arrow<>space)
               --fillMulti (empty<>) (arrow<+>)
-     (map (typeExprDoc mod True) (argTypes typ) ++ 
+     (map (typeExprDoc mod True) (argTypes typ) ++
       [typeExprDoc mod False (resultType typ)])
 
 par br = if br then parens else id
@@ -222,6 +222,7 @@ funcDoc pr mod (Func name _ _ typ rule)
   = funcTypeDeclDoc mod name typ <$>
     ruleDoc pr mod name rule
 
+-- TODO remove hack
 funcTypeDeclDoc :: String -> QName -> TypeExpr -> Doc
 funcTypeDeclDoc mod name typ
   | typ /= TVar (-42)
@@ -236,8 +237,8 @@ funcTypeDoc mod args res
 
 ruleDoc :: Precs -> String -> QName -> Rule -> Doc
 ruleDoc pr mod name (Rule args body)
-  = def (qname mod name) 
-        (map varDoc args) 
+  = def (qname mod name)
+        (map varDoc args)
         (equals <+> align (expDoc pr 0 mod False body))
 
 ruleDoc _ mod name (External _)
@@ -256,13 +257,13 @@ expDoc2 _ _ _ _ (Lit l) = litDoc l
 
 expDoc2 pr p mod br (Comb ct name args)
   | ct == FuncCall && name == (prelude,"apply")
-    = par br $ app (expDoc pr 0 mod True (args!!0)) 
+    = par br $ app (expDoc pr 0 mod True (args!!0))
                            [expDoc pr 0 mod True (args!!1)]
   | ct == ConsCall && isTupleName name
     = tupled (map (expDoc pr 0 mod False) args)
   | isInfixName name && length args == 2
     = align $ precFillEncloseSep pOp p lbr rbr empty
-               [expDoc pr pOp mod True (args!!0) 
+               [expDoc pr pOp mod True (args!!0)
                ,space <> operator (text (snd name)) <> space
                ,expDoc pr pOp mod True (args!!1)]
 --     = par br $ app (expDoc mod True (args!!0))
@@ -274,14 +275,15 @@ expDoc2 pr p mod br (Comb ct name args)
   (lbr,rbr) = if br then (lparen,rparen) else (empty,empty)
   pOp = case lookup name pr of
              Just pr -> pr
-             Nothing -> 0 
+             Nothing -> 0
 
+-- TODO remove hack
 expDoc2 pr _ mod br (Let bs e)
-  = par br $ hang 1 $ 
-     keyword keylet <+> letBindsDoc pr mod bs <$> 
+  = par br $ hang 1 $
+     keyword keylet <+> letBindsDoc pr mod bs <$>
      keyword "in" <+> expDoc pr 0 mod False e
 
-  where keylet = case bs of 
+  where keylet = case bs of
          [(v,_)] -> if v >= 2000 then "let!" else "let"
          _ -> "let"
 
@@ -289,7 +291,7 @@ expDoc2 pr _ mod br (Free vs e)
 --   | null vs = marked (expDoc mod br e)
 --   | any (<0) vs = expDoc mod br e
 --   | otherwise
-    = par br $ hang 1 $ 
+    = par br $ hang 1 $
        keyword "let" <+> align (fillSep (punctuate comma (map varDoc vs))) <+>
        keyword "free" <$> keyword "in" <+> expDoc pr 0 mod False e
 
@@ -297,8 +299,8 @@ expDoc2 pr _ mod br (FlatCurry.Or e1 e2)
   = expDoc pr 0 mod br (Comb FuncCall (prelude,"?") [e1,e2])
 
 expDoc2 pr _ mod br (Case ct e bs)
-  = par br $ hang 1 $ 
-     caseTypeDoc ct <> keyword "case" <+> align (expDoc pr 0 mod False e) 
+  = par br $ hang 1 $
+     caseTypeDoc ct <> keyword "case" <+> align (expDoc pr 0 mod False e)
        <+> keyword "of" <$> layout (map (branchDoc pr mod) bs)
 
 branchDoc :: Precs -> String -> BranchExpr -> Doc
@@ -325,7 +327,7 @@ letBindsDoc :: Precs -> String -> [(Int,Expr)] -> Doc
 letBindsDoc pr mod = layout . map (letBindDoc pr mod)
 
 letBindDoc :: Precs -> String -> (Int,Expr) -> Doc
-letBindDoc pr mod (n,e) = 
+letBindDoc pr mod (n,e) =
   varDoc n <+> operator equals <+> expDoc pr 0 mod False e
 
 litDoc :: Literal -> Doc
@@ -367,7 +369,7 @@ elimApp = updCombs elim
 
 -- testHtml name
 --   = readFlatCurry name >>=
---     writeFile (name++".html") . showHtmlPage . HtmlPage name [] . (:[]) . 
+--     writeFile (name++".html") . showHtmlPage . HtmlPage name [] . (:[]) .
 --     styledHtml . showStyledProg
 
 -- Apply x y = Comb FuncCall ("Prelude","apply") [x,y]
