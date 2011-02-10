@@ -13,7 +13,7 @@ import FlatCurryGoodies
 import AbstractHaskell
 import AbstractHaskellPrinter
 import AbstractHaskellGoodies
---import AbstractHaskellRename
+import FlatCurry2AbstractHaskell
 import System
 import FileGoodies(stripSuffix)
 import List
@@ -96,11 +96,11 @@ isPrimTypeDecl tdecl = case tdecl of
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
-  [TypeSyn (renType qf) (visibility2ac vis) (map tvar2ac targs) (texp2ac texp)]
+  [TypeSyn (renType qf) (fcy2absVis vis) (map fcy2absTVar targs) (trTExp texp)]
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   [Type (renType (mn,tc)) acvis targs
-         (map tcons2ac cdecls ++
+         (map trCDecl cdecls ++
           [Cons choiceConsName 3 acvis [idType,ctype,ctype],
            Cons failConsName   0 acvis [],
            Cons guardConsName  3 acvis [constraintType,ctype]]),
@@ -108,8 +108,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
    generableInstance,
    showInstance]
  where
-  acvis = visibility2ac vis
-  targs = map tvar2ac tnums
+  acvis = fcy2absVis vis
+  targs = map fcy2absTVar tnums
   ctype = TCons (renType (mn,tc)) (map TVar targs)
 
   choiceConsName = (mn,"Choice_"++mkTypeName tc)
@@ -174,8 +174,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   showConsRule (FC.Cons qn _ _ texps) = let carity = length texps in
     (pre "showsPrec",
      Rule [PVar (0,"d"),
-            PComb (renCons qn) (map (\i -> PVar (i,'x':show i)) [1..carity])]
-           [noGuard (showBody carity)] [])
+           PComb (renCons qn) (map (\i -> PVar (i,'x':show i)) [1..carity])]
+          [noGuard (showBody carity)] [])
    where
      showBody ar =
       if ar==0
@@ -204,21 +204,15 @@ basics n = ("Basics",n)
 idmod n = ("ID",n)
 
 ------------------------------------------------------------------------
--- Translating FlatCurry to AbstractHaskell
-visibility2ac :: FC.Visibility -> Visibility
-visibility2ac FC.Public  = AbstractHaskell.Public
-visibility2ac FC.Private = AbstractHaskell.Private
+-- Translating FlatCurry to AbstractHaskell with renaming:
 
-tvar2ac :: FC.TVarIndex -> TVarIName
-tvar2ac i = (i, "t"++show i)
+trCDecl :: FC.ConsDecl -> ConsDecl
+trCDecl (FC.Cons qf ar vis texps) =
+   Cons (renCons qf) ar (fcy2absVis vis) (map trTExp texps)
 
-tcons2ac :: FC.ConsDecl -> ConsDecl
-tcons2ac (FC.Cons qf ar vis texps) =
-   Cons (renCons qf) ar (visibility2ac vis) (map texp2ac texps)
-
-texp2ac :: FC.TypeExpr -> TypeExpr
-texp2ac (FC.TVar i) = TVar (tvar2ac i)
-texp2ac (FC.FuncType t1 t2) = FuncType (texp2ac t1) (texp2ac t2)
-texp2ac (FC.TCons qf texps) = TCons (renType qf) (map texp2ac texps)
+trTExp :: FC.TypeExpr -> TypeExpr
+trTExp (FC.TVar i) = TVar (fcy2absTVar i)
+trTExp (FC.FuncType t1 t2) = FuncType (trTExp t1) (trTExp t2)
+trTExp (FC.TCons qf texps) = TCons (renType qf) (map trTExp texps)
 
 ------------------------------------------------------------------------

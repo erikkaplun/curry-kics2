@@ -9,7 +9,7 @@
 --- @version February 2011
 ------------------------------------------------------------------------
 
-module FlatCurry2AbstractHaskell(fcy2abs) where
+module FlatCurry2AbstractHaskell where
 
 import qualified FlatCurry as FC
 import AbstractHaskell
@@ -31,66 +31,72 @@ fcy2abs (FC.Prog mname imps tdecls fdecls ops) =
 
 fcy2absTDecl :: FC.TypeDecl -> TypeDecl
 fcy2absTDecl (FC.TypeSyn qf vis targs texp) =
-  TypeSyn qf (vis2abs vis) (map tvar2abs targs) (texp2abs texp)
+  TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)
 fcy2absTDecl (FC.Type qf vis targs cdecls) =
-  Type qf (vis2abs vis) (map tvar2abs targs) (map tcons2abs cdecls)
+  Type qf (fcy2absVis vis) (map fcy2absTVar targs) (map fcy2absCDecl cdecls)
 
+fcy2absOp :: FC.OpDecl -> OpDecl
 fcy2absOp (FC.Op qf fix prio) = Op qf (fcy2absFix fix) prio
 
+fcy2absFix :: FC.Fixity -> Fixity
 fcy2absFix FC.InfixOp = InfixOp
 fcy2absFix FC.InfixlOp = InfixlOp
 fcy2absFix FC.InfixrOp = InfixrOp
 
+fcy2absFDecl :: FC.FuncDecl -> FuncDecl
 fcy2absFDecl (FC.Func qf ar vis texp rule) =
   if texp == FC.TVar (-42)  -- see module comment
-  then Func "" qf ar (vis2abs vis) Nothing (fcy2absRule rule)
-  else Func "" qf ar (vis2abs vis) (Just (texp2abs texp)) (fcy2absRule rule)
+  then Func "" qf ar (fcy2absVis vis) Nothing (fcy2absRule rule)
+  else Func "" qf ar (fcy2absVis vis) (Just (fcy2absTExp texp)) (fcy2absRule rule)
 
+fcy2absRule :: FC.Rule -> Rules
 fcy2absRule (FC.Rule numargs expr) =
-  Rules [Rule (map (PVar . var2abs) numargs)
+  Rules [Rule (map (PVar . fcy2absVar) numargs)
               [noGuard (fcy2absExpr expr)] []]
 fcy2absRule (FC.External ename) = External ename
 
-fcy2absExpr (FC.Var i) = Var (var2abs i)
-fcy2absExpr (FC.Lit l) = Lit (lit2abs l)
+fcy2absExpr :: FC.Expr -> Expr
+fcy2absExpr (FC.Var i) = Var (fcy2absVar i)
+fcy2absExpr (FC.Lit l) = Lit (fcy2absLit l)
 fcy2absExpr (FC.Comb _ qf es) = applyF qf (map fcy2absExpr es)
 fcy2absExpr (FC.Let bs expr) = Let (map ldecl bs) (fcy2absExpr expr)
- where ldecl (i,e) = LocalPat (PVar (var2abs i)) (fcy2absExpr e) []
-fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . var2abs) vs)
+ where ldecl (i,e) = LocalPat (PVar (fcy2absVar i)) (fcy2absExpr e) []
+fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . fcy2absVar) vs)
                                    (fcy2absExpr expr)
 fcy2absExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2absExpr [e1,e2])
 --fcy2absExpr (FC.Case FC.Flex _ _) = error "fcy2absExpr: Flex Case occurred!"
-fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map trBranch brs)
- where
-  trBranch (FC.Branch pat expr) = Branch (trPattern pat) (fcy2absExpr expr)
+fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map fcy2absBranch brs)
 
-  trPattern (FC.Pattern qf nums) = PComb qf (map (PVar . var2abs) nums)
-  trPattern (FC.LPattern lit)    = PLit (lit2abs lit)
+fcy2absBranch :: FC.BranchExpr -> BranchExpr
+fcy2absBranch (FC.Branch pat expr) =
+  Branch (fcy2absPattern pat) (fcy2absExpr expr)
 
-------------------------------------------------------------------------
--- Translating FlatCurry to AbstractHaskell
-vis2abs :: FC.Visibility -> Visibility
-vis2abs FC.Public  = Public
-vis2abs FC.Private = Private
+fcy2absPattern :: FC.Pattern -> Pattern
+fcy2absPattern (FC.Pattern qf nums) = PComb qf (map (PVar . fcy2absVar) nums)
+fcy2absPattern (FC.LPattern lit)    = PLit (fcy2absLit lit)
 
-tvar2abs :: FC.TVarIndex -> TVarIName
-tvar2abs i = (i, "t"++show i)
+fcy2absVis :: FC.Visibility -> Visibility
+fcy2absVis FC.Public  = Public
+fcy2absVis FC.Private = Private
 
-tcons2abs :: FC.ConsDecl -> ConsDecl
-tcons2abs (FC.Cons qf ar vis texps) =
-   Cons qf ar (vis2abs vis) (map texp2abs texps)
+fcy2absTVar :: FC.TVarIndex -> TVarIName
+fcy2absTVar i = (i, "t"++show i)
 
-texp2abs :: FC.TypeExpr -> TypeExpr
-texp2abs (FC.TVar i) = TVar (tvar2abs i)
-texp2abs (FC.FuncType t1 t2) = FuncType (texp2abs t1) (texp2abs t2)
-texp2abs (FC.TCons qf texps) = TCons qf (map texp2abs texps)
+fcy2absCDecl :: FC.ConsDecl -> ConsDecl
+fcy2absCDecl (FC.Cons qf ar vis texps) =
+   Cons qf ar (fcy2absVis vis) (map fcy2absTExp texps)
 
-var2abs :: FC.VarIndex -> VarIName
-var2abs i = (i, "x"++show i)
+fcy2absTExp :: FC.TypeExpr -> TypeExpr
+fcy2absTExp (FC.TVar i) = TVar (fcy2absTVar i)
+fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (fcy2absTExp t2)
+fcy2absTExp (FC.TCons qf texps) = TCons qf (map fcy2absTExp texps)
 
-lit2abs :: FC.Literal -> Literal
-lit2abs (FC.Intc   i) = Intc i
-lit2abs (FC.Floatc f) = Floatc f
-lit2abs (FC.Charc  c) = Charc c
+fcy2absVar :: FC.VarIndex -> VarIName
+fcy2absVar i = (i, "x"++show i)
+
+fcy2absLit :: FC.Literal -> Literal
+fcy2absLit (FC.Intc   i) = Intc i
+fcy2absLit (FC.Floatc f) = Floatc f
+fcy2absLit (FC.Charc  c) = Charc c
 
 ------------------------------------------------------------------------
