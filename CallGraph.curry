@@ -1,3 +1,12 @@
+--- --------------------------------------------------------------------------
+--- CallGraph analysis
+
+--- This module analyzes the call graph of the defined functions to classify
+--- them respective to their (non)determinism.
+
+--- @author Bernd Brassel
+--- @version February 2011
+--- --------------------------------------------------------------------------
 module CallGraph (NDClass (..), analyseNd, NDResult) where
 
 import Char (isDigit)
@@ -29,7 +38,7 @@ analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
    qmarkNode    = find qmark funs
    applyNode    = find apply funs
    ndClass f    | elem qmarkNode deps = ND
---                | take 3 (snd f) == "set" && (isDigit $ snd f !! 3) = ND -- TODO hack?
+                | take 3 (snd f) == "set" && (isDigit $ snd f !! 3) = ND -- TODO hack?
                 | elem applyNode deps = DHO
                 | otherwise           = DFO
      where
@@ -71,8 +80,8 @@ funs2graph f = (QN (funcName f),nub called)
     casE _ e bs = e ++ concat bs
     branch _ e = e
 
-prelude = "Prelude"
-qmark = (prelude, "?")
-apply = (prelude, "apply")
+prelude = "Curry_Prelude"
+qmark = (prelude, "op_qmark")
+apply = (prelude, "c_apply")
 meta  = "Cover"
 cover = (meta, "cover")
