@@ -380,6 +380,7 @@ showLiteral (Charc c) = "'"++showCharc (Charc c)++"'"
 showCharc :: Literal -> String
 showCharc (Charc c) | c=='\n' = "\\n"
                       | c=='\r' = "\\r"
+                      | c=='\t' = "\\t"
                       | c=='\\' = "\\\\"
                       | c=='\"' = "\\\""
                       | otherwise = [c]

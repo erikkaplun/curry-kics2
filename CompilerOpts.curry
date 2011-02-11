@@ -35,6 +35,8 @@ data Dump
   = DumpFlat        -- dump flat curry
   | DumpLifted      -- dump flat curry after case lifting
   | DumpRenamed     -- dump renamed flat curry
+  | DumpFunDecls    -- dump transformed function declarations
+  | DumpTypeDecls   -- dump transformed type declarations
   | DumpAbstractHs  -- dump abstract Haskell
 
 defaultOptions :: Options
@@ -75,6 +77,12 @@ options =
   , Option [] ["dump-abstract-hs"]
       (NoArg (\opts -> { dump := nub (DumpAbstractHs : opts -> dump) | opts }))
       "dump abstract Haskell representation"
+  , Option [] ["dump-fun-decls"]
+      (NoArg (\opts -> { dump := nub (DumpFunDecls : opts -> dump) | opts }))
+      "dump transformed function declarations"
+  , Option [] ["dump-type-decls"]
+      (NoArg (\opts -> { dump := nub (DumpTypeDecls : opts -> dump) | opts }))
+      "dump transformed type declarations"
   , Option [] ["dump-renamed"]
       (NoArg (\opts -> { dump := nub (DumpRenamed : opts -> dump) | opts }))
       "dump renamed abstract Haskell representation"

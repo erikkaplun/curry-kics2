@@ -12,16 +12,17 @@ import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
 import FileGoodies
 import FlatCurry
-import FlatCurryGoodies (funcName, consName)
+import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 
 import CallGraph
 import LiftCase (liftCases)
 import Names (renameModule, renameFile, renameQName, detPrefix)
 import Splits (mkSplits)
 import CompilerOpts
+import qualified AbstractHaskell as AH
 import FlatCurry2AbstractHaskell (fcy2abs)
 import AbstractHaskellPrinter (showProg)
-import FlatCurryGoodies (updQNamesInProg)
+import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 
 main :: IO ()
 main = do
@@ -41,14 +42,21 @@ compile opts fn = do
   dumpLevel DumpLifted opts liftedName (show pLifted)
 
   info opts "Renaming symbols"
-  let renamed = rename pLifted
+  let renamed@(Prog _ _ ts _ _)  = rename pLifted
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
-  print $ fmToList $ analyseNd renamed
+  info opts "Transforming functions"
+  let ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs $ transform opts renamed
+  dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
-  info opts "Transforming program"
-  let ahs = fcy2abs $ transform opts renamed
+  info opts "Transforming type declarations"
+  let typeDecls = FC2T.fcyTypes2abs ts
+  dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
+
+  info opts "Combining to Abstract Haskell"
+  let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
+
 
   info opts $ "Generating Haskell module '" ++ destFile ++ "'"
   writeFile destFile (showProg ahs)
@@ -57,6 +65,8 @@ compile opts fn = do
     fcyName = fcyFile $ withBaseName (++ "Dump") fn
     liftedName = fcyFile $ withBaseName (++ "Lifted") fn
     renamedName = fcyFile $ withBaseName (++ "Renamed") fn
+    funDeclName = ahsFile $ withBaseName (++ "FunDecls") fn
+    typeDeclName = ahsFile $ withBaseName (++ "TypeDecls") fn
     abstractHsName = ahsFile fn
     destFile = withExtension (const ".hs") $ withBaseName renameFile fn
     fcyFile f = withExtension (const ".fcy") f
@@ -223,17 +233,17 @@ transform opts prog = run initState (transProg prog) where
               }
 
 transProg :: Prog -> M Prog
-transProg (Prog m _ ts fs _) = doInDetMode False $ -- disable determinism optimization
+transProg (Prog m _ ts fs _) = doInDetMode False $
+  --TODO: translation of types not longer necessary
+  --      only needed for insertion to the type map
   -- translation of the types
-  mapM transData ts `bindM` \ts' ->
+  mapM transData ts `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
   -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
-  returnM $ Prog m ["Curry_Prelude"] ts' (concat fss) []
+  returnM $ Prog m [prelude] [] (concat fss) []
 
--- ---------------------------------------------------------------------------
--- Translation of type declarations
--- ---------------------------------------------------------------------------
+-- Translation of Curry types to Haskell types
 
 transData :: TypeDecl -> M TypeDecl
 transData (Type qn v vs cs) =
@@ -388,6 +398,8 @@ transBody exp = case exp of
   _ ->
     getNextID `bindM` \i -> -- save current variable id
     transExpr exp `bindM` \(g, e') ->
+    getState `bindM_`  -- No effect ???
+    getNextID `bindM_` -- Just to increase the id ???
     let e'' = case g of
                 []  -> e'
                 [v] -> Let [(v, Var suppVarIdx)] e' in

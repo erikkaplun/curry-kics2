@@ -9,6 +9,8 @@ tryChoice :: ID -> a -> a -> Try a
 tryChoice i@(ID _)     = Choice i
 tryChoice i@(FreeID _) = Free i
 
+narrow (FreeID i) = ID i
+
 data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID
  deriving Show
 
