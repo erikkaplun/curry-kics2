@@ -247,20 +247,17 @@ transProg (Prog m _ ts fs _) = doInDetMode False $
   --TODO: translation of types not longer necessary
   --      only needed for insertion to the type map
   -- translation of the types
-  mapM transData ts `bindM_`
+  mapM registerData ts `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
   -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
   returnM $ Prog m [prelude] [] (concat fss) []
 
--- Translation of Curry types to Haskell types
-
-transData :: TypeDecl -> M TypeDecl
-transData (Type qn v vs cs) =
-  mapM addToMap cs      `bindM_`         -- TODO the types are added to the map, but why?
-  returnM  (error "Type Decls should not be used")
-  where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
-
+-- Registration of types in the map ; TODO : why is this necessary
+registerData :: TypeDecl -> M ()
+registerData (Type qn v vs cs) =
+  mapM addToMap cs -- TODO the types are added to the map, but why?
+ where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
 
 -- translation of a type expression
 transTypeExpr :: TypeExpr -> M TypeExpr
