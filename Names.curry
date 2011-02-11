@@ -19,9 +19,16 @@ renCons (mn,fn) = (mkModName mn, mkConName fn)
 -- Rename qualified defined function.
 renFunc (mn,fn) = (mkModName mn, mkFunName fn)
 
+-- Name of the module providing external function definitions.
+externalModule :: String
+externalModule = "External"
+
 -- rename defined functions
 mkFunName :: String -> String
-mkFunName = replaceNonIdChars "" "op_"
+mkFunName = replaceNonIdChars "" "op_" 
+-- TODO should we provide a prefix for functions as well? Otherwise there may
+-- be nameclashes if one implements the infix operation ($$) and the function 
+-- "op_dollar_dollar".
 
 -- rename data constructors
 mkConName :: String -> String
@@ -43,7 +50,7 @@ genRename n
   | n == "[]"     = "OP_List"
   | n == "()"     = "OP_Unit"
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "C_" "OP_" n
+  | otherwise     = replaceNonIdChars "c_" "op_" n
 
 -- rename type constructors
 mkTypeName :: String -> String
@@ -54,7 +61,7 @@ mkTypeName n
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 
 detPrefix :: Bool -> String
-detPrefix b = if b then "d" else "c"
+detPrefix b = if b then "d_" else "c_"
 
 -- rename modules
 mkModName :: String -> String

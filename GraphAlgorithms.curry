@@ -89,7 +89,7 @@
 ---        rdff,rdff'
 ---       
 ---     Others can be added quite easily if needed.
---- @author Bernd Braßel
+--- @author Bernd Brassel
 --- @version May 2005
 
 
