@@ -17,4 +17,4 @@ append (Cons x xs) ys = Cons x (append xs ys)
 reverse Nil = Nil
 reverse (Cons x xs) = append (reverse xs) (Cons x Nil)
 
- 
+goal0 = reverse (Cons True (Cons False (Cons False Nil)))
