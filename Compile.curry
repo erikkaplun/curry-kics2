@@ -40,7 +40,9 @@ compile opts fn = do
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
   info opts "Transforming functions"
-  let ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs $ transform opts renamed
+  let (tProg,report) = transform opts renamed
+      ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs tProg
+  info opts report 
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
   info opts "Transforming type declarations"
@@ -97,6 +99,7 @@ type State =
   , nextID     :: VarIndex
   , detMode    :: Bool
   , searchMode :: SearchMode
+  , report     :: [String]
   }
 
 defaultState :: State
@@ -108,6 +111,7 @@ defaultState =
   , nextID     = idVar
   , detMode    = False
   , searchMode = NoSearch
+  , report     = []
   }
 
 -- ---------------------------------------------------------------------------
@@ -172,6 +176,10 @@ getJustCont = getState `bindM` \st -> returnM (fromJust (st -> cont))
 getMatchPos :: M Int
 getMatchPos = getState `bindM` \st -> returnM (st -> matchPos)
 
+-- adds a message to the transformation report
+addToReport :: String -> M ()
+addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
+
 -- Perform an action in a given detMode and restore the original mode
 -- afterwards
 doInDetMode :: Bool -> M a -> M a
@@ -218,8 +226,10 @@ getNDClass qn = getState `bindM` \st ->
 -- Program transformation
 -- ---------------------------------------------------------------------------
 
-transform :: Options -> Prog -> Prog
-transform opts prog = run initState (transProg prog) where
+transform :: Options -> Prog -> (Prog,String)
+transform opts prog = (tProg,(unlines $ reverse $ state -> report)) 
+ where
+  (state,tProg) = unM (transProg prog) initState
   initState = { searchMode := opts -> optSearchMode
               , detMode    := opts -> optHoDetMode
               , ndResult   := analyseNd prog
@@ -242,10 +252,14 @@ transProg (Prog m _ ts fs _) = doInDetMode False $
 transData :: TypeDecl -> M TypeDecl
 transData (Type qn v vs cs) =
   mapM addToMap cs      `bindM_`
+  returnM  (error "Type Decls should not be used")
+{-
   mapM transCons cs     `bindM` \ cs' ->
   newConstructors qn vs `bindM` \ new ->
   returnM $ Type qn v vs (new ++ cs')
+-}
   where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
+{-
 transData (TypeSyn qn v vs texpr) =
   transTypeExpr texpr `bindM` \texpr' ->
   returnM $ TypeSyn qn v vs texpr'
@@ -254,6 +268,7 @@ transCons :: ConsDecl -> M ConsDecl
 transCons (Cons qn a v ts) =
   mapM transTypeExpr ts `bindM` \ts' ->
   returnM (Cons qn a v ts')
+-}
 
 transTypeExpr :: TypeExpr -> M TypeExpr
 transTypeExpr t@(TVar _) = returnM t
@@ -264,7 +279,7 @@ transTypeExpr (FuncType t1 t2) =
 transTypeExpr (TCons qn ts) =
   mapM transTypeExpr ts `bindM` \ts' ->
   returnM (TCons qn ts')
-
+{-
 newConstructors :: QName -> [VarIndex] -> M [ConsDecl]
 newConstructors qn vs =
   transTypeExpr (TCons qn (map TVar vs)) `bindM` \t ->
@@ -274,7 +289,7 @@ newConstructors qn vs =
           ]
 
 cons  n xs    = Cons n (length xs) Public xs
-
+-}
 orName    (q, n) = (q, "Choice" +|+ n)
 failName  (q, n) = (q, "Fail" +|+ n)
 guardName (q, n) = (q, "Guard" +|+ n)
@@ -284,6 +299,7 @@ guardName (q, n) = (q, "Guard" +|+ n)
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc (Func qn a v t r) =
   getNDClass qn `bindM` \ndCl ->
+  addToReport (snd qn ++ " is " ++ show ndCl) `bindM_`
   case ndCl of
     DFO ->
       transPureFunc qn a v t r `bindM` \ fd ->
@@ -339,6 +355,7 @@ transFuncType nd (n+1) (FuncType t1 t2) =
   returnM (FuncType t1' t2')
 transFuncType n i t = error $ "transFunctype: " ++ show (n,i,t)
 -}
+
 
 transHOTypeExpr :: TypeExpr -> M TypeExpr
 transHOTypeExpr t = case t of
