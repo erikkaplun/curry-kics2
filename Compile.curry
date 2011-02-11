@@ -46,7 +46,9 @@ compile opts fn = do
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
   info opts "Transforming functions"
-  let ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs $ transform opts renamed
+  let (tProg,report) = transform opts renamed
+      ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs tProg
+  info opts report 
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
   info opts "Transforming type declarations"
@@ -103,6 +105,7 @@ type State =
   , nextID     :: VarIndex    -- index for fresh variable
   , detMode    :: Bool        -- determinism mode
   , searchMode :: SearchMode
+  , report     :: [String]
   }
 
 defaultState :: State
@@ -114,6 +117,7 @@ defaultState =
   , nextID     = idVar
   , detMode    = False
   , searchMode = NoSearch
+  , report     = []
   }
 
 -- ---------------------------------------------------------------------------
@@ -178,6 +182,10 @@ getJustCont = getState `bindM` \st -> returnM (fromJust (st -> cont))
 getMatchPos :: M Int
 getMatchPos = getState `bindM` \st -> returnM (st -> matchPos)
 
+-- adds a message to the transformation report
+addToReport :: String -> M ()
+addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
+
 -- Perform an action in a given detMode and restore the original mode
 -- afterwards
 doInDetMode :: Bool -> M a -> M a
@@ -224,8 +232,10 @@ getNDClass qn = getState `bindM` \st ->
 -- Program transformation
 -- ---------------------------------------------------------------------------
 
-transform :: Options -> Prog -> Prog
-transform opts prog = run initState (transProg prog) where
+transform :: Options -> Prog -> (Prog,String)
+transform opts prog = (tProg,(unlines $ reverse $ state -> report)) 
+ where
+  (state,tProg) = unM (transProg prog) initState
   initState = { searchMode := opts -> optSearchMode
               , detMode    := opts -> optHoDetMode
               , ndResult   := analyseNd prog
@@ -248,19 +258,9 @@ transProg (Prog m _ ts fs _) = doInDetMode False $
 transData :: TypeDecl -> M TypeDecl
 transData (Type qn v vs cs) =
   mapM addToMap cs      `bindM_`         -- TODO the types are added to the map, but why?
-  mapM transCons cs     `bindM` \ cs' ->
-  newConstructors qn vs `bindM` \ new ->
-  returnM $ Type qn v vs (new ++ cs')
+  returnM  (error "Type Decls should not be used")
   where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
-transData (TypeSyn qn v vs texpr) =
-  transTypeExpr texpr `bindM` \texpr' ->
-  returnM $ TypeSyn qn v vs texpr'
 
--- translation of a single type constructor
-transCons :: ConsDecl -> M ConsDecl
-transCons (Cons qn a v ts) =
-  mapM transTypeExpr ts `bindM` \ts' ->
-  returnM (Cons qn a v ts')
 
 -- translation of a type expression
 transTypeExpr :: TypeExpr -> M TypeExpr
@@ -272,16 +272,6 @@ transTypeExpr (FuncType t1 t2) =
 transTypeExpr (TCons qn ts) =
   mapM transTypeExpr ts `bindM` \ts' ->
   returnM (TCons qn ts')
-
--- creation of new type constructors for fail, guard, or
-newConstructors :: QName -> [VarIndex] -> M [ConsDecl]
-newConstructors qn vs =
-  transTypeExpr (TCons qn (map TVar vs)) `bindM` \t ->
-  returnM [ cons (orName qn)    [tOrRef, t, t]
-          , cons (failName qn)  []
-          , cons (guardName qn) [tConstraint, t]
-          ]
-    where cons n xs = Cons n (length xs) Public xs
 
 -- TODO move to Names
 orName    (q, n) = (q, n +|+ "Choice")
@@ -295,6 +285,7 @@ guardName (q, n) = (q, n +|+ "Guard")
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc f@(Func qn _ _ _ _) =
   getNDClass qn `bindM` \ndCl ->
+  addToReport (snd qn ++ " is " ++ show ndCl) `bindM_`
   case ndCl of
     DFO ->
       -- create deterministic function
@@ -354,17 +345,6 @@ transFuncType nd n t = case nd of
                    returnM (FuncType t1' t2')
                _ -> error $ "transFunctype: " ++ show (nd,n,t)
 
-{-
-transFuncType Pure _ t = transTypeExpr t
-transFuncType _    0 t =
-  transHOTypeExpr t `bindM` \t' ->
-  returnM (FuncType supplyType t')
-transFuncType nd (n+1) (FuncType t1 t2) =
-  transHOTypeExpr t1 `bindM` \t1' ->
-  transFuncType nd n t2 `bindM` \t2' ->
-  returnM (FuncType t1' t2')
-transFuncType n i t = error $ "transFunctype: " ++ show (n,i,t)
--}
 
 transHOTypeExpr :: TypeExpr -> M TypeExpr
 transHOTypeExpr t = case t of
@@ -581,11 +561,6 @@ wrap' nd n e = case n of
   0 -> e
   1 -> funcCall (wrapName nd) [e]
   _ -> funcCall (wrapName DFO) [wrap' nd (n-1) e]
-{-
-wrap' _  0     e = e
-wrap' nd 1     e = funcCall (wrapName nd) [e]
-wrap' nd (n+1) e = funcCall (wrapName Pure) [wrap' nd n e]
--}
 
 wrapName :: NDClass -> QName
 wrapName ndMode = case ndMode of
@@ -594,10 +569,6 @@ wrapName ndMode = case ndMode of
 
 wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
 
-{-
-wrap'' _ e 0     = e
-wrap'' f e (n+1) = apply f (wrap'' (point [f]) e n)
--}
 
 -- list of known primitive types
 primTypes :: [(QName, QName)]
