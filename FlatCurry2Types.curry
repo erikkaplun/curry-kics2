@@ -8,6 +8,8 @@
 --- @version February 2011
 ------------------------------------------------------------------------
 
+module FlatCurry2Types where
+
 import qualified FlatCurry as FC
 import FlatCurryGoodies
 import AbstractHaskell
@@ -89,17 +91,17 @@ fcyTypes2abs = concatMap genTypeDefinitions . filter (not . isPrimTypeDecl)
 
 --- Is the type declaration primitive, i.e., should not be translated?
 isPrimTypeDecl tdecl = case tdecl of
-  FC.TypeSyn (_,n) _ _ _ -> n == "String"
+  FC.TypeSyn (_,n) _ _ _ -> n == "C_String"
   FC.Type (mn,tc) _ _ _ ->
-        mn=="Prelude" &&
-        (tc `elem` ["Int","Float","Char","Success","IO","IOError"])
+        mn=="Curry_Prelude" &&
+        (tc `elem` ["C_Int","C_Float","C_Char","C_Success","C_IO","C_IOError"])
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
-  [TypeSyn (renType qf) (fcy2absVis vis) (map fcy2absTVar targs) (trTExp texp)]
+  [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (trTExp texp)]
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
-  [Type (renType (mn,tc)) acvis targs
+  [Type (mn,tc) acvis targs
          (map trCDecl cdecls ++
           [Cons choiceConsName 3 acvis [idType,ctype,ctype],
            Cons failConsName   0 acvis [],
@@ -110,11 +112,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
  where
   acvis = fcy2absVis vis
   targs = map fcy2absTVar tnums
-  ctype = TCons (renType (mn,tc)) (map TVar targs)
+  ctype = TCons (mn,tc) (map TVar targs)
 
-  choiceConsName = (mn,"Choice_"++mkTypeName tc)
-  failConsName   = (mn,"Fail_"++mkTypeName tc)
-  guardConsName  = (mn,"Guard_"++mkTypeName tc) 
+  choiceConsName = (mn,"Choice_"++ tc)
+  failConsName   = (mn,"Fail_"++ tc)
+  guardConsName  = (mn,"Guard_"++ tc) 
 
   -- Generate instance of NonDet class:
   nondetInstance =
@@ -149,7 +151,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
   cons2genCons _ [] = []
   cons2genCons i (FC.Cons qn _ _ texps : cs) = let ar = length texps in
-    applyF (renCons qn) (map (\j -> applyF (basics "generate")
+    applyF qn (map (\j -> applyF (basics "generate")
                                            [freshID (i+j) (Var (1,"i"))])
                    [0 .. ar-1])
      : cons2genCons (i+ar) cs
@@ -174,7 +176,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   showConsRule (FC.Cons qn _ _ texps) = let carity = length texps in
     (pre "showsPrec",
      Rule [PVar (0,"d"),
-           PComb (renCons qn) (map (\i -> PVar (i,'x':show i)) [1..carity])]
+           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
           [noGuard (showBody carity)] [])
    where
      showBody ar =
@@ -204,15 +206,15 @@ basics n = ("Basics",n)
 idmod n = ("ID",n)
 
 ------------------------------------------------------------------------
--- Translating FlatCurry to AbstractHaskell with renaming:
+-- Translating FlatCurry to AbstractHaskell:
 
 trCDecl :: FC.ConsDecl -> ConsDecl
 trCDecl (FC.Cons qf ar vis texps) =
-   Cons (renCons qf) ar (fcy2absVis vis) (map trTExp texps)
+   Cons qf ar (fcy2absVis vis) (map trTExp texps)
 
 trTExp :: FC.TypeExpr -> TypeExpr
 trTExp (FC.TVar i) = TVar (fcy2absTVar i)
 trTExp (FC.FuncType t1 t2) = FuncType (trTExp t1) (trTExp t2)
-trTExp (FC.TCons qf texps) = TCons (renType qf) (map trTExp texps)
+trTExp (FC.TCons qf texps) = TCons qf (map trTExp texps)
 
 ------------------------------------------------------------------------
