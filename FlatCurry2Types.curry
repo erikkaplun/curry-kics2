@@ -91,18 +91,18 @@ fcyTypes2abs = concatMap genTypeDefinitions . filter (not . isPrimTypeDecl)
 
 --- Is the type declaration primitive, i.e., should not be translated?
 isPrimTypeDecl tdecl = case tdecl of
-  FC.TypeSyn (_,n) _ _ _ -> n == "C_String"
+  FC.TypeSyn _  _ _ _ -> True
   FC.Type (mn,tc) _ _ _ ->
         mn=="Curry_Prelude" &&
-        (tc `elem` ["C_Int","C_Float","C_Char","C_Success","C_IO","C_IOError"])
+        (tc `elem` ["C_Int","C_Float","C_Char","C_Success","C_IO"])
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
-  [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (trTExp texp)]
+  [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)]
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   [Type (mn,tc) acvis targs
-         (map trCDecl cdecls ++
+         (map fcy2absCDecl cdecls ++
           [Cons choiceConsName 3 acvis [idType,ctype,ctype],
            Cons failConsName   0 acvis [],
            Cons guardConsName  3 acvis [constraintType,ctype]]),
@@ -181,10 +181,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
    where
      showBody ar =
       if ar==0
-      then applyF (pre "showString") [string2ac (snd qn)]
+      then applyF (pre "showString") [string2ac (umkConName (snd qn))]
       else applyF (pre ".")
                   [applyF (pre "showString") 
-                          [string2ac ('(':snd qn)],
+                          [string2ac ('(':umkConName (snd qn))],
                    foldr (\x xs -> applyF (pre ".")
                                     [applyF (pre ":") [Lit (Charc ' ')],
                                      applyF (pre ".") [x,xs]])
@@ -204,17 +204,5 @@ basics :: String -> QName
 basics n = ("Basics",n)
 
 idmod n = ("ID",n)
-
-------------------------------------------------------------------------
--- Translating FlatCurry to AbstractHaskell:
-
-trCDecl :: FC.ConsDecl -> ConsDecl
-trCDecl (FC.Cons qf ar vis texps) =
-   Cons qf ar (fcy2absVis vis) (map trTExp texps)
-
-trTExp :: FC.TypeExpr -> TypeExpr
-trTExp (FC.TVar i) = TVar (fcy2absTVar i)
-trTExp (FC.FuncType t1 t2) = FuncType (trTExp t1) (trTExp t2)
-trTExp (FC.TCons qf texps) = TCons qf (map trTExp texps)
 
 ------------------------------------------------------------------------

@@ -7,9 +7,9 @@ all: idc
 	chmod -R go+rX .
 
 # generate saved state for Curry->FLVM compiler:
-idc: FlatCurry2Types.curry Names.curry AbstractHaskell.curry \
+idc: Compile.curry FlatCurry2Types.curry Names.curry AbstractHaskell.curry \
 	         AbstractHaskellGoodies.curry AbstractHaskellPrinter.curry
-	pakcs -m 'main' -s FlatCurry2Types && mv FlatCurry2Types.state idc
+	pakcs -s Compile && mv Compile.state idc
 
 .PHONY: clean
 clean: 

@@ -39,6 +39,15 @@ mkConName n
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 
+-- unrename data constructors (must be improved)
+umkConName :: String -> String
+umkConName n
+  | n == "OP_Nil"    = "[]"
+  | n == "OP_Cons"   = ":"
+  | n == "OP_Unit"   = "()"
+  | take 2 n == "C_" = drop 2 n
+  | otherwise        = n
+
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
 
