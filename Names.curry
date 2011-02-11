@@ -30,6 +30,13 @@ mkFunName = replaceNonIdChars "" "op_"
 -- be nameclashes if one implements the infix operation ($$) and the function 
 -- "op_dollar_dollar".
 
+
+-- Generating Names for introduced constructors
+mkChoiceName    (q, n) = (q, "Choice" +|+ n)
+mkFailName  (q, n) = (q, "Fail" +|+ n)
+mkGuardName (q, n) = (q, "Guard" +|+ n)
+s +|+ t = s ++ "_" ++ t
+
 -- rename data constructors
 mkConName :: String -> String
 mkConName n
@@ -59,7 +66,7 @@ genRename n
   | n == "[]"     = "OP_List"
   | n == "()"     = "OP_Unit"
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "c_" "op_" n
+  | otherwise     = replaceNonIdChars "C_" "Op_" n
 
 -- rename type constructors
 mkTypeName :: String -> String
@@ -93,7 +100,7 @@ isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")
 
 showOpChar :: Char -> String
 showOpChar c = case c of
-  '_' -> "_" --"underscore"
+  '_' -> "_" --"underscore" TODO: Can this lead to a name clash?
   '~' -> "tilde"
   '!' -> "bang"
   '@' -> "at"

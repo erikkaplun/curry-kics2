@@ -81,7 +81,7 @@ funs2graph f = (QN (funcName f),nub called)
     branch _ e = e
 
 prelude = "Curry_Prelude"
-qmark = (prelude, "op_qmark")
+qmark = (prelude, "Op_qmark")
 apply = (prelude, "c_apply")
 meta  = "Cover"
 cover = (meta, "cover")

@@ -113,10 +113,9 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   acvis = fcy2absVis vis
   targs = map fcy2absTVar tnums
   ctype = TCons (mn,tc) (map TVar targs)
-
-  choiceConsName = (mn,"Choice_"++ tc)
-  failConsName   = (mn,"Fail_"++ tc)
-  guardConsName  = (mn,"Guard_"++ tc) 
+  choiceConsName = mkChoiceName (mn,tc)
+  failConsName = mkFailName (mn,tc)
+  guardConsName = mkGuardName (mn,tc)
 
   -- Generate instance of NonDet class:
   nondetInstance =
