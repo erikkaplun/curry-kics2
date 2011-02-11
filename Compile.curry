@@ -16,7 +16,8 @@ import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 
 import CallGraph
 import LiftCase (liftCases)
-import Names (renameModule, renameFile, renameQName, detPrefix)
+import Names (renameModule, renameFile, renameQName, detPrefix, mkChoiceName
+              ,mkGuardName)
 import Splits (mkSplits)
 import CompilerOpts
 import qualified AbstractHaskell as AH
@@ -254,7 +255,7 @@ transProg (Prog m _ ts fs _) = doInDetMode False $
   returnM $ Prog m [prelude] [] (concat fss) []
 
 -- Registration of types in the map ; TODO : why is this necessary
-registerData :: TypeDecl -> M ()
+registerData :: TypeDecl -> M [()]
 registerData (Type qn v vs cs) =
   mapM addToMap cs -- TODO the types are added to the map, but why?
  where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
@@ -269,11 +270,6 @@ transTypeExpr (FuncType t1 t2) =
 transTypeExpr (TCons qn ts) =
   mapM transTypeExpr ts `bindM` \ts' ->
   returnM (TCons qn ts')
-
--- TODO move to Names
-orName    (q, n) = (q, n +|+ "Choice")
-failName  (q, n) = (q, n +|+ "Fail")
-guardName (q, n) = (q, n +|+ "Guard")
 
 -- ---------------------------------------------------------------------------
 -- Translation of Curry functions
@@ -405,9 +401,9 @@ newBranches (Branch (Pattern qn _) _:_) =
       (vs1, _ : vs2) = break (==pos) vs
       c e = funcCall qn' (map Var vs1 ++ [e] ++ map Var vs2 ++ is) in
   returnM $
-    [ Branch (pcons (orName qnMatch) [1000, 1001, 1002])
+    [ Branch (pcons (mkChoiceName qnMatch) [1000, 1001, 1002])
              (liftOr [Var 1000, c (Var 1001), c (Var 1002)])
-    , Branch (pcons (guardName qnMatch) [1000, 1001])
+    , Branch (pcons (mkGuardName qnMatch) [1000, 1001])
              (liftGuard [Var 1000, c (Var 1001)])
     , Branch (pcons ("","_") [])
              liftFail
@@ -544,7 +540,6 @@ generate i = Comb FuncCall  ("","generate") [i]
 -- Helper functions
 -- ---------------------------------------------------------------------------
 
-s +|+ t = s ++ "_" ++ t
 
 unzipArgs :: [([VarIndex], e)] -> M ([VarIndex], [e])
 unzipArgs ises = let (is,es) = unzip ises in returnM (concat is,es)
