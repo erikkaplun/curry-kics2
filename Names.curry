@@ -66,7 +66,7 @@ genRename n
   | n == "[]"     = "OP_List"
   | n == "()"     = "OP_Unit"
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "c_" "op_" n
+  | otherwise     = replaceNonIdChars "C_" "Op_" n
 
 -- rename type constructors
 mkTypeName :: String -> String
