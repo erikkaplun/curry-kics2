@@ -75,8 +75,10 @@ compile opts fn = do
                     readFile ext)
                 mExternal
 
+  -- TODO: remove hack for pragmas
+  let pragma = "{-# LANGUAGE MagicHash #-}\n"
   info opts $ "Generating Haskell module '" ++ destFile ++ "'"
-  writeFile destFile ((showProg ahs) ++ exts)
+  writeFile destFile (pragma ++ (showProg ahs) ++ exts)
 
     where
     fcyName = fcyFile $ withBaseName (++ "Dump") fn

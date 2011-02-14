@@ -22,12 +22,14 @@ data C_Char
   | C_Char Char#
   deriving (Eq, Show)
 
+{-
 data C_Success
   = Choice_C_Success ID C_Success C_Success
   | Fail_C_Success
   | Guard_C_Success Constraint C_Success
   | C_Success
   deriving (Show,Eq)
+-}
 
 data C_IO a
   = Choice_C_IO ID (C_IO a) (C_IO a)
