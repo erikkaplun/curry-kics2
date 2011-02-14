@@ -18,7 +18,7 @@ import CallGraph
 import LiftCase (liftCases)
 import Names
   ( renameModule, renameFile, renameQName, detPrefix, mkChoiceName
-  , mkGuardName, externalFunc )
+  , mkGuardName, externalFunc, externalModule )
 import Splits (mkSplits)
 import CompilerOpts
 import qualified AbstractHaskell as AH
@@ -33,6 +33,10 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
+
+  let (path,file) = splitDirectoryBaseName fn
+      bareName = stripSuffix file
+
   info opts $ "Compiling '" ++ fn ++ "'"
 
   info opts "Reading FlatCurry"
@@ -61,9 +65,18 @@ compile opts fn = do
   let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
+  let extName = path ++ separatorChar:externalModule 
+                ++ "_" ++ bareName
+  info opts $ "Looking for External file: " ++ extName ++ ".hs"
+  mExternal <- lookupFileInPath extName [ ".hs"] ["."]
+  exts <- maybe (info opts "No External file found" >> return "")
+                (\ ext -> do
+                    info opts "External file found"
+                    readFile ext)
+                mExternal
 
   info opts $ "Generating Haskell module '" ++ destFile ++ "'"
-  writeFile destFile (showProg ahs)
+  writeFile destFile ((showProg ahs) ++ exts)
 
     where
     fcyName = fcyFile $ withBaseName (++ "Dump") fn
