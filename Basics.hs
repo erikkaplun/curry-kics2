@@ -2,7 +2,7 @@ module Basics where
 
 import ID
 
-data Try a = Val a | Choice ID a a | Free ID a a | Guard Constraint a
+data Try a = Val a | Fail | Choice ID a a | Free ID a a | Guard Constraint a
   deriving Show
 
 tryChoice :: ID -> a -> a -> Try a
@@ -26,10 +26,55 @@ class NonDet a where
   try        :: a -> Try a
 
 
+-- Class for data that support generators
 class NonDet a => Generable a where
   generate :: ID -> a
 
+
+-- Class for data that support unification
+--class (NonDet a, NormalForm a) => Unifiable a where
+class NonDet a => Unifiable a where
+  (=.=) :: a -> a -> C_Success
+  --bind :: ID -> a -> Constraint
+
+
+---------------------------------------------------------------------
+-- The implementation of the Success type must be added here since
+-- it is used in the class Unifiable.
+
+data C_Success = C_Success 
+               | Choice_C_Success ID C_Success C_Success
+               | Fail_C_Success
+               | Guard_C_Success Constraint C_Success
+
+instance NonDet C_Success where
+  choiceCons = Choice_C_Success
+  failCons   = Fail_C_Success
+  guardCons  = Guard_C_Success
+
+  try (Choice_C_Success i x y) = tryChoice i x y
+  try Fail_C_Success           = Fail
+  try (Guard_C_Success c e)    = Guard c e
+  try x = Val x
+
+instance Show C_Success where
+  showsPrec d C_Success = showString "success"
+  showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
+  showsPrec d Fail_C_Success = showChar '!'
+
+
+---------------------------------------------------------------------
+-- Unification
+
+(=:=) :: Unifiable a => a -> a -> C_Success
+_ =:= _ = error "(=:=) undefined"
+
+(&) :: C_Success -> C_Success -> C_Success
+_ & _ = error "(&) undefined"
+
+---------------------------------------------------------------------
 -- Auxiliaries for Show
+
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
 showsChoice d i@(FreeID _) _ _ = shows i
 showsChoice d r x1 x2 = 
@@ -38,3 +83,8 @@ showsChoice d r x1 x2 =
   showString " ?" . shows r .
   showsPrec d x2 .
   showChar ')' 
+
+showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
+showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
+
+---------------------------------------------------------------------

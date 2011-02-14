@@ -132,8 +132,10 @@ showTypeDecl (Instance (_,name) texp ctxts rules)
    = "instance " ++ showContext ctxts ++ name ++ " " ++ showTypeExpr True texp
      ++ " where\n" ++ concatMap showInstRule rules
  where
-  showInstRule ((_,mname),rule) =
-    "  " ++ mname ++ showRule defaultOptions rule ++ "\n"
+  showInstRule ((_,fname),rule) =
+    if isInfixOpName fname
+    then "  (" ++ fname ++ ")" ++ showRule defaultOptions rule ++ "\n"
+    else "  " ++ fname ++ showRule defaultOptions rule ++ "\n"
 
 showContext :: [Context] -> String
 showContext [] = ""

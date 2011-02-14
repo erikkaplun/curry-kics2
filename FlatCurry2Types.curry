@@ -108,7 +108,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
            Cons guardConsName  3 acvis [constraintType,ctype]]),
    nondetInstance,
    generableInstance,
-   showInstance]
+   showInstance,
+   unifInstance,
+   eqInstance,
+   ordInstance]
  where
   acvis = fcy2absVis vis
   targs = map fcy2absTVar tnums
@@ -127,10 +130,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
   tryRules =
    [Rule [PComb choiceConsName [PVar (1,"i"),PVar (2,"x"),PVar (3,"y")]]
-          [noGuard (applyF (basics "tryChoice")
-                           [Var (1,"i"),Var (2,"x"),Var (3,"y")])] [],
+         [noGuard (applyF (basics "tryChoice")
+                          [Var (1,"i"),Var (2,"x"),Var (3,"y")])] [],
+    Rule [PComb failConsName []] [noGuard (applyF (basics "Fail") [])] [],
     Rule [PComb guardConsName [PVar (1,"c"),PVar (2,"e")]]
-          [noGuard (applyF (basics "Guard") [Var (1,"c"),Var (2,"e")])] [],
+         [noGuard (applyF (basics "Guard") [Var (1,"c"),Var (2,"e")])] [],
     Rule [PVar (1,"x")] [noGuard (applyF (basics "Val") [cvar "x"])] []]
 
   -- Generate instance of Generable class:
@@ -167,19 +171,26 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                                [Var (1,"d"),Var (2,"i"),
                                 Var (3,"x"),Var (4,"y")])] []),
        (pre "showsPrec",
+        Rule [PVar (1,"d"),
+               PComb guardConsName [PVar (2,"c"),PVar (3,"e")]]
+              [noGuard (applyF (pre "showsGuard")
+                               [Var (1,"d"),Var (2,"c"),Var (3,"e")])] []),
+       (pre "showsPrec",
         Rule [PVar (1,"d"), PComb failConsName []]
               [noGuard (applyF (pre "showChar") [Lit (Charc '!')])] [])]
        ++ map showConsRule cdecls)
 
   -- Generate Show instance rule for a data constructor:
-  showConsRule (FC.Cons qn _ _ texps) = let carity = length texps in
+  showConsRule (FC.Cons qn _ _ texps) =
     (pre "showsPrec",
      Rule [PVar (0,"d"),
            PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-          [noGuard (showBody carity)] [])
+          [noGuard showBody] [])
    where
-     showBody ar =
-      if ar==0
+     carity = length texps
+
+     showBody =
+      if carity==0
       then applyF (pre "showString") [string2ac (umkConName (snd qn))]
       else applyF (pre ".")
                   [applyF (pre "showString") 
@@ -189,7 +200,93 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                                      applyF (pre ".") [x,xs]])
                          (applyF (pre "showChar") [Lit (Charc ')')])
                          (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
-                              [1..ar])]
+                              [1..carity])]
+
+  -- Generate instance of Unifiable class:
+  unifInstance =
+   Instance (basics "Unifiable") ctype
+     (map (\tv -> Context (basics "Unifiable") [tv]) targs)
+     (map unifConsRule cdecls ++
+      [(basics "=.=",
+        Rule [PVar (1,"_"),PVar (2,"_")]
+             [noGuard (constF (basics "Fail_C_Success"))] [])])
+
+  -- Generate Unifiable instance rule for a data constructor:
+  unifConsRule (FC.Cons qn _ _ texps) =
+    (basics "=.=",
+     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
+           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
+          [noGuard unifBody] [])
+   where
+     carity = length texps
+
+     unifBody =
+      if carity==0 then constF (basics "C_Success")
+      else foldr1 (\x xs -> applyF (basics "&") [x,xs])
+                  (map (\i -> applyF (basics "=:=")
+                                     [Var (i,'x':show i),Var (i,'y':show i)])
+                       [1..carity])
+
+  -- Generate instance of Eq class:
+  eqInstance =
+   Instance (pre "Eq") ctype
+     (map (\tv -> Context (pre "Eq") [tv]) targs)
+     (map eqConsRule cdecls ++
+      [(pre "==",
+        Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "False"))] [])])
+
+  -- Generate Unifiable instance rule for a data constructor:
+  eqConsRule (FC.Cons qn _ _ texps) =
+    (pre "==",
+     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
+           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
+          [noGuard eqBody] [])
+   where
+     carity = length texps
+
+     eqBody =
+      if carity==0 then constF (pre "True")
+      else foldr1 (\x xs -> applyF (pre "&&") [x,xs])
+                  (map (\i -> applyF (pre "==")
+                                     [Var (i,'x':show i),Var (i,'y':show i)])
+                       [1..carity])
+
+  -- Generate instance of Ord class:
+  ordInstance =
+   Instance (pre "Ord") ctype
+     (map (\tv -> Context (pre "Ord") [tv]) targs)
+     ((ordConsRules cdecls) ++
+      [(pre "<=",
+        Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "False"))] [])])
+
+  -- Generate Unifiable instance rule for a data constructor:
+  ordConsRules [] = []
+  ordConsRules (FC.Cons qn _ _ texps : cds) =
+    (pre "<=",
+     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
+           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
+          [noGuard (ordBody [1..carity])] []) :
+    map (ordCons2Rule (qn,carity)) cds ++
+    ordConsRules cds
+   where
+     carity = length texps
+
+     ordBody [] = constF (pre "True")
+     ordBody (i:is) =
+      let xi = Var (i,'x':show i)
+          yi = Var (i,'y':show i)
+       in if null is
+          then applyF (pre "<=") [xi,yi]
+          else applyF (pre "||")
+                 [applyF (pre "<")  [xi,yi],
+                  applyF (pre "&&") [applyF (pre "==") [xi,yi], ordBody is]]
+
+  ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
+    (pre "<=",
+     Rule [PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1]),
+           PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
+          [noGuard (constF (pre "True"))] [])
+
 
 freshID n i =
   if n==0 then applyF (idmod "leftID") [i]
