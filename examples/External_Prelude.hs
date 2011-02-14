@@ -22,15 +22,6 @@ data C_Char
   | C_Char Char#
   deriving (Eq, Show)
 
-{-
-data C_Success
-  = Choice_C_Success ID C_Success C_Success
-  | Fail_C_Success
-  | Guard_C_Success Constraint C_Success
-  | C_Success
-  deriving (Show,Eq)
--}
-
 data C_IO a
   = Choice_C_IO ID (C_IO a) (C_IO a)
   | Fail_C_IO
@@ -95,19 +86,22 @@ external_c_OP_gt_gt_eq = error "external_c_OP_gt_gt_eq"
 external_c_C_return :: a -> C_IO a
 external_c_C_return = error "external_c_C_return"
 
-external_c_C_prim_putChar :: C_Char -> C_IO C_Unit
+external_c_C_prim_putChar :: C_Char -> C_IO OP_Unit
 external_c_C_prim_putChar = error "external_c_C_prim_putChar"
 
 external_c_C_getChar :: C_IO C_Char
 external_c_C_getChar = error "external_c_C_getChar"
 
-external_c_C_prim_readFile :: C_String -> C_IO C_String
+external_c_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
 external_c_C_prim_readFile = error "external_c_C_prim_readFile"
 
-external_c_C_prim_writeFile :: C_String -> C_String -> C_IO ()
+external_c_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
+external_c_C_prim_readFileContents = error "external_c_C_prim_readFileContents"
+
+external_c_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO ()
 external_c_C_prim_writeFile = error "external_c_C_prim_writeFile"
 
-external_c_C_prim_appendFile :: C_String -> C_String -> C_IO ()
+external_c_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO ()
 external_c_C_prim_appendFile = error "external_c_C_prim_appendFile"
 
 external_c_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> C_IO a
@@ -116,7 +110,7 @@ external_c_C_catch = error "external_c_C_catch"
 external_c_C_catchFail :: C_IO a -> C_IO a -> C_IO a
 external_c_C_catchFail = error "external_c_C_catchFail"
 
-external_c_C_prim_show    :: a -> C_String
+external_c_C_prim_show    :: a -> OP_List C_Char
 external_c_C_prim_show = error "external_c_C_prim_show"
 
 external_c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
@@ -129,7 +123,10 @@ external_c_C_try :: a
 external_c_C_try = error "external_c_C_try"
 
 external_c_C_apply :: Func a b -> a -> b
-external_c_C_apply = error "external_c_C_apply"
+external_c_C_apply (Func f) s x = f s x
+
+external_d_C_apply :: (a -> b) -> a -> b
+external_d_C_apply f x = f x
 
 external_c_C_cond :: C_Success -> a -> a
 external_c_C_cond = error "external_c_C_cond"
@@ -145,3 +142,6 @@ external_c_OP_eq_colon_lt_lt_eq = error "external_c_OP_eq_colon_lt_lt_eq"
 
 external_c_C_ifVar :: a -> b -> b -> b
 external_c_C_ifVar = error "external_c_C_ifVar"
+
+external_c_C_failure :: a -> b -> c
+external_c_C_failure = error "external_c_C_failure"

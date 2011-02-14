@@ -19,3 +19,7 @@ data IDSupply = IDSupply ID IDSupply IDSupply
 
 thisID :: IDSupply -> ID
 thisID (IDSupply i _ _) = i
+
+leftSupply, rightSupply :: IDSupply -> IDSupply
+leftSupply  (IDSupply _ s _) = s
+rightSupply (IDSupply _ _ s) = s

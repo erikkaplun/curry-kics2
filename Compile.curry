@@ -62,7 +62,8 @@ compile opts fn = do
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
   info opts "Combining to Abstract Haskell"
-  let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
+  -- TODO: remove hack for unboxed numbers
+  let ahs = (AH.Prog n ("ID":"Basics":"GHC.Prim":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
   let extName = path ++ separatorChar:externalModule 
@@ -374,7 +375,7 @@ transRule addArg (Func qn _ _ _ (Rule vs e)) =
   returnM $ Rule (if addArg then vs ++ [suppVarIdx] else vs) e'
 transRule addArg (Func qn a _ _ (External _)) =
   returnM $ Rule vs (funcCall (externalFunc qn) (map Var vs))
-    where vs = (if addArg then id else (++ [suppVarIdx])) [1 .. a]
+    where vs = (if addArg then (++ [suppVarIdx]) else id) [1 .. a]
 
 transBody :: Expr -> M Expr
 transBody exp = case exp of
@@ -390,7 +391,7 @@ transBody exp = case exp of
   _ ->
     getNextID `bindM` \i -> -- save current variable id
     transExpr exp `bindM` \(g, e') ->
-    getState `bindM_`  -- No effect ???
+    getState `bindM_`  -- TODO: No effect ???
     getNextID `bindM_` -- Just to increase the id ???
     let e'' = case g of
                 []  -> e'
