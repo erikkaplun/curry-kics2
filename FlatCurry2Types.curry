@@ -93,8 +93,8 @@ fcyTypes2abs = concatMap genTypeDefinitions . filter (not . isPrimTypeDecl)
 isPrimTypeDecl tdecl = case tdecl of
   FC.TypeSyn _  _ _ _ -> True
   FC.Type (mn,tc) _ _ _ ->
-        mn=="Curry_Prelude" &&
-        (tc `elem` ["C_Int","C_Float","C_Char","C_Success","C_IO"])
+        mn == renameModule "Prelude" &&
+        (tc `elem` map genRename ["Int","Float","Char","Success","IO"])
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
@@ -139,7 +139,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       (map (\tv -> Context (basics "Generable") [tv]) targs)
       [((basics "generate"),
         Rule [PVar (1,"i")] [noGuard genBody] [])]
- 
+
   genBody =
     if null cdecls
     then applyF (pre "error")
@@ -180,10 +180,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
    where
      showBody ar =
       if ar==0
-      then applyF (pre "showString") [string2ac (umkConName (snd qn))]
+      then applyF (pre "showString") [string2ac (unGenRename (snd qn))]
       else applyF (pre ".")
-                  [applyF (pre "showString") 
-                          [string2ac ('(':umkConName (snd qn))],
+                  [applyF (pre "showString")
+                          [string2ac ('(':unGenRename (snd qn))],
                    foldr (\x xs -> applyF (pre ".")
                                     [applyF (pre ":") [Lit (Charc ' ')],
                                      applyF (pre ".") [x,xs]])

@@ -1,11 +1,11 @@
 -- Externals
 
-data C_Int 
+data C_Int
   = Int_Choice ID C_Int C_Int
   | Int_Fail
   | Int_Guard Constraint C_Int
   | C_Int Int#
-  | C_Integer Integer 
+  | C_Integer Integer
   deriving (Eq, Show)
 
 data C_Float
@@ -16,138 +16,130 @@ data C_Float
   deriving (Eq, Show)
 
 data C_Char
-  = Char_Choice ID C_Char C_Char
-  | Char_Fail
-  | Char_Guard Constraint C_Char
+  = Choice_C_Char C_Char C_Char
+  | Fail_C_Char
+  | Guard_C_Char Constraint C_Char
   | C_Char Char#
   deriving (Eq, Show)
 
-data C_List a
-  = List_Choice ID (C_List a) (C_List a)
-  | List_Fail
-  | List_Guard Constraint (C_List a)
-  | C_Nil
-  | C_Cons a (C_List a)
-
-data C_Success 
-  = Success_Choice ID C_Success C_Success
-  | Success_Fail
-  | Success_Guard Constraint C_Success
+data C_Success
+  = Choice_C_Success ID C_Success C_Success
+  | Fail_C_Success
+  | Guard_C_Success Constraint C_Success
   | C_Success
   deriving (Show,Eq)
 
--- TODO what about IO?
-data C_IO a 
-  = IO_Choice ID (C_IO a) (C_IO a)
-  | IO_Fail
-  | IO_Guard Constraint (C_IO a)
+data C_IO a
+  = Choice_C_IO ID (C_IO a) (C_IO a)
+  | Fail_C_IO
+  | Guard_C_IO Constraint (C_IO a)
   | C_IO (IO a)
   deriving (Show,Eq)
 
-c_seq :: a
-c_seq = undefined
+external_c_C_seq :: a
+external_c_C_seq = error "external_c_C_seq"
 
-c_ensureNotFree :: a
-c_ensureNotFree = undefined
+external_c_C_ensureNotFree :: a
+external_c_C_ensureNotFree = error "external_c_C_ensureNotFree"
 
-c_prim_error :: a
-c_prim_error = undefined
+external_c_C_prim_error :: a
+external_c_C_prim_error = error "external_c_C_prim_error"
 
-c_failed :: a
-c_failed = undefined
+external_c_C_failed :: a
+external_c_C_failed = error "external_c_C_failed"
 
-c_op_eq_eq :: a -> a -> C_Bool
-c_op_eq_eq = undefined
+external_c_OP_eq_eq :: a -> a -> C_Bool
+external_c_OP_eq_eq = error "external_c_OP_eq_eq"
 
-c_compare :: a -> a -> C_Ordering
-c_compare = undefined
+external_c_C_compare :: a -> a -> C_Ordering
+external_c_C_compare = error "external_c_C_compare"
 
-c_prim_ord :: C_Char -> C_Int
-c_prim_ord = undefined
+external_c_C_prim_ord :: C_Char -> C_Int
+external_c_C_prim_ord = error "external_c_C_prim_ord"
 
-c_prim_chr :: C_Int -> C_Char
-c_prim_chr = undefined
+external_c_C_prim_chr :: C_Int -> C_Char
+external_c_C_prim_chr = error "external_c_C_prim_chr"
 
-c_prim_Int_plus :: C_Int -> C_Int -> C_Int
-c_prim_Int_plus = undefined
+external_c_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
+external_c_C_prim_Int_plus = error "external_c_C_prim_Int_plus"
 
-c_prim_Int_minus :: C_Int -> C_Int -> C_Int
-c_prim_Int_minus = undefined
+external_c_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
+external_c_C_prim_Int_minus = error "external_c_C_prim_Int_minus"
 
-c_prim_Int_times :: C_Int -> C_Int -> C_Int
-c_prim_Int_times = undefined
+external_c_C_prim_Int_times :: C_Int -> C_Int -> C_Int
+external_c_C_prim_Int_times = error "external_c_C_prim_Int_times"
 
-c_prim_Int_div :: C_Int -> C_Int -> C_Int
-c_prim_Int_div = undefined
+external_c_C_prim_Int_div :: C_Int -> C_Int -> C_Int
+external_c_C_prim_Int_div = error "external_c_C_prim_Int_div"
 
-c_prim_Int_mod :: C_Int -> C_Int -> C_Int
-c_prim_Int_mod = undefined
+external_c_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
+external_c_C_prim_Int_mod = error "external_c_C_prim_Int_mod"
 
-c_prim_negateFloat :: C_Float -> C_Float
-c_prim_negateFloat = undefined
+external_c_C_prim_negateFloat :: C_Float -> C_Float
+external_c_C_prim_negateFloat = error "external_c_C_prim_negateFloat"
 
-c_op_eq_colon_eq :: a -> a -> C_Success
-c_op_eq_colon_eq = undefined
+external_c_OP_eq_colon_eq :: a -> a -> C_Success
+external_c_OP_eq_colon_eq = error "external_c_OP_eq_colon_eq"
 
-success :: C_Success
-success = C_Success
+external_c_C_success :: C_Success
+external_c_C_success = C_Success
 
-c_op_ampersand :: C_Success -> C_Success -> C_Success
-c_op_ampersand = undefined
+external_c_OP_ampersand :: C_Success -> C_Success -> C_Success
+external_c_OP_ampersand = error "external_c_OP_ampersand"
 
-c_op_gt_gt_eq :: C_IO a -> (Func a (C_IO b)) -> C_IO b
-c_op_gt_gt_eq = undefined
+external_c_OP_gt_gt_eq :: C_IO a -> (Func a (C_IO b)) -> C_IO b
+external_c_OP_gt_gt_eq = error "external_c_OP_gt_gt_eq"
 
-c_return :: a -> C_IO a
-c_return = undefined
+external_c_C_return :: a -> C_IO a
+external_c_C_return = error "external_c_C_return"
 
-c_prim_putChar :: C_Char -> C_IO C_Unit
-c_prim_putChar = undefined
+external_c_C_prim_putChar :: C_Char -> C_IO C_Unit
+external_c_C_prim_putChar = error "external_c_C_prim_putChar"
 
-c_getChar :: C_IO C_Char
-c_getChar = undefined
+external_c_C_getChar :: C_IO C_Char
+external_c_C_getChar = error "external_c_C_getChar"
 
-c_prim_readFile :: C_String -> C_IO C_String
-c_prim_readFile = undefined
+external_c_C_prim_readFile :: C_String -> C_IO C_String
+external_c_C_prim_readFile = error "external_c_C_prim_readFile"
 
-c_prim_writeFile :: C_String -> C_String -> C_IO ()
-c_prim_writeFile = undefined
+external_c_C_prim_writeFile :: C_String -> C_String -> C_IO ()
+external_c_C_prim_writeFile = error "external_c_C_prim_writeFile"
 
-c_prim_appendFile :: C_String -> C_String -> C_IO ()
-c_prim_appendFile = undefined
+external_c_C_prim_appendFile :: C_String -> C_String -> C_IO ()
+external_c_C_prim_appendFile = error "external_c_C_prim_appendFile"
 
-c_catch :: C_IO a -> Func C_IOError (C_IO a) -> C_IO a
-c_catch = undefined
+external_c_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> C_IO a
+external_c_C_catch = error "external_c_C_catch"
 
-c_catchFail :: C_IO a -> C_IO a -> C_IO a
-c_catchFail = undefined
+external_c_C_catchFail :: C_IO a -> C_IO a -> C_IO a
+external_c_C_catchFail = error "external_c_C_catchFail"
 
-c_prim_show    :: a -> C_String
-c_prim_show = undefined
+external_c_C_prim_show    :: a -> C_String
+external_c_C_prim_show = error "external_c_C_prim_show"
 
-c_op_qmark :: NonDet a => a -> a -> IDSupply -> a
-c_op_qmark = undefined
+external_c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+external_c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
-c_unknown :: a
-c_unknown = undefined
+external_c_C_unknown :: a
+external_c_C_unknown = error "external_c_C_unknown"
 
-c_try :: a
-c_try = undefined
+external_c_C_try :: a
+external_c_C_try = error "external_c_C_try"
 
-c_apply :: Func a b -> a -> b
-c_apply = undefined
+external_c_C_apply :: Func a b -> a -> b
+external_c_C_apply = error "external_c_C_apply"
 
-c_cond :: C_Success -> a -> a
-c_cond = undefined
+external_c_C_cond :: C_Success -> a -> a
+external_c_C_cond = error "external_c_C_cond"
 
-c_letrec :: a -> a -> C_Success
-c_letrec = undefined
+external_c_C_letrec :: a -> a -> C_Success
+external_c_C_letrec = error "external_c_C_letrec"
 
-c_op_eq_colon_lt_eq :: a -> a -> C_Success
-c_op_eq_colon_lt_eq = undefined
+external_c_OP_eq_colon_lt_eq :: a -> a -> C_Success
+external_c_OP_eq_colon_lt_eq = error "external_c_OP_eq_colon_lt_eq"
 
-c_op_eq_colon_lt_lt_eq :: a -> a -> C_Success
-c_op_eq_colon_lt_lt_eq = undefined
+external_c_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
+external_c_OP_eq_colon_lt_lt_eq = error "external_c_OP_eq_colon_lt_lt_eq"
 
-c_ifVar :: a -> b -> b -> b
-c_ifVat = undefined
+external_c_C_ifVar :: a -> b -> b -> b
+external_c_C_ifVar = error "external_c_C_ifVar"

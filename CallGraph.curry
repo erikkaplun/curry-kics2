@@ -18,6 +18,7 @@ import FlatCurryGoodies
 
 import GraphAlgorithms
 import GraphInductive
+import Names
 
 data NDClass
   = ND  -- non-deterministic function
@@ -80,8 +81,7 @@ funs2graph f = (QN (funcName f),nub called)
     casE _ e bs = e ++ concat bs
     branch _ e = e
 
-prelude = "Curry_Prelude"
-qmark = (prelude, "Op_qmark")
-apply = (prelude, "c_apply")
-meta  = "Cover"
-cover = (meta, "cover")
+prelude = "Prelude"
+qmark = renameQName (prelude, "?")
+apply = renameQName (prelude, "apply")
+cover = renameQName ("Cover", "cover")

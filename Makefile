@@ -12,6 +12,7 @@ idc: Compile.curry FlatCurry2Types.curry Names.curry AbstractHaskell.curry \
 	pakcs -s Compile && mv Compile.state idc
 
 .PHONY: clean
-clean: 
+clean:
 	cleancurry
 	rm -f idc
+	rm *.hi *.o
