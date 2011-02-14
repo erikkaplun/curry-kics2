@@ -268,7 +268,7 @@ transProg (Prog m is ts fs _) = doInDetMode False $
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
   -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
-  returnM $ Prog m (map renameModule is) [] (concat fss) []
+  returnM $ Prog m is [] (concat fss) []
 
 -- Registration of types in the map
 -- TODO the types are added to the map, but why?
