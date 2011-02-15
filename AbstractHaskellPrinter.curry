@@ -318,7 +318,6 @@ showPattern (PLit lit) = showLiteral lit
 showPattern (PComb (_,name) []) = name 
 showPattern (PComb (mod,name) (p:ps))
    | mod == prelude = showPreludeCons (PComb (mod,name) (p:ps))
-   | isAsPattern p = showAsPatternList p   
    | otherwise        = "(" ++ name ++ (prefixMap showPattern (p:ps) " ") ++ ")"
 showPattern (PAs (_,name) pat) = showIdentifier name ++ "@" ++ showPattern pat
 showPattern (PFuncComb qname pats) = showPattern (PComb qname pats)
@@ -358,14 +357,15 @@ isClosedStringPattern (PComb (m,":") [x,xs])
   = m==prelude && isCharPattern x && isClosedStringPattern xs
 isClosedStringPattern (PComb (m,"[]") []) = m==prelude
 isClosedStringPattern (PVar _) = False
+isClosedStringPattern (PAs _ _) = False
 
 isCharPattern p = case p of 
                     PLit (Charc _) -> True
-                    _                -> False
+                    _              -> False
 
 isAsPattern p = case p of
                   PAs _ _ -> True
-                  _        -> False
+                  _       -> False
 
 showAsPatternList (PAs (_,name) p) = 
      name++"@"++"(" ++ concat (intersperse ":" (showPatListElems p))++")"
