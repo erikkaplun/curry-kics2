@@ -110,6 +110,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
    generableInstance,
    showInstance,
    unifInstance,
+   nfInstance,
    eqInstance,
    ordInstance]
  where
@@ -209,7 +210,18 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
      (map unifConsRule cdecls ++
       [(basics "=.=",
         Rule [PVar (1,"_"),PVar (2,"_")]
-             [noGuard (constF (basics "Fail_C_Success"))] [])])
+             [noGuard (constF (basics "Fail_C_Success"))] [])] ++
+      -- TODO: bind rules for constructors
+      [(basics "bind",
+        Rule [PVar (1,"i"),
+              PComb choiceConsName
+                    [PAs (2,"j") (PComb (basics "FreeID") [PVar (3,"_")]),
+                     PVar (4,"_"),PVar (5,"_")]]
+             [noGuard (applyF (pre ":")
+                              [applyF (basics ":=:")
+                                 [Var (1,"i"),
+                                  applyF (basics "BindTo") [Var (2,"j")]],
+                               constF (pre "[]")])] [])])
 
   -- Generate Unifiable instance rule for a data constructor:
   unifConsRule (FC.Cons qn _ _ texps) =
@@ -226,6 +238,31 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                   (map (\i -> applyF (basics "=:=")
                                      [Var (i,'x':show i),Var (i,'y':show i)])
                        [1..carity])
+
+  -- Generate instance of NormalForm class:
+  nfInstance =
+   Instance (basics "NormalForm") ctype
+     (map (\tv -> Context (basics "NormalForm") [tv]) targs)
+     (map nfConsRule cdecls ++
+      [(basics "$!!",
+        Rule [PVar (1,"cont"),PVar (2,"x")]
+           [noGuard (applyF (basics "$$!!") [Var (1,"cont"),Var (2,"x")])] [])])
+
+  -- Generate NormalForm instance rule for a data constructor:
+  nfConsRule (FC.Cons qn _ _ texps) =
+    (basics "$!!",
+     Rule [PVar (1,"cont"),
+           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
+          [noGuard nfBody] [])
+   where
+     carity = length texps
+
+     nfBody =
+      foldr (\i exp -> applyF (basics "$!!")
+                        [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
+            (applyV (1,"cont")
+                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
+            [1..carity]
 
   -- Generate instance of Eq class:
   eqInstance =

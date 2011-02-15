@@ -13,17 +13,16 @@ narrow :: NonDet a => ID -> a -> a -> a
 narrow (FreeID i) = choiceCons (ID i)
 narrow i = choiceCons i
 
-data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID
- deriving Show
-
-data Constraint = ID :=: Choice
- deriving Show
-
+-- Class for data that support nondeterministic values
 class NonDet a where
   choiceCons :: ID -> a -> a -> a
   failCons   :: a
   guardCons  :: Constraint -> a -> a
   try        :: a -> Try a
+
+-- Type to encode the selection taken in a Choice structure
+data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID | BoundTo ID
+ deriving Show
 
 
 -- Class for data that support generators
@@ -31,11 +30,24 @@ class NonDet a => Generable a where
   generate :: ID -> a
 
 
--- Class for data that support unification
---class (NonDet a, NormalForm a) => Unifiable a where
-class NonDet a => Unifiable a where
-  (=.=) :: a -> a -> C_Success
-  --bind :: ID -> a -> Constraint
+---------------------------------------------------------------------
+-- Computations to normal form
+
+-- Class for data that supports normal form computations.
+-- The normal form computation is cmbined with a continuation to be
+-- applied to the normal form.
+class NonDet a => NormalForm a where
+  ($!!) :: NonDet b => (a -> b) -> a -> b
+  
+-- Auxiliary operation to apply a continuation to the normal form.
+($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b 
+cont $$!! x = nf (try x) 
+  where
+    nf (Val v)        = cont $!! v
+    nf Fail           = failCons
+    nf (Choice i x y) = choiceCons i (nf (try x)) (nf (try y))
+    nf (Free i x y)   = cont (choiceCons i x y)
+    nf (Guard c e)    = guardCons c (nf (try e))
 
 
 ---------------------------------------------------------------------
@@ -62,9 +74,20 @@ instance Show C_Success where
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
   showsPrec d Fail_C_Success = showChar '!'
 
+instance NormalForm C_Success where
+  cont $!! s@C_Success = cont s
+  cont $!! x = cont $$!! x
 
 ---------------------------------------------------------------------
 -- Unification
+
+-- Class for data that support unification
+class (NonDet a, NormalForm a) => Unifiable a where
+  (=.=) :: a -> a -> C_Success
+  bind :: ID -> a -> [Constraint]
+
+data Constraint = ID :=: Choice
+ deriving Show
 
 (=:=) :: Unifiable a => a -> a -> C_Success
 _ =:= _ = error "(=:=) undefined"
