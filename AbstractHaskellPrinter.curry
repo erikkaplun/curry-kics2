@@ -157,11 +157,20 @@ showTypeExpr _ (TVar (_,name)) = showTypeVar (showIdentifier name)
 showTypeExpr nested (FuncType domain range) =
    maybeShowBrackets nested (showTypeExpr (isFuncType domain) domain ++
                              " -> " ++ showTypeExpr False range)
-       
 showTypeExpr nested (TCons (mod,name) typelist)
    | mod==prelude && name == "untyped" = "-"
    | otherwise  = maybeShowBrackets (nested && not (null typelist))
                                     (showTypeCons mod name typelist)
+
+--- Shows an AbstractHaskell type signature of a given function name.
+showTypeSig :: String -> TypeSig -> String
+showTypeSig _ Untyped = ""
+showTypeSig fname (FType texp) =
+  (if isInfixOpName fname then "("++fname++")" else fname) ++ " :: " ++
+  showTypeExpr False texp ++ "\n"
+showTypeSig fname (CType ctxt texp) =
+  (if isInfixOpName fname then "("++fname++")" else fname) ++ " :: " ++
+  showContext ctxt ++ showTypeExpr False texp ++ "\n"
 
 -- Show a1,a2,a3 as a_1,a_2,a_3 (due to bug in PAKCS front-end):
 showTypeVar (c:cs) =
@@ -184,9 +193,7 @@ showFuncDecl = showFuncDeclOpt defaultOptions
 showFuncDeclOpt :: Options -> FuncDecl -> String
 showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
   funcComment cmt ++
-  (maybe "" 
-         (\texp -> bolName ++ " :: " ++ (showTypeExpr False texp)++"\n")
-         ftype) ++
+  (showTypeSig name ftype) ++
   (if funcIsInfixOp then rulePrints arity
       else name ++ (prefixInter (showRule opts) rules ("\n"++name)))
    where
@@ -201,9 +208,7 @@ showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
            else bolName++" "++fstArg++rest
 showFuncDeclOpt _ (Func cmt (_,name) _ _ ftype (External _)) =
   funcComment cmt ++
-  (maybe ""
-         (\texp -> bolName ++ " :: " ++ (showTypeExpr False texp) ++"\n")
-         ftype) ++
+  (showTypeSig name ftype) ++
   bolName ++ " external"
  where
   bolName = if isInfixOpName name then "("++name++")" else name

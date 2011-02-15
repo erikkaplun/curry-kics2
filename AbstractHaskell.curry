@@ -103,6 +103,12 @@ data TypeExpr = TVar TVarIName              -- type variable
               | TCons QName [TypeExpr]      -- type constructor application
                                             -- (TCons (module,name) arguments)
 
+--- Data type to represent the type signature of a defined function.
+--- The type can be missing, a simple type, or a type with a context.
+
+data TypeSig = Untyped
+             | FType TypeExpr
+             | CType [Context] TypeExpr
 
 --- Data type for operator declarations.
 --- An operator declaration "fix p n" in Curry corresponds to the
@@ -111,8 +117,8 @@ data TypeExpr = TVar TVarIName              -- type variable
 data OpDecl = Op QName Fixity Int
 
 data Fixity = InfixOp   -- non-associative infix operator
-             | InfixlOp  -- left-associative infix operator
-             | InfixrOp  -- right-associative infix operator
+            | InfixlOp  -- left-associative infix operator
+            | InfixrOp  -- right-associative infix operator
 
 
 --- Data types for representing object variables.
@@ -143,7 +149,7 @@ type VarIName = (Int,String)
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
 
-data FuncDecl = Func String QName Int Visibility (Maybe TypeExpr) Rules
+data FuncDecl = Func String QName Int Visibility TypeSig Rules
 
 
 --- A rule is either a list of formal parameters together with an expression

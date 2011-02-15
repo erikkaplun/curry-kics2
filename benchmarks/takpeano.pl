@@ -28,9 +28,9 @@ tak(X,Y,Z,A) :-
 two(s(s(o))).
 four(F) :- two(T), double(T,F).
 n8(N) :- four(F), double(F,N).
-n16(N) :- four(F), double(F,N).
+n16(N) :- n8(F), double(F,N).
 n24(N) :- n16(N16), n8(N8), add(N8,N16,N).
-n27(N) :- n16(N16), two(N2), add(s(N2),N24,N).
+n27(N) :- n24(N24), two(N2), add(s(N2),N24,N).
 
 goal0(R) :- n24(N24), n16(N16), n8(N8), tak(N24,N16,N8,R).
 goal1(R) :- n27(N27), n16(N16), n8(N8), tak(N27,N16,N8,R).

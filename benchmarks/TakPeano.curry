@@ -1,6 +1,6 @@
 data MyBool = MyTrue | MyFalse
 
-ifThenElse :: MyBool -> Nat -> Nat -> Nat
+ifThenElse :: MyBool -> a -> a -> a
 ifThenElse MyTrue  x _ = x
 ifThenElse MyFalse _ y = y
 

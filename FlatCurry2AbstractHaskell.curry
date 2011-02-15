@@ -4,6 +4,8 @@
 --- Restrictions and hacks:
 --- * Flexible case expressions are considered as rigid.
 --- * A function having type (TVar (-42)) is considered as untyped.
+--- * Type parameters occurring in type signatures of functions
+---   are decorated with type context "NonDet".
 ---
 --- @author Michael Hanus
 --- @version February 2011
@@ -14,6 +16,7 @@ module FlatCurry2AbstractHaskell where
 import qualified FlatCurry as FC
 import AbstractHaskell
 import AbstractHaskellGoodies
+import List(union)
 
 ------------------------------------------------------------------------
 
@@ -46,8 +49,12 @@ fcy2absFix FC.InfixrOp = InfixrOp
 fcy2absFDecl :: FC.FuncDecl -> FuncDecl
 fcy2absFDecl (FC.Func qf ar vis texp rule) =
   if texp == FC.TVar (-42)  -- see module comment
-  then Func "" qf ar (fcy2absVis vis) Nothing (fcy2absRule rule)
-  else Func "" qf ar (fcy2absVis vis) (Just (fcy2absTExp texp)) (fcy2absRule rule)
+  then Func "" qf ar (fcy2absVis vis) Untyped (fcy2absRule rule)
+  else Func "" qf ar (fcy2absVis vis) ftype (fcy2absRule rule)
+ where
+   tvars = tvarsOf texp
+   ftype = if null tvars then FType (fcy2absTExp texp)
+                         else CType (map (\tv -> Context ("Basics","NonDet") [fcy2absTVar tv]) tvars) (fcy2absTExp texp)
 
 fcy2absRule :: FC.Rule -> Rules
 fcy2absRule (FC.Rule numargs expr) =
@@ -98,5 +105,12 @@ fcy2absLit :: FC.Literal -> Literal
 fcy2absLit (FC.Intc   i) = Intc i
 fcy2absLit (FC.Floatc f) = Floatc f
 fcy2absLit (FC.Charc  c) = Charc c
+
+------------------------------------------------------------------------
+-- Auxiliaries:
+tvarsOf :: FC.TypeExpr -> [FC.TVarIndex]
+tvarsOf (FC.TVar tv) = [tv]
+tvarsOf (FC.FuncType t1 t2) = union (tvarsOf t1) (tvarsOf t2)
+tvarsOf (FC.TCons _ texps) = foldr union [] (map tvarsOf texps)
 
 ------------------------------------------------------------------------
