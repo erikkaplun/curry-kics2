@@ -85,16 +85,22 @@ dateType = baseType ("Time", "CalendarTime")
 
 --- A typed function declaration.
 tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-tfunc name arity v t rules = Func "" name arity v (Just t) (Rules rules)
+tfunc name arity v t rules = Func "" name arity v (FType t) (Rules rules)
+
+--- A typed function declaration with a type context.
+ctfunc :: QName -> Int -> Visibility -> [Context] -> TypeExpr -> [Rule]
+       -> FuncDecl
+ctfunc name arity v tc t rules = Func "" name arity v (CType tc t) (Rules rules)
 
 --- An untyped function declaration.
 ufunc :: QName -> Int -> Visibility -> [Rule] -> FuncDecl
-ufunc name arity v rules = Func "" name arity v Nothing (Rules rules)
+ufunc name arity v rules = Func "" name arity v Untyped (Rules rules)
 
 --- A typed function declaration with a documentation comment.
-cmtfunc :: String -> QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-cmtfunc comment name arity v t rules =
-  Func comment name arity v (Just t) (Rules rules)
+cmtfunc :: String -> QName -> Int -> Visibility -> [Context] -> TypeExpr
+        -> [Rule] -> FuncDecl
+cmtfunc comment name arity v tc t rules =
+  Func comment name arity v (CType tc t) (Rules rules)
 
 -- transform a string constant into AbstractHaskell term:
 string2ac :: String -> Expr
@@ -199,10 +205,17 @@ renameSymbolInLocal ren local = case local of
                                       (map (renameSymbolInLocal ren) locals)
   _ -> local -- LoalVar
 
+renameSymbolInTypeSig :: (QName -> QName) -> TypeSig -> TypeSig
+renameSymbolInTypeSig _ Untyped = Untyped
+renameSymbolInTypeSig ren (FType te) = FType (renameSymbolInTypeExpr ren te)
+renameSymbolInTypeSig ren (CType tc te) =
+  CType (map (\ (Context qn tvars) -> Context (ren qn) tvars) tc)
+        (renameSymbolInTypeExpr ren te)
+
 renameSymbolInFunc :: (QName -> QName) -> FuncDecl -> FuncDecl
 renameSymbolInFunc ren (Func cmt qf ar vis ctype rules) =
   Func cmt (ren qf) ar vis
-       (maybe Nothing (Just . renameSymbolInTypeExpr ren) ctype)
+       (renameSymbolInTypeSig ren ctype)
        (renameSymbolInRules ren rules)
 
 renameSymbolInRules :: (QName -> QName) -> Rules -> Rules

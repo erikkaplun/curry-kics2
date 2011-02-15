@@ -103,7 +103,7 @@ showsChoice d i@(FreeID _) _ _ = shows i
 showsChoice d r x1 x2 =
   showChar '(' .
   showsPrec d x1 .
-  showString " ?" . shows r .
+  showString " ?" . shows r . showChar ' ' .
   showsPrec d x2 .
   showChar ')'
 

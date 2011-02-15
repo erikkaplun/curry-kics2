@@ -1,5 +1,3 @@
 #!/bin/sh
-# run and show benchmark results
-BENCHFILE=benchmark.results # file for results
-./run > $BENCHFILE 2>&1
-cat $BENCHFILE | grep BENCH
+# run all benchmarks defined in Benchmarks.curry
+pakcs -r Benchmarks
