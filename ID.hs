@@ -15,3 +15,11 @@ rightID (ID i) = ID (2*i+1)
 
 freeID (ID i) = FreeID i
 
+data IDSupply = IDSupply ID IDSupply IDSupply
+
+thisID :: IDSupply -> ID
+thisID (IDSupply i _ _) = i
+
+leftSupply, rightSupply :: IDSupply -> IDSupply
+leftSupply  (IDSupply _ s _) = s
+rightSupply (IDSupply _ _ s) = s

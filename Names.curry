@@ -10,6 +10,7 @@ import Maybe (fromJust, isJust)
 
 import AbstractHaskell
 
+{-
 --- Rename qualified type constructor.
 renType (mn,fn) = (mkModName mn, mkTypeName fn)
 
@@ -18,25 +19,25 @@ renCons (mn,fn) = (mkModName mn, mkConName fn)
 
 -- Rename qualified defined function.
 renFunc (mn,fn) = (mkModName mn, mkFunName fn)
+-}
 
 -- Name of the module providing external function definitions.
 externalModule :: String
 externalModule = "External"
 
+{-
 -- rename defined functions
 mkFunName :: String -> String
-mkFunName = replaceNonIdChars "" "op_" 
--- TODO should we provide a prefix for functions as well? Otherwise there may
--- be nameclashes if one implements the infix operation ($$) and the function 
--- "op_dollar_dollar".
-
+mkFunName = replaceNonIdChars "c_" "op_"
+-}
 
 -- Generating Names for introduced constructors
-mkChoiceName    (q, n) = (q, "Choice" +|+ n)
-mkFailName  (q, n) = (q, "Fail" +|+ n)
-mkGuardName (q, n) = (q, "Guard" +|+ n)
+mkChoiceName (q, n) = (q, "Choice" +|+ n)
+mkFailName   (q, n) = (q, "Fail" +|+ n)
+mkGuardName  (q, n) = (q, "Guard" +|+ n)
 s +|+ t = s ++ "_" ++ t
 
+{-
 -- rename data constructors
 mkConName :: String -> String
 mkConName n
@@ -46,14 +47,17 @@ mkConName n
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 
--- unrename data constructors (must be improved)
+-- unrename data constructors
 umkConName :: String -> String
-umkConName n
-  | n == "OP_Nil"    = "[]"
-  | n == "OP_Cons"   = ":"
-  | n == "OP_Unit"   = "()"
-  | take 2 n == "C_" = drop 2 n
-  | otherwise        = n
+umkConName n | mkConName oldCon =:= n = oldCon where oldCon free
+{-
+ | n == "OP_Nil"    = "[]"
+ | n == "OP_Cons"   = ":"
+ | n == "OP_Unit"   = "()"
+ | take 2 n == "C_" = drop 2 n
+ | otherwise        = n
+-}
+-}
 
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
@@ -64,17 +68,31 @@ renameQName (q, n) = (renameModule q, genRename n)
 genRename :: String -> String
 genRename n
   | n == "[]"     = "OP_List"
+  | n == ":"      = "OP_Cons"
   | n == "()"     = "OP_Unit"
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "C_" "Op_" n
+  | otherwise     = replaceNonIdChars "C_" "OP_" n
+
+unGenRename :: String -> String
+unGenRename n
+  | n == "OP_Nil"    = "[]"
+  | n == "OP_Cons"   = ":"
+  | n == "OP_Unit"   = "()"
+  | take 2 n == "C_" = drop 2 n
+  | otherwise        = n
+
+externalFunc :: QName -> QName
+externalFunc (q, n) = (q, "external_" ++ n)
 
 -- rename type constructors
+{-
 mkTypeName :: String -> String
 mkTypeName n
   | n == "[]"     = "OP_List"
   | n == "()"     = "OP_Unit"
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
   | otherwise     = replaceNonIdChars "C_" "OP_" n
+-}
 
 detPrefix :: Bool -> String
 detPrefix b = if b then "d_" else "c_"
@@ -86,6 +104,7 @@ mkModName = ("Curry_" ++)
 renameFile :: String -> String
 renameFile = renameModule -- until hierarchical module names are supported
 
+{-
 mkExtModName :: String -> String
 mkExtModName = ("External" ++)
 
@@ -94,6 +113,7 @@ compareNameForType = (++ "_compare")
 
 mkExtFunName :: String -> String
 mkExtFunName = ("external_" ++) . mkFunName
+-}
 
 isInfixName :: String -> Bool
 isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")

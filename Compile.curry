@@ -16,8 +16,9 @@ import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 
 import CallGraph
 import LiftCase (liftCases)
-import Names (renameModule, renameFile, renameQName, detPrefix, mkChoiceName
-              ,mkGuardName)
+import Names
+  ( renameModule, renameFile, renameQName, detPrefix, mkChoiceName
+  , mkGuardName, externalFunc, externalModule )
 import Splits (mkSplits)
 import CompilerOpts
 import qualified AbstractHaskell as AH
@@ -32,6 +33,10 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
+
+  let (path,file) = splitDirectoryBaseName fn
+      bareName = stripSuffix file
+
   info opts $ "Compiling '" ++ fn ++ "'"
 
   info opts "Reading FlatCurry"
@@ -47,9 +52,9 @@ compile opts fn = do
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
   info opts "Transforming functions"
-  let (tProg,report) = transform opts renamed
+  let (tProg, report) = transform opts renamed
       ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs tProg
-  info opts report 
+  info opts report
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
   info opts "Transforming type declarations"
@@ -57,12 +62,24 @@ compile opts fn = do
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
   info opts "Combining to Abstract Haskell"
-  let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
+  -- TODO: remove hack for unboxed numbers
+  let ahs = (AH.Prog n ("ID":"Basics":"GHC.Prim":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
+  let extName = path ++ separatorChar:externalModule 
+                ++ "_" ++ bareName
+  info opts $ "Looking for External file: " ++ extName ++ ".hs"
+  mExternal <- lookupFileInPath extName [ ".hs"] ["."]
+  exts <- maybe (info opts "No External file found" >> return "")
+                (\ ext -> do
+                    info opts "External file found"
+                    readFile ext)
+                mExternal
 
+  -- TODO: remove hack for pragmas
+  let pragma = "{-# LANGUAGE MagicHash #-}\n"
   info opts $ "Generating Haskell module '" ++ destFile ++ "'"
-  writeFile destFile (showProg ahs)
+  writeFile destFile (pragma ++ (showProg ahs) ++ exts)
 
     where
     fcyName = fcyFile $ withBaseName (++ "Dump") fn
@@ -234,7 +251,7 @@ getNDClass qn = getState `bindM` \st ->
 -- ---------------------------------------------------------------------------
 
 transform :: Options -> Prog -> (Prog,String)
-transform opts prog = (tProg,(unlines $ reverse $ state -> report)) 
+transform opts prog = (tProg,(unlines $ reverse $ state -> report))
  where
   (state,tProg) = unM (transProg prog) initState
   initState = { searchMode := opts -> optSearchMode
@@ -244,7 +261,7 @@ transform opts prog = (tProg,(unlines $ reverse $ state -> report))
               }
 
 transProg :: Prog -> M Prog
-transProg (Prog m _ ts fs _) = doInDetMode False $
+transProg (Prog m is ts fs _) = doInDetMode False $
   --TODO: translation of types not longer necessary
   --      only needed for insertion to the type map
   -- translation of the types
@@ -252,13 +269,14 @@ transProg (Prog m _ ts fs _) = doInDetMode False $
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
   -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
-  returnM $ Prog m [prelude] [] (concat fss) []
+  returnM $ Prog m is [] (concat fss) []
 
--- Registration of types in the map ; TODO : why is this necessary
-registerData :: TypeDecl -> M [()]
-registerData (Type qn v vs cs) =
-  mapM addToMap cs -- TODO the types are added to the map, but why?
- where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
+-- Registration of types in the map
+-- TODO the types are added to the map, but why?
+registerData :: TypeDecl -> M ()
+registerData (Type qn _ _ cs) = mapM addToMap cs `bindM_` returnM ()
+  where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
+registerData (TypeSyn _ _ _ _) = returnM ()
 
 -- translation of a type expression
 transTypeExpr :: TypeExpr -> M TypeExpr
@@ -299,7 +317,7 @@ transPureFunc :: FuncDecl -> M FuncDecl
 transPureFunc (Func qn a v t r) =
   renameFun qn `bindM` \qn' ->
   transTypeExpr t `bindM` \t' ->
-  transRule False qn' r `bindM` \r' ->
+  transRule False (Func qn' a v t r) `bindM` \r' ->
   returnM (Func qn' a v t' r')
 
 -- translate into nondeterministic function
@@ -308,7 +326,7 @@ transNDFunc (Func qn a v t r) =
   getNDClass qn `bindM` \ndCl ->
   renameFun qn `bindM` \qn' ->
   check42 (transFuncType ndCl a) t `bindM` \t' ->
-  transRule True qn' r `bindM` \r' ->
+  transRule True (Func qn' a v t r) `bindM` \r' ->
   returnM (Func qn' (a+1) v t' r')
 
 -- renaming of functions respective to their determinism
@@ -350,12 +368,14 @@ transHOTypeExpr t = case t of
 -- translate a single rule of a function
 -- The first parameter determines whether an additional argument for an ID
 -- supply should be added.
-transRule :: Bool -> QName -> Rule -> M Rule
-transRule addArg qn (Rule vs e) =
+transRule :: Bool -> FuncDecl -> M Rule
+transRule addArg (Func qn _ _ _ (Rule vs e)) =
   updState (\st -> { cont := Just (addArg, qn, vs) | st })  `bindM_`
   transBody e `bindM` \e' ->
   returnM $ Rule (if addArg then vs ++ [suppVarIdx] else vs) e'
-transRule _ _ (External s) = returnM (External s) -- error "Compile.transRule with external rule"
+transRule addArg (Func qn a _ _ (External _)) =
+  returnM $ Rule vs (funcCall (externalFunc qn) (map Var vs))
+    where vs = (if addArg then (++ [suppVarIdx]) else id) [1 .. a]
 
 transBody :: Expr -> M Expr
 transBody exp = case exp of
@@ -371,7 +391,7 @@ transBody exp = case exp of
   _ ->
     getNextID `bindM` \i -> -- save current variable id
     transExpr exp `bindM` \(g, e') ->
-    getState `bindM_`  -- No effect ???
+    getState `bindM_`  -- TODO: No effect ???
     getNextID `bindM_` -- Just to increase the id ???
     let e'' = case g of
                 []  -> e'
@@ -450,7 +470,7 @@ transExpr (Let vses e) =
   transExpr e `bindM` \(ge,e') ->
   genIds (g ++ ge) (Let (zip vs es') e')
 -- non-determinism
-transExpr (Or e1 e2) = transExpr (Comb FuncCall (prelude,"?") [e1,e2])
+transExpr (Or e1 e2) = transExpr (qmark e1 e2)
 -- free variable
 transExpr (Free vs e) =
   transExpr e `bindM` \(g,e') ->
@@ -482,16 +502,16 @@ suppVarIdx = 3000
 -- ---------------------------------------------------------------------------
 
 int :: Integer -> Expr
-int i = consCall (prelude, "(C_Int " ++ show i ++ "#)") []
+int i = constant (prelude, "(C_Int " ++ show i ++ "#)")
 
 char :: Char -> Expr
-char c = consCall (prelude, "(C_Char " ++ show c ++ "#)") []
+char c = constant (prelude, "(C_Char " ++ show c ++ "#)")
 
 float :: Float -> Expr
-float f = consCall (prelude, "(C_Float " ++ show f ++ "#)") []
+float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
 
 prelude :: String
-prelude = "Prelude"
+prelude = renameModule "Prelude"
 
 funcType :: TypeExpr -> TypeExpr -> TypeExpr
 funcType t1 t2 = TCons (prelude, "Func") [t1,t2]
@@ -504,6 +524,9 @@ liftGuard   = funcCall (prelude,"guardCons")
 liftFail    = funcCall (prelude,"failCons") []
 splitSupply = funcCall (prelude,"splitSupply")
 initSupply  = funcCall (prelude,"initIDSupply") []
+qmark e1 e2 = Comb FuncCall (prelude, "OP_qmark") [e1, e2]
+
+constant qn = consCall qn []
 
 pcons n xs    = Pattern n xs
 tcons n = TCons ("", n)

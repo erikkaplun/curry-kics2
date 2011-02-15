@@ -111,3 +111,30 @@ showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 
 ---------------------------------------------------------------------
+-- Higher Order
+data Func a b = Func (a -> IDSupply -> b)
+              | Func_Choice ID (Func a b) (Func a b)
+              | Func_Fail
+              | Func_Guard Constraint (Func a b)
+
+instance NonDet (Func a b) where 
+  choiceCons = Func_Choice
+  failCons = Func_Fail
+  guardCons = Func_Guard
+  try (Func_Choice i x1 x2) = Choice i x1 x2
+  try (Func_Fail) = Fail
+  try v = Val v
+
+
+
+
+wrapD :: (a -> b) -> Func a b
+wrapD f = Func (\ x s -> f x)
+
+wrapN :: (a -> IDSupply -> b) -> Func a b
+wrapN = Func 
+
+
+
+
+---------------------------------------------------------------------
