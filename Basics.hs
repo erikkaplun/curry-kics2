@@ -34,14 +34,14 @@ class NonDet a => Generable a where
 -- Computations to normal form
 
 -- Class for data that supports normal form computations.
--- The normal form computation is cmbined with a continuation to be
+-- The normal form computation is combined with a continuation to be
 -- applied to the normal form.
 class NonDet a => NormalForm a where
   ($!!) :: NonDet b => (a -> b) -> a -> b
-  
+
 -- Auxiliary operation to apply a continuation to the normal form.
-($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b 
-cont $$!! x = nf (try x) 
+($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+cont $$!! x = nf (try x)
   where
     nf (Val v)        = cont $!! v
     nf Fail           = failCons
@@ -54,7 +54,7 @@ cont $$!! x = nf (try x)
 -- The implementation of the Success type must be added here since
 -- it is used in the class Unifiable.
 
-data C_Success = C_Success 
+data C_Success = C_Success
                | Choice_C_Success ID C_Success C_Success
                | Fail_C_Success
                | Guard_C_Success Constraint C_Success
@@ -100,12 +100,12 @@ _ & _ = error "(&) undefined"
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
 showsChoice d i@(FreeID _) _ _ = shows i
-showsChoice d r x1 x2 = 
-  showChar '(' . 
+showsChoice d r x1 x2 =
+  showChar '(' .
   showsPrec d x1 .
   showString " ?" . shows r .
   showsPrec d x2 .
-  showChar ')' 
+  showChar ')'
 
 showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
@@ -117,7 +117,7 @@ data Func a b = Func (a -> IDSupply -> b)
               | Func_Fail
               | Func_Guard Constraint (Func a b)
 
-instance NonDet (Func a b) where 
+instance NonDet (Func a b) where
   choiceCons = Func_Choice
   failCons = Func_Fail
   guardCons = Func_Guard
@@ -126,15 +126,22 @@ instance NonDet (Func a b) where
   try v = Val v
 
 
-
-
 wrapD :: (a -> b) -> Func a b
-wrapD f = Func (\ x s -> f x)
+wrapD f = Func (\ x _ -> f x)
 
 wrapN :: (a -> IDSupply -> b) -> Func a b
-wrapN = Func 
+wrapN = Func
 
+unwrap :: Func a b -> IDSupply -> a -> b
+unwrap (Func f) s x = f x s
 
+-- TODO: from Prelude
 
+c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
----------------------------------------------------------------------
+c_C_apply :: Func a b -> a -> IDSupply -> b
+c_C_apply (Func f) s x = f s x
+
+d_C_apply :: (a -> b) -> a -> b
+d_C_apply f x = f x

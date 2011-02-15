@@ -117,7 +117,7 @@ info opts msg = if opts -> optQuiet
 
 -- Dump an intermediate result to a file
 dumpLevel :: Dump -> Options -> String -> String -> IO ()
-dumpLevel level opts file src = if level `elem` opts -> dump
+dumpLevel level opts file src = if level `elem` opts -> optDump
   then info opts ("Dumping " ++ file) >> writeFile file src
   else return ()
 
@@ -261,17 +261,17 @@ getNDClass qn = getState `bindM` \st ->
 -- ---------------------------------------------------------------------------
 
 transform :: Options -> Prog -> (Prog,String)
-transform opts prog = (tProg,(unlines $ reverse $ state -> report))
+transform opts prog = (tProg,( unlines $ reverse $ state -> report))
  where
   (state,tProg) = unM (transProg prog) initState
   initState = { searchMode := opts -> optSearchMode
-              , detMode    := opts -> optHoDetMode
+--               , detMode    := opts -> optHoDetMode
               , ndResult   := analyseNd prog
               | defaultState
               }
 
 transProg :: Prog -> M Prog
-transProg (Prog m is ts fs _) = doInDetMode False $
+transProg (Prog m is ts fs _) = -- doInDetMode False $
   --TODO: translation of types not longer necessary
   --      only needed for insertion to the type map
   -- translation of the types
@@ -314,17 +314,17 @@ transFunc f@(Func qn _ _ _ _) =
       returnM [fd]
     DHO ->
       -- create deterministic as well as non-deterministic function
-      doInDetMode True  (transPureFunc f) `bindM` \fd ->
-      doInDetMode False (transNDFunc   f) `bindM` \fn ->
+      transPureFunc f `bindM` \ fd ->
+      transNDFunc   f `bindM` \ fn ->
       returnM [fd, fn]
     ND ->
       -- create non-deterministic function
-      doInDetMode True  (transNDFunc   f) `bindM` \fn ->
+      transNDFunc   f `bindM` \ fn ->
       returnM [fn]
 
 -- translate into deterministic function
 transPureFunc :: FuncDecl -> M FuncDecl
-transPureFunc (Func qn a v t r) =
+transPureFunc (Func qn a v t r) = doInDetMode True $
   renameFun qn `bindM` \qn' ->
   transTypeExpr t `bindM` \t' ->
   transRule False (Func qn' a v t r) `bindM` \r' ->
@@ -332,14 +332,14 @@ transPureFunc (Func qn a v t r) =
 
 -- translate into nondeterministic function
 transNDFunc :: FuncDecl -> M FuncDecl
-transNDFunc (Func qn a v t r) =
+transNDFunc (Func qn a v t r) = doInDetMode False $
   getNDClass qn `bindM` \ndCl ->
   renameFun qn `bindM` \qn' ->
   check42 (transFuncType ndCl a) t `bindM` \t' ->
   transRule True (Func qn' a v t r) `bindM` \r' ->
   returnM (Func qn' (a+1) v t' r')
 
--- renaming of functions respective to their determinism
+-- renaming of functions respective to their order and the determinism mode
 renameFun :: QName -> M QName
 renameFun qn@(q, n) =
   isDetMode `bindM` \dm ->
@@ -352,11 +352,13 @@ check42 f t = case t of
   _            -> f t
 
 transFuncType :: NDClass -> Int -> TypeExpr -> M TypeExpr
-transFuncType nd n t = case nd of
-  DFO -> transTypeExpr t
-  _    -> case n of
-      0     -> transHOTypeExpr t `bindM` \t' ->
-               returnM (FuncType supplyType t')
+transFuncType nd n t =
+  isDetMode `bindM` \ dm ->
+  if nd == DFO || nd == DHO && dm
+    then transTypeExpr t
+    else case n of
+      0 -> transHOTypeExpr t `bindM` \t' ->
+           returnM (FuncType supplyType t')
       _ -> if n < 0
              then error $ "transFunctype: " ++ show (nd,n,t)
              else case t of
@@ -370,7 +372,7 @@ transFuncType nd n t = case nd of
 transHOTypeExpr :: TypeExpr -> M TypeExpr
 transHOTypeExpr t = case t of
   (FuncType t1 t2) ->
-    transTypeExpr t1 `bindM` \t1' ->
+    transHOTypeExpr t1 `bindM` \t1' -> -- TODO: was transTypeExpr
     transHOTypeExpr t2 `bindM` \t2' ->
     returnM (funcType t1' t2')
   _ -> transTypeExpr t
