@@ -1,34 +1,168 @@
 -- Externals
 
+-----------------------------------------------------------------------
+-- Int
+
 data C_Int
-  = Int_Choice ID C_Int C_Int
-  | Int_Fail
-  | Int_Guard Constraint C_Int
-  | C_Int Int#
-  | C_Integer Integer
-  deriving (Eq, Show)
+     = Choice_C_Int ID C_Int C_Int
+     | Fail_C_Int
+     | Guard_C_Int Constraint C_Int
+     | C_Int Int#
+     | C_Integer Integer
+
+instance NonDet C_Int where
+  choiceCons = Choice_C_Int
+  failCons = Fail_C_Int
+  guardCons = Guard_C_Int
+  try (Choice_C_Int i x y) = tryChoice i x y
+  try Fail_C_Int = Fail
+  try (Guard_C_Int c e) = Guard c e
+  try x = Val x
+
+
+instance Generable C_Int where
+  generate i = error "No constructors for C_Int"
+
+
+instance Show C_Int where
+  showsPrec d (Choice_C_Int i x y) = showsChoice d i x y
+  showsPrec d (Guard_C_Int c e) = showsGuard d c e
+  showsPrec d Fail_C_Int = showChar '!'
+  showsPrec d (C_Int i) = show i
+  showsPrec d (C_Integer i) = show i
+
+
+instance Unifiable C_Int where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_C_Int j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+
+
+instance NormalForm C_Int where
+  ($!!) cont x = cont $$!! x
+
+
+instance Eq C_Int where
+  (==) _ _ = False
+
+
+instance Ord C_Int where
+  (<=) _ _ = False
+
+
+-----------------------------------------------------------------------
+-- Float
 
 data C_Float
-  = Float_Choice ID C_Float C_Float
-  | Float_Fail
-  | Float_Guard Constraint C_Float
-  | C_Float Float#
-  deriving (Eq, Show)
+     = Choice_C_Float ID C_Float C_Float
+     | Fail_C_Float
+     | Guard_C_Float Constraint C_Float
+     | C_Float Float#
+
+instance NonDet C_Float where
+  choiceCons = Choice_C_Float
+  failCons = Fail_C_Float
+  guardCons = Guard_C_Float
+  try (Choice_C_Float i x y) = tryChoice i x y
+  try Fail_C_Float = Fail
+  try (Guard_C_Float c e) = Guard c e
+  try x = Val x
+
+
+instance Generable C_Float where
+  generate i = error "No constructors for C_Float"
+
+
+instance Show C_Float where
+  showsPrec d (Choice_C_Float i x y) = showsChoice d i x y
+  showsPrec d (Guard_C_Float c e) = showsGuard d c e
+  showsPrec d Fail_C_Float = showChar '!'
+  showsPrec d (C_Float f) = show f
+  
+
+instance Unifiable C_Float where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_C_Float j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+
+
+instance NormalForm C_Float where
+  ($!!) cont x = cont $$!! x
+
+
+instance Eq C_Float where
+  (==) _ _ = False
+
+
+instance Ord C_Float where
+  (<=) _ _ = False
+
+
+-----------------------------------------------------------------------
+-- Char
 
 data C_Char
-  = Choice_C_Char C_Char C_Char
-  | Fail_C_Char
-  | Guard_C_Char Constraint C_Char
-  | C_Char Char#
-  deriving (Eq, Show)
+     = Choice_C_Char ID C_Char C_Char
+     | Fail_C_Char
+     | Guard_C_Char Constraint C_Char
+     | C_Char Char#
+
+instance NonDet C_Char where
+  choiceCons = Choice_C_Char
+  failCons = Fail_C_Char
+  guardCons = Guard_C_Char
+  try (Choice_C_Char i x y) = tryChoice i x y
+  try Fail_C_Char = Fail
+  try (Guard_C_Char c e) = Guard c e
+  try x = Val x
+
+
+instance Generable C_Char where
+  generate i = error "No constructors for C_Char"
+
+
+instance Show C_Char where
+  showsPrec d (Choice_C_Char i x y) = showsChoice d i x y
+  showsPrec d (Guard_C_Char c e) = showsGuard d c e
+  showsPrec d Fail_C_Char = showChar '!'
+  showsPrec d (C_Char c) = show c
+
+
+instance Unifiable C_Char where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_C_Char j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+
+
+instance NormalForm C_Char where
+  ($!!) cont x = cont $$!! x
+
+
+instance Eq C_Char where
+  (==) _ _ = False
+
+
+instance Ord C_Char where
+  (<=) _ _ = False
+
+
+-----------------------------------------------------------------------
+-- IO
 
 data C_IO a
-  = Choice_C_IO ID (C_IO a) (C_IO a)
-  | Fail_C_IO
-  | Guard_C_IO Constraint (C_IO a)
-  | C_IO (IO a)
-  deriving (Show,Eq)
+     = Choice_C_IO ID (C_IO a) (C_IO a)
+     | Fail_C_IO
+     | Guard_C_IO Constraint (C_IO a)
+     | C_IO (IO a)
 
+instance NonDet (C_IO a) where
+  choiceCons = Choice_C_IO
+  failCons = Fail_C_IO
+  guardCons = Guard_C_IO
+  try (Choice_C_IO i x y) = tryChoice i x y
+  try Fail_C_IO = Fail
+  try (Guard_C_IO c e) = Guard c e
+  try x = Val x
+
+
+-----------------------------------------------------------------------
 external_c_C_seq :: a
 external_c_C_seq = error "external_c_C_seq"
 
