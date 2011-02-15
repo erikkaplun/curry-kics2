@@ -33,10 +33,6 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
-
-  let (path,file) = splitDirectoryBaseName fn
-      bareName = stripSuffix file
-
   info opts $ "Compiling '" ++ fn ++ "'"
 
   info opts "Reading FlatCurry"
@@ -62,24 +58,13 @@ compile opts fn = do
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
   info opts "Combining to Abstract Haskell"
-  -- TODO: remove hack for unboxed numbers
-  let ahs = (AH.Prog n ("ID":"Basics":"GHC.Prim":imps) typeDecls ops funs)
+  let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
-  let extName = path ++ separatorChar:externalModule 
-                ++ "_" ++ bareName
-  info opts $ "Looking for External file: " ++ extName ++ ".hs"
-  mExternal <- lookupFileInPath extName [ ".hs"] ["."]
-  exts <- maybe (info opts "No External file found" >> return "")
-                (\ ext -> do
-                    info opts "External file found"
-                    readFile ext)
-                mExternal
-
-  -- TODO: remove hack for pragmas
-  let pragma = "{-# LANGUAGE MagicHash #-}\n"
+  info opts "Integrating external declarations"
+  integrated <- integrateExternals opts ahs fn
   info opts $ "Generating Haskell module '" ++ destFile ++ "'"
-  writeFile destFile (pragma ++ (showProg ahs) ++ exts)
+  writeFile destFile integrated
 
     where
     fcyName = fcyFile $ withBaseName (++ "Dump") fn
@@ -91,6 +76,38 @@ compile opts fn = do
     destFile = withExtension (const ".hs") $ withBaseName renameFile fn
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
+
+--
+integrateExternals :: Options -> AH.Prog -> String -> IO String
+integrateExternals opts (AH.Prog m imps td fd od) fn = do
+  exts <- lookupExternals opts fn
+  let (pragma, extimps, extdecls) = splitExternals exts
+      prog' = AH.Prog m (imps ++ extimps) td fd od
+  return $ unlines [pragma, showProg prog', unlines extdecls]
+
+-- lookup an external file for a module and return either the content or an
+-- empty String
+lookupExternals :: Options -> String -> IO String
+lookupExternals opts fn = do
+  info opts $ "Looking for external file: " ++ extName ++ ".hs"
+  mExternal <- lookupFileInPath extName [".hs"] ["."]
+  maybe (info opts "No External file found" >> return "")
+        (\ ext -> info opts "External file found" >> readFile ext)
+        mExternal
+    where extName = path ++ separatorChar : externalModule ++ '_' : bareName
+          (path,file) = splitDirectoryBaseName fn
+          bareName = stripSuffix file
+
+-- Split an external file into a pragma String, a list of imports and the rest
+-- TODO: This is a bloody hack
+splitExternals :: String -> (String, [String], [String])
+splitExternals content = se (lines content) ([], [], []) where
+  se [] res = res
+  se (ln:lns) res
+    | take 3 ln == "{-#"     = (ln, imps, decls)
+    | take 7 ln == "import " = (pragma, drop 7 ln : imps, decls)
+    | otherwise              = (pragma, imps, ln : decls)
+      where (pragma, imps, decls) = se lns res
 
 -- Show an info message unless the quiet flag is set
 info :: Options -> String -> IO ()
@@ -239,13 +256,6 @@ getNDClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
   $ (flip lookupFM) qn $ (st -> ndResult)
 
-{-
- `bindM` \nd ->
-  case nd of
-    DHO -> ifDetMode (returnM DFO) (returnM DHO)
-    _ -> returnM nd
--}
-
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
@@ -309,8 +319,8 @@ transFunc f@(Func qn _ _ _ _) =
       returnM [fd, fn]
     ND ->
       -- create non-deterministic function
-      doInDetMode True  (transNDFunc   f) `bindM` \res ->
-      returnM [res]
+      doInDetMode True  (transNDFunc   f) `bindM` \fn ->
+      returnM [fn]
 
 -- translate into deterministic function
 transPureFunc :: FuncDecl -> M FuncDecl
@@ -391,8 +401,6 @@ transBody exp = case exp of
   _ ->
     getNextID `bindM` \i -> -- save current variable id
     transExpr exp `bindM` \(g, e') ->
-    getState `bindM_`  -- TODO: No effect ???
-    getNextID `bindM_` -- Just to increase the id ???
     let e'' = case g of
                 []  -> e'
                 [v] -> Let [(v, Var suppVarIdx)] e' in
@@ -406,7 +414,7 @@ transBranch (Branch (Pattern p vs) e) =
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
               []  -> e'
-              [v] -> Let [(v, Var suppVarIdx)] e' in
+              [v] -> Let [(v, Var suppVarIdx)] e' in -- TODO seq fuer let! ?
   setNextID i `bindM_` -- and reset it
   returnM (Branch (Pattern p vs) e'')
 
@@ -445,13 +453,13 @@ transExpr e@(Comb (ConsPartCall _) _ _) = returnM ([], e) -- TODO give reasonabl
 -- functions
 transExpr (Comb FuncCall qn es) =
   getNDClass qn `bindM` \ndCl ->
+  isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  case ndCl of
-    -- TODO non-determinism?
-    DFO -> genIds g (Comb FuncCall qn' es')
-    _    -> takeNextID  `bindM` \i ->
-      genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
+  if ndCl == DFO || (ndCl == DHO && dm)
+    then genIds g (Comb FuncCall qn' es')
+    else takeNextID  `bindM` \i ->
+         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
 transExpr (Comb (FuncPartCall i) qn es) =
   getNDClass qn `bindM` \ndCl ->
   isDetMode `bindM` \dm ->

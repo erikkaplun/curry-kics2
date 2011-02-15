@@ -1,3 +1,7 @@
+{-# LANGUAGE MagicHash #-}
+
+import GHC.Prim
+
 -- Externals
 
 data C_Int
