@@ -4,7 +4,7 @@ data ID = ID Int
         | FreeID Int
 
 instance Show ID where 
-  show (ID _)       = "ID" 
+  show (ID i)       = show i --"ID" 
   show (FreeID _)   = "Free"
 
 initID = ID 1
