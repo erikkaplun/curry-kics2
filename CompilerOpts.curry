@@ -16,12 +16,12 @@ import System (exitWith, getArgs, getProgName)
 import GetOpt
 
 type Options =
-  { optQuiet      :: Bool       -- quiet mode
-  , optVersion    :: Bool       -- show version
-  , optHelp       :: Bool       -- show usage
-  , optSearchMode :: SearchMode -- search mode
---   , optHoDetMode  :: Bool       -- deterministic higher order functions
-  , optDump       :: [Dump]     -- dump intermediate results
+  { optQuiet           :: Bool       -- quiet mode
+  , optVersion         :: Bool       -- show version
+  , optHelp            :: Bool       -- show usage
+  , optSearchMode      :: SearchMode -- search mode
+  , optDetOptimization :: Bool       -- optimization for deterministic functions
+  , optDump            :: [Dump]     -- dump intermediate results
   }
 
 data SearchMode
@@ -41,12 +41,12 @@ data Dump
 
 defaultOptions :: Options
 defaultOptions =
-  { optQuiet      = False
-  , optVersion    = False
-  , optHelp       = False
-  , optSearchMode         = NoSearch
---   , optHoDetMode          = False
-  , optDump               = []
+  { optQuiet           = False
+  , optVersion         = False
+  , optHelp            = False
+  , optSearchMode      = NoSearch
+  , optDetOptimization = True
+  , optDump            = []
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -65,9 +65,9 @@ options =
         (opts -> optSearchMode) (lookup arg searchModes) | opts } )
       "SEARCHMODE")
       "set search mode, one of [DFS, BFS, IterDFS, PAR]"
---   , Option [] ["HO"]
---       (NoArg (\opts -> { optHoDetMode := True | opts } ))
---       "enable deterministic higher-order functions"
+  , Option [] ["no-opt"]
+      (NoArg (\opts -> { optDetOptimization := False | opts } ))
+      "disable optimization for deterministic functions"
   , Option [] ["dump-flat"]
       (NoArg (\opts -> { optDump := nub (DumpFlat : opts -> optDump) | opts }))
       "dump flat curry representation"
