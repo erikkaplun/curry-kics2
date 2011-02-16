@@ -3,3 +3,5 @@
 *.fcy
 C_*
 *.state
+*.ahs
+.curry

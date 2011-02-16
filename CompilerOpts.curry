@@ -16,12 +16,12 @@ import System (exitWith, getArgs, getProgName)
 import GetOpt
 
 type Options =
-  { optQuiet      :: Bool       -- quiet mode
-  , optVersion    :: Bool       -- show version
-  , optHelp       :: Bool       -- show usage
-  , optSearchMode :: SearchMode -- search mode
-  , optHoDetMode  :: Bool       -- deterministic higher order functions
-  , dump          :: [Dump]     -- dump intermediate results
+  { optQuiet           :: Bool       -- quiet mode
+  , optVersion         :: Bool       -- show version
+  , optHelp            :: Bool       -- show usage
+  , optSearchMode      :: SearchMode -- search mode
+  , optDetOptimization :: Bool       -- optimization for deterministic functions
+  , optDump            :: [Dump]     -- dump intermediate results
   }
 
 data SearchMode
@@ -41,12 +41,12 @@ data Dump
 
 defaultOptions :: Options
 defaultOptions =
-  { optQuiet      = False
-  , optVersion    = False
-  , optHelp       = False
-  , optSearchMode = NoSearch
-  , optHoDetMode  = False
-  , dump          = []
+  { optQuiet           = False
+  , optVersion         = False
+  , optHelp            = False
+  , optSearchMode      = NoSearch
+  , optDetOptimization = True
+  , optDump            = []
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -57,7 +57,7 @@ options =
   , Option ['v'] ["version"]
       (NoArg (\opts -> { optVersion := True | opts }))
       "show version number"
-  , Option ['h'] ["help"]
+  , Option "h?"  ["help"]
       (NoArg (\opts -> { optHelp    := True | opts }))
       "show usage information"
   , Option ['s'] ["search-mode"]
@@ -65,29 +65,29 @@ options =
         (opts -> optSearchMode) (lookup arg searchModes) | opts } )
       "SEARCHMODE")
       "set search mode, one of [DFS, BFS, IterDFS, PAR]"
-  , Option [] ["HO"]
-      (NoArg (\opts -> { optHoDetMode := True | opts } ))
-      "enable deterministic higher-order functions"
+  , Option [] ["no-opt"]
+      (NoArg (\opts -> { optDetOptimization := False | opts } ))
+      "disable optimization for deterministic functions"
   , Option [] ["dump-flat"]
-      (NoArg (\opts -> { dump := nub (DumpFlat : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpFlat : opts -> optDump) | opts }))
       "dump flat curry representation"
   , Option [] ["dump-lifted"]
-      (NoArg (\opts -> { dump := nub (DumpLifted : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpLifted : opts -> optDump) | opts }))
       "dump flat curry after case lifting"
   , Option [] ["dump-abstract-hs"]
-      (NoArg (\opts -> { dump := nub (DumpAbstractHs : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpAbstractHs : opts -> optDump) | opts }))
       "dump abstract Haskell representation"
   , Option [] ["dump-fun-decls"]
-      (NoArg (\opts -> { dump := nub (DumpFunDecls : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpFunDecls : opts -> optDump) | opts }))
       "dump transformed function declarations"
   , Option [] ["dump-type-decls"]
-      (NoArg (\opts -> { dump := nub (DumpTypeDecls : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpTypeDecls : opts -> optDump) | opts }))
       "dump transformed type declarations"
   , Option [] ["dump-renamed"]
-      (NoArg (\opts -> { dump := nub (DumpRenamed : opts -> dump) | opts }))
+      (NoArg (\opts -> { optDump := nub (DumpRenamed : opts -> optDump) | opts }))
       "dump renamed abstract Haskell representation"
   , Option [] ["dump-all"]
-      (NoArg (\opts -> { dump := [DumpFlat, DumpLifted, DumpRenamed, DumpAbstractHs] | opts }))
+      (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
       "dump all intermediate results"
   ]
 

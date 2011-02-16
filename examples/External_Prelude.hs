@@ -1,8 +1,14 @@
+{-# LANGUAGE MagicHash #-}
+
+import GHC.Prim
+import GHC.Types
+
+-- ---------------------------------------------------------------------------
 -- Externals
+-- ---------------------------------------------------------------------------
 
------------------------------------------------------------------------
 -- Int
-
+-- ---------------------------------------------------------------------------
 data C_Int
      = Choice_C_Int ID C_Int C_Int
      | Fail_C_Int
@@ -19,39 +25,31 @@ instance NonDet C_Int where
   try (Guard_C_Int c e) = Guard c e
   try x = Val x
 
-
 instance Generable C_Int where
   generate i = error "No constructors for C_Int"
-
 
 instance Show C_Int where
   showsPrec d (Choice_C_Int i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
   showsPrec d Fail_C_Int = showChar '!'
-  showsPrec d (C_Int i) = show i
-  showsPrec d (C_Integer i) = show i
-
+  showsPrec d (C_Int i) = shows (I# i)
+  showsPrec d (C_Integer i) = shows i
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Int j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-
 instance NormalForm C_Int where
   ($!!) cont x = cont $$!! x
-
 
 instance Eq C_Int where
   (==) _ _ = False
 
-
 instance Ord C_Int where
   (<=) _ _ = False
 
-
------------------------------------------------------------------------
 -- Float
-
+-- ---------------------------------------------------------------------------
 data C_Float
      = Choice_C_Float ID C_Float C_Float
      | Fail_C_Float
@@ -67,38 +65,30 @@ instance NonDet C_Float where
   try (Guard_C_Float c e) = Guard c e
   try x = Val x
 
-
 instance Generable C_Float where
   generate i = error "No constructors for C_Float"
-
 
 instance Show C_Float where
   showsPrec d (Choice_C_Float i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Float c e) = showsGuard d c e
   showsPrec d Fail_C_Float = showChar '!'
-  showsPrec d (C_Float f) = show f
-  
+  showsPrec d (C_Float f) = shows (F# f)
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Float j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-
 instance NormalForm C_Float where
   ($!!) cont x = cont $$!! x
-
 
 instance Eq C_Float where
   (==) _ _ = False
 
-
 instance Ord C_Float where
   (<=) _ _ = False
 
-
------------------------------------------------------------------------
 -- Char
-
+-- ---------------------------------------------------------------------------
 data C_Char
      = Choice_C_Char ID C_Char C_Char
      | Fail_C_Char
@@ -114,38 +104,30 @@ instance NonDet C_Char where
   try (Guard_C_Char c e) = Guard c e
   try x = Val x
 
-
 instance Generable C_Char where
   generate i = error "No constructors for C_Char"
-
 
 instance Show C_Char where
   showsPrec d (Choice_C_Char i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
-  showsPrec d (C_Char c) = show c
-
+  showsPrec d (C_Char c) = showChar (C# c)
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Char j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-
 instance NormalForm C_Char where
   ($!!) cont x = cont $$!! x
-
 
 instance Eq C_Char where
   (==) _ _ = False
 
-
 instance Ord C_Char where
   (<=) _ _ = False
 
-
------------------------------------------------------------------------
 -- IO
-
+-- ---------------------------------------------------------------------------
 data C_IO a
      = Choice_C_IO ID (C_IO a) (C_IO a)
      | Fail_C_IO
@@ -161,8 +143,8 @@ instance NonDet (C_IO a) where
   try (Guard_C_IO c e) = Guard c e
   try x = Val x
 
-
------------------------------------------------------------------------
+-- Primitive operations
+-- ---------------------------------------------------------------------------
 external_c_C_seq :: a
 external_c_C_seq = error "external_c_C_seq"
 
@@ -188,7 +170,7 @@ external_c_C_prim_chr :: C_Int -> C_Char
 external_c_C_prim_chr = error "external_c_C_prim_chr"
 
 external_c_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_plus = error "external_c_C_prim_Int_plus"
+external_c_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (x +# y)
 
 external_c_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
 external_c_C_prim_Int_minus = error "external_c_C_prim_Int_minus"
@@ -214,7 +196,8 @@ external_c_C_success = C_Success
 external_c_OP_ampersand :: C_Success -> C_Success -> C_Success
 external_c_OP_ampersand = error "external_c_OP_ampersand"
 
-external_c_OP_gt_gt_eq :: C_IO a -> (Func a (C_IO b)) -> C_IO b
+-- TODO: Func or (->) ?
+external_c_OP_gt_gt_eq :: C_IO a -> (a -> C_IO b) -> C_IO b
 external_c_OP_gt_gt_eq = error "external_c_OP_gt_gt_eq"
 
 external_c_C_return :: a -> C_IO a
@@ -232,13 +215,14 @@ external_c_C_prim_readFile = error "external_c_C_prim_readFile"
 external_c_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
 external_c_C_prim_readFileContents = error "external_c_C_prim_readFileContents"
 
-external_c_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO ()
+external_c_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
 external_c_C_prim_writeFile = error "external_c_C_prim_writeFile"
 
-external_c_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO ()
+external_c_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
 external_c_C_prim_appendFile = error "external_c_C_prim_appendFile"
 
-external_c_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> C_IO a
+-- TODO: Func or (->) ?
+external_c_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
 external_c_C_catch = error "external_c_C_catch"
 
 external_c_C_catchFail :: C_IO a -> C_IO a -> C_IO a
@@ -256,7 +240,7 @@ external_c_C_unknown = error "external_c_C_unknown"
 external_c_C_try :: a
 external_c_C_try = error "external_c_C_try"
 
-external_c_C_apply :: Func a b -> a -> b
+external_c_C_apply :: Func a b -> a -> IDSupply -> b
 external_c_C_apply (Func f) s x = f s x
 
 external_d_C_apply :: (a -> b) -> a -> b
