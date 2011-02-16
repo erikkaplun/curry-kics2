@@ -1,3 +1,10 @@
+{- ---------------------------------------------------------------------------
+BUG
+Status: Open
+Description: Higher-order-functions inside other data structures are
+  not converted to Funcs in the type signature of the non-deterministic
+  variant.
+--------------------------------------------------------------------------- -}
 module Bug2 where
 
 data Wrap a = Wrap a

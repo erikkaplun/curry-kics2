@@ -1,3 +1,9 @@
+{- ---------------------------------------------------------------------------
+BUG
+Status: Solved
+Description: calls to deterministic functions inside nondeterministic
+  functions are not wrapped by wrapD
+--------------------------------------------------------------------------- -}
 module Bug1 where
 
 id x = x
