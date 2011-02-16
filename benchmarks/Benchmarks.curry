@@ -2,6 +2,7 @@ import List(isPrefixOf,intersperse)
 import IO
 import IOExts
 import System
+import Time
 
 -- Execute shell command and return time of its execution:
 benchmarkCommand cmd = do
@@ -119,6 +120,7 @@ allBenchmarks = reverseBench++reversePrimListBench++takBench++takPeanoBench
 -- Run all benchmarks and show results
 run num benchmarks = do
   results <- mapIO (\ (n,p,b,c) -> runBenchmark num n p b c) benchmarks
-  putStrLn (unlines results)
+  ltime <- getLocalTime
+  putStrLn (unlines (("Benchmarks at "++calendarTimeToString ltime) : results))
 
 main = run 3 allBenchmarks
