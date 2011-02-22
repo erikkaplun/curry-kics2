@@ -48,9 +48,10 @@ analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
 find :: a -> [a] -> Int
 find x xs = fromJust (findIndex (x==) xs)
 
+-- create a call graph from a program
 callGraph :: Prog -> ([QName],Graph QN ())
 callGraph p = let calls = map funs2graph (progFuncs p)
-                  funs  = nub (QN qmark:QN apply:map fst calls ++ concatMap snd calls)
+                  funs  = nub (QN qmark : QN apply : map fst calls ++ concatMap snd calls)
                in (map (\ (QN x) -> x ) funs,
                    mkGraph (zip [0..] funs)
                            (concatMap (toEdges funs) calls))
@@ -59,8 +60,9 @@ toEdges :: [QN] -> (QN,[QN]) -> [(Int,Int,())]
 toEdges funs (f,fs) = map (\ f' -> (i,find f' funs,())) fs
   where i = find f funs
 
-funs2graph :: FuncDecl -> (QN,[QN])
-funs2graph f = (QN (funcName f),nub called)
+-- Create a tuple of the funtion name and a lisf of the called functions
+funs2graph :: FuncDecl -> (QN, [QN])
+funs2graph f = (QN (funcName f), nub called)
   where
     called = if isRuleExternal rule
       then []
