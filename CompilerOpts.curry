@@ -5,7 +5,7 @@
 --- @version February 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
-  ( compilerOpts, Options (..), SearchMode (..), Dump (..)
+  ( Options (..), SearchMode (..), Dump (..), defaultOptions, compilerOpts
   ) where
 
 import IO (hPutStrLn, stderr)
@@ -22,6 +22,7 @@ type Options =
   , optSearchMode      :: SearchMode -- search mode
   , optDetOptimization :: Bool       -- optimization for deterministic functions
   , optDump            :: [Dump]     -- dump intermediate results
+  , optXNoImplicitPrelude :: Bool
   }
 
 data SearchMode
@@ -47,6 +48,7 @@ defaultOptions =
   , optSearchMode      = NoSearch
   , optDetOptimization = True
   , optDump            = []
+  , optXNoImplicitPrelude = False
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -89,6 +91,9 @@ options =
   , Option [] ["dump-all"]
       (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
       "dump all intermediate results"
+  , Option [] ["x-no-implicit-prelude"]
+      (NoArg (\opts -> { optXNoImplicitPrelude := True | opts }))
+      "do not implicitly import Prelude"
   ]
 
 searchModes :: [(String, SearchMode)]

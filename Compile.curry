@@ -33,14 +33,15 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
-  info opts $ "Compiling '" ++ fn ++ "'"
+  info opts $ "Compiling " ++ fn
 
   info opts "Reading FlatCurry"
   fcy <- readFlatCurry (stripSuffix fn)
-  dumpLevel DumpFlat opts fcyName (show fcy)
+  let fcy' = filterPrelude opts fcy
+  dumpLevel DumpFlat opts fcyName (show fcy')
 
   info opts "Lifting case expressions"
-  let pLifted = liftCases True fcy
+  let pLifted = liftCases True fcy'
   dumpLevel DumpLifted opts liftedName (show pLifted)
 
   info opts "Renaming symbols"
@@ -64,7 +65,7 @@ compile opts fn = do
   info opts "Integrating external declarations"
   integrated <- integrateExternals opts ahs fn
 
-  info opts $ "Generating Haskell module '" ++ destFile ++ "'"
+  info opts $ "Generating Haskell module " ++ destFile
   writeFile destFile integrated
 
     where
@@ -78,6 +79,12 @@ compile opts fn = do
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
     hsFile  f = withExtension (const ".hs")  f
+
+filterPrelude :: Options -> Prog -> Prog
+filterPrelude opts p@(Prog m imps td fd od) =
+  if (opts -> optXNoImplicitPrelude)
+    then Prog m (filter (/= "Prelude") imps) td fd od
+    else p
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
@@ -159,22 +166,22 @@ mapM f (m:ms) = f m       `bindM` \m' ->
 type TypeMap = FM QName QName
 
 type State =
-  { typeMap    :: TypeMap
-  , ndResult   :: NDResult
-  , nextID     :: VarIndex    -- index for fresh variable
-  , detMode    :: Bool        -- determinism mode
-  , searchMode :: SearchMode
-  , report     :: [String]
+  { typeMap     :: TypeMap
+  , ndResult    :: NDResult
+  , nextID      :: VarIndex    -- index for fresh variable
+  , detMode     :: Bool        -- determinism mode
+  , report      :: [String]
+  , compOptions :: Options     -- compiler options
   }
 
 defaultState :: State
 defaultState =
-  { typeMap    = (listToFM (<) primTypes)
-  , ndResult   = (emptyFM (<))
-  , nextID     = idVar
-  , detMode    = False
-  , searchMode = NoSearch
-  , report     = []
+  { typeMap     = (listToFM (<) primTypes)
+  , ndResult    = (emptyFM (<))
+  , nextID      = idVar
+  , detMode     = False
+  , report      = []
+  , compOptions = defaultOptions
   }
 
 type M a = Mo State a
@@ -249,6 +256,13 @@ doInDetMode dm action =
 addToReport :: String -> M ()
 addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
 
+-- Compiler options
+getCompOptions :: M Options
+getCompOptions = getState `bindM` \ st -> returnM (st -> compOptions)
+
+getCompOption :: (Options -> a) -> M a
+getCompOption select = getCompOptions `bindM` (returnM . select)
+
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
@@ -256,18 +270,18 @@ addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
 transform :: Options -> Prog -> (Prog, String)
 transform opts prog = (tProg, unlines $ reverse $ state -> report)
  where
-  (state, tProg) = unM (transProg (opts -> optDetOptimization) prog) initState
-  initState = { searchMode := opts -> optSearchMode
-              , ndResult   := analyseNd prog
+  (state, tProg) = unM (transProg prog) initState
+  initState = { ndResult    := analyseNd prog
+              , compOptions := opts
               | defaultState
               }
 
-transProg :: Bool -> Prog -> M Prog
-transProg optimize (Prog m is ts fs _) = -- doInDetMode False $
+transProg :: Prog -> M Prog
+transProg (Prog m is ts fs _) = -- doInDetMode False $
   -- register constructors
   mapM registerCons ts `bindM_`
   -- translation of the functions
-  mapM (transFunc optimize) fs `bindM` \fss ->
+  mapM transFunc fs `bindM` \fss ->
   -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
   returnM $ Prog m is [] (concat fss) []
 
@@ -285,25 +299,29 @@ registerCons (TypeSyn _ _ _ _) = returnM ()
 -- Translation of Curry functions
 -- ---------------------------------------------------------------------------
 
-transFunc :: Bool -> FuncDecl -> M [FuncDecl]
-transFunc False f = transNDFunc f `bindM` \ fn -> returnM [fn]
-transFunc True f@(Func qn _ _ _ _) =
-  getNDClass qn `bindM` \ndCl ->
-  addToReport (snd qn ++ " is " ++ show ndCl) `bindM_`
-  case ndCl of
-    DFO ->
-      -- create deterministic function
-      transPureFunc f `bindM` \ fd ->
-      returnM [fd]
-    DHO ->
-      -- create deterministic as well as non-deterministic function
-      transPureFunc f `bindM` \ fd ->
-      transNDFunc   f `bindM` \ fn ->
-      returnM [fd, fn]
-    ND ->
-      -- create non-deterministic function
-      transNDFunc   f `bindM` \ fn ->
-      returnM [fn]
+transFunc :: FuncDecl -> M [FuncDecl]
+transFunc f@(Func qn _ _ _ _) =
+  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \ opt ->
+  case opt of
+    -- translate all functions as non-deterministic by default
+    False -> transNDFunc f `bindM` \ fn -> returnM [fn]
+    True  ->
+      getNDClass qn `bindM` \ndCl ->
+      addToReport (snd qn ++ " is " ++ show ndCl) `bindM_`
+      case ndCl of
+        DFO ->
+          -- create deterministic function
+          transPureFunc f `bindM` \ fd ->
+          returnM [fd]
+        DHO ->
+          -- create deterministic as well as non-deterministic function
+          transPureFunc f `bindM` \ fd ->
+          transNDFunc   f `bindM` \ fn ->
+          returnM [fd, fn]
+        ND ->
+          -- create non-deterministic function
+          transNDFunc   f `bindM` \ fn ->
+          returnM [fn]
 
 -- translate into deterministic function
 transPureFunc :: FuncDecl -> M FuncDecl
@@ -349,6 +367,7 @@ transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1) (transHOTypeExp
 transHOTypeExpr (TCons qn ts)    = TCons qn $ map transHOTypeExpr ts
 
 -- translate a single rule of a function
+-- TODO: Correct handling of external functions
 transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
@@ -371,12 +390,12 @@ transBody qn vs exp = case exp of
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
     returnM (Case ct e' (bs' ++ ns))
-  _ -> transExprToLet exp
+  _ -> transCompleteExpr exp
 
 -- translate case branch
 transBranch :: BranchExpr -> M BranchExpr
 transBranch (Branch (Pattern p vs) e) =
-  transExprToLet e `bindM` \e' ->
+  transCompleteExpr e `bindM` \e' ->
   returnM (Branch (Pattern p vs) e')
 
 -- create new case branches for added non-deterministic constructors
@@ -403,17 +422,20 @@ newBranches qn' vs i pConsName =
              liftFail
     ] -- TODO Magic numbers?
 
-transExprToLet :: Expr -> M Expr
-transExprToLet e =
+-- Complete translation of an expression where all newly introduced supply
+-- variables are already bound by nested let expressions
+transCompleteExpr :: Expr -> M Expr
+transCompleteExpr e =
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
               []  -> e'
               [v] ->  lazyLet [(v, Var suppVarIdx)] e' in
-  setNextID i `bindM_` -- and reset it
+  setNextID i `bindM_` -- and reset it variable id
   returnM e''
 
--- transform an expression into a new expression and a list of new variables
+-- transform an expression into a list of new supply variables to be bound
+-- and the new expression
 transExpr :: Expr -> M ([VarIndex], Expr)
 -- variables
 transExpr e@(Var _)        = returnM ([], e)
@@ -429,23 +451,27 @@ transExpr (Comb ConsCall qn es) =
   genIds g (Comb ConsCall qn es')
 transExpr e@(Comb (ConsPartCall _) _ _) = returnM ([], e) -- TODO give reasonable implementation
 
--- functions
+-- fully applied functions
 transExpr (Comb FuncCall qn es) =
+  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  if ndCl /= ND && dm -- was: ndCl == DFO || (ndCl == DHO && dm)
+  if opt && (ndCl == DFO || (ndCl == DHO && dm))
     then genIds g (Comb FuncCall qn' es')
     else takeNextID  `bindM` \i ->
          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
+
+-- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
+  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
-  mapM transExpr es `bindM` unzipArgs  `bindM` \(g,es') ->
+  mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
   case ndCl of
-    _ -> genIds g (wrap dm ndCl i (Comb (FuncPartCall i) qn' es'))
+    _ -> genIds g (wrap dm opt ndCl i (Comb (FuncPartCall i) qn' es'))
 
     -- TODO: we do not care about higher order calls to nd functions right now
     -- _    -> takeNextID `bindM` \i ->
@@ -454,7 +480,7 @@ transExpr (Comb (FuncPartCall i) qn es) =
 -- let expressions
 transExpr (Let vses e) =
   let (vs,es) = unzip vses in
-  mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
+  mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   transExpr e `bindM` \(ge, e') ->
   genIds (g ++ ge) (Let (zip vs es') e')
 
@@ -471,11 +497,18 @@ transExpr (Free vs e) =
 transExpr e@(Case _ _ _) = returnM ([], e) -- TODO give reasonable implementation
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
-genIds ns e =
+genIds [] expr = returnM ([], expr)
+genIds ns@(_:_) expr =
   -- get next free variable id
   getNextID `bindM` \i ->
   -- create splitting of supply variables
-  let (v', vs) = mkSplits i ns in
+  let (vroot, v', vs) = mkSplits i ns in
+  setNextID v' `bindM_`
+  returnM ([vroot], foldr addSplit expr vs)
+  where
+    addSplit (v, v1, v2) e =
+      lazyLet [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+{-
   case vs of
     -- no splitting necessary
     [] -> returnM (ns, e)
@@ -483,6 +516,7 @@ genIds ns e =
     _  -> setNextID (v'+1) `bindM_` returnM ([v'], foldr addSplit e vs)
  where addSplit (v, v1, v2) e' =
         lazyLet [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e'
+  -}
 
 -- TODO magic numbers
 idVar      = 2000
@@ -496,17 +530,17 @@ freshVars used = filter (`elem` used) [0 .. ]
 unzipArgs :: [([VarIndex], e)] -> M ([VarIndex], [e])
 unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 
--- Wrap a function with to a Func type
-wrap :: Bool -> NDClass -> Int -> Expr -> Expr
-wrap True  _  _ e = e
-wrap False nd a e = wrap'' (fun 1 (wrapName nd) []) e a
+-- Wrap a function with a Func type
+wrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
+wrap True  _   _  _ e = e
+wrap False opt nd a e = wrap'' (fun 1 (wrapName nd opt) []) e a
 
 wrap'' :: Expr -> Expr -> Int -> Expr
 wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
 
-wrapName :: NDClass -> QName
-wrapName ndMode = case ndMode of
---  DFO -> ("", "wrapD")
+wrapName :: NDClass -> Bool -> QName
+wrapName ndMode opt = case ndMode of
+  DFO -> if opt then ("", "wrapD") else ("", "wrapN")
   _   -> ("", "wrapN")
 
 point :: [Expr] -> Expr
@@ -514,7 +548,7 @@ point = fun 2 ("", ".")
 
 apply :: Expr -> Expr -> Expr
 apply (Comb (FuncPartCall i) qn xs) e =
-  Comb (if i==1 then FuncCall else FuncPartCall (i-1)) qn (xs++[e])
+  Comb (if i == 1 then FuncCall else FuncPartCall (i - 1)) qn (xs ++ [e])
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
@@ -603,7 +637,8 @@ wrap' nd n e = case n of
 
 -- list of known primitive types
 primTypes :: [(QName, QName)]
-primTypes = map (\ (x, y) -> (renameQName (prelude, x), renameQName (prelude, y))) $
+primTypes = map (\ (x, y) -> ( renameQName ("Prelude", x)
+                             , renameQName ("Prelude", y))) $
   [ ("True", "Bool"), ("False", "Bool")
   , ("[]", "List")  , (":", "List")
   ] ++ map (\n -> (tupleType n, 'T':show n)) [2 .. maxTupleArity]
