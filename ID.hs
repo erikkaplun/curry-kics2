@@ -1,25 +1,27 @@
 module ID where
 
-data ID = ID Int
-        | FreeID Int
+data ID
+  = ID Integer
+  | FreeID Integer
+    deriving (Eq, Ord)
 
-instance Show ID where 
-  show (ID i)       = show i --"ID" 
+instance Show ID where
+  show (ID i)       = show i --"ID"
   show (FreeID _)   = "Free"
 
-initID = ID 1
+newtype IDSupply = IDSupply Integer
 
-leftID (ID i) = ID (2*i)
+initSupply :: IO IDSupply
+initSupply = return (IDSupply 1)
 
-rightID (ID i) = ID (2*i+1)
+leftSupply :: IDSupply -> IDSupply
+leftSupply (IDSupply i) = IDSupply (2 * i)
 
-freeID (ID i) = FreeID i
-
-data IDSupply = IDSupply ID IDSupply IDSupply
+rightSupply :: IDSupply -> IDSupply
+rightSupply (IDSupply i) = IDSupply (2 * i + 1)
 
 thisID :: IDSupply -> ID
-thisID (IDSupply i _ _) = i
+thisID (IDSupply i) = ID i
 
-leftSupply, rightSupply :: IDSupply -> IDSupply
-leftSupply  (IDSupply _ s _) = s
-rightSupply (IDSupply _ _ s) = s
+freeID :: IDSupply -> ID
+freeID (IDSupply i) = FreeID i
