@@ -22,3 +22,12 @@
    [abstract haskell]
 #. Ausgabe
    [Haskell]
+
+# Umbenennungsschema
+
+Modul: MyModule
+wird zu: Curry_MyModule
+
+Datentyp: data Bool = True | False
+wird zu:  data C_Bool = C_True | C_False | Choice_Bool ... | Guard_Bool ... | Fail_Bool ...
+

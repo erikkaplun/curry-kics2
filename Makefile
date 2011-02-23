@@ -17,3 +17,4 @@ clean:
 	cleancurry
 	rm -f idc
 	rm -f *.hi *.o
+	rm -f ./examples/Curry_*.hs
