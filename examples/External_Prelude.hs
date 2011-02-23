@@ -10,11 +10,11 @@ import GHC.Types
 -- Int
 -- ---------------------------------------------------------------------------
 data C_Int
-     = Choice_C_Int ID C_Int C_Int
-     | Fail_C_Int
-     | Guard_C_Int Constraint C_Int
-     | C_Int Int#
-     | C_Integer Integer
+  = Choice_C_Int ID C_Int C_Int
+  | Fail_C_Int
+  | Guard_C_Int Constraint C_Int
+  | C_Int Int#
+  | C_Integer Integer
 
 instance NonDet C_Int where
   choiceCons = Choice_C_Int

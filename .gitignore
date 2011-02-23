@@ -6,3 +6,4 @@ C_*
 *.ahs
 .curry
 examples/comptest
+idc

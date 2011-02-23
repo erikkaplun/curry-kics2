@@ -30,7 +30,7 @@ idcCall True prog  = unwords [idc, prog]
 idcCall False prog = unwords [idc, "--no-opt", prog]
 
 idc :: String
-idc = "../idc -q -x"
+idc = "../idc -q"
 
 ghcCall :: String -> String
 ghcCall prog = "ghc -i.. --make " ++ hsFile prog
