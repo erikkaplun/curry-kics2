@@ -277,12 +277,11 @@ transform opts prog = (tProg, unlines $ reverse $ state -> report)
               }
 
 transProg :: Prog -> M Prog
-transProg (Prog m is ts fs _) = -- doInDetMode False $
+transProg (Prog m is ts fs _) =
   -- register constructors
   mapM registerCons ts `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
-  -- ( filter ((`notElem` ["main_","searchTree"]) . snd . funcName) fs)
   returnM $ Prog m is [] (concat fss) []
 
 -- Register the types of constructors to be able to retrieve the types for
@@ -356,7 +355,7 @@ transTypeExpr n t
   | n == 0 = FuncType supplyType (transHOTypeExpr t)
   | n >  0 = case t of
               (FuncType t1 t2) ->
-                FuncType (transHOTypeExpr t1) (transTypeExpr (n-1) t2)
+                FuncType (transHOTypeExpr t1) (transTypeExpr (n-1) t2) -- FuncType or funcType?
               _ -> error $ "transTypeExpr: " ++ show (n, t)
   | n <  0 = error $ "transTypeExpr: " ++ show (n, t)
 
@@ -364,7 +363,7 @@ transTypeExpr n t
 transHOTypeExpr :: TypeExpr -> TypeExpr
 transHOTypeExpr t@(TVar _)       = t
 transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1) (transHOTypeExpr t2)
-transHOTypeExpr (TCons qn ts)    = TCons qn $ map transHOTypeExpr ts
+transHOTypeExpr (TCons qn ts)    = TCons qn (map transHOTypeExpr ts)
 
 -- translate a single rule of a function
 -- TODO: Correct handling of external functions
@@ -449,7 +448,12 @@ transExpr (Lit (Charc  c)) = returnM ([], char  c)
 transExpr (Comb ConsCall qn es) =
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   genIds g (Comb ConsCall qn es')
-transExpr e@(Comb (ConsPartCall _) _ _) = returnM ([], e) -- TODO give reasonable implementation
+-- calls to partially applied constructors are treated like calls to partially
+-- applied deterministic first order functions.
+transExpr (Comb (ConsPartCall i) qn es) =
+  isDetMode `bindM` \dm ->
+  mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
+  genIds g (wrap dm True DFO i (Comb (ConsPartCall i) qn es'))
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
@@ -530,7 +534,11 @@ freshVars used = filter (`elem` used) [0 .. ]
 unzipArgs :: [([VarIndex], e)] -> M ([VarIndex], [e])
 unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 
--- Wrap a function with a Func type
+-- ---------------------------------------------------------------------------
+-- Wrapping
+-- ---------------------------------------------------------------------------
+
+-- Wrap a function call to make the argument a Func
 wrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
 wrap True  _   _  _ e = e
 wrap False opt nd a e = wrap'' (fun 1 (wrapName nd opt) []) e a
@@ -549,6 +557,23 @@ point = fun 2 ("", ".")
 apply :: Expr -> Expr -> Expr
 apply (Comb (FuncPartCall i) qn xs) e =
   Comb (if i == 1 then FuncCall else FuncPartCall (i - 1)) qn (xs ++ [e])
+
+-- new wrapping, but also broken
+
+myWrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
+myWrap True  _   _  _ e = e
+myWrap False opt nd a e = newWrap a iw e
+  where iw = if opt && nd == DFO then wrapDX else wrapNX
+
+newWrap :: Int -> ([Expr] -> Expr) -> Expr -> Expr
+newWrap n innermostWrapper e
+  | n == 0 = e
+  | n >  0 = wrapDX [wraps (n-1) (innermostWrapper [fun 1 ("","id") []]), e]
+  where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
+
+wrapDX exprs = fun 2 ("","wrapDX") exprs
+wrapNX exprs = fun 2 ("","wrapNX") exprs
+
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations

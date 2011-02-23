@@ -91,7 +91,7 @@ options =
   , Option [] ["dump-all"]
       (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
       "dump all intermediate results"
-  , Option [] ["x-no-implicit-prelude"]
+  , Option ['x'] ["x-no-implicit-prelude"]
       (NoArg (\opts -> { optXNoImplicitPrelude := True | opts }))
       "do not implicitly import Prelude"
   ]
@@ -105,7 +105,7 @@ searchModes =
   ]
 
 versionString :: String
-versionString = "ID-based Curry -> Haskell Compiler (Version of 09/02/11)"
+versionString = "ID-based Curry -> Haskell Compiler (Version of 23/02/2011)"
 
 parseOpts :: [String] -> (Options, [String], [String])
 parseOpts args = (foldl (flip ($)) defaultOptions opts, files, errs)

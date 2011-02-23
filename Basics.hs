@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+
 module Basics where
 
 import ID
@@ -127,6 +129,10 @@ data Func a b = Func (a -> IDSupply -> b)
               | Func_Fail
               | Func_Guard Constraint (Func a b)
 
+type a :-> b = Func a b
+
+infixr 0 :->
+
 instance NonDet (Func a b) where
   choiceCons = Func_Choice
   failCons = Func_Fail
@@ -138,11 +144,35 @@ instance NonDet (Func a b) where
 instance Generable (Func a b) where
   generate = undefined
 
-wrapD :: (a -> b) -> Func a b
-wrapD f = Func (\ x _ -> f x)
+-- make a deterministic function non-deterministic
+nd :: (a -> b) -> a -> IDSupply -> b
+nd f a _ = f a
+
+wrapDX wrap f = wrapNX wrap (nd f)
+
+wrapNX wrap f = Func (\a s -> wrap $ f a s)
+
+-- wrap a higher-order function with one argument
+wrapD :: (a -> b) -> a :-> b
+wrapD f = wrapDX id f
+-- Func (\a _ -> f a)
+
+wrapD2 :: (a -> b -> c) -> a :-> b :-> c
+wrapD2 f = wrapDX (wrapDX id) f
+
+wrapD3 :: (a -> b -> c -> d) -> a :-> b :-> c :-> d
+wrapD3 f = wrapDX (wrapDX (wrapDX id)) f
 
 wrapN :: (a -> IDSupply -> b) -> Func a b
-wrapN = Func
+wrapN f = wrapNX id f
+
+wrapN2 :: (a -> b -> IDSupply -> c) -> a :-> b :-> c
+wrapN2 f = wrapDX (wrapNX id) f
+
+wrapN3 :: (a -> b -> c -> IDSupply -> d) -> a :-> b :-> c :-> d
+wrapN3 f = wrapDX (wrapDX (wrapNX id)) f
+
+
 
 unwrap :: Func a b -> IDSupply -> a -> b
 unwrap (Func f) s x = f x s
