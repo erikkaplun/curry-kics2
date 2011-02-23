@@ -179,11 +179,14 @@ unwrap (Func f) s x = f x s
 
 -- TODO: from Prelude
 
-c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
-c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
+-- c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+-- c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
-c_C_apply :: Func a b -> a -> IDSupply -> b
-c_C_apply (Func f) s x = f s x
+-- c_C_apply :: Func a b -> a -> IDSupply -> b
+-- c_C_apply (Func f) s x = f s x
+--
+-- d_C_apply :: (a -> b) -> a -> b
+-- d_C_apply f x = f x
 
-d_C_apply :: (a -> b) -> a -> b
-d_C_apply f x = f x
+eval :: (IDSupply -> a) -> IO a
+eval goal = initSupply >>= return . goal

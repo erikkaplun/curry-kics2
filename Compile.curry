@@ -352,6 +352,9 @@ check42 f t = case t of
 -- an additional IDSupply type
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
 transTypeExpr n t
+    -- all arguments are applied, that means
+    -- functions as a result are represented as Funcs,
+    -- other results are represented as IDSupply -> a
   | n == 0 = FuncType supplyType (transHOTypeExpr t)
   | n >  0 = case t of
               (FuncType t1 t2) ->
@@ -453,7 +456,7 @@ transExpr (Comb ConsCall qn es) =
 transExpr (Comb (ConsPartCall i) qn es) =
   isDetMode `bindM` \dm ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  genIds g (wrap dm True DFO i (Comb (ConsPartCall i) qn es'))
+  genIds g (myWrap dm True DFO i (Comb (ConsPartCall i) qn es'))
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
@@ -475,7 +478,7 @@ transExpr (Comb (FuncPartCall i) qn es) =
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
   case ndCl of
-    _ -> genIds g (wrap dm opt ndCl i (Comb (FuncPartCall i) qn' es'))
+    _ -> genIds g (myWrap dm opt ndCl i (Comb (FuncPartCall i) qn' es'))
 
     -- TODO: we do not care about higher order calls to nd functions right now
     -- _    -> takeNextID `bindM` \i ->
@@ -568,11 +571,16 @@ myWrap False opt nd a e = newWrap a iw e
 newWrap :: Int -> ([Expr] -> Expr) -> Expr -> Expr
 newWrap n innermostWrapper e
   | n == 0 = e
-  | n >  0 = wrapDX [wraps (n-1) (innermostWrapper [fun 1 ("","id") []]), e]
+  | n == 1 = innermostWrapper [funId, e]
+  | n == 2 = wrapDX [innermostWrapper [funId], e]
+  | n == 3 = wrapDX [wrapDX [innermostWrapper [funId]], e]
+  | n == 4 = wrapDX [wrapDX [wrapDX [innermostWrapper [funId]]], e]
+  | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [fun 1 ("","id") []]), e]
   where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
 
 wrapDX exprs = fun 2 ("","wrapDX") exprs
 wrapNX exprs = fun 2 ("","wrapNX") exprs
+funId = fun 1 ("","id") []
 
 
 -- ---------------------------------------------------------------------------

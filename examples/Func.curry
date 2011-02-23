@@ -2,25 +2,11 @@ module Func where
 
 data Bool = True | False
 
-dconst :: Bool
-dconst = True
+f :: Bool -> Bool -> Bool
+f x y = True ? False
 
-ndconst :: Bool
-ndconst = True ? False
+g :: Bool -> Bool -> Bool
+g x = (\y -> True ? False) ? (\y -> True)
 
-dfun :: Bool -> Bool
-dfun True  = False
-dfun False = True
-
-ndfun :: Bool -> Bool
-ndfun b = True ? b
-
-dfun2 :: Bool -> Bool -> Bool
-dfun2 x y = case x of
-  True -> y
-  False -> False
-
-ndfun2 :: Bool -> Bool -> Bool
-ndfun2 x y = case ndconst of
-  True -> x
-  False -> y
+fg :: Bool -> Bool -> Bool
+fg = f ? g

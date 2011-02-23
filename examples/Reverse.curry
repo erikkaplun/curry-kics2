@@ -1,5 +1,6 @@
 module Reverse where
 
+data Bool = True | False
 data List a = Nil | Cons a (List a)
 
 --- Reverses the order of all elements in a list.
@@ -16,3 +17,8 @@ foldl f z (Cons x xs) = foldl f (f z x) xs
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
+
+testList = Cons True (Cons False Nil)
+
+goal0 = reverse testList
+goal1 = reverse2 testList
