@@ -326,8 +326,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
 
 freshID n i =
-  if n==0 then applyF (idmod "leftID") [i]
-          else freshID (n-1) (applyF (idmod "rightID") [i])
+  if n==0 then applyF (idmod "leftSupply") [i]
+          else freshID (n-1) (applyF (idmod "rightSupply") [i])
 
 idType = baseType (idmod "ID")
 

@@ -53,8 +53,11 @@ fcy2absFDecl (FC.Func qf ar vis texp rule) =
   else Func "" qf ar (fcy2absVis vis) ftype (fcy2absRule rule)
  where
    tvars = tvarsOf texp
-   ftype = if null tvars then FType (fcy2absTExp texp)
-                         else CType (map (\tv -> Context ("Basics","NonDet") [fcy2absTVar tv]) tvars) (fcy2absTExp texp)
+   ftype = if null tvars
+            then FType (fcy2absTExp texp)
+            else CType (concatMap (\tv ->
+                  [Context ("Basics","Generable") [fcy2absTVar tv]]) tvars)
+                  (fcy2absTExp texp)
 
 fcy2absRule :: FC.Rule -> Rules
 fcy2absRule (FC.Rule numargs expr) =

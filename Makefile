@@ -16,4 +16,5 @@ idc: Compile.curry FlatCurry2AbstractHaskell.curry FlatCurry2Types.curry \
 clean:
 	cleancurry
 	rm -f idc
-	rm *.hi *.o
+	rm -f *.hi *.o
+	rm -f ./examples/Curry_*.hs

@@ -160,8 +160,8 @@ replaceNonIdChars pfxNonOp pfxOp str =
                then pfxNonOp ++ s
                else pfxOp    ++ s
      _   -> pfxOp ++ concat (intersperse "_" strings)
- where strings = separateAndReplace isAlphaNumOrUS showOpChar str
-       isAlphaNumOrUS c = isAlphaNum c || c=='_'
+ where strings = separateAndReplace isIdentChar showOpChar str
+       isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 
 
 separateAndReplace :: (a -> Bool) -> (a -> [a]) -> [a] -> [[a]]

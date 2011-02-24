@@ -1,6 +1,12 @@
+{-# LANGUAGE TypeOperators #-}
+
 module Basics where
 
 import ID
+
+-- Type to encode the selection taken in a Choice structure
+data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID | BoundTo ID
+  deriving Show
 
 data Try a = Val a | Fail | Choice ID a a | Free ID a a | Guard Constraint a
   deriving Show
@@ -9,10 +15,6 @@ tryChoice :: ID -> a -> a -> Try a
 tryChoice i@(ID _)     = Choice i
 tryChoice i@(FreeID _) = Free i
 
-narrow :: NonDet a => ID -> a -> a -> a
-narrow (FreeID i) = choiceCons (ID i)
-narrow i = choiceCons i
-
 -- Class for data that support nondeterministic values
 class NonDet a where
   choiceCons :: ID -> a -> a -> a
@@ -20,15 +22,13 @@ class NonDet a where
   guardCons  :: Constraint -> a -> a
   try        :: a -> Try a
 
--- Type to encode the selection taken in a Choice structure
-data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID | BoundTo ID
- deriving Show
-
+narrow :: NonDet a => ID -> a -> a -> a
+narrow (FreeID i) = choiceCons (ID i)
+narrow i = choiceCons i
 
 -- Class for data that support generators
 class NonDet a => Generable a where
-  generate :: ID -> a
-
+  generate :: IDSupply -> a
 
 ---------------------------------------------------------------------
 -- Computations to normal form
@@ -59,20 +59,22 @@ data C_Success = C_Success
                | Fail_C_Success
                | Guard_C_Success Constraint C_Success
 
+instance Show C_Success where
+  showsPrec d C_Success = showString "success"
+  showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
+  showsPrec d Fail_C_Success = showChar '!'
+
 instance NonDet C_Success where
   choiceCons = Choice_C_Success
   failCons   = Fail_C_Success
   guardCons  = Guard_C_Success
-
   try (Choice_C_Success i x y) = tryChoice i x y
   try Fail_C_Success           = Fail
   try (Guard_C_Success c e)    = Guard c e
   try x = Val x
 
-instance Show C_Success where
-  showsPrec d C_Success = showString "success"
-  showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
-  showsPrec d Fail_C_Success = showChar '!'
+instance Generable C_Success where
+  generate _ = C_Success
 
 instance NormalForm C_Success where
   cont $!! s@C_Success = cont s
@@ -112,10 +114,24 @@ showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 
 ---------------------------------------------------------------------
 -- Higher Order
+
+instance NonDet (a -> b) where
+  choiceCons = undefined
+  failCons = undefined
+  guardCons = undefined
+  try = undefined
+
+instance Generable (a -> b) where
+  generate = undefined
+
 data Func a b = Func (a -> IDSupply -> b)
               | Func_Choice ID (Func a b) (Func a b)
               | Func_Fail
               | Func_Guard Constraint (Func a b)
+
+type a :-> b = Func a b
+
+infixr 0 :->
 
 instance NonDet (Func a b) where
   choiceCons = Func_Choice
@@ -125,23 +141,52 @@ instance NonDet (Func a b) where
   try (Func_Fail) = Fail
   try v = Val v
 
+instance Generable (Func a b) where
+  generate = undefined
 
-wrapD :: (a -> b) -> Func a b
-wrapD f = Func (\ x _ -> f x)
+-- make a deterministic function non-deterministic
+nd :: (a -> b) -> a -> IDSupply -> b
+nd f a _ = f a
+
+wrapDX wrap f = wrapNX wrap (nd f)
+
+wrapNX wrap f = Func (\a s -> wrap $ f a s)
+
+-- wrap a higher-order function with one argument
+wrapD :: (a -> b) -> a :-> b
+wrapD f = wrapDX id f
+-- Func (\a _ -> f a)
+
+wrapD2 :: (a -> b -> c) -> a :-> b :-> c
+wrapD2 f = wrapDX (wrapDX id) f
+
+wrapD3 :: (a -> b -> c -> d) -> a :-> b :-> c :-> d
+wrapD3 f = wrapDX (wrapDX (wrapDX id)) f
 
 wrapN :: (a -> IDSupply -> b) -> Func a b
-wrapN = Func
+wrapN f = wrapNX id f
+
+wrapN2 :: (a -> b -> IDSupply -> c) -> a :-> b :-> c
+wrapN2 f = wrapDX (wrapNX id) f
+
+wrapN3 :: (a -> b -> c -> IDSupply -> d) -> a :-> b :-> c :-> d
+wrapN3 f = wrapDX (wrapDX (wrapNX id)) f
+
+
 
 unwrap :: Func a b -> IDSupply -> a -> b
 unwrap (Func f) s x = f x s
 
 -- TODO: from Prelude
 
-c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
-c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
+-- c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+-- c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
-c_C_apply :: Func a b -> a -> IDSupply -> b
-c_C_apply (Func f) s x = f s x
+-- c_C_apply :: Func a b -> a -> IDSupply -> b
+-- c_C_apply (Func f) s x = f s x
+--
+-- d_C_apply :: (a -> b) -> a -> b
+-- d_C_apply f x = f x
 
-d_C_apply :: (a -> b) -> a -> b
-d_C_apply f x = f x
+eval :: (IDSupply -> a) -> IO a
+eval goal = initSupply >>= return . goal

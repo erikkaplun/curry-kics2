@@ -744,8 +744,9 @@ mapIO_ f           = sequenceIO_ . map f
 --- @param y - The left argument.
 --- @return either <EM>x</EM> or <EM>y</EM> non-deterministically.
 (?)   :: a -> a -> a
-x ? _ = x
-_ ? y = y
+(?) external
+-- x ? _ = x
+-- _ ? y = y
 
 
 --- Evaluates to a fresh free variable.

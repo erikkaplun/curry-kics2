@@ -1,5 +1,27 @@
 module Splits (mkSplits) where
 
+{-
+    s : initial free supply variable
+    xs: non-empty list of fresh variables to be bound to an id supply
+
+    Result (x, s', bindings):
+      - x is the root-level variable to be bound
+      - s' is the next free variable
+    bindings: list of triples (s, x, y): let x = leftSupply s, y = rightSupply s
+-}
+mkSplits :: Int -> [Int] -> (Int, Int, [(Int, Int, Int)])
+mkSplits _ [] = error "mkSplits3 with empty list"
+mkSplits s [x] = (x, s, [])
+mkSplits s xs@(_:_:_) = (s, nextr, (s, sl, sr) : spsl ++ spsr) where
+  (sl, nextl, spsl) = mkSplits (s + 1) ys
+  (sr, nextr, spsr) = mkSplits nextl zs
+  (ys, zs) = half xs
+
+-- split a list into two halfs
+half :: [a] -> ([a], [a])
+half xs = splitAt (div (length xs) 2) xs
+
+{-
 mkSplits :: Int -> [Int] -> (Int, [(Int,Int,Int)])
 mkSplits n [] = (n,[])
 mkSplits n xs@(_:_) = case splits n xs of
@@ -19,8 +41,4 @@ splits i xs@(_:_:_:_) = case half xs of
      Right x -> case splits i zs of
        Left (i',sps) -> Left (i'+1,(i'+1,x,i'):sps)
        _ -> error "right list should be longer"
-
--- split a list into two halfs
-half :: [a] -> ([a],[a])
-half xs = splitAt (div (length xs) 2) xs
-
+-}

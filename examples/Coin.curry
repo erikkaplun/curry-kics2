@@ -1,5 +1,7 @@
 module Coin where
 
+data Bool = True | False
+
 coin = True ? False
 
 selfEq x = iff x x

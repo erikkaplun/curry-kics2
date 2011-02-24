@@ -33,37 +33,43 @@ showQN :: QN -> String
 showQN (QN (q,m)) = q ++ "." ++ m
 
 analyseNd :: Prog -> NDResult
-analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs)
-  where
-   (funs,graph) = callGraph p
-   qmarkNode    = find qmark funs
-   applyNode    = find apply funs
-   ndClass f    | elem qmarkNode deps = ND
-                | take 3 (snd f) == "set" && (isDigit $ snd f !! 3) = ND -- TODO hack?
-                | elem applyNode deps = DHO
-                | otherwise           = DFO
-     where
-       deps = reachable [find f funs] graph
+analyseNd p = listToFM (<) (map (\ f -> (f, ndClass f)) funs) where
+  (funs,graph) = callGraph p
+  qmarkNode    = find qmark funs
+  applyNode    = find apply funs
+  ndClass f
+      -- function depending on (?) are non-deterministic
+    | qmarkNode `elem` deps = ND
+      -- set functions are non-deterministic
+    | isSetFunction (snd f) = ND
+      -- TODO
+    | applyNode `elem` deps = DHO
+    | otherwise             = DFO
+      where deps = reachable [find f funs] graph
+            isSetFunction f = take 4 f `elem`
+                              map (\n -> "set" ++ show n) [0 .. 9]
 
 find :: a -> [a] -> Int
 find x xs = fromJust (findIndex (x==) xs)
 
+-- create a call graph from a program
 callGraph :: Prog -> ([QName],Graph QN ())
-callGraph p = let calls = map funs2graph (progFuncs p)
-                  funs  = nub (QN qmark:QN apply:map fst calls ++ concatMap snd calls)
-               in (map (\ (QN x) -> x ) funs,
-                   mkGraph (zip [0..] funs)
-                           (concatMap (toEdges funs) calls))
+callGraph p =
+  let calls = map funs2graph (progFuncs p)
+      funs  = nub (QN qmark : QN apply : map fst calls ++ concatMap snd calls)
+  in  (map (\ (QN x) -> x ) funs, mkGraph (zip [0..] funs)
+                (concatMap (toEdges funs) calls))
 
 toEdges :: [QN] -> (QN,[QN]) -> [(Int,Int,())]
 toEdges funs (f,fs) = map (\ f' -> (i,find f' funs,())) fs
   where i = find f funs
 
-funs2graph :: FuncDecl -> (QN,[QN])
-funs2graph f = (QN (funcName f),nub called)
+-- Create a tuple of the funtion name and a lisf of the called functions
+funs2graph :: FuncDecl -> (QN, [QN])
+funs2graph f = (QN (funcName f), nub called)
   where
     called = if isRuleExternal rule
-      then []
+      then [QN apply] -- TODO: Hack to make external functions higher order
       else trExpr var lit comb leT freE oR casE branch (ruleBody rule)
     rule = funcRule f
 
