@@ -7,24 +7,26 @@
 module Compile where
 
 import Prelude hiding (lookup)
-import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM)
+import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM, plusFM)
 import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
 import FileGoodies
 import FlatCurry
 import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 
+import qualified AbstractHaskell as AH
+import AbstractHaskellPrinter (showProg)
 import CallGraph
+import CompilerOpts
+import FlatCurry2AbstractHaskell (fcy2abs)
+import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
+import ModuleDeps (ModuleIdent, deps)
 import Names
   ( renameModule, renameFile, renameQName, detPrefix, mkChoiceName
   , mkGuardName, externalFunc, externalModule )
 import Splits (mkSplits)
-import CompilerOpts
-import qualified AbstractHaskell as AH
-import FlatCurry2AbstractHaskell (fcy2abs)
-import AbstractHaskellPrinter (showProg)
-import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
+import Utils (foldIO)
 
 main :: IO ()
 main = do
@@ -33,52 +35,73 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
-  info opts $ "Compiling " ++ fn
+  (mods, errs) <- deps (stripSuffix fn)
+  if null errs
+    then foldIO (compileModule (length mods))
+         initState (zip mods [1 .. ]) >> done
+    else mapIO_ putStrLn errs
+    where initState = { compOptions := opts
+                      | defaultState
+                      }
 
-  info opts "Reading FlatCurry"
-  fcy <- readFlatCurry (stripSuffix fn)
+compileModule :: Int -> State -> ((ModuleIdent, Prog), Int) -> IO State
+compileModule total state ((mid, fcy), current) = do
+  let opts = state -> compOptions
+  putStrLn $ compMessage current total mid
+
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
 
-  info opts "Lifting case expressions"
+  status opts "Lifting case expressions"
   let pLifted = liftCases True fcy'
   dumpLevel DumpLifted opts liftedName (show pLifted)
 
-  info opts "Renaming symbols"
+  status opts "Renaming symbols"
   let renamed@(Prog _ _ ts _ _)  = rename pLifted
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
-  info opts "Transforming functions"
-  let (tProg, report) = transform opts renamed
-      ahsFun@(AH.Prog n imps _ ops funs)= fcy2abs tProg
-  info opts report
+  status opts "Transforming functions"
+  (tProg, s') <- unM (transProg renamed) state
+  info opts $ unlines $ reverse $ s' -> report
+  let state' = { report := [] | s'} -- TODO hacky
+
+  let ahsFun@(AH.Prog n imps _ ops funs) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
-  info opts "Transforming type declarations"
+  status opts "Transforming type declarations"
   let typeDecls = FC2T.fcyTypes2abs ts
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
-  info opts "Combining to Abstract Haskell"
+  status opts "Combining to Abstract Haskell"
   let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
-  info opts "Integrating external declarations"
-  integrated <- integrateExternals opts ahs fn
+  status opts "Integrating external declarations"
+  integrated <- integrateExternals opts ahs mid
 
-  info opts $ "Generating Haskell module " ++ destFile
+  status opts $ "Generating Haskell module " ++ destFile
   writeFile destFile integrated
 
+  return state'
+
     where
-    fcyName        = fcyFile $ withBaseName (++ "Dump")      fn
-    liftedName     = fcyFile $ withBaseName (++ "Lifted")    fn
-    renamedName    = fcyFile $ withBaseName (++ "Renamed")   fn
-    funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  fn
-    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") fn
-    abstractHsName = ahsFile fn
-    destFile       =  hsFile $ withBaseName renameFile fn
+    fcyName        = fcyFile $ withBaseName (++ "Dump")      mid
+    liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
+    renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid
+    funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
+    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
+    abstractHsName = ahsFile mid
+    destFile       =  hsFile $ withBaseName renameFile mid
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
     hsFile  f = withExtension (const ".hs")  f
+
+compMessage :: Int -> Int -> String -> String
+compMessage curNum maxNum mod = '[' : fill max (show curNum) ++ " of "
+  ++ show maxNum  ++ "]" ++ " Compiling " ++ mod
+    where
+      max = length $ show maxNum
+      fill n s = take n $ s ++ repeat ' '
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od) =
@@ -92,7 +115,7 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts fn
   let (pragma, extimps, extdecls) = splitExternals exts
       prog' = AH.Prog m (imps ++ extimps) td fd od
-  return $ unlines [pragma, showProg prog', unlines extdecls]
+  return $ unlines $ filter (not . null) [pragma, showProg prog', unlines extdecls]
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -120,9 +143,10 @@ splitExternals content = se (lines content) ([], [], []) where
 
 -- Show an info message unless the quiet flag is set
 info :: Options -> String -> IO ()
-info opts msg = if opts -> optQuiet
-  then return ()
-  else putStrLn (msg ++ " ...")
+info opts msg = if opts -> optQuiet then done else putStrLn msg
+
+status :: Options -> String -> IO ()
+status opts msg = info opts $ msg ++ " ..."
 
 -- Dump an intermediate result to a file
 dumpLevel :: Dump -> Options -> String -> String -> IO ()
@@ -136,24 +160,39 @@ rename p@(Prog name imports _ _ _) =
   (Prog _ _ td fd od) = updQNamesInProg renameQName p
 
 -- ---------------------------------------------------------------------------
--- state monad
+-- IO state monad, like StateT IO
 -- ---------------------------------------------------------------------------
-data Mo st a = M (st -> (st, a))
+data Mo s a = M (s -> IO (a, s))
 
-unM :: Mo st a -> (st -> (st, a))
+unM :: Mo s a -> s -> IO (a, s)
 unM (M x) = x
 
-returnM :: a -> Mo st a
-returnM x = M (\st -> (st, x))
+returnM :: a -> Mo s a
+returnM x = M $ \s -> return (x, s)
 
-bindM :: Mo st a -> (a -> Mo st b) -> Mo st b
-bindM f g = M (\st -> case unM f st of
-                        (st', x) -> unM (g x) st')
+bindM :: Mo s a -> (a -> Mo s b) -> Mo s b
+bindM f g = M $ \s -> do
+  (x, s') <- unM f s
+  unM (g x) s'
 
 bindM_ :: Mo st a -> Mo st b -> Mo st b
 bindM_ f g = f `bindM` \_ -> g
 
-mapM :: (a -> Mo st b) -> [a] -> Mo st [b]
+getState :: Mo s s
+getState = M $ \s -> return (s, s)
+
+putState :: s -> Mo s ()
+putState s = M $ \ _ -> return ((), s)
+
+updState :: (s -> s) -> Mo s ()
+updState f = getState `bindM` \s -> putState (f s)
+
+liftIO :: IO a -> Mo s a
+liftIO act = M $ \s -> do
+  a <- act
+  return (a, s)
+
+mapM :: (a -> Mo s b) -> [a] -> Mo s [b]
 mapM _ [] = returnM []
 mapM f (m:ms) = f m       `bindM` \m' ->
                 mapM f ms `bindM` \ms' ->
@@ -186,15 +225,6 @@ defaultState =
 
 type M a = Mo State a
 
-getState :: M State
-getState = M (\st -> (st, st))
-
-putState :: State -> M ()
-putState st = M (\ _ -> (st, ()))
-
-updState :: (State -> State) -> M ()
-updState f = getState `bindM` \st -> putState (f st)
-
 -- type map
 
 updTypeMap :: (TypeMap -> TypeMap) -> M ()
@@ -206,6 +236,10 @@ getType qn = getState `bindM` \st ->
   $ (flip lookupFM) qn $ (st -> typeMap)
 
 -- NDResult
+
+addNDAnalysis :: NDResult -> M ()
+addNDAnalysis nd = updState $
+  \s -> { ndResult := (s -> ndResult) `plusFM` nd | s }
 
 getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
@@ -266,18 +300,9 @@ getCompOption select = getCompOptions `bindM` (returnM . select)
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
-
-transform :: Options -> Prog -> (Prog, String)
-transform opts prog = (tProg, unlines $ reverse $ state -> report)
- where
-  (state, tProg) = unM (transProg prog) initState
-  initState = { ndResult    := analyseNd prog
-              , compOptions := opts
-              | defaultState
-              }
-
 transProg :: Prog -> M Prog
-transProg (Prog m is ts fs _) =
+transProg p@(Prog m is ts fs _) =
+  addNDAnalysis (analyseNd p) `bindM_`
   -- register constructors
   mapM registerCons ts `bindM_`
   -- translation of the functions

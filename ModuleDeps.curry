@@ -10,13 +10,14 @@
     Extended by Sebastian Fischer (sebf@informatik.uni-kiel.de)
 -}
 
-module ModuleDeps ( deps, flattenDeps, sourceDeps, moduleDeps ) where
+module ModuleDeps (ModuleIdent, deps) where
 
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry (readFlatCurry, Prog (..))
 
 import SCC
+import Utils (foldIO)
 
 type ModuleIdent = String
 type SourceEnv = FM ModuleIdent Prog
@@ -34,7 +35,7 @@ sourceDeps m mEnv = do
   foldIO moduleDeps (addToFM mEnv m fcy) imps
 
 lookupModule :: String -> IO String
-lookupModule mod = return $ mod ++ ".curry"
+lookupModule mod = return $ mod -- ++ ".curry"
 
 moduleDeps :: SourceEnv -> ModuleIdent -> IO SourceEnv
 moduleDeps mEnv m = case lookupFM mEnv m of
@@ -72,7 +73,3 @@ flattenDeps = fdeps . sortDeps where
   rest' [] = ""
   rest' [m] = ", and " ++ show m
   rest' (m:m2:ms) = ", " ++ show m ++ rest' (m2:ms)
-
-foldIO :: (a -> b -> IO a) -> a -> [b] -> IO a
-foldIO _ a []      =  return a
-foldIO f a (x:xs)  =  f a x >>= \fax -> foldIO f fax xs
