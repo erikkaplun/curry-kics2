@@ -73,9 +73,10 @@ toEdges funs (f, fs) = map (\ f' -> (i, find f' funs, ())) fs
 funs2graph :: FuncDecl -> (QN, [QN])
 funs2graph f = (QN (funcName f), nub called)
   where
-    called = if isRuleExternal rule
-      then [QN apply] -- TODO: Hack to make external functions higher order
-      else trExpr var lit comb leT freE oR casE branch (ruleBody rule)
+    called
+      | isRuleExternal rule = if funcName f `elem` externalHOFuncs
+                              then [QN apply] else []
+      | otherwise = trExpr var lit comb leT freE oR casE branch (ruleBody rule)
     rule = funcRule f
 
     var _ = []
@@ -91,6 +92,10 @@ funs2graph f = (QN (funcName f), nub called)
     oR es1 es2  = QN qmark : es1 ++ es2
     casE _ e bs = e ++ concat bs
     branch _ e  = e
+
+externalHOFuncs :: [QName]
+externalHOFuncs = map renameQName $ zip (repeat prelude)
+  [">>=", "apply", "catch", "try"]
 
 qmark :: QName
 qmark = renameQName (prelude, "?")
