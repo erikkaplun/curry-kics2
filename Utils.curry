@@ -9,6 +9,11 @@
 --- --------------------------------------------------------------------------
 module Utils where
 
+import List (intersperse)
+
 foldIO :: (a -> b -> IO a) -> a -> [b] -> IO a
 foldIO _ a []      =  return a
 foldIO f a (x:xs)  =  f a x >>= \fax -> foldIO f fax xs
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate xs xss = concat (intersperse xs xss)

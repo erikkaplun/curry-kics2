@@ -9,6 +9,7 @@ import List (intersperse)
 import Maybe (fromJust, isJust)
 
 import AbstractHaskell
+import Base
 
 {-
 --- Rename qualified type constructor.
@@ -94,8 +95,11 @@ mkTypeName n
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 -}
 
-detPrefix :: Bool -> String
-detPrefix b = if b then "d_" else "c_"
+funcPrefix :: Bool -> NDClass -> String
+funcPrefix _     DFO = "d_"
+funcPrefix _      ND = "nd_"
+funcPrefix True  DHO = "dho_"
+funcPrefix False DHO = "ndho_"
 
 -- rename modules
 mkModName :: String -> String

@@ -18,15 +18,16 @@ import qualified AbstractHaskell as AH
 import AbstractHaskellPrinter (showProg)
 import CallGraph
 import CompilerOpts
+import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, deps)
 import Names
-  ( renameModule, renameFile, renameQName, detPrefix, mkChoiceName
+  ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName
   , mkGuardName, externalFunc, externalModule )
 import Splits (mkSplits)
-import Utils (foldIO)
+import Utils (foldIO, intercalate)
 
 main :: IO ()
 main = do
@@ -35,14 +36,12 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
-  (mods, errs) <- deps (stripSuffix fn)
+  (mods, errs) <- deps fn
   if null errs
     then foldIO (compileModule (length mods))
          initState (zip mods [1 .. ]) >> done
     else mapIO_ putStrLn errs
-    where initState = { compOptions := opts
-                      | defaultState
-                      }
+    where initState = { compOptions := opts | defaultState }
 
 compileModule :: Int -> State -> ((ModuleIdent, Prog), Int) -> IO State
 compileModule total state ((mid, fcy), current) = do
@@ -61,10 +60,7 @@ compileModule total state ((mid, fcy), current) = do
   dumpLevel DumpRenamed opts renamedName (show renamed)
 
   status opts "Transforming functions"
-  (tProg, s') <- unM (transProg renamed) state
-  info opts $ unlines $ reverse $ s' -> report
-  let state' = { report := [] | s'} -- TODO hacky
-
+  (tProg, state') <- unM (transProg renamed) state
   let ahsFun@(AH.Prog n imps _ ops funs) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -73,7 +69,7 @@ compileModule total state ((mid, fcy), current) = do
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
   status opts "Combining to Abstract Haskell"
-  let ahs = (AH.Prog n ("ID":"Basics":imps) typeDecls ops funs)
+  let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls ops funs)
   dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
 
   status opts "Integrating external declarations"
@@ -97,11 +93,13 @@ compileModule total state ((mid, fcy), current) = do
     hsFile  f = withExtension (const ".hs")  f
 
 compMessage :: Int -> Int -> String -> String
-compMessage curNum maxNum mod = '[' : fill max (show curNum) ++ " of "
-  ++ show maxNum  ++ "]" ++ " Compiling " ++ mod
+compMessage curNum maxNum mod = '[' : fill max sCurNum ++ " of "
+  ++ sMaxNum  ++ "]" ++ " Compiling " ++ mod
     where
-      max = length $ show maxNum
-      fill n s = take n $ s ++ repeat ' '
+      sCurNum = show curNum
+      sMaxNum = show maxNum
+      max = length $ sMaxNum
+      fill n s = replicate (n - length s) ' '
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od) =
@@ -113,9 +111,10 @@ filterPrelude opts p@(Prog m imps td fd od) =
 integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts fn
-  let (pragma, extimps, extdecls) = splitExternals exts
+  let (pragmas, extimps, extdecls) = splitExternals exts
       prog' = AH.Prog m (imps ++ extimps) td fd od
-  return $ unlines $ filter (not . null) [pragma, showProg prog', unlines extdecls]
+  return $ unlines $ filter (not . null)
+    [unlines (defaultPragmas : pragmas), showProg prog', unlines extdecls]
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -132,14 +131,14 @@ lookupExternals opts fn = do
 
 -- Split an external file into a pragma String, a list of imports and the rest
 -- TODO: This is a bloody hack
-splitExternals :: String -> (String, [String], [String])
+splitExternals :: String -> ([String], [String], [String])
 splitExternals content = se (lines content) ([], [], []) where
   se [] res = res
   se (ln:lns) res
-    | take 3 ln == "{-#"     = (ln, imps, decls)
-    | take 7 ln == "import " = (pragma, drop 7 ln : imps, decls)
-    | otherwise              = (pragma, imps, ln : decls)
-      where (pragma, imps, decls) = se lns res
+    | take 3 ln == "{-#"     = (ln : pragmas, imps, decls)
+    | take 7 ln == "import " = (pragmas, drop 7 ln : imps, decls)
+    | otherwise              = (pragmas, imps, ln : decls)
+      where (pragmas, imps, decls) = se lns res
 
 -- Show an info message unless the quiet flag is set
 info :: Options -> String -> IO ()
@@ -209,17 +208,17 @@ type State =
   , ndResult    :: NDResult
   , nextID      :: VarIndex    -- index for fresh variable
   , detMode     :: Bool        -- determinism mode
-  , report      :: [String]
+--   , report      :: [String]
   , compOptions :: Options     -- compiler options
   }
 
 defaultState :: State
 defaultState =
-  { typeMap     = (listToFM (<) primTypes)
-  , ndResult    = (emptyFM (<))
+  { typeMap     = listToFM (<) primTypes
+  , ndResult    = initNDResult
   , nextID      = idVar
   , detMode     = False
-  , report      = []
+--   , report      = []
   , compOptions = defaultOptions
   }
 
@@ -237,9 +236,8 @@ getType qn = getState `bindM` \st ->
 
 -- NDResult
 
-addNDAnalysis :: NDResult -> M ()
-addNDAnalysis nd = updState $
-  \s -> { ndResult := (s -> ndResult) `plusFM` nd | s }
+updNDAnalysis :: (NDResult -> NDResult) -> M ()
+updNDAnalysis f = updState $ \s -> { ndResult := f $ s -> ndResult | s }
 
 getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
@@ -287,8 +285,8 @@ doInDetMode dm action =
   returnM retVal
 
 -- add a message to the transformation report
-addToReport :: String -> M ()
-addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
+-- addToReport :: String -> M ()
+-- addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
 
 -- Compiler options
 getCompOptions :: M Options
@@ -302,7 +300,7 @@ getCompOption select = getCompOptions `bindM` (returnM . select)
 -- ---------------------------------------------------------------------------
 transProg :: Prog -> M Prog
 transProg p@(Prog m is ts fs _) =
-  addNDAnalysis (analyseNd p) `bindM_`
+  updNDAnalysis (analyseNd p) `bindM_`
   -- register constructors
   mapM registerCons ts `bindM_`
   -- translation of the functions
@@ -325,13 +323,14 @@ registerCons (TypeSyn _ _ _ _) = returnM ()
 
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc f@(Func qn _ _ _ _) =
-  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \ opt ->
+  getCompOptions `bindM` \opts ->
+  let opt = opts -> optDetOptimization in
   case opt of
     -- translate all functions as non-deterministic by default
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
       getNDClass qn `bindM` \ndCl ->
-      addToReport (snd qn ++ " is " ++ show ndCl) `bindM_`
+      liftIO (info opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
       case ndCl of
         DFO ->
           -- create deterministic function
@@ -366,7 +365,7 @@ renameFun :: QName -> M QName
 renameFun qn@(q, n) =
   isDetMode `bindM` \dm ->
   getNDClass qn `bindM` \ndCl ->
-  returnM (q, (detPrefix $ dm && ndCl == DHO) ++ n)
+  returnM (q, (funcPrefix dm ndCl) ++ n)
 
 check42 :: (TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
 check42 f t = case t of
@@ -377,13 +376,12 @@ check42 f t = case t of
 -- an additional IDSupply type
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
 transTypeExpr n t
-    -- all arguments are applied, that means
-    -- functions as a result are represented as Funcs,
-    -- other results are represented as IDSupply -> a
+    -- all arguments are applied, i.e. functions as a result are represented
+    -- as Funcs, other results of type a are represented as IDSupply -> a
   | n == 0 = FuncType supplyType (transHOTypeExpr t)
   | n >  0 = case t of
               (FuncType t1 t2) ->
-                FuncType (transHOTypeExpr t1) (transTypeExpr (n-1) t2) -- FuncType or funcType?
+                FuncType (transHOTypeExpr t1) (transTypeExpr (n-1) t2)
               _ -> error $ "transTypeExpr: " ++ show (n, t)
   | n <  0 = error $ "transTypeExpr: " ++ show (n, t)
 
@@ -394,7 +392,6 @@ transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1) (transHOTypeExp
 transHOTypeExpr (TCons qn ts)    = TCons qn (map transHOTypeExpr ts)
 
 -- translate a single rule of a function
--- TODO: Correct handling of external functions
 transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
@@ -403,7 +400,7 @@ transRule (Func qn _ _ _ (Rule vs e)) =
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
   let vs = if dm then [1 .. a] else [1 .. a] ++ [suppVarIdx] in
-  returnM $ Rule vs (funcCall (externalFunc qn) (map Var vs))
+  returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
 transBody qn vs exp = case exp of
@@ -416,7 +413,7 @@ transBody qn vs exp = case exp of
     newBranches qn vs i pConsName `bindM` \ns ->
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
-    returnM (Case ct e' (bs' ++ ns))
+    returnM $ Case ct e' (bs' ++ ns)
   _ -> transCompleteExpr exp
 
 -- translate case branch
@@ -476,6 +473,7 @@ transExpr (Lit (Charc  c)) = returnM ([], char  c)
 transExpr (Comb ConsCall qn es) =
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   genIds g (Comb ConsCall qn es')
+
 -- calls to partially applied constructors are treated like calls to partially
 -- applied deterministic first order functions.
 transExpr (Comb (ConsPartCall i) qn es) =
@@ -600,7 +598,7 @@ newWrap n innermostWrapper e
   | n == 2 = wrapDX [innermostWrapper [funId], e]
   | n == 3 = wrapDX [wrapDX [innermostWrapper [funId]], e]
   | n == 4 = wrapDX [wrapDX [wrapDX [innermostWrapper [funId]]], e]
-  | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [fun 1 ("","id") []]), e]
+  | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [funId]), e]
   where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
 
 wrapDX exprs = fun 2 ("","wrapDX") exprs
@@ -693,6 +691,12 @@ wrap' nd n e = case n of
 -- Helper functions
 -- ---------------------------------------------------------------------------
 
+defaultPragmas :: String
+defaultPragmas = "{-# LANGUAGE MagicHash #-}"
+
+defaultModules :: [String]
+defaultModules = ["ID", "Basics"]
+
 -- list of known primitive types
 primTypes :: [(QName, QName)]
 primTypes = map (\ (x, y) -> ( renameQName ("Prelude", x)
@@ -713,15 +717,3 @@ maxTupleArity = 15
 
 tupleType :: Int -> String
 tupleType arity = '(' : replicate (arity - 1) ',' ++ ")"
-
-intercalate :: [a] -> [[a]] -> [a]
-intercalate xs xss = concat (intersperse xs xss)
-
--- file utils
-withBaseName :: (String -> String) -> String -> String
-withBaseName f fn = dirName fn
-  ++ separatorChar : (f $ stripSuffix $ baseName fn)
-  ++ suffixSeparatorChar : fileSuffix fn
-
-withExtension :: (String -> String) -> String -> String
-withExtension f fn = stripSuffix fn ++ f (fileSuffix fn)

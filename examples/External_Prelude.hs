@@ -7,6 +7,7 @@ import GHC.Types
 -- Externals
 -- ---------------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------------
 -- Int
 -- ---------------------------------------------------------------------------
 data C_Int
@@ -48,6 +49,7 @@ instance Eq C_Int where
 instance Ord C_Int where
   (<=) _ _ = False
 
+-- ---------------------------------------------------------------------------
 -- Float
 -- ---------------------------------------------------------------------------
 data C_Float
@@ -87,6 +89,7 @@ instance Eq C_Float where
 instance Ord C_Float where
   (<=) _ _ = False
 
+-- ---------------------------------------------------------------------------
 -- Char
 -- ---------------------------------------------------------------------------
 data C_Char
@@ -126,6 +129,7 @@ instance Eq C_Char where
 instance Ord C_Char where
   (<=) _ _ = False
 
+-- ---------------------------------------------------------------------------
 -- IO
 -- ---------------------------------------------------------------------------
 data C_IO a
@@ -146,238 +150,240 @@ instance NonDet (C_IO a) where
 instance Generable a => Generable (C_IO a) where
   generate i = error "C_IO: generate"
 
+-- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
+
 -- external_c_C_seq :: a
-external_c_C_seq = error "external_c_C_seq"
+external_ndho_C_seq = error "external_ndho_C_seq"
 
--- external_c_C_ensureNotFree :: a
-external_c_C_ensureNotFree = error "external_c_C_ensureNotFree"
+-- external_ndho_C_ensureNotFree :: a
+external_ndho_C_ensureNotFree = error "external_ndho_C_ensureNotFree"
 
--- external_c_C_prim_error :: a
-external_c_C_prim_error = error "external_c_C_prim_error"
+-- external_ndho_C_prim_error :: a
+external_ndho_C_prim_error = error "external_ndho_C_prim_error"
 
--- external_c_C_failed :: a
-external_c_C_failed = error "external_c_C_failed"
+-- external_ndho_C_failed :: a
+external_ndho_C_failed = error "external_ndho_C_failed"
 
--- external_c_OP_eq_eq :: a -> a -> C_Bool
-external_c_OP_eq_eq = error "external_c_OP_eq_eq"
+-- external_ndho_OP_eq_eq :: a -> a -> C_Bool
+external_ndho_OP_eq_eq = error "external_ndho_OP_eq_eq"
 
--- external_c_C_compare :: a -> a -> C_Ordering
-external_c_C_compare = error "external_c_C_compare"
+-- external_ndho_C_compare :: a -> a -> C_Ordering
+external_ndho_C_compare = error "external_ndho_C_compare"
 
--- external_c_C_prim_ord :: C_Char -> C_Int
-external_c_C_prim_ord = error "external_c_C_prim_ord"
+-- external_ndho_C_prim_ord :: C_Char -> C_Int
+external_ndho_C_prim_ord = error "external_ndho_C_prim_ord"
 
--- external_c_C_prim_chr :: C_Int -> C_Char
-external_c_C_prim_chr = error "external_c_C_prim_chr"
+-- external_ndho_C_prim_chr :: C_Int -> C_Char
+external_ndho_C_prim_chr = error "external_ndho_C_prim_chr"
 
--- external_c_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_plus (C_Int x) (C_Int y) _ = C_Int (x +# y)
+-- external_ndho_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
+external_ndho_C_prim_Int_plus (C_Int x) (C_Int y) _ = C_Int (x +# y)
 
--- external_c_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_minus = error "external_c_C_prim_Int_minus"
+-- external_ndho_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
+external_ndho_C_prim_Int_minus = error "external_ndho_C_prim_Int_minus"
 
--- external_c_C_prim_Int_times :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_times = error "external_c_C_prim_Int_times"
+-- external_ndho_C_prim_Int_times :: C_Int -> C_Int -> C_Int
+external_ndho_C_prim_Int_times = error "external_ndho_C_prim_Int_times"
 
--- external_c_C_prim_Int_div :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_div = error "external_c_C_prim_Int_div"
+-- external_ndho_C_prim_Int_div :: C_Int -> C_Int -> C_Int
+external_ndho_C_prim_Int_div = error "external_ndho_C_prim_Int_div"
 
--- external_c_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
-external_c_C_prim_Int_mod = error "external_c_C_prim_Int_mod"
+-- external_ndho_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
+external_ndho_C_prim_Int_mod = error "external_ndho_C_prim_Int_mod"
 
--- external_c_C_prim_negateFloat :: C_Float -> C_Float
-external_c_C_prim_negateFloat = error "external_c_C_prim_negateFloat"
+-- external_ndho_C_prim_negateFloat :: C_Float -> C_Float
+external_ndho_C_prim_negateFloat = error "external_ndho_C_prim_negateFloat"
 
--- external_c_OP_eq_colon_eq :: a -> a -> C_Success
-external_c_OP_eq_colon_eq = error "external_c_OP_eq_colon_eq"
+-- external_ndho_OP_eq_colon_eq :: a -> a -> C_Success
+external_ndho_OP_eq_colon_eq = error "external_ndho_OP_eq_colon_eq"
 
--- external_c_C_success :: C_Success
-external_c_C_success _ = C_Success
+-- external_ndho_C_success :: C_Success
+external_ndho_C_success _ = C_Success
 
--- external_c_OP_ampersand :: C_Success -> C_Success -> C_Success
-external_c_OP_ampersand = error "external_c_OP_ampersand"
-
--- TODO: Func or (->) ?
--- external_c_OP_gt_gt_eq :: C_IO a -> (a -> C_IO b) -> C_IO b
-external_c_OP_gt_gt_eq = error "external_c_OP_gt_gt_eq"
-
--- external_c_C_return :: a -> C_IO a
-external_c_C_return = error "external_c_C_return"
-
--- external_c_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_c_C_prim_putChar = error "external_c_C_prim_putChar"
-
--- external_c_C_getChar :: C_IO C_Char
-external_c_C_getChar = error "external_c_C_getChar"
-
--- external_c_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
-external_c_C_prim_readFile = error "external_c_C_prim_readFile"
-
--- external_c_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
-external_c_C_prim_readFileContents = error "external_c_C_prim_readFileContents"
-
--- external_c_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_c_C_prim_writeFile = error "external_c_C_prim_writeFile"
-
--- external_c_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_c_C_prim_appendFile = error "external_c_C_prim_appendFile"
+-- external_ndho_OP_ampersand :: C_Success -> C_Success -> C_Success
+external_ndho_OP_ampersand = error "external_ndho_OP_ampersand"
 
 -- TODO: Func or (->) ?
--- external_c_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_c_C_catch = error "external_c_C_catch"
+-- external_ndho_OP_gt_gt_eq :: C_IO a -> (a -> C_IO b) -> C_IO b
+external_ndho_OP_gt_gt_eq = error "external_ndho_OP_gt_gt_eq"
 
--- external_c_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_c_C_catchFail = error "external_c_C_catchFail"
+-- external_ndho_C_return :: a -> C_IO a
+external_ndho_C_return = error "external_ndho_C_return"
 
--- external_c_C_prim_show    :: a -> OP_List C_Char
-external_c_C_prim_show = error "external_c_C_prim_show"
+-- external_ndho_C_prim_putChar :: C_Char -> C_IO OP_Unit
+external_ndho_C_prim_putChar = error "external_ndho_C_prim_putChar"
 
--- external_c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
-external_c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
+-- external_ndho_C_getChar :: C_IO C_Char
+external_ndho_C_getChar = error "external_ndho_C_getChar"
 
--- external_c_C_unknown :: a
-external_c_C_unknown = error "external_c_C_unknown"
+-- external_ndho_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
+external_ndho_C_prim_readFile = error "external_ndho_C_prim_readFile"
 
--- external_c_C_try :: a
-external_c_C_try = error "external_c_C_try"
+-- external_ndho_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
+external_ndho_C_prim_readFileContents = error "external_ndho_C_prim_readFileContents"
 
--- external_c_C_apply :: Func a b -> a -> IDSupply -> b
-external_c_C_apply (Func f) a s = f a s
+-- external_ndho_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
+external_ndho_C_prim_writeFile = error "external_ndho_C_prim_writeFile"
+
+-- external_ndho_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
+external_ndho_C_prim_appendFile = error "external_ndho_C_prim_appendFile"
+
+-- TODO: Func or (->) ?
+-- external_ndho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
+external_ndho_C_catch = error "external_ndho_C_catch"
+
+-- external_ndho_C_catchFail :: C_IO a -> C_IO a -> C_IO a
+external_ndho_C_catchFail = error "external_ndho_C_catchFail"
+
+-- external_ndho_C_prim_show    :: a -> OP_List C_Char
+external_ndho_C_prim_show = error "external_ndho_C_prim_show"
+
+-- external_nd_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
+
+-- external_ndho_C_unknown :: a
+external_ndho_C_unknown = error "external_ndho_C_unknown"
+
+-- external_ndho_C_try :: a
+external_ndho_C_try = error "external_ndho_C_try"
+
+-- external_ndho_C_apply :: Func a b -> a -> IDSupply -> b
+external_ndho_C_apply (Func f) a s = f a s
 
 -- external_d_C_apply :: (a -> b) -> a -> b
 -- external_d_C_apply f x = f x
 
--- external_c_C_cond :: C_Success -> a -> a
-external_c_C_cond = error "external_c_C_cond"
+-- external_ndho_C_cond :: C_Success -> a -> a
+external_ndho_C_cond = error "external_ndho_C_cond"
 
--- external_c_C_letrec :: a -> a -> C_Success
-external_c_C_letrec = error "external_c_C_letrec"
+-- external_ndho_C_letrec :: a -> a -> C_Success
+external_ndho_C_letrec = error "external_ndho_C_letrec"
 
--- external_c_OP_eq_colon_lt_eq :: a -> a -> C_Success
-external_c_OP_eq_colon_lt_eq = error "external_c_OP_eq_colon_lt_eq"
+-- external_ndho_OP_eq_colon_lt_eq :: a -> a -> C_Success
+external_ndho_OP_eq_colon_lt_eq = error "external_ndho_OP_eq_colon_lt_eq"
 
--- external_c_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
-external_c_OP_eq_colon_lt_lt_eq = error "external_c_OP_eq_colon_lt_lt_eq"
+-- external_ndho_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
+external_ndho_OP_eq_colon_lt_lt_eq = error "external_ndho_OP_eq_colon_lt_lt_eq"
 
--- external_c_C_ifVar :: a -> b -> b -> b
-external_c_C_ifVar = error "external_c_C_ifVar"
+-- external_ndho_C_ifVar :: a -> b -> b -> b
+external_ndho_C_ifVar = error "external_ndho_C_ifVar"
 
--- external_c_C_failure :: a -> b -> c
-external_c_C_failure = error "external_c_C_failure"
+-- external_ndho_C_failure :: a -> b -> c
+external_ndho_C_failure = error "external_ndho_C_failure"
 
--- DETERMIINISTIC
+-- DETERMINISTIC
 
--- external_c_C_seq :: a
-external_d_C_seq = error "external_d_C_seq"
+-- external_ndho_C_seq :: a
+external_dho_C_seq = error "external_dho_C_seq"
 
--- external_d_C_ensureNotFree :: a
-external_d_C_ensureNotFree = error "external_d_C_ensureNotFree"
+-- external_dho_C_ensureNotFree :: a
+external_dho_C_ensureNotFree = error "external_dho_C_ensureNotFree"
 
--- external_d_C_prim_error :: a
-external_d_C_prim_error = error "external_d_C_prim_error"
+-- external_dho_C_prim_error :: a
+external_dho_C_prim_error = error "external_dho_C_prim_error"
 
--- external_d_C_failed :: a
-external_d_C_failed = error "external_d_C_failed"
+-- external_dho_C_failed :: a
+external_dho_C_failed = error "external_dho_C_failed"
 
--- external_d_OP_eq_eq :: a -> a -> C_Bool
-external_d_OP_eq_eq = error "external_d_OP_eq_eq"
+-- external_dho_OP_eq_eq :: a -> a -> C_Bool
+external_dho_OP_eq_eq = error "external_dho_OP_eq_eq"
 
--- external_d_C_compare :: a -> a -> C_Ordering
-external_d_C_compare = error "external_d_C_compare"
+-- external_dho_C_compare :: a -> a -> C_Ordering
+external_dho_C_compare = error "external_dho_C_compare"
 
--- external_d_C_prim_ord :: C_Char -> C_Int
-external_d_C_prim_ord = error "external_d_C_prim_ord"
+-- external_dho_C_prim_ord :: C_Char -> C_Int
+external_dho_C_prim_ord = error "external_dho_C_prim_ord"
 
--- external_d_C_prim_chr :: C_Int -> C_Char
-external_d_C_prim_chr = error "external_d_C_prim_chr"
+-- external_dho_C_prim_chr :: C_Int -> C_Char
+external_dho_C_prim_chr = error "external_dho_C_prim_chr"
 
--- external_d_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (x +# y)
+-- external_dho_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
+external_dho_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (x +# y)
 
--- external_d_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_minus = error "external_d_C_prim_Int_minus"
+-- external_dho_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
+external_dho_C_prim_Int_minus = error "external_dho_C_prim_Int_minus"
 
--- external_d_C_prim_Int_times :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_times = error "external_d_C_prim_Int_times"
+-- external_dho_C_prim_Int_times :: C_Int -> C_Int -> C_Int
+external_dho_C_prim_Int_times = error "external_dho_C_prim_Int_times"
 
--- external_d_C_prim_Int_div :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_div = error "external_d_C_prim_Int_div"
+-- external_dho_C_prim_Int_div :: C_Int -> C_Int -> C_Int
+external_dho_C_prim_Int_div = error "external_dho_C_prim_Int_div"
 
--- external_d_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_mod = error "external_d_C_prim_Int_mod"
+-- external_dho_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
+external_dho_C_prim_Int_mod = error "external_dho_C_prim_Int_mod"
 
--- external_d_C_prim_negateFloat :: C_Float -> C_Float
-external_d_C_prim_negateFloat = error "external_d_C_prim_negateFloat"
+-- external_dho_C_prim_negateFloat :: C_Float -> C_Float
+external_dho_C_prim_negateFloat = error "external_dho_C_prim_negateFloat"
 
--- external_d_OP_eq_colon_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_eq = error "external_d_OP_eq_colon_eq"
+-- external_dho_OP_eq_colon_eq :: a -> a -> C_Success
+external_dho_OP_eq_colon_eq = error "external_dho_OP_eq_colon_eq"
 
--- external_d_C_success :: C_Success
-external_d_C_success = C_Success
+-- external_dho_C_success :: C_Success
+external_dho_C_success = C_Success
 
--- external_d_OP_ampersand :: C_Success -> C_Success -> C_Success
-external_d_OP_ampersand = error "external_d_OP_ampersand"
-
--- TODO: Func or (->) ?
--- external_d_OP_gt_gt_eq :: C_IO a -> (a -> C_IO b) -> C_IO b
-external_d_OP_gt_gt_eq = error "external_d_OP_gt_gt_eq"
-
--- external_d_C_return :: a -> C_IO a
-external_d_C_return = error "external_d_C_return"
-
--- external_d_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_d_C_prim_putChar = error "external_d_C_prim_putChar"
-
--- external_d_C_getChar :: C_IO C_Char
-external_d_C_getChar = error "external_d_C_getChar"
-
--- external_d_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
-external_d_C_prim_readFile = error "external_d_C_prim_readFile"
-
--- external_d_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
-external_d_C_prim_readFileContents = error "external_d_C_prim_readFileContents"
-
--- external_d_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_writeFile = error "external_d_C_prim_writeFile"
-
--- external_d_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_appendFile = error "external_d_C_prim_appendFile"
+-- external_dho_OP_ampersand :: C_Success -> C_Success -> C_Success
+external_dho_OP_ampersand = error "external_dho_OP_ampersand"
 
 -- TODO: Func or (->) ?
--- external_d_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_d_C_catch = error "external_d_C_catch"
+-- external_dho_OP_gt_gt_eq :: C_IO a -> (a -> C_IO b) -> C_IO b
+external_dho_OP_gt_gt_eq = error "external_dho_OP_gt_gt_eq"
 
--- external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail = error "external_d_C_catchFail"
+-- external_dho_C_return :: a -> C_IO a
+external_dho_C_return = error "external_dho_C_return"
 
--- external_d_C_prim_show    :: a -> OP_List C_Char
-external_d_C_prim_show = error "external_d_C_prim_show"
+-- external_dho_C_prim_putChar :: C_Char -> C_IO OP_Unit
+external_dho_C_prim_putChar = error "external_dho_C_prim_putChar"
 
--- external_d_C_unknown :: a
-external_d_C_unknown = error "external_d_C_unknown"
+-- external_dho_C_getChar :: C_IO C_Char
+external_dho_C_getChar = error "external_dho_C_getChar"
 
--- external_d_C_try :: a
-external_d_C_try = error "external_d_C_try"
+-- external_dho_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
+external_dho_C_prim_readFile = error "external_dho_C_prim_readFile"
 
--- external_d_C_apply :: Func a b -> a -> IDSupply -> b
-external_d_C_apply f a = f a
+-- external_dho_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
+external_dho_C_prim_readFileContents = error "external_dho_C_prim_readFileContents"
 
--- external_d_C_cond :: C_Success -> a -> a
-external_d_C_cond = error "external_d_C_cond"
+-- external_dho_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
+external_dho_C_prim_writeFile = error "external_dho_C_prim_writeFile"
 
--- external_d_C_letrec :: a -> a -> C_Success
-external_d_C_letrec = error "external_d_C_letrec"
+-- external_dho_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
+external_dho_C_prim_appendFile = error "external_dho_C_prim_appendFile"
 
--- external_d_OP_eq_colon_lt_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_lt_eq = error "external_d_OP_eq_colon_lt_eq"
+-- TODO: Func or (->) ?
+-- external_dho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
+external_dho_C_catch = error "external_dho_C_catch"
 
--- external_d_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_lt_lt_eq = error "external_d_OP_eq_colon_lt_lt_eq"
+-- external_dho_C_catchFail :: C_IO a -> C_IO a -> C_IO a
+external_dho_C_catchFail = error "external_dho_C_catchFail"
 
--- external_d_C_ifVar :: a -> b -> b -> b
-external_d_C_ifVar = error "external_d_C_ifVar"
+-- external_dho_C_prim_show    :: a -> OP_List C_Char
+external_dho_C_prim_show = error "external_dho_C_prim_show"
 
--- external_d_C_failure :: a -> b -> c
-external_d_C_failure = error "external_d_C_failure"
+-- external_dho_C_unknown :: a
+external_dho_C_unknown = error "external_dho_C_unknown"
+
+-- external_dho_C_try :: a
+external_dho_C_try = error "external_dho_C_try"
+
+-- external_dho_C_apply :: Func a b -> a -> IDSupply -> b
+external_dho_C_apply f a = f a
+
+-- external_dho_C_cond :: C_Success -> a -> a
+external_dho_C_cond = error "external_dho_C_cond"
+
+-- external_dho_C_letrec :: a -> a -> C_Success
+external_dho_C_letrec = error "external_dho_C_letrec"
+
+-- external_dho_OP_eq_colon_lt_eq :: a -> a -> C_Success
+external_dho_OP_eq_colon_lt_eq = error "external_dho_OP_eq_colon_lt_eq"
+
+-- external_dho_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
+external_dho_OP_eq_colon_lt_lt_eq = error "external_dho_OP_eq_colon_lt_lt_eq"
+
+-- external_dho_C_ifVar :: a -> b -> b -> b
+external_dho_C_ifVar = error "external_dho_C_ifVar"
+
+-- external_dho_C_failure :: a -> b -> c
+external_dho_C_failure = error "external_dho_C_failure"
