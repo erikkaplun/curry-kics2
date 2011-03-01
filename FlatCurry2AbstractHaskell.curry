@@ -5,7 +5,7 @@
 --- * Flexible case expressions are considered as rigid.
 --- * A function having type (TVar (-42)) is considered as untyped.
 --- * Type parameters occurring in type signatures of functions
----   are decorated with type context "NonDet".
+---   are decorated with type context "Generable".
 ---
 --- @author Michael Hanus
 --- @version February 2011

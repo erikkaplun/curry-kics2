@@ -37,7 +37,7 @@ import Maybe (isJust)
 showProg :: Prog -> String
 showProg (Prog m imports typedecls funcdecls opdecls) =
   let exports = showExports typedecls funcdecls in
-  "module "++m 
+  "module "++m
   ++ (if exports=="" then "" else " ("++exports++")")
   ++ " where\n\n"
   ++ showImports imports
@@ -55,23 +55,23 @@ defaultOptions = (emptyFM lessString,"")
 
 
 showExports :: [TypeDecl] -> [FuncDecl] -> String
-showExports types funcs = 
+showExports types funcs =
   let publicTypes = filter isPublicType types
       (withCons, withoutCons) = partition allPublicCons publicTypes
   in
-  concat 
-    (intersperse ", " 
-      (map ((++"(..)") . getTypeName) withCons
+  concat
+    (intersperse ", "
+      (map ((++" (..)") . getTypeName) withCons
        ++ map getTypeName withoutCons
        ++ map getFuncName (filter isPublicFunc funcs)))
   where
     isPublicType :: TypeDecl -> Bool
-    isPublicType (Type _ visibility _ _) = visibility==Public 
-    isPublicType (TypeSyn _ visibility _ _) = visibility==Public 
+    isPublicType (Type _ visibility _ _) = visibility==Public
+    isPublicType (TypeSyn _ visibility _ _) = visibility==Public
     isPublicType (Instance _ _ _ _) = False
 
     isPublicFunc :: FuncDecl -> Bool
-    isPublicFunc (Func _ _ _ visibility _ _) = visibility==Public 
+    isPublicFunc (Func _ _ _ visibility _ _) = visibility==Public
 
     getTypeName :: TypeDecl -> String
     getTypeName (Type (_,name) _ _ _) = name
@@ -79,7 +79,7 @@ showExports types funcs =
     getTypeName (Instance (_,name) _ _ _) = name
 
     allPublicCons :: TypeDecl -> Bool
-    allPublicCons (Type _ _ _ c) = length (filter isPublicCons c) == length c 
+    allPublicCons (Type _ _ _ c) = length (filter isPublicCons c) == length c
       where isPublicCons (Cons _ _ visibility _) = visibility==Public
     allPublicCons (TypeSyn _ _ _ _) = False
     allPublicCons (Instance _ _ _ _) = False
@@ -125,9 +125,11 @@ showTypeDecl (TypeSyn (_,name) _ indexlist typeexpr)
              ++ (prefixMap (showTypeExpr False) (map TVar indexlist) " ")
      ++ " = " ++ showTypeExpr False typeexpr
 showTypeDecl (Type (_,name) _ indexlist consdecls)
-   = "data " ++ name
-             ++ (prefixMap (showTypeExpr False) (map TVar indexlist) " ")
-     ++ "\n"++showBlock ("= "++(combineMap showConsDecl consdecls "\n| "))
+  | null consdecls = ""
+  | otherwise
+  = "data " ++ name
+    ++ (prefixMap (showTypeExpr False) (map TVar indexlist) " ")
+    ++ "\n"++showBlock ("= "++(combineMap showConsDecl consdecls "\n| "))
 showTypeDecl (Instance (_,name) texp ctxts rules)
    = "instance " ++ showContext ctxts ++ name ++ " " ++ showTypeExpr True texp
      ++ " where\n" ++ concatMap showInstRule rules
@@ -142,9 +144,9 @@ showContext [] = ""
 showContext [ctxt] = showClass ctxt ++ " => "
 showContext cs@(_:_:_) =
   "(" ++ concat (intersperse "," (map showClass cs)) ++ ") => "
-   
+
 showClass (Context qn tvars) = showTypeExpr False (TCons qn (map TVar tvars))
-   
+
 showConsDecl :: ConsDecl -> String
 showConsDecl (Cons (_,name) _ _ typelist)
    = name ++ (prefixMap (showTypeExpr True) typelist " ")
@@ -202,7 +204,7 @@ showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
      rulePrints arity' =
        concat $ intersperse "\n" $
          map (insertName arity' . (span (/=' ')) . tail . (showRule opts)) rules
-     insertName arity' (fstArg,rest) = 
+     insertName arity' (fstArg,rest) =
          if arity'/=0
            then fstArg++" "++name++rest
            else bolName++" "++fstArg++rest
@@ -233,9 +235,9 @@ showRule opts (Rule pattlist crhslist localdecls) =
 showCrhsList :: Options -> [(Expr,Expr)] -> String
 showCrhsList _ [] = ""
 showCrhsList opts ((g,r):cs)
-   | cs == [] && g == Symbol (prelude,"success") 
+   | cs == [] && g == Symbol (prelude,"success")
    =  " = " ++ showExprOpt opts r
-   | otherwise 
+   | otherwise
    = "\n" ++ showBlock (combineMap (showCrhs opts) ((g,r):cs) "\n")
 
 showCrhs :: Options -> (Expr,Expr) -> String
@@ -259,13 +261,13 @@ showExpr = showExprOpt defaultOptions
 showExprOpt :: Options -> Expr -> String
 showExprOpt _ (Var (_,name)) = showIdentifier name
 showExprOpt _ (Lit lit) = showLiteral lit
-showExprOpt opts (Symbol name) 
-  = if isInfixOpName (snd name) then "("++showSymbol opts name++")" 
+showExprOpt opts (Symbol name)
+  = if isInfixOpName (snd name) then "("++showSymbol opts name++")"
                                 else showSymbol opts name
 showExprOpt opts (Apply func arg) = showApplication opts (Apply func arg)
 showExprOpt opts (Lambda patts expr) = showLambdaOrSection opts patts expr
 showExprOpt opts (Let localdecls expr)
-   = "let\n" ++ showBlock ((combineMap (showLocalDecl opts) localdecls "\n") 
+   = "let\n" ++ showBlock ((combineMap (showLocalDecl opts) localdecls "\n")
      ++ "\n in " ++ (showBoxedExpr opts expr))
 showExprOpt opts (DoExpr stmts)
    = "\n    do\n" ++ showBlock (combineMap (showStatement opts) stmts "\n")
@@ -283,7 +285,7 @@ showSymbol (fm,thisModule) (thatModule,symName)
   | isJust (lookupFM fm symName) = thatModule++"."++symName
   | otherwise = symName
 
--- show a lambda expression as a left/right section, if 
+-- show a lambda expression as a left/right section, if
 -- it is a literal, var other than the pattern var or non-infix symbol.
 -- A better test for sections would need the test for sub expressions
 -- which is too complex for this simple purpose.
@@ -301,7 +303,7 @@ showLambdaOrSection opts patts expr = case patts of
       -> if isInfixOpName name && pvar==var && isAtom rexpr && (Var var/=rexpr)
          then "(" ++ name ++ " " ++ showBoxedExpr opts rexpr ++ ")"
          else showLambda opts patts expr
-     _ -> showLambda opts patts expr 
+     _ -> showLambda opts patts expr
   _ -> showLambda opts patts expr
 
 showLambda opts patts expr = "\\" ++ (combineMap showPattern patts " ")
@@ -320,13 +322,13 @@ showStatement opts (SLet localdecls)
 showPattern :: Pattern -> String
 showPattern (PVar (_,name)) = showIdentifier name
 showPattern (PLit lit) = showLiteral lit
-showPattern (PComb (_,name) []) = name 
+showPattern (PComb (_,name) []) = name
 showPattern (PComb (mod,name) (p:ps))
    | mod == prelude = showPreludeCons (PComb (mod,name) (p:ps))
    | otherwise        = "(" ++ name ++ (prefixMap showPattern (p:ps) " ") ++ ")"
 showPattern (PAs (_,name) pat) = showIdentifier name ++ "@" ++ showPattern pat
 showPattern (PFuncComb qname pats) = showPattern (PComb qname pats)
-   
+
 
 showPreludeCons :: Pattern -> String
 showPreludeCons p
@@ -338,7 +340,7 @@ showPreludeCons p
 
 showPatternList :: Pattern -> String
 showPatternList p
-  | isClosedStringPattern p 
+  | isClosedStringPattern p
   = '\"':filter (/='\'') (concat (showPatListElems p))++"\""
   | isClosedPatternList p
   = "["++concat (intersperse "," (showPatListElems p))++"]"
@@ -346,7 +348,7 @@ showPatternList p
   = showAsPatternList p
   | otherwise = "(" ++ concat (intersperse ":" (showPatListElems p))++")"
 
-showPatListElems (PComb (_,":") [x,xs]) 
+showPatListElems (PComb (_,":") [x,xs])
   = showPattern x : showPatListElems xs
 showPatListElems (PComb (_,"[]") []) = []
 showPatListElems (PVar v) = [showPattern (PVar v)]
@@ -358,13 +360,13 @@ isClosedPatternList (PComb (m,"[]") []) = m==prelude
 isClosedPatternList (PVar _) = False
 isClosedPatternList (PAs _ p) = isClosedPatternList p
 
-isClosedStringPattern (PComb (m,":") [x,xs]) 
+isClosedStringPattern (PComb (m,":") [x,xs])
   = m==prelude && isCharPattern x && isClosedStringPattern xs
 isClosedStringPattern (PComb (m,"[]") []) = m==prelude
 isClosedStringPattern (PVar _) = False
 isClosedStringPattern (PAs _ _) = False
 
-isCharPattern p = case p of 
+isCharPattern p = case p of
                     PLit (Charc _) -> True
                     _              -> False
 
@@ -372,7 +374,7 @@ isAsPattern p = case p of
                   PAs _ _ -> True
                   _       -> False
 
-showAsPatternList (PAs (_,name) p) = 
+showAsPatternList (PAs (_,name) p) =
      name++"@"++"(" ++ concat (intersperse ":" (showPatListElems p))++")"
 
 showBranchExpr :: Options -> BranchExpr -> String
@@ -426,15 +428,15 @@ applicationHead expr
 
 showSymbolApplication :: Options -> (String,String) -> Expr -> String
 showSymbolApplication opts (mod,name) appl
-   | mod == prelude && name == ":" 
+   | mod == prelude && name == ":"
    = showListApplication opts appl
-   | isInfixOpName name 
+   | isInfixOpName name
    = showInfixApplication opts (mod,name) appl
-   | mod == prelude && name == "if_then_else" 
+   | mod == prelude && name == "if_then_else"
    = showITEApplication opts appl
    | isTuple name
    = showTupleApplication opts appl
-   | otherwise        
+   | otherwise
    = showSimpleApplication opts appl
 
 showListApplication :: Options -> Expr -> String
@@ -456,7 +458,7 @@ showConsListApplication :: Options -> Expr -> String
 showConsListApplication opts (Apply (Apply _ head) tail)
    = case tail of
        (Symbol _) -> showBoxedExpr opts head
-       _           -> (showBoxedExpr opts head) ++ "," 
+       _           -> (showBoxedExpr opts head) ++ ","
                         ++ (showConsListApplication opts tail)
 
 showSimpleListApplication :: Options -> Expr -> String
@@ -468,10 +470,10 @@ showSimpleListApplication opts (Apply (Symbol (_,str)) tail)
    = showBoxedExpr opts tail ++ str
 
 showInfixApplication :: Options -> QName -> Expr -> String
-showInfixApplication opts infixop (Apply func arg2) 
-   = case func of 
+showInfixApplication opts infixop (Apply func arg2)
+   = case func of
        (Apply f arg1) -> case f of
-                             (Apply _ arg0) -> 
+                             (Apply _ arg0) ->
                                   "(" ++ showBoxedExpr opts arg0 ++ " " ++
                                    showSymbol opts infixop ++ " " ++
                                    showBoxedExpr opts arg1 ++ ") " ++
@@ -485,7 +487,7 @@ showITEApplication :: Options -> Expr -> String
 showITEApplication opts (Apply (Apply (Apply (Symbol _) condExpr) thenExpr) elseExpr)
    =    "if " ++ (showExprOpt opts condExpr) ++ " then "
      ++ (showExprOpt opts thenExpr) ++ " else "
-     ++ (showExprOpt opts elseExpr) 
+     ++ (showExprOpt opts elseExpr)
 showITEApplication opts (Apply e@(Apply (Apply (Apply _ _) _) _) e')
    = "("++showITEApplication opts e ++ ") "++showBoxedExpr opts e'
 
@@ -546,7 +548,7 @@ isStringList (Symbol (mod,name))
    = mod == prelude && name == "[]"
 isStringList (Var _) = False
 isStringList (Apply head tail)
-   = case head of 
+   = case head of
        (Apply _ (Lit (Charc _))) -> isStringList tail
        _                            -> False
 
@@ -609,9 +611,9 @@ maybeShowBrackets nested s =
 ------------------------------------------------
 
 nameFM :: [FuncDecl] -> NameFM
-nameFM = foldr addName (emptyFM lessString) 
+nameFM = foldr addName (emptyFM lessString)
 
 addName :: FuncDecl -> NameFM -> NameFM
-addName (Func _ (_,n) _ _ _ _) fm = addToFM fm n () 
+addName (Func _ (_,n) _ _ _ _) fm = addToFM fm n ()
 
 lessString s1 s2 = LT==cmpString s1 s2

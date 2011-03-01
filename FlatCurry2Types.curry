@@ -87,25 +87,27 @@ transProg _ (FC.Prog mname imps tdecls _ _) =
 --- Translate a list of FlatCurry type declarations into the
 --- corresponding type and instance declarations for Haskell.
 fcyTypes2abs :: [FC.TypeDecl] -> [TypeDecl]
-fcyTypes2abs = concatMap genTypeDefinitions . filter (not . isPrimTypeDecl)
+fcyTypes2abs = concatMap genTypeDefinitions -- . filter (not . isPrimTypeDecl)
 
---- Is the type declaration primitive, i.e., should not be translated?
-isPrimTypeDecl tdecl = case tdecl of
-  FC.TypeSyn _  _ _ _ -> True
-  FC.Type (mn,tc) _ _ _ ->
-        mn == renameModule "Prelude" &&
-        (tc `elem` map genRename ["Int","Float","Char","Success","IO"])
+-- --- Is the type declaration primitive, i.e., should not be translated?
+-- isPrimTypeDecl tdecl = case tdecl of
+--   FC.TypeSyn _  _ _ _ -> True
+--   FC.Type (mn,tc) _ _ _ ->
+--         mn == renameModule "Prelude" &&
+--         (tc `elem` map genRename ["Int","Float","Char","Success","IO"])
 
 genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
   [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)]
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
-  [Type (mn,tc) acvis targs
-         (map fcy2absCDecl cdecls ++
-          [Cons choiceConsName 3 acvis [idType,ctype,ctype],
-           Cons failConsName   0 acvis [],
-           Cons guardConsName  3 acvis [constraintType,ctype]]),
+  if null cdecls
+    then [Type (mn, tc) acvis targs []]
+    else [Type (mn,tc) acvis targs
+           (map fcy2absCDecl cdecls ++
+           [Cons choiceConsName 3 acvis [idType,ctype,ctype],
+            Cons failConsName   0 acvis [],
+            Cons guardConsName  3 acvis [constraintType,ctype]]),
    nondetInstance,
    generableInstance,
    showInstance,
