@@ -5,15 +5,32 @@ module Basics where
 import ID
 
 -- Type to encode the selection taken in a Choice structure
-data Choice = NoChoice | ChooseLeft | ChooseRight | BindTo ID | BoundTo ID
+data Choice
+  = NoChoice
+  | ChooseLeft
+  | ChooseRight
+  | BindTo ID
+  | BoundTo ID
   deriving Show
 
-data Try a = Val a | Fail | Choice ID a a | Free ID a a | Guard Constraint a
+data Constraint = ID :=: Choice
+ deriving Show
+
+data Try a
+  = Val a
+  | Fail
+  | Choice ID a a
+  | Free ID a a
+  | Guard Constraint a
   deriving Show
 
 tryChoice :: ID -> a -> a -> Try a
 tryChoice i@(ID _)     = Choice i
 tryChoice i@(FreeID _) = Free i
+
+-- ---------------------------------------------------------------------------
+-- Non-determinism
+-- ---------------------------------------------------------------------------
 
 -- Class for data that support nondeterministic values
 class NonDet a where
@@ -30,14 +47,19 @@ narrow i = choiceCons i
 class NonDet a => Generable a where
   generate :: IDSupply -> a
 
----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Computations to normal form
+-- ---------------------------------------------------------------------------
 
 -- Class for data that supports normal form computations.
 -- The normal form computation is combined with a continuation to be
 -- applied to the normal form.
 class NonDet a => NormalForm a where
+  hnf   :: NonDet b => (a -> b) -> a -> b
   ($!!) :: NonDet b => (a -> b) -> a -> b
+
+  -- TODO: remove this!
+  hnf = ($!!)
 
 -- Auxiliary operation to apply a continuation to the normal form.
 ($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
@@ -49,15 +71,51 @@ cont $$!! x = nf (try x)
     nf (Free i x y)   = cont (choiceCons i x y)
     nf (Guard c e)    = guardCons c (nf (try e))
 
+nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
+nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 
----------------------------------------------------------------------
--- The implementation of the Success type must be added here since
--- it is used in the class Unifiable.
+-- ---------------------------------------------------------------------------
+-- Unification
+-- ---------------------------------------------------------------------------
 
-data C_Success = C_Success
-               | Choice_C_Success ID C_Success C_Success
-               | Fail_C_Success
-               | Guard_C_Success Constraint C_Success
+-- Class for data that support unification
+class (NonDet a, NormalForm a) => Unifiable a where
+  (=.=) :: a -> a -> C_Success
+  bind :: ID -> a -> [Constraint]
+
+(=:=) :: Unifiable a => a -> a -> C_Success
+_ =:= _ = error "(=:=) undefined"
+
+(&) :: C_Success -> C_Success -> C_Success
+_ & _ = error "(&) undefined"
+
+-- ---------------------------------------------------------------------------
+-- Curry types
+-- ---------------------------------------------------------------------------
+
+-- Class for curry types
+class ( Eq a, Ord a, Show a
+      , NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+
+-- ---------------------------------------------------------------------------
+-- Built-in types
+-- ---------------------------------------------------------------------------
+
+-- The implementation of the Success type must be added here since it is used
+-- in the class Unifiable.
+data C_Success
+  = C_Success
+  | Choice_C_Success ID C_Success C_Success
+  | Fail_C_Success
+  | Guard_C_Success Constraint C_Success
+
+instance Eq C_Success where
+  C_Success == C_Success = True
+  _         == _         = False
+
+instance Ord C_Success where
+  C_Success <= C_Success = True
+  _         <= _         = False
 
 instance Show C_Success where
   showsPrec d C_Success = showString "success"
@@ -80,25 +138,122 @@ instance NormalForm C_Success where
   cont $!! s@C_Success = cont s
   cont $!! x = cont $$!! x
 
----------------------------------------------------------------------
--- Unification
+instance Unifiable C_Success where
+  C_Success =.= C_Success = C_Success
+  _         =.= _         = Fail_C_Success
+  bind i (Choice_C_Success j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
--- Class for data that support unification
-class (NonDet a, NormalForm a) => Unifiable a where
-  (=.=) :: a -> a -> C_Success
-  bind :: ID -> a -> [Constraint]
+instance Curry C_Success
 
-data Constraint = ID :=: Choice
- deriving Show
+-- Higher Order Funcs
 
-(=:=) :: Unifiable a => a -> a -> C_Success
-_ =:= _ = error "(=:=) undefined"
+data Func a b = Func (a -> IDSupply -> b)
+              | Func_Choice ID (Func a b) (Func a b)
+              | Func_Fail
+              | Func_Guard Constraint (Func a b)
 
-(&) :: C_Success -> C_Success -> C_Success
-_ & _ = error "(&) undefined"
+instance Eq (Func a b) where
+  f == g = False
 
----------------------------------------------------------------------
+instance Ord (Func a b) where
+  f <= g = False
+
+instance Show (Func a b) where
+  show = error "show for Func is undefined"
+
+instance NonDet (Func a b) where
+  choiceCons = Func_Choice
+  failCons = Func_Fail
+  guardCons = Func_Guard
+  try (Func_Choice i x1 x2) = Choice i x1 x2
+  try (Func_Fail) = Fail
+  try v = Val v
+
+instance Generable (Func a b) where
+  generate = error "generate for Func is undefined"
+
+instance NormalForm (Func a b) where
+  ($!!) = error "($!!) for Func is undefined"
+
+instance Unifiable (Func a b) where
+  (=.=) = error "(=.=) for Func is undefined"
+  bind = error "bind for Func is undefined"
+
+instance Curry (Func a b)
+
+-- Higher Order functions
+
+instance Eq (a -> b) where
+  f == g = False
+
+instance Ord (a -> b) where
+  f <= g = False
+
+instance Show (a -> b) where
+  show = error "show for function is undefined"
+
+instance NonDet (a -> b) where
+  choiceCons = undefined
+  failCons = undefined
+  guardCons = undefined
+  try = undefined
+
+instance Generable (a -> b) where
+  generate = undefined
+
+instance NormalForm (a -> b) where
+  ($!!) = error "($!!) for function is undefined"
+
+instance Unifiable (a -> b) where
+  (=.=) = error "(=.=) for function is undefined"
+  bind = error "bind for function is undefined"
+
+instance Curry (a -> b)
+
+-- ---------------------------------------------------------------------------
+-- IO
+-- ---------------------------------------------------------------------------
+data C_IO a
+     = Choice_C_IO ID (C_IO a) (C_IO a)
+     | Fail_C_IO
+     | Guard_C_IO Constraint (C_IO a)
+     | C_IO (IO a)
+
+instance Eq (C_IO a) where
+  (==) = error "(==) for C_IO"
+
+instance Ord (C_IO a) where
+  (<=) = error "(<=) for C_IO"
+
+instance Show (C_IO a) where
+  show = error "show for C_IO"
+
+instance NonDet (C_IO a) where
+  choiceCons = Choice_C_IO
+  failCons = Fail_C_IO
+  guardCons = Guard_C_IO
+  try (Choice_C_IO i x y) = tryChoice i x y
+  try Fail_C_IO = Fail
+  try (Guard_C_IO c e) = Guard c e
+  try x = Val x
+
+instance Generable (C_IO a) where
+  generate _ = error "C_IO: generate"
+
+instance NormalForm (C_IO a) where
+  cont $!! (Choice_C_IO i x1 x2) = nfChoice cont i x1 x2
+  cont $!! Fail_C_IO             = failCons
+  cont $!! v                     = cont v
+
+instance Unifiable (C_IO a) where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_C_IO j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+
+instance Curry (C_IO a)
+
+-- ---------------------------------------------------------------------------
 -- Auxiliaries for Show
+-- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
 showsChoice d i@(FreeID _) _ _ = shows i
@@ -112,46 +267,27 @@ showsChoice d r x1 x2 =
 showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 
----------------------------------------------------------------------
--- Higher Order
-
-instance NonDet (a -> b) where
-  choiceCons = undefined
-  failCons = undefined
-  guardCons = undefined
-  try = undefined
-
-instance Generable (a -> b) where
-  generate = undefined
-
-data Func a b = Func (a -> IDSupply -> b)
-              | Func_Choice ID (Func a b) (Func a b)
-              | Func_Fail
-              | Func_Guard Constraint (Func a b)
-
-type a :-> b = Func a b
-
-infixr 0 :->
-
-instance NonDet (Func a b) where
-  choiceCons = Func_Choice
-  failCons = Func_Fail
-  guardCons = Func_Guard
-  try (Func_Choice i x1 x2) = Choice i x1 x2
-  try (Func_Fail) = Fail
-  try v = Val v
-
-instance Generable (Func a b) where
-  generate = undefined
+-- ---------------------------------------------------------------------------
+-- Auxiliaries for non-determinism
+-- ---------------------------------------------------------------------------
 
 -- make a deterministic function non-deterministic
 nd :: (a -> b) -> a -> IDSupply -> b
 nd f a _ = f a
 
+wrapDX :: (c -> b) -> (a -> c) -> Func a b
 wrapDX wrap f = wrapNX wrap (nd f)
 
+wrapNX :: (c -> b) -> (a -> IDSupply -> c) -> Func a b
 wrapNX wrap f = Func (\a s -> wrap $ f a s)
 
+eval :: (IDSupply -> a) -> IO a
+eval goal = initSupply >>= return . goal
+
+evalIO :: (IDSupply -> C_IO a) -> IO a
+evalIO goal = initSupply >>= (\s -> let (C_IO act) = goal s in act)
+
+{-
 -- wrap a higher-order function with one argument
 wrapD :: (a -> b) -> a :-> b
 wrapD f = wrapDX id f
@@ -172,21 +308,6 @@ wrapN2 f = wrapDX (wrapNX id) f
 wrapN3 :: (a -> b -> c -> IDSupply -> d) -> a :-> b :-> c :-> d
 wrapN3 f = wrapDX (wrapDX (wrapNX id)) f
 
-
-
 unwrap :: Func a b -> IDSupply -> a -> b
 unwrap (Func f) s x = f x s
-
--- TODO: from Prelude
-
--- c_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
--- c_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
-
--- c_C_apply :: Func a b -> a -> IDSupply -> b
--- c_C_apply (Func f) s x = f s x
---
--- d_C_apply :: (a -> b) -> a -> b
--- d_C_apply f x = f x
-
-eval :: (IDSupply -> a) -> IO a
-eval goal = initSupply >>= return . goal
+-}
