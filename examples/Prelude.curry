@@ -83,25 +83,30 @@ ensureSpine l = ensureList (ensureNotFree l)
 ($)     :: (a -> b) -> a -> b
 f $ x   = f x
 
---- Right-associative application with strict evaluation of its argument.
+--- Right-associative application with strict evaluation of its argument
+--- to head normal form.
 ($!)    :: (a -> b) -> a -> b
--- f $! x  = x `seq` f x
 ($!) external
+-- f $! x  = x `seq` f x
 
 --- Right-associative application with strict evaluation of its argument
 --- to normal form.
 ($!!)   :: (a -> b) -> a -> b
-f $!! x | x=:=y = f y  where y free
+($!!) external
+-- f $!! x | x=:=y = f y  where y free
 
 --- Right-associative application with strict evaluation of its argument
 --- to a non-variable term.
 ($#)    :: (a -> b) -> a -> b
 f $# x  = f $! (ensureNotFree x)
+-- TODO: do we need ensureNotFree?
 
 --- Right-associative application with strict evaluation of its argument
 --- to ground normal form.
 ($##)   :: (a -> b) -> a -> b
-f $## x | x=:=y = y==y `seq` f y  where y free
+f $## x = f $!! (ensureNotFree x)
+-- TODO: do we need ensureNotFree?
+-- f $## x | x=:=y = y==y `seq` f y  where y free
 
 --- Aborts the execution with an error message.
 error :: String -> _
@@ -620,9 +625,11 @@ readFile f = prim_readFile $## f
 
 prim_readFile          :: String -> IO String
 prim_readFile external
+
+-- TODO ask Michael how this function was used
 -- for internal implementation of readFile:
-prim_readFileContents          :: String -> String
-prim_readFileContents external
+-- prim_readFileContents          :: String -> String
+-- prim_readFileContents external
 
 --- An action that writes a file.
 --- @param filename - The name of the file to be written.
@@ -880,19 +887,21 @@ unpack  :: (a -> Success) -> a
 unpack g | g x  = x  where x free
 
 
---- Identity function used by the partial evaluator
---- to mark expressions to be partially evaluated.
-PEVAL   :: a -> a
-PEVAL x = x
+-- --- Identity function used by the partial evaluator
+-- --- to mark expressions to be partially evaluated.
+-- PEVAL   :: a -> a
+-- PEVAL x = x
 
 --- Evaluates the argument to normal form and returns it.
 normalForm :: a -> a
-normalForm x | x=:=y = y where y free
+normalForm x = id $!! x
+-- normalForm x | x=:=y = y where y free
 
 --- Evaluates the argument to ground normal form and returns it.
 --- Suspends as long as the normal form of the argument is not ground.
 groundNormalForm :: a -> a
-groundNormalForm x | y==y = y where y = normalForm x
+normalForm x = id $## x
+-- groundNormalForm x | y==y = y where y = normalForm x
 
 -- Only for internal use:
 -- Represenation of higher-order applications in FlatCurry.
@@ -904,27 +913,27 @@ apply external
 cond :: Success -> a -> a
 cond external
 
--- Only for internal use:
--- letrec ones (1:ones) -> bind ones to (1:ones)
-letrec :: a -> a -> Success
-letrec external
+-- -- Only for internal use:
+-- -- letrec ones (1:ones) -> bind ones to (1:ones)
+-- letrec :: a -> a -> Success
+-- letrec external
 
---- Non-strict equational constraint. Experimental.
-(=:<=) :: a -> a -> Success
-(=:<=) external
+-- --- Non-strict equational constraint. Experimental.
+-- (=:<=) :: a -> a -> Success
+-- (=:<=) external
+--
+-- --- Non-strict equational constraint for linear function patterns.
+-- --- Thus, it must be ensured that the first argument is always (after evalutation
+-- --- by narrowing) a linear pattern. Experimental.
+-- (=:<<=) :: a -> a -> Success
+-- (=:<<=) external
 
---- Non-strict equational constraint for linear function patterns.
---- Thus, it must be ensured that the first argument is always (after evalutation
---- by narrowing) a linear pattern. Experimental.
-(=:<<=) :: a -> a -> Success
-(=:<<=) external
-
---- internal function to implement =:<=
-ifVar :: _ -> a -> a -> a
-ifVar external
-
---- internal operation to implement failure reporting
-failure :: _ -> _ -> _
-failure external
+-- --- internal function to implement =:<=
+-- ifVar :: _ -> a -> a -> a
+-- ifVar external
+--
+-- --- internal operation to implement failure reporting
+-- failure :: _ -> _ -> _
+-- failure external
 
 -- the end

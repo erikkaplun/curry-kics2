@@ -99,7 +99,7 @@ compMessage curNum maxNum mod = '[' : fill max sCurNum ++ " of "
       sCurNum = show curNum
       sMaxNum = show maxNum
       max = length $ sMaxNum
-      fill n s = replicate (n - length s) ' '
+      fill n s = replicate (n - length s) ' ' ++ s
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od) =

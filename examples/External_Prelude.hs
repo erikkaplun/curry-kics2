@@ -229,16 +229,13 @@ external_d_C_ensureNotFree :: Curry a => a -> a
 external_d_C_ensureNotFree x = id `dho_OP_dollar_bang` x
 
 external_d_C_prim_error :: C_String -> a
-external_d_C_prim_error s = error (show s)
+external_d_C_prim_error s = error (toString s)
 
 external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
 
 external_d_OP_eq_eq :: Curry a => a -> a -> C_Bool
 external_d_OP_eq_eq x y = (\a -> (\b -> a =?= b) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x
-
--- external_d_OP_prim_eq_eq :: Curry a => a -> a -> C_Bool
--- external_d_OP_prim_eq_eq x y = fromBool (a == b)
 
 external_d_C_compare :: Curry a => a -> a -> C_Ordering
 external_d_C_compare x y = (\a -> (\b -> (a `comp` b)) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x where
@@ -275,14 +272,14 @@ external_d_C_prim_Int_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
 external_d_C_prim_negateFloat :: C_Float -> C_Float
 external_d_C_prim_negateFloat (C_Float x) = C_Float (negateFloat# x)
 
--- external_d_OP_eq_colon_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_eq = error "external_d_OP_eq_colon_eq"
+external_d_OP_eq_colon_eq :: Unifiable a => a -> a -> C_Success
+external_d_OP_eq_colon_eq = (=:=)
 
 external_d_C_success :: C_Success
 external_d_C_success = C_Success
 
--- external_d_OP_ampersand :: C_Success -> C_Success -> C_Success
-external_d_OP_ampersand = error "external_d_OP_ampersand"
+external_d_OP_ampersand :: C_Success -> C_Success -> C_Success
+external_d_OP_ampersand = (&)
 
 external_d_C_return :: a -> C_IO a
 external_d_C_return a = C_IO (return a)
@@ -296,45 +293,29 @@ external_d_C_getChar = C_IO (getChar >>= return . fromChar)
 external_d_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
 external_d_C_prim_readFile s = C_IO (readFile (toString s) >>= return . fromString)
 
--- external_d_C_prim_readFileContents :: OP_List C_Char -> OP_List C_Char
-external_d_C_prim_readFileContents = error "external_d_C_prim_readFileContents"
-
+-- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
+-- be non-deterministic
 external_d_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
 external_d_C_prim_writeFile f s = C_IO (writeFile f' s' >> return OP_Unit)
   where f' = toString f
         s' = toString s
 
+-- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
+-- be non-deterministic
 external_d_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
 external_d_C_prim_appendFile f s = C_IO (appendFile f' s' >> return OP_Unit)
   where f' = toString f
         s' = toString s
 
--- external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail = error "external_d_C_catchFail"
+external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
+external_d_C_catchFail (C_IO act) (C_IO err) = C_IO $ catch act handle
+  where handle ioErr = print ioErr >> err
 
 external_d_C_prim_show :: Show a => a -> OP_List C_Char
 external_d_C_prim_show a = fromString (show a)
 
--- external_d_C_unknown :: a
-external_d_C_unknown = error "external_d_C_unknown"
-
--- external_d_C_cond :: C_Success -> a -> a
-external_d_C_cond = error "external_d_C_cond"
-
--- external_d_C_letrec :: a -> a -> C_Success
-external_d_C_letrec = error "external_d_C_letrec"
-
--- external_d_OP_eq_colon_lt_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_lt_eq = error "external_d_OP_eq_colon_lt_eq"
-
--- external_d_OP_eq_colon_lt_lt_eq :: a -> a -> C_Success
-external_d_OP_eq_colon_lt_lt_eq = error "external_d_OP_eq_colon_lt_lt_eq"
-
--- external_d_C_ifVar :: a -> b -> b -> b
-external_d_C_ifVar = error "external_d_C_ifVar"
-
--- external_d_C_failure :: a -> b -> c
-external_d_C_failure = error "external_d_C_failure"
+external_d_C_cond :: NonDet a => C_Success -> a -> a
+external_d_C_cond succ a = const a `dho_C_dollar_bang` succ
 
 -- External ND
 -- -----------
@@ -345,7 +326,13 @@ external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 -- External HO
 -- -----------
 
-external_dho_OP_dollar_bang :: (NonDet a,NonDet b) => (a -> b) -> a -> b
+external_dho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+external_dho_OP_dollar_bang_bang = ($!!)
+
+external_ndho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
+external_ndho_OP_dollar_bang_bang f x s = (\y -> external_ndho_C_apply f y s) $!! x
+
+external_dho_OP_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 external_dho_OP_dollar_bang f x = hnf (try x)
   where
    hnf (Val v) = f v
@@ -373,11 +360,13 @@ external_dho_C_apply f a = f a
 external_ndho_C_apply :: Func a b -> a -> IDSupply -> b
 external_ndho_C_apply (Func f) a s = f a s
 
--- external_dho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_dho_C_catch = error "external_dho_C_catch"
+external_dho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
+external_dho_C_catch (C_IO act) cont = C_IO $ catch act handle where
+  handle (IOError e) = cont (C_IOError (fromString e))
 
--- external_ndho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_ndho_C_catch = error "external_ndho_C_catch"
+external_ndho_C_catch :: C_IO a -> Func C_IOError C_IO a -> IDSupply -> C_IO a
+external_ndho_C_catch (C_IO act) cont s = C_IO $ catch act handle where
+  handle (IOError e) = external_ndho_C_apply cont (C_IOError (fromString e)) s
 
 -- TODO: Support non-deterministic IO ?
 external_dho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
@@ -388,6 +377,9 @@ external_dho_OP_gt_gt_eq (C_IO m) f = C_IO $
 external_ndho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> C_IO t1
 external_ndho_OP_gt_gt_eq (C_IO m) (Func f) s = C_IO $
   m >>= \x -> let (C_IO m') = f x s in m'
+
+-- Encapsulated search
+-- -------------------
 
 -- external_dho_C_try :: (a -> Success) -> [a -> Success]
 external_dho_C_try = error "external_dho_C_try"
