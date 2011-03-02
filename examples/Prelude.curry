@@ -17,7 +17,7 @@ infixl 7 *, `div`, `mod`
 infixl 6 +, -
 -- infixr 5 :                          -- declared together with list
 infixr 5 ++
-infix  4 =:=, ==, /=, <, >, <=, >=, =:<=, =:<<=
+infix  4 =:=, ==, /=, <, >, <=, >= -- , =:<=, =:<<=
 infix  4  `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||
@@ -900,7 +900,7 @@ normalForm x = id $!! x
 --- Evaluates the argument to ground normal form and returns it.
 --- Suspends as long as the normal form of the argument is not ground.
 groundNormalForm :: a -> a
-normalForm x = id $## x
+groundNormalForm x = id $## x
 -- groundNormalForm x | y==y = y where y = normalForm x
 
 -- Only for internal use:

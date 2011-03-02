@@ -1,5 +1,7 @@
 {-# LANGUAGE MagicHash #-}
 
+import GHC.IO.Exception (IOException (..))
+
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
 import GHC.Exts (Int (I#), Int#, (==#), (<=#), (+#), (-#), (*#), quotInt#, remInt#)
@@ -282,55 +284,49 @@ external_d_OP_ampersand :: C_Success -> C_Success -> C_Success
 external_d_OP_ampersand = (&)
 
 external_d_C_return :: a -> C_IO a
-external_d_C_return a = C_IO (return a)
+external_d_C_return a = fromIO (return a)
 
 external_d_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_d_C_prim_putChar c = C_IO (putChar (toChar c) >> return OP_Unit)
+external_d_C_prim_putChar c = fromIO $ putChar (toChar c) >> return OP_Unit
 
 external_d_C_getChar :: C_IO C_Char
-external_d_C_getChar = C_IO (getChar >>= return . fromChar)
+external_d_C_getChar = fromIO $ getChar >>= return . fromChar
 
 external_d_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
-external_d_C_prim_readFile s = C_IO (readFile (toString s) >>= return . fromString)
+external_d_C_prim_readFile s = fromIO $ readFile (toString s) >>= return . fromString
 
 -- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
 -- be non-deterministic
 external_d_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_writeFile f s = C_IO (writeFile f' s' >> return OP_Unit)
+external_d_C_prim_writeFile f s = fromIO $ writeFile f' s' >> return OP_Unit
   where f' = toString f
         s' = toString s
 
 -- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
 -- be non-deterministic
 external_d_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_appendFile f s = C_IO (appendFile f' s' >> return OP_Unit)
+external_d_C_prim_appendFile f s = fromIO $ appendFile f' s' >> return OP_Unit
   where f' = toString f
         s' = toString s
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail (C_IO act) (C_IO err) = C_IO $ catch act handle
-  where handle ioErr = print ioErr >> err
+external_d_C_catchFail act err = fromIO $ catch (toIO act) handle
+  where handle ioErr = print ioErr >> (toIO err)
 
 external_d_C_prim_show :: Show a => a -> OP_List C_Char
 external_d_C_prim_show a = fromString (show a)
 
-external_d_C_cond :: NonDet a => C_Success -> a -> a
-external_d_C_cond succ a = const a `dho_C_dollar_bang` succ
+external_d_C_cond :: Curry a => C_Success -> a -> a
+external_d_C_cond succ a = const a `dho_OP_dollar_bang` succ
 
 -- External ND
 -- -----------
 
--- external_nd_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
+external_nd_OP_qmark :: NonDet a => a -> a -> IDSupply -> a
 external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
 -- External HO
 -- -----------
-
-external_dho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
-external_dho_OP_dollar_bang_bang = ($!!)
-
-external_ndho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
-external_ndho_OP_dollar_bang_bang f x s = (\y -> external_ndho_C_apply f y s) $!! x
 
 external_dho_OP_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 external_dho_OP_dollar_bang f x = hnf (try x)
@@ -353,6 +349,12 @@ external_ndho_OP_dollar_bang f x s = hnf (try x)
    hnf (Free id a b) = error "external_dho_OP_dollar_bang with free variable"
    hnf (Guard c e) = guardCons c (hnf (try e))
 
+external_dho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+external_dho_OP_dollar_bang_bang = ($!!)
+
+external_ndho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
+external_ndho_OP_dollar_bang_bang f x s = (\y -> external_ndho_C_apply f y s) $!! x
+
 external_dho_C_apply :: (a -> b) -> a -> b
 external_dho_C_apply f a = f a
 
@@ -361,22 +363,20 @@ external_ndho_C_apply :: Func a b -> a -> IDSupply -> b
 external_ndho_C_apply (Func f) a s = f a s
 
 external_dho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_dho_C_catch (C_IO act) cont = C_IO $ catch act handle where
-  handle (IOError e) = cont (C_IOError (fromString e))
+external_dho_C_catch act cont = fromIO $ catch (toIO act) handle where
+  handle = toIO . cont . C_IOError . fromString . ioe_description
 
-external_ndho_C_catch :: C_IO a -> Func C_IOError C_IO a -> IDSupply -> C_IO a
-external_ndho_C_catch (C_IO act) cont s = C_IO $ catch act handle where
-  handle (IOError e) = external_ndho_C_apply cont (C_IOError (fromString e)) s
+external_ndho_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
+external_ndho_C_catch act cont s = C_IO $ catch (toIO act) handle where
+  handle e = toIO (external_ndho_C_apply cont (C_IOError (fromString (ioe_description e))) s)
 
 -- TODO: Support non-deterministic IO ?
 external_dho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
-external_dho_OP_gt_gt_eq (C_IO m) f = C_IO $
-  m >>= \x -> let (C_IO m') = f x in m'
+external_dho_OP_gt_gt_eq m f = fromIO $ (toIO m) >>= toIO . f
 
 -- TODO: Support non-deterministic IO ?
 external_ndho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> C_IO t1
-external_ndho_OP_gt_gt_eq (C_IO m) (Func f) s = C_IO $
-  m >>= \x -> let (C_IO m') = f x s in m'
+external_ndho_OP_gt_gt_eq m f s = fromIO $ (toIO m) >>= \x -> toIO (external_ndho_C_apply f x s)
 
 -- Encapsulated search
 -- -------------------

@@ -234,12 +234,18 @@ instance Unifiable (C_IO a) where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_IO j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
+toIO :: C_IO a -> IO a
+toIO (C_IO io) = io
+
+fromIO :: IO a -> C_IO a
+fromIO io = C_IO io
+
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
-showsChoice d i@(FreeID _) _ _ = shows i
+-- showsChoice d i@(FreeID _) _ _ = shows i
 showsChoice d r x1 x2 =
   showChar '(' .
   showsPrec d x1 .
