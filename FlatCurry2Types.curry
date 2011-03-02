@@ -4,8 +4,8 @@
 --- The input is a FlatCurry program and the output is an AbstractHaskell
 --- program with instance declarations that can be easily pretty printed
 ---
---- @author Michael Hanus
---- @version February 2011
+--- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
+--- @version March 2011
 ------------------------------------------------------------------------
 
 module FlatCurry2Types where
@@ -102,14 +102,13 @@ genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
 
 genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   if null cdecls
-    then [Type (mn, tc) acvis targs []]
-    else [ Type (mn,tc) acvis targs
+    then [ Type (mn, tc) acvis targs []]
+    else [ Type (mn, tc) acvis targs
            (map fcy2absCDecl cdecls ++
-           [Cons choiceConsName 3 acvis [idType,ctype,ctype],
-            Cons failConsName   0 acvis [],
-            Cons guardConsName  3 acvis [constraintType,ctype]])
-         , eqInstance
-         , ordInstance
+           [ Cons choiceConsName 3 acvis [idType, ctype, ctype]
+           , Cons failConsName   0 acvis []
+           , Cons guardConsName  3 acvis [constraintType, ctype]
+           ])
          , showInstance
          , nondetInstance
          , generableInstance
@@ -124,66 +123,6 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   choiceConsName = mkChoiceName (mn,tc)
   failConsName = mkFailName (mn,tc)
   guardConsName = mkGuardName (mn,tc)
-
-  -- Generate instance of Eq class:
-  eqInstance =
-   Instance (pre "Eq") ctype
-     (map (\tv -> Context (pre "Eq") [tv]) targs)
-     (map eqConsRule cdecls ++
-      [(pre "==",
-        Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "False"))] [])])
-
-  -- Generate Unifiable instance rule for a data constructor:
-  eqConsRule (FC.Cons qn _ _ texps) =
-    (pre "==",
-     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
-           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
-          [noGuard eqBody] [])
-   where
-     carity = length texps
-
-     eqBody =
-      if carity==0 then constF (pre "True")
-      else foldr1 (\x xs -> applyF (pre "&&") [x,xs])
-                  (map (\i -> applyF (pre "==")
-                                     [Var (i,'x':show i),Var (i,'y':show i)])
-                       [1..carity])
-
-  -- Generate instance of Ord class:
-  ordInstance =
-   Instance (pre "Ord") ctype
-     (map (\tv -> Context (pre "Ord") [tv]) targs)
-     ((ordConsRules cdecls) ++
-      [(pre "<=",
-        Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "False"))] [])])
-
-  -- Generate Unifiable instance rule for a data constructor:
-  ordConsRules [] = []
-  ordConsRules (FC.Cons qn _ _ texps : cds) =
-    (pre "<=",
-     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
-           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
-          [noGuard (ordBody [1..carity])] []) :
-    map (ordCons2Rule (qn,carity)) cds ++
-    ordConsRules cds
-   where
-     carity = length texps
-
-     ordBody [] = constF (pre "True")
-     ordBody (i:is) =
-      let xi = Var (i,'x':show i)
-          yi = Var (i,'y':show i)
-       in if null is
-          then applyF (pre "<=") [xi,yi]
-          else applyF (pre "||")
-                 [applyF (pre "<")  [xi,yi],
-                  applyF (pre "&&") [applyF (pre "==") [xi,yi], ordBody is]]
-
-  ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
-    (pre "<=",
-     Rule [PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1]),
-           PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
-          [noGuard (constF (pre "True"))] [])
 
   -- Generate instance of Show class:
   showInstance =
@@ -232,8 +171,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   nondetInstance =
    Instance (basics "NonDet") ctype []
      ([((basics "choiceCons"), Rule [] [noGuard (constF choiceConsName)] []),
-       ((basics "failCons"),   Rule [] [noGuard (constF failConsName)] []),
-       ((basics "guardCons"),  Rule [] [noGuard (constF guardConsName)] [])] ++
+       ((basics "failCons"),   Rule [] [noGuard (constF   failConsName)] []),
+       ((basics "guardCons"),  Rule [] [noGuard (constF  guardConsName)] [])] ++
       map (\r->(basics "try",r)) tryRules)
 
   tryRules =
@@ -331,7 +270,55 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   curryInstance =
     Instance (basics "Curry") ctype
       (map (\tv -> Context (basics "Curry") [tv]) targs)
-      []
+      (map eqConsRule cdecls ++
+      [(pre "=?=", Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "C_False"))] [])]
+      ++ ordConsRules cdecls ++
+      [(pre "<?=", Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "C_False"))] [])])
+
+  -- Generate Unifiable instance rule for a data constructor:
+  eqConsRule (FC.Cons qn _ _ texps) =
+    (pre "=?=",
+     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
+           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
+          [noGuard eqBody] [])
+   where
+     carity = length texps
+
+     eqBody =
+      if carity==0 then constF (pre "C_True")
+      else foldr1 (\x xs -> applyF (pre "d_OP_ampersand_ampersand") [x,xs])
+                  (map (\i -> applyF (pre "d_OP_eq_eq")
+                                     [Var (i,'x':show i),Var (i,'y':show i)])
+                       [1..carity])
+
+  -- Generate Unifiable instance rule for a data constructor:
+  ordConsRules [] = []
+  ordConsRules (FC.Cons qn _ _ texps : cds) =
+    (pre "<?=",
+     Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
+           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
+          [noGuard (ordBody [1..carity])] []) :
+    map (ordCons2Rule (qn,carity)) cds ++
+    ordConsRules cds
+   where
+     carity = length texps
+
+     ordBody [] = constF (pre "C_True")
+     ordBody (i:is) =
+      let xi = Var (i,'x':show i)
+          yi = Var (i,'y':show i)
+       in if null is
+          then applyF (pre "d_OP_lt_eq") [xi,yi]
+          else applyF (pre "d_OP_bar_bar")
+                 [applyF (pre "d_OP_lt")  [xi,yi],
+                  applyF (pre "d_OP_ampersand_ampersand") [applyF (pre "d_OP_eq_eq") [xi,yi], ordBody is]]
+
+  ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
+    (pre "<?=",
+     Rule [PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1]),
+           PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
+          [noGuard (constF (pre "C_True"))] [])
+
 
 freshID n i =
   if n==0 then applyF (idmod "leftSupply") [i]

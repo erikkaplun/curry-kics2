@@ -64,7 +64,7 @@ cont $$!! x = nf (try x)
     nf (Val v)        = cont $!! v
     nf Fail           = failCons
     nf (Choice i x y) = choiceCons i (nf (try x)) (nf (try y))
-    nf (Free i x y)   = cont (choiceCons i x y)
+    nf (Free i x y)   = error "($$!!) with free variable" -- was: cont (choiceCons i x y)
     nf (Guard c e)    = guardCons c (nf (try e))
 
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
@@ -84,14 +84,6 @@ _ =:= _ = error "(=:=) undefined"
 
 (&) :: C_Success -> C_Success -> C_Success
 _ & _ = error "(&) undefined"
-
--- ---------------------------------------------------------------------------
--- Curry types
--- ---------------------------------------------------------------------------
-
--- Class for curry types
-class ( Eq a, Ord a, Show a
-      , NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -139,8 +131,6 @@ instance Unifiable C_Success where
   _         =.= _         = Fail_C_Success
   bind i (Choice_C_Success j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-instance Curry C_Success
-
 -- Higher Order Funcs
 
 data Func a b = Func (a -> IDSupply -> b)
@@ -169,13 +159,12 @@ instance Generable (Func a b) where
   generate = error "generate for Func is undefined"
 
 instance NormalForm (Func a b) where
-  ($!!) = error "($!!) for Func is undefined"
+  cont $!! f@(Func _) = cont f
+  cont $!! f          = cont $$!! f
 
 instance Unifiable (Func a b) where
   (=.=) = error "(=.=) for Func is undefined"
   bind = error "bind for Func is undefined"
-
-instance Curry (Func a b)
 
 -- Higher Order functions
 
@@ -198,17 +187,18 @@ instance Generable (a -> b) where
   generate = undefined
 
 instance NormalForm (a -> b) where
-  ($!!) = error "($!!) for function is undefined"
+  cont $!! f = cont f
 
 instance Unifiable (a -> b) where
   (=.=) = error "(=.=) for function is undefined"
   bind = error "bind for function is undefined"
 
-instance Curry (a -> b)
-
 -- ---------------------------------------------------------------------------
 -- IO
 -- ---------------------------------------------------------------------------
+
+-- TODO: reason about IO and non-determinism
+
 data C_IO a
      = Choice_C_IO ID (C_IO a) (C_IO a)
      | Fail_C_IO
@@ -237,15 +227,12 @@ instance Generable (C_IO a) where
   generate _ = error "C_IO: generate"
 
 instance NormalForm (C_IO a) where
-  cont $!! (Choice_C_IO i x1 x2) = nfChoice cont i x1 x2
-  cont $!! Fail_C_IO             = failCons
-  cont $!! v                     = cont v
+  cont $!! io@(C_IO _) = cont io
+  cont $!! x           = cont $$!! x
 
 instance Unifiable (C_IO a) where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_IO j@(FreeID _) _ _) = [(i :=: (BindTo j))]
-
-instance Curry (C_IO a)
 
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show

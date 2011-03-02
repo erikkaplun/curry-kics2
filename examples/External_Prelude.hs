@@ -1,11 +1,40 @@
 {-# LANGUAGE MagicHash #-}
 
-import GHC.Prim
-import GHC.Types
+-- ATTENTION: Do not introduce line breaks in import declarations as these
+-- are not recognized!
+import GHC.Exts (Int (I#), Int#, (==#), (<=#), (+#), (-#), (*#), quotInt#, remInt#)
+import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
+import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 
 -- ---------------------------------------------------------------------------
 -- Externals
 -- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- Curry types
+-- ---------------------------------------------------------------------------
+
+-- Class for curry types
+class ( Show a -- TODO remove Eq and Ord later
+      , NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+  (=?=) :: a -> a -> C_Bool
+  (=?=) = error "(=?=) is undefined"
+
+  (<?=) :: a -> a -> C_Bool
+  (<?=) = error "(<?=) is undefined"
+
+instance Curry C_Success where
+  C_Success =?= C_Success = C_True
+  _         =?= _         = C_False
+
+  C_Success <?= C_Success = C_True
+  _         <?= _         = C_False
+
+instance Curry (Func a b) where
+
+instance Curry (a -> b) where
+
+instance Curry (C_IO a) where
 
 -- ---------------------------------------------------------------------------
 -- Int
@@ -46,15 +75,19 @@ instance Generable C_Int where
   generate _ = error "No constructors for C_Int"
 
 instance NormalForm C_Int where
-  cont $!! (Choice_C_Int i x1 x2) = nfChoice cont i x1 x2
-  cont $!! Fail_C_Int             = failCons
-  cont $!! v                      = cont v
+  cont $!! i@(C_Int _) = cont i
+  cont $!! v           = cont $$!! v
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Int j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-instance Curry C_Int
+instance Curry C_Int where
+  C_Int x =?= C_Int y = fromBool (x ==# y)
+  x       =?= y       = error $ "(=?=) for C_Int with " ++ show x ++ " and " ++ show y
+
+  C_Int x <?= C_Int y = fromBool (x <=# y)
+  x       <?= y       = error $ "(<?=) for C_Int with " ++ show x ++ " and " ++ show y
 
 -- ---------------------------------------------------------------------------
 -- Float
@@ -92,15 +125,19 @@ instance Generable C_Float where
   generate i = error "No constructors for C_Float"
 
 instance NormalForm C_Float where
-  cont $!! (Choice_C_Float i x1 x2) = nfChoice cont i x1 x2
-  cont $!! Fail_C_Float             = failCons
-  cont $!! v                        = cont v
+  cont $!! f@(C_Float _) = cont f
+  cont $!! v             = cont $$!! v
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Float j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-instance Curry C_Float
+instance Curry C_Float where
+  C_Float x =?= C_Float y = fromBool (x `eqFloat#` y)
+  x         =?= y         = error $ "(=?=) for C_Float with " ++ show x ++ " and " ++ show y
+
+  C_Float x <?= C_Float y = fromBool (x `leFloat#` y)
+  x         <?= y         = error $ "(<?=) for C_Float with " ++ show x ++ " and " ++ show y
 
 -- ---------------------------------------------------------------------------
 -- Char
@@ -138,15 +175,19 @@ instance Generable C_Char where
   generate i = error "No constructors for C_Char"
 
 instance NormalForm C_Char where
-  cont $!! (Choice_C_Char i x1 x2) = nfChoice cont i x1 x2
-  cont $!! Fail_C_Char             = failCons
-  cont $!! v                       = cont v
+  cont $!! c@(C_Char _) = cont c
+  cont $!! v            = cont $$!! v
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Char j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
-instance Curry C_Char
+instance Curry C_Char where
+  C_Char x =?= C_Char y = fromBool (x `eqChar#` y)
+  x        =?= y        = error $ "(=?=) for C_Char with " ++ show x ++ " and " ++ show y
+
+  C_Char x <?= C_Char y = fromBool (x `leChar#` y)
+  x        <?= y        = error $ "(<?=) for C_Char with " ++ show x ++ " and " ++ show y
 
 -- ---------------------------------------------------------------------------
 -- Conversion from and to primitive Haskell types
@@ -184,12 +225,8 @@ fromOrdering GT = C_GT
 -- External DFO
 -- -------------
 
--- TODO remove
--- external_d_C_seq :: (NonDet a, NormalForm b) => b -> a -> a
--- external_d_C_seq x y = const y `hnf` x
-
 external_d_C_ensureNotFree :: Curry a => a -> a
-external_d_C_ensureNotFree x = dho_C_seq x x
+external_d_C_ensureNotFree x = id `dho_OP_dollar_bang` x
 
 external_d_C_prim_error :: C_String -> a
 external_d_C_prim_error s = error (show s)
@@ -197,11 +234,22 @@ external_d_C_prim_error s = error (show s)
 external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
 
-external_d_OP_eq_eq :: (NormalForm a, Eq a) => a -> a -> C_Bool
-external_d_OP_eq_eq x y = (\a -> (\b -> fromBool (a == b)) $! y) $! x
+external_d_OP_eq_eq :: Curry a => a -> a -> C_Bool
+external_d_OP_eq_eq x y = (\a -> (\b -> a =?= b) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x
 
-external_d_C_compare :: (NormalForm a, Ord a) => a -> a -> C_Ordering
-external_d_C_compare x y = (\a -> (\b -> fromOrdering (a `compare` b)) $! y) $! x
+-- external_d_OP_prim_eq_eq :: Curry a => a -> a -> C_Bool
+-- external_d_OP_prim_eq_eq x y = fromBool (a == b)
+
+external_d_C_compare :: Curry a => a -> a -> C_Ordering
+external_d_C_compare x y = (\a -> (\b -> (a `comp` b)) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x where
+  comp a b = (\x -> case x of
+                C_True  -> C_EQ
+                C_False ->
+                  (\y -> case y of
+                          C_True  -> C_LT
+                          C_False -> C_GT )
+                  `dho_OP_dollar_bang` (a <?= b))
+              `dho_OP_dollar_bang` (a =?= b)
 
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
@@ -298,23 +346,24 @@ external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 -- -----------
 
 external_dho_OP_dollar_bang :: (NonDet a,NonDet b) => (a -> b) -> a -> b
-external_dho_OP_dollar_bang f x = hnf (try x) 
+external_dho_OP_dollar_bang f x = hnf (try x)
   where
    hnf (Val v) = f v
    hnf Fail    = failCons
    hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
    -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "external_dho_OP_dollar_bang_bang with Free"
+   hnf (Free id a b) = error "external_dho_OP_dollar_bang with free variable"
    hnf (Guard c e) = guardCons c (hnf (try e))
 
 external_ndho_OP_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
-external_ndho_OP_dollar_bang f x s = hnf (try x) 
+external_ndho_OP_dollar_bang f x s = hnf (try x)
   where
    hnf (Val v) = external_ndho_C_apply f v s
    hnf Fail    = failCons
+   -- TODO Do we have to use leftSupply and rightSupply?
    hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
    -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "external_dho_OP_dollar_bang_bang with Free"
+   hnf (Free id a b) = error "external_dho_OP_dollar_bang with free variable"
    hnf (Guard c e) = guardCons c (hnf (try e))
 
 external_dho_C_apply :: (a -> b) -> a -> b
