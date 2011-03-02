@@ -95,7 +95,7 @@ funs2graph f = (QN (funcName f), nub called)
 
 externalHOFuncs :: [QName]
 externalHOFuncs = map renameQName $ zip (repeat prelude)
-  [">>=", "apply", "catch", "try"]
+  [">>=", "apply", "catch", "try", "$!"]
 
 qmark :: QName
 qmark = renameQName (prelude, "?")

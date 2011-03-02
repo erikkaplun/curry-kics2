@@ -55,11 +55,7 @@ class NonDet a => Generable a where
 -- The normal form computation is combined with a continuation to be
 -- applied to the normal form.
 class NonDet a => NormalForm a where
-  hnf   :: NonDet b => (a -> b) -> a -> b
   ($!!) :: NonDet b => (a -> b) -> a -> b
-
-  -- TODO: remove this!
-  hnf = ($!!)
 
 -- Auxiliary operation to apply a continuation to the normal form.
 ($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b

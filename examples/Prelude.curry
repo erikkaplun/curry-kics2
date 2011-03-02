@@ -64,7 +64,8 @@ until p f x     = if p x then x else until p f (f x)
 --- Evaluates the first argument to head normal form (which could also
 --- be a free variable) and returns the second argument.
 seq     :: _ -> a -> a
-seq external
+-- seq external
+x `seq` y = const y $! x
 
 --- Evaluates the argument to head normal form and returns it.
 --- Suspends until the result is bound to a non-variable term.
@@ -84,7 +85,8 @@ f $ x   = f x
 
 --- Right-associative application with strict evaluation of its argument.
 ($!)    :: (a -> b) -> a -> b
-f $! x  = x `seq` f x
+-- f $! x  = x `seq` f x
+($!) external
 
 --- Right-associative application with strict evaluation of its argument
 --- to normal form.

@@ -184,11 +184,12 @@ fromOrdering GT = C_GT
 -- External DFO
 -- -------------
 
-external_d_C_seq :: (NonDet a, NormalForm b) => b -> a -> a
-external_d_C_seq x y = const y `hnf` x
+-- TODO remove
+-- external_d_C_seq :: (NonDet a, NormalForm b) => b -> a -> a
+-- external_d_C_seq x y = const y `hnf` x
 
--- external_d_C_ensureNotFree :: a
-external_d_C_ensureNotFree x = id `hnf` x
+external_d_C_ensureNotFree :: Curry a => a -> a
+external_d_C_ensureNotFree x = dho_C_seq x x
 
 external_d_C_prim_error :: C_String -> a
 external_d_C_prim_error s = error (show s)
@@ -196,13 +197,11 @@ external_d_C_prim_error s = error (show s)
 external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
 
--- TODO: too strict
 external_d_OP_eq_eq :: (NormalForm a, Eq a) => a -> a -> C_Bool
-external_d_OP_eq_eq x y = (\a -> (\b -> fromBool (a == b)) $!! y) $!! x
+external_d_OP_eq_eq x y = (\a -> (\b -> fromBool (a == b)) $! y) $! x
 
--- TODO: too strict
 external_d_C_compare :: (NormalForm a, Ord a) => a -> a -> C_Ordering
-external_d_C_compare x y = (\a -> (\b -> fromOrdering (a `compare` b)) $!! y) $!! x
+external_d_C_compare x y = (\a -> (\b -> fromOrdering (a `compare` b)) $! y) $! x
 
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
@@ -297,6 +296,26 @@ external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 
 -- External HO
 -- -----------
+
+external_dho_OP_dollar_bang :: (NonDet a,NonDet b) => (a -> b) -> a -> b
+external_dho_OP_dollar_bang f x = hnf (try x) 
+  where
+   hnf (Val v) = f v
+   hnf Fail    = failCons
+   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
+   -- TODO give reasonable implementation (see $$!!)
+   hnf (Free id a b) = error "external_dho_OP_dollar_bang_bang with Free"
+   hnf (Guard c e) = guardCons c (hnf (try e))
+
+external_ndho_OP_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
+external_ndho_OP_dollar_bang f x s = hnf (try x) 
+  where
+   hnf (Val v) = external_ndho_C_apply f v s
+   hnf Fail    = failCons
+   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
+   -- TODO give reasonable implementation (see $$!!)
+   hnf (Free id a b) = error "external_dho_OP_dollar_bang_bang with Free"
+   hnf (Guard c e) = guardCons c (hnf (try e))
 
 external_dho_C_apply :: (a -> b) -> a -> b
 external_dho_C_apply f a = f a
