@@ -15,9 +15,9 @@ module ModuleDeps (ModuleIdent, deps) where
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry (readFlatCurry, Prog (..))
+import Utils (foldIO, intercalate)
 
 import SCC
-import Utils (foldIO)
 
 type ModuleIdent = String
 type SourceEnv = FM ModuleIdent Prog
@@ -47,6 +47,7 @@ moduleDeps mEnv m = case lookupFM mEnv m of
 -}
 flattenDeps :: SourceEnv -> ([(ModuleIdent, Prog)], [String])
 flattenDeps = fdeps . sortDeps where
+
   sortDeps :: SourceEnv -> [[(ModuleIdent, Prog)]]
   sortDeps = scc modules imports . fmToList
 
@@ -64,12 +65,8 @@ flattenDeps = fdeps . sortDeps where
   checkdep dep@(_:_:_) (ms', errs) = (ms'  , cyclicError (map fst dep) : errs)
 
   cyclicError :: [ModuleIdent] -> String
-  cyclicError []     = ""
-  cyclicError (m:ms) =
-    "Cylic import dependency between modules " ++ show m ++ rest ms
-
-  rest [m] = " and " ++ show m
-  rest ms@(_:_:_)  = rest' ms
-  rest' [] = ""
-  rest' [m] = ", and " ++ show m
-  rest' (m:m2:ms) = ", " ++ show m ++ rest' (m2:ms)
+  cyclicError ms = "Cylic import dependency between modules " ++
+                   intercalate ", " inits ++ " and " ++ last where
+    (inits, last)      = splitLast ms
+    splitLast (x:[])   = ([]  , x)
+    splitLast (x:y:ys) = (x:xs, z) where (xs, z) = splitLast (y:ys)

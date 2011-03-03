@@ -5,7 +5,7 @@
 --- * Flexible case expressions are considered as rigid.
 --- * A function having type (TVar (-42)) is considered as untyped.
 --- * Type parameters occurring in type signatures of functions
----   are decorated with type context "NonDet".
+---   are decorated with type context "Curry".
 ---
 --- @author Michael Hanus
 --- @version February 2011
@@ -56,7 +56,7 @@ fcy2absFDecl (FC.Func qf ar vis texp rule) =
    ftype = if null tvars
             then FType (fcy2absTExp texp)
             else CType (concatMap (\tv ->
-                  [Context ("Basics","Generable") [fcy2absTVar tv]]) tvars)
+                  [Context ("Basics","Curry") [fcy2absTVar tv]]) tvars)
                   (fcy2absTExp texp)
 
 fcy2absRule :: FC.Rule -> Rules

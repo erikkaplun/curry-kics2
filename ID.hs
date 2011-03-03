@@ -7,7 +7,7 @@ data ID
 
 instance Show ID where
   show (ID i)       = show i --"ID"
-  show (FreeID _)   = "Free"
+  show (FreeID i)   = "Free" ++ show i
 
 newtype IDSupply = IDSupply Integer
 
