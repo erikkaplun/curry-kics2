@@ -38,6 +38,12 @@ idcCompile mod = "../compilecurry " ++ mod
 -- Command to compile a module and execute main with idcompiler (optimized):
 idcCompileO mod = "../compilecurry -o " ++ mod
 
+-- Command to compile a module and execute main with idcompiler:
+idcCompileD mod = "../compilecurry -d " ++ mod
+
+-- Command to compile a module and execute main with idcompiler (optimized):
+idcCompileOD mod = "../compilecurry -o -d " ++ mod
+
 -- Command to compile a module and execute main with GHC:
 mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
 
@@ -64,9 +70,12 @@ swiCompile mod =
 
 idcBenchmark   mod = (mod++"@IDC  ",idcCompile mod,"./Main","rm Main* Curry_*")
 idcOBenchmark  mod = (mod++"@IDC+ ",idcCompileO mod,"./Main","rm Main* Curry_*")
+idcBenchmarkD  mod = (mod++"@IDC  ",idcCompileD mod,"./Main","rm Main* Curry_*")
+idcOBenchmarkD mod = (mod++"@IDC+ ",idcCompileOD mod,"./Main","rm Main* Curry_*")
 pakcsBenchmark mod = (mod++"@PAKCS",pakcsCompile mod,"./"++mod++".state",
                       "rm "++mod++".state")
-mccBenchmark   mod = (mod++"@MCC  ",mccCompile mod,"./a.out",
+mccBenchmark   mod = (mod++"@MCC  ",mccCompile mod,
+                      "./a.out +RTS -h512m -RTS",
                       "rm a.out "++mod++".icurry")
 ghcBenchmark   mod = (mod++"@GHC  ",ghcCompile mod,"./"++mod,
                       "rm "++mod++" "++mod++".hi "++mod++".o")
@@ -76,26 +85,6 @@ sicsBenchmark  mod = (mod++"@SICS ", sicstusCompile mod,
                       "./"++mod++".state", "rm "++mod++".state")
 swiBenchmark   mod = (mod++"@SWI  ", swiCompile mod,
                       "./"++mod++".state", "rm "++mod++".state")
-
-takBench =
- [pakcsBenchmark "Tak"
- ,mccBenchmark   "Tak"
- ,ghcBenchmark   "Tak"
- ,ghcOBenchmark  "Tak"
- ,sicsBenchmark  "tak"
- ,swiBenchmark   "tak"
- ]
-
-takPeanoBench =
- [idcBenchmark   "TakPeano"
- ,idcOBenchmark  "TakPeano"
- ,pakcsBenchmark "TakPeano"
- ,mccBenchmark   "TakPeano"
- ,ghcBenchmark   "TakPeano"
- ,ghcOBenchmark  "TakPeano"
- ,sicsBenchmark  "takpeano"
- ,swiBenchmark   "takpeano"
- ]
 
 reverseBench =
  [idcBenchmark   "Reverse"
@@ -119,6 +108,44 @@ reversePrimListBench =
  ,swiBenchmark   "reverseprimlist"
  ]
 
+takBench =
+ [pakcsBenchmark "Tak"
+ ,mccBenchmark   "Tak"
+ ,ghcBenchmark   "Tak"
+ ,ghcOBenchmark  "Tak"
+ ,sicsBenchmark  "tak"
+ ,swiBenchmark   "tak"
+ ]
+
+takPeanoBench =
+ [idcBenchmark   "TakPeano"
+ ,idcOBenchmark  "TakPeano"
+ ,pakcsBenchmark "TakPeano"
+ ,mccBenchmark   "TakPeano"
+ ,ghcBenchmark   "TakPeano"
+ ,ghcOBenchmark  "TakPeano"
+ ,sicsBenchmark  "takpeano"
+ ,swiBenchmark   "takpeano"
+ ]
+
+reverseHOBench =
+ [idcBenchmarkD  "ReverseHO"
+ ,idcOBenchmarkD "ReverseHO"
+ ,pakcsBenchmark "ReverseHO"
+ ,mccBenchmark   "ReverseHO"
+ ,ghcBenchmark   "ReverseHO"
+ ,ghcOBenchmark  "ReverseHO"
+ ]
+
+primesPeanoBench =
+ [idcBenchmarkD  "PrimesPeano"
+ ,idcOBenchmarkD "PrimesPeano"
+ ,pakcsBenchmark "PrimesPeano"
+ ,mccBenchmark   "PrimesPeano"
+ ,ghcBenchmark   "PrimesPeano"
+ ,ghcOBenchmark  "PrimesPeano"
+ ]
+
 allBenchmarks = reverseBench++reversePrimListBench++takBench++takPeanoBench
 
 -- Run all benchmarks and show results
@@ -128,5 +155,5 @@ run num benchmarks = do
   putStrLn (unlines (("Benchmarks at "++calendarTimeToString ltime) : results))
 
 --main = run 3 allBenchmarks
-main = run 1 allBenchmarks
---main = run 1 reverseBench
+--main = run 1 allBenchmarks
+main = run 1 primesPeanoBench
