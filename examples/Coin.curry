@@ -1,6 +1,6 @@
 module Coin where
 
-data Bool = True | False
+--data Bool = True | False
 
 coin = True ? False
 

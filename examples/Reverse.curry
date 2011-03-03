@@ -1,6 +1,6 @@
 module Reverse where
 
-data Bool = True | False
+--data Bool = True | False
 data List a = Nil | Cons a (List a)
 
 --- Reverses the order of all elements in a list.
