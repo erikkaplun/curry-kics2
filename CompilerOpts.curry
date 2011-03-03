@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------------
 --- Compiler options for the ID-based curry compiler
 ---
---- @author Fabian Reck, Björn Peemöller
---- @version February 2011
+--- @author Fabian Reck, Bjoern Peemoeller
+--- @version March 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
   ( Options (..), SearchMode (..), Dump (..), defaultOptions, compilerOpts
@@ -16,9 +16,10 @@ import System (exitWith, getArgs, getProgName)
 import GetOpt
 
 type Options =
-  { optQuiet           :: Bool       -- quiet mode
+  { optHelp            :: Bool       -- show usage
   , optVersion         :: Bool       -- show version
-  , optHelp            :: Bool       -- show usage
+  , optQuiet           :: Bool       -- quiet mode
+  , optImportPaths     :: [String]   -- directories searched for imports
   , optSearchMode      :: SearchMode -- search mode
   , optDetOptimization :: Bool       -- optimization for deterministic functions
   , optDump            :: [Dump]     -- dump intermediate results
@@ -42,9 +43,10 @@ data Dump
 
 defaultOptions :: Options
 defaultOptions =
-  { optQuiet           = False
+  { optHelp            = False
   , optVersion         = False
-  , optHelp            = False
+  , optQuiet           = False
+  , optImportPaths     = []
   , optSearchMode      = NoSearch
   , optDetOptimization = True
   , optDump            = []
@@ -53,15 +55,18 @@ defaultOptions =
 
 options :: [OptDescr (Options -> Options)]
 options =
-  [ Option ['q'] ["quiet"]
-      (NoArg (\opts -> { optQuiet   := True | opts }))
-      "run in quiet mode"
+  [ Option ['h', '?'] ["help"]
+      (NoArg (\opts -> { optHelp    := True | opts }))
+      "show usage information"
   , Option ['v'] ["version"]
       (NoArg (\opts -> { optVersion := True | opts }))
       "show version number"
-  , Option "h?"  ["help"]
-      (NoArg (\opts -> { optHelp    := True | opts }))
-      "show usage information"
+  , Option ['q'] ["quiet"]
+      (NoArg (\opts -> { optQuiet   := True | opts }))
+      "run in quiet mode"
+  , Option ['i'] ["import-dir"]
+      (ReqArg (\arg opts -> { optImportPaths := nub (arg : opts -> optImportPaths) | opts }) "DIR")
+      "search for imports in DIR"
   , Option ['s'] ["search-mode"]
       (ReqArg (\arg opts -> { optSearchMode := fromMaybe
         (opts -> optSearchMode) (lookup arg searchModes) | opts } )

@@ -1,0 +1,6 @@
+Things we have to do
+====================
+
+- The frontend generates FlatCurry files in the curry subdir respective to the
+  directory in whch a module is found. This may cause trouble with library
+  modules, especially in case of insufficient file permissions.

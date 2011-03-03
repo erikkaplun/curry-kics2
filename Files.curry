@@ -10,3 +10,13 @@ withBaseName f fn = dirName fn
 
 withExtension :: (String -> String) -> String -> String
 withExtension f fn = stripSuffix fn ++ f (fileSuffix fn)
+
+(</>) :: String -> String -> String
+dir </> subdir = dropTrailingPathSeparator dir
+                 ++ separatorChar : dropWhile (== separatorChar) subdir
+
+dropTrailingPathSeparator :: String -> String
+dropTrailingPathSeparator = reverse . dropWhile (== separatorChar) . reverse
+
+(<.>) :: String -> String -> String
+file <.> extension = stripSuffix file ++ suffixSeparatorChar : extension
