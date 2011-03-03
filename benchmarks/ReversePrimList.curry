@@ -19,9 +19,6 @@ nat16384 = mult nat4096 four
 
 data MyBool = MyTrue | MyFalse
 
-not MyTrue = MyFalse
-not MyFalse = MyTrue
-
 append [] xs = xs
 append (x:xs) ys = x : (append xs ys)
 
