@@ -276,6 +276,34 @@ eval goal = initSupply >>= return . goal
 evalIO :: (IDSupply -> C_IO a) -> IO a
 evalIO goal = initSupply >>= (\s -> let (C_IO act) = goal s in act)
 
+d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
+d_dollar_bang f x = hnf (try x)
+  where
+   hnf (Val v) = f v
+   hnf Fail    = failCons
+   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
+   -- TODO give reasonable implementation (see $$!!)
+   hnf (Free id a b) = error "d_dollar_bang with free variable"
+   hnf (Guard c e) = guardCons c (hnf (try e))
+
+nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
+nd_dollar_bang f x s = hnf (try x)
+  where
+   hnf (Val v) = nd_apply f v s
+   hnf Fail    = failCons
+   -- TODO Do we have to use leftSupply and rightSupply?
+   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
+   -- TODO give reasonable implementation (see $$!!)
+   hnf (Free id a b) = error "nd_dollar_bang with free variable"
+   hnf (Guard c e) = guardCons c (hnf (try e))
+
+d_apply :: (a -> b) -> a -> b
+d_apply f a = f a
+
+-- TODO: Support non-deterministic Funcs
+nd_apply :: NonDet b => Func a b -> a -> IDSupply -> b
+nd_apply fun a s = (\(Func f) -> f a s) `d_dollar_bang` fun
+
 {-
 -- wrap a higher-order function with one argument
 wrapD :: (a -> b) -> a :-> b

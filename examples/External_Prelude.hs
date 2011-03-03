@@ -227,8 +227,11 @@ fromOrdering GT = C_GT
 -- External DFO
 -- -------------
 
+external_d_C_seq :: (Curry t0, Curry t1) => t0 -> t1 -> t1
+external_d_C_seq x1 x2 = (d_C_const x2) `d_dollar_bang` x1
+
 external_d_C_ensureNotFree :: Curry a => a -> a
-external_d_C_ensureNotFree x = id `dho_OP_dollar_bang` x
+external_d_C_ensureNotFree x = id `d_dollar_bang` x
 
 external_d_C_prim_error :: C_String -> a
 external_d_C_prim_error s = error (toString s)
@@ -237,18 +240,18 @@ external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
 
 external_d_OP_eq_eq :: Curry a => a -> a -> C_Bool
-external_d_OP_eq_eq x y = (\a -> (\b -> a =?= b) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x
+external_d_OP_eq_eq x y = (\a -> (\b -> a =?= b) `d_dollar_bang` y) `d_dollar_bang` x
 
 external_d_C_compare :: Curry a => a -> a -> C_Ordering
-external_d_C_compare x y = (\a -> (\b -> (a `comp` b)) `dho_OP_dollar_bang` y) `dho_OP_dollar_bang` x where
+external_d_C_compare x y = (\a -> (\b -> (a `comp` b)) `d_dollar_bang` y) `d_dollar_bang` x where
   comp a b = (\x -> case x of
                 C_True  -> C_EQ
                 C_False ->
                   (\y -> case y of
                           C_True  -> C_LT
                           C_False -> C_GT )
-                  `dho_OP_dollar_bang` (a <?= b))
-              `dho_OP_dollar_bang` (a =?= b)
+                  `d_dollar_bang` (a <?= b))
+              `d_dollar_bang` (a =?= b)
 
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
@@ -317,7 +320,7 @@ external_d_C_prim_show :: Show a => a -> OP_List C_Char
 external_d_C_prim_show a = fromString (show a)
 
 external_d_C_cond :: Curry a => C_Success -> a -> a
-external_d_C_cond succ a = const a `dho_OP_dollar_bang` succ
+external_d_C_cond succ a = const a `d_dollar_bang` succ
 
 -- External ND
 -- -----------
@@ -328,61 +331,45 @@ external_nd_OP_qmark x y ids = let i = thisID ids in i `seq` choiceCons i x y
 -- External HO
 -- -----------
 
-external_dho_OP_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
-external_dho_OP_dollar_bang f x = hnf (try x)
-  where
-   hnf (Val v) = f v
-   hnf Fail    = failCons
-   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
-   -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "external_dho_OP_dollar_bang with free variable"
-   hnf (Guard c e) = guardCons c (hnf (try e))
+external_d_OP_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
+external_d_OP_dollar_bang = d_dollar_bang
 
-external_ndho_OP_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
-external_ndho_OP_dollar_bang f x s = hnf (try x)
-  where
-   hnf (Val v) = external_ndho_C_apply f v s
-   hnf Fail    = failCons
-   -- TODO Do we have to use leftSupply and rightSupply?
-   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
-   -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "external_dho_OP_dollar_bang with free variable"
-   hnf (Guard c e) = guardCons c (hnf (try e))
+external_nd_OP_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
+external_nd_OP_dollar_bang = nd_dollar_bang
 
-external_dho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
-external_dho_OP_dollar_bang_bang = ($!!)
+external_d_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+external_d_OP_dollar_bang_bang = ($!!)
 
-external_ndho_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
-external_ndho_OP_dollar_bang_bang f x s = (\y -> external_ndho_C_apply f y s) $!! x
+external_nd_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
+external_nd_OP_dollar_bang_bang f x s = (\y -> nd_apply f y s) $!! x
 
-external_dho_C_apply :: (a -> b) -> a -> b
-external_dho_C_apply f a = f a
+external_d_C_apply :: (a -> b) -> a -> b
+external_d_C_apply = d_apply
 
--- TODO: Support non-deterministic Funcs
-external_ndho_C_apply :: Func a b -> a -> IDSupply -> b
-external_ndho_C_apply (Func f) a s = f a s
+external_nd_C_apply :: NonDet b => Func a b -> a -> IDSupply -> b
+external_nd_C_apply = nd_apply
 
-external_dho_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_dho_C_catch act cont = fromIO $ catch (toIO act) handle where
+external_d_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
+external_d_C_catch act cont = fromIO $ catch (toIO act) handle where
   handle = toIO . cont . C_IOError . fromString . ioe_description
 
-external_ndho_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
-external_ndho_C_catch act cont s = C_IO $ catch (toIO act) handle where
-  handle e = toIO (external_ndho_C_apply cont (C_IOError (fromString (ioe_description e))) s)
+external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
+external_nd_C_catch act cont s = C_IO $ catch (toIO act) handle where
+  handle e = toIO (nd_apply cont (C_IOError (fromString (ioe_description e))) s)
 
 -- TODO: Support non-deterministic IO ?
-external_dho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
-external_dho_OP_gt_gt_eq m f = fromIO $ (toIO m) >>= toIO . f
+external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
+external_d_OP_gt_gt_eq m f = fromIO $ (toIO m) >>= toIO . f
 
 -- TODO: Support non-deterministic IO ?
-external_ndho_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> C_IO t1
-external_ndho_OP_gt_gt_eq m f s = fromIO $ (toIO m) >>= \x -> toIO (external_ndho_C_apply f x s)
+external_nd_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> C_IO t1
+external_nd_OP_gt_gt_eq m f s = fromIO $ (toIO m) >>= \x -> toIO (nd_apply f x s)
 
 -- Encapsulated search
 -- -------------------
 
--- external_dho_C_try :: (a -> Success) -> [a -> Success]
-external_dho_C_try = error "external_dho_C_try"
+-- external_d_C_try :: (a -> Success) -> [a -> Success]
+external_d_C_try = error "external_dho_C_try"
 
--- external_ndho_C_try :: Func a Success -> [Func a Success]
-external_ndho_C_try = error "external_ndho_C_try"
+-- external_nd_C_try :: Func a Success -> [Func a Success]
+external_nd_C_try = error "external_ndho_C_try"

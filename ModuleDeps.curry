@@ -10,54 +10,61 @@
     Extended by Sebastian Fischer (sebf@informatik.uni-kiel.de)
 -}
 
-module ModuleDeps (ModuleIdent, deps) where
+module ModuleDeps (ModuleIdent, Source, deps) where
 
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry (readFlatCurry, Prog (..))
 import Utils (foldIO, intercalate)
 
+import Files
 import SCC
 
 type ModuleIdent = String
-type SourceEnv = FM ModuleIdent Prog
+type Source = (String, Prog) -- filename, code
+type SourceEnv = FM ModuleIdent Source
 
-deps :: String -> IO ([(ModuleIdent, Prog)], [String])
-deps fn = do
-  dps <- sourceDeps ident (emptyFM (<))
+deps :: [String] -> String -> IO ([(ModuleIdent, Source)], [String])
+deps importPaths fn = do
+  dps <- sourceDeps ("." : importPaths) ident fn (emptyFM (<))
   return $ flattenDeps dps
     where ident = stripSuffix $ baseName fn
 
-sourceDeps :: ModuleIdent -> SourceEnv -> IO SourceEnv
-sourceDeps m mEnv = do
-  fn <- lookupModule m
-  fcy@(Prog _ imps _ _ _) <- readFlatCurry fn
-  foldIO moduleDeps (addToFM mEnv m fcy) imps
+sourceDeps :: [String] -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
+sourceDeps importPaths m fn mEnv = do
+  fcy@(Prog _ imps _ _ _) <- readFlatCurry (stripSuffix fn)
+  foldIO (moduleDeps importPaths) (addToFM mEnv m (fn, fcy)) imps
 
-lookupModule :: String -> IO String
-lookupModule mod = return $ mod -- ++ ".curry"
-
-moduleDeps :: SourceEnv -> ModuleIdent -> IO SourceEnv
-moduleDeps mEnv m = case lookupFM mEnv m of
+moduleDeps :: [String] -> SourceEnv -> ModuleIdent -> IO SourceEnv
+moduleDeps importPaths mEnv m = case lookupFM mEnv m of
   Just _  -> return mEnv
-  Nothing -> sourceDeps m mEnv
+  Nothing -> do
+    mbFile <- lookupModule importPaths m
+    case mbFile of
+      -- TODO: Could be improved by inserting it into the error messages
+      Nothing -> error $ unlines $ ("Module " ++ m ++ " could not be found in:") : importPaths
+      Just fn -> sourceDeps importPaths m fn mEnv
+
+lookupModule :: [String] -> String -> IO (Maybe String)
+lookupModule importPaths mod = lookupFileInPath mod [".curry", ".lcurry"]
+                               (map dropTrailingPathSeparator importPaths)
 
 {-  Convert the dependency map into a topologically sorted dependency list
     and a list of errors.
 -}
-flattenDeps :: SourceEnv -> ([(ModuleIdent, Prog)], [String])
+flattenDeps :: SourceEnv -> ([(ModuleIdent, Source)], [String])
 flattenDeps = fdeps . sortDeps where
 
-  sortDeps :: SourceEnv -> [[(ModuleIdent, Prog)]]
+  sortDeps :: SourceEnv -> [[(ModuleIdent, Source)]]
   sortDeps = scc modules imports . fmToList
 
   -- extract the module ident
   modules (m, _) = [m]
 
   -- extract the imports
-  imports (_, (Prog _ imps _ _ _)) = imps
+  imports (_, (_, (Prog _ imps _ _ _))) = imps
 
-  fdeps :: [[(ModuleIdent, Prog)]] -> ([(ModuleIdent, Prog)], [String])
+  fdeps :: [[(ModuleIdent, Source)]] -> ([(ModuleIdent, Source)], [String])
   fdeps = foldr checkdep ([], [])
 
   checkdep []          (ms', errs) = (ms'  , errs)

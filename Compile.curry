@@ -1,8 +1,8 @@
 --- --------------------------------------------------------------------------
 --- ID based curry compiler
 ---
---- @author  Bernd Braßel, Michael Hanus, Björn Peemöller, Fabian Reck
---- @version February 2011
+--- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
+--- @version March 2011
 --- --------------------------------------------------------------------------
 module Compile where
 
@@ -10,6 +10,7 @@ import Prelude hiding (lookup)
 import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM, plusFM)
 import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
+import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
 import FlatCurryGoodies (funcName, consName, updQNamesInProg)
@@ -22,7 +23,7 @@ import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
-import ModuleDeps (ModuleIdent, deps)
+import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName
   , mkGuardName, externalFunc, externalModule )
@@ -36,17 +37,17 @@ main = do
 
 compile :: Options -> String -> IO ()
 compile opts fn = do
-  (mods, errs) <- deps fn
+  (mods, errs) <- deps (opts -> optImportPaths) fn
   if null errs
     then foldIO (compileModule (length mods))
          initState (zip mods [1 .. ]) >> done
     else mapIO_ putStrLn errs
     where initState = { compOptions := opts | defaultState }
 
-compileModule :: Int -> State -> ((ModuleIdent, Prog), Int) -> IO State
-compileModule total state ((mid, fcy), current) = do
+compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
+compileModule total state ((mid, (fn, fcy)), current) = do
   let opts = state -> compOptions
-  putStrLn $ compMessage current total mid
+  putStrLn $ compMessage current total mid fn
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
@@ -70,10 +71,13 @@ compileModule total state ((mid, fcy), current) = do
 
   status opts "Combining to Abstract Haskell"
   let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls ops funs)
-  dumpLevel DumpAbstractHs opts abstractHsName (show ahs)
+
+  -- TODO: HACK: manually patch export of type class curry into Prelude
+  let ahsPatched = patchCurryTypeClassIntoPrelude ahs
+  dumpLevel DumpAbstractHs opts abstractHsName (show ahsPatched)
 
   status opts "Integrating external declarations"
-  integrated <- integrateExternals opts ahs mid
+  integrated <- integrateExternals opts ahsPatched fn
 
   status opts $ "Generating Haskell module " ++ destFile
   writeFile destFile integrated
@@ -92,9 +96,17 @@ compileModule total state ((mid, fcy), current) = do
     ahsFile f = withExtension (const ".ahs") f
     hsFile  f = withExtension (const ".hs")  f
 
-compMessage :: Int -> Int -> String -> String
-compMessage curNum maxNum mod = '[' : fill max sCurNum ++ " of "
-  ++ sMaxNum  ++ "]" ++ " Compiling " ++ mod
+patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
+patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
+  | m == prelude = AH.Prog m imps (curryDecl:td) fd od
+  | otherwise    = p
+    where curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
+
+compMessage :: Int -> Int -> String -> String -> String
+compMessage curNum maxNum mod fn
+  = '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
+    ++ " Compiling " ++ mod
+    ++ " ( " ++ fn ++ " )"
     where
       sCurNum = show curNum
       sMaxNum = show maxNum
@@ -110,7 +122,7 @@ filterPrelude opts p@(Prog m imps td fd od) =
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
-  exts <- lookupExternals opts fn
+  exts <- lookupExternals opts (stripSuffix fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
       prog' = AH.Prog m (imps ++ extimps) td fd od
   return $ unlines $ filter (not . null)
@@ -120,13 +132,13 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
 -- empty String
 lookupExternals :: Options -> String -> IO String
 lookupExternals opts fn = do
-  info opts $ "Looking for external file: " ++ extName ++ ".hs"
-  mExternal <- lookupFileInPath extName [".hs"] ["."]
-  maybe (info opts "No External file found" >> return "")
-        (\ ext -> info opts "External file found" >> readFile ext)
-        mExternal
-    where extName = path ++ separatorChar : externalModule ++ '_' : bareName
-          (path,file) = splitDirectoryBaseName fn
+  info opts $ "Looking for external file: " ++ extName
+  exists <- doesFileExist extName
+  if exists
+    then info opts "External file found" >> readFile extName
+    else info opts "No External file found" >> return ""
+    where extName = path </> externalModule ++ '_' : bareName <.> "hs"
+          (path, file) = splitDirectoryBaseName fn
           bareName = stripSuffix file
 
 -- Split an external file into a pragma String, a list of imports and the rest

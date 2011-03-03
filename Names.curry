@@ -74,9 +74,10 @@ genRename n
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 
+-- TODO: Also for OP_Tuple ?
 unGenRename :: String -> String
 unGenRename n
-  | n == "OP_Nil"    = "[]"
+  | n == "OP_List"   = "[]"
   | n == "OP_Cons"   = ":"
   | n == "OP_Unit"   = "()"
   | take 2 n == "C_" = drop 2 n
@@ -95,11 +96,14 @@ mkTypeName n
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 -}
 
+-- Compute the determinism prefix of a curry function
+-- 1st arg: is the function used for compilation in determinism mode
+-- 2nd arg: classification of the function
 funcPrefix :: Bool -> NDClass -> String
 funcPrefix _     DFO = "d_"
 funcPrefix _      ND = "nd_"
-funcPrefix True  DHO = "dho_"
-funcPrefix False DHO = "ndho_"
+funcPrefix True  DHO = "d_"  -- "dho_"
+funcPrefix False DHO = "nd_" -- "ndho_"
 
 -- rename modules
 mkModName :: String -> String
