@@ -3,8 +3,12 @@
 # Compile a Curry program with idcompiler and ghc
 SYSDIR=`dirname "$0"`
 OPTIM=
-if [ "$1" = "-o" ] ; then
+if [ "$1" = "-o" ] ; then # compile with optimizations
   OPTIM="-O2" ; shift
+fi
+MAINMODE="c"
+if [ "$1" = "-d" ] ; then # call deterministic version of main goal
+  MAINMODE="d" ; shift
 fi
 PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
@@ -13,6 +17,6 @@ PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
 $SYSDIR/idc $1
 echo "module Main where" > Main.hs
 echo "import Curry_$PROG" >> Main.hs
-echo "main = print c_C_main" >> Main.hs
+echo "main = print ${MAINMODE}_C_main" >> Main.hs
 ghc $OPTIM --make -fforce-recomp -i$SYSDIR Main.hs
 # auch: -funbox-strict-fields
