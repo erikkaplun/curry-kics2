@@ -44,7 +44,7 @@ ghcCompileO mod = "ghc -O2 --make -fforce-recomp " ++ mod
 pakcsCmd mod = "/home/pakcs/pakcs/bin/pakcs -m \"print main\" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
-sicstusCompile mod = 
+sicstusCompile mod =
   "echo \"compile("++mod++"), save_program('"++mod++".state',main).\" | /home/sicstus/sicstus4/bin/sicstus && chmod +x "++mod++".state"
 
 -- Command to run a saved state compiled with SICStus-Prolog:
@@ -52,7 +52,7 @@ sicstusExec state =
   "(export PATH=/home/sicstus/sicstus4/bin:$PATH && "++state++" )"
 
 -- Command to compile a Prolog program and run main in SWI-Prolog:
-swiCompile mod = 
+swiCompile mod =
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
 -- Command to run a saved state compiled with SICStus-Prolog:
@@ -75,7 +75,9 @@ swiBenchmark   mod = (mod++"@SWI  ",swiCompile mod,
                       swiExec ("./"++mod++".state"),"rm "++mod++".state")
 
 takBench =
- [pakcsBenchmark "Tak"
+ [idcBenchmark   "Tak"
+ ,idcOBenchmark  "Tak"
+ ,pakcsBenchmark "Tak"
  ,mccBenchmark   "Tak"
  ,ghcBenchmark   "Tak"
  ,ghcOBenchmark  "Tak"
