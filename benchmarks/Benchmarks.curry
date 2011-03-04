@@ -6,13 +6,23 @@ import IO
 import IOExts
 import System
 import Time
+import SetFunctions
+
+--isUbuntu :: IO Bool
+isUbuntu = do
+  hdl <- connectToCommand "lsb_release -i"
+  bsid <- hGetContents hdl
+  return (not (isEmpty (set1 findUbuntu bsid)))
+ where
+  findUbuntu (_++"Ubuntu"++_) = ()
 
 -- Execute shell command and return time of its execution:
 benchmarkCommand cmd = do
-  -- for Debian-PCs:
-  let timecmd = "export TIMEFORMAT=\"BENCHMARKTIME=%3lU\" && time "++cmd
-  -- for Ubuntu:
---   let timecmd = "time --format=\"BENCHMARKTIME=%U\" "++cmd
+  isubuntu <- isUbuntu
+  let timecmd = if isubuntu
+                then "time --format=\"BENCHMARKTIME=%U\" "++cmd
+                else -- for Debian-PCs:
+                     "export TIMEFORMAT=\"BENCHMARKTIME=%3lU\" && time "++cmd
   (hin,hout,herr) <- execCmd timecmd
   outcnt <- hGetContents hout
   errcnt <- hGetContents herr
@@ -27,6 +37,8 @@ extractTimeInOutput =
 
 -- Run a benchmark and the timings
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
+  let line = take 70 (repeat '=')
+  putStr (unlines [line, "Running benchmark: "++name, line])
   system preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
@@ -55,7 +67,7 @@ ghcCompileO mod = "ghc -O2 --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and print main in PAKCS:
 pakcsCompile mod =
-  "cleancurry && "++ "/home/pakcs/pakcs/bin/pakcs -m \"print main\" -s  " ++ mod
+  "/home/pakcs/pakcs/bin/pakcs -m \"print main\" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
 sicstusCompile mod =
@@ -65,22 +77,22 @@ sicstusCompile mod =
 swiCompile mod =
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
-idcBenchmark   mod = (mod++"@IDC  ",idcCompile mod,"./Main","rm Main* Curry_*")
-idcOBenchmark  mod = (mod++"@IDC+ ",idcCompileO mod,"./Main","rm Main* Curry_*")
-idcBenchmarkD  mod = (mod++"@IDC_D  ",idcCompileD mod,"./Main","rm Main* Curry_*")
-idcOBenchmarkD mod = (mod++"@IDC+_D ",idcCompileOD mod,"./Main","rm Main* Curry_*")
-pakcsBenchmark mod = (mod++"@PAKCS",pakcsCompile mod,"./"++mod++".state",
+idcBenchmark   mod = (mod++"@IDC   ",idcCompile mod,"./Main","rm Main* Curry_*")
+idcOBenchmark  mod = (mod++"@IDC+  ",idcCompileO mod,"./Main","rm Main* Curry_*")
+idcBenchmarkD  mod = (mod++"@IDC_D ",idcCompileD mod,"./Main","rm Main* Curry_*")
+idcOBenchmarkD mod = (mod++"@IDC+_D",idcCompileOD mod,"./Main","rm Main* Curry_*")
+pakcsBenchmark mod = (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state",
                       "rm "++mod++".state")
-mccBenchmark   mod = (mod++"@MCC  ",mccCompile mod,
+mccBenchmark   mod = (mod++"@MCC   ",mccCompile mod,
                       "./a.out +RTS -h512m -RTS",
                       "rm a.out "++mod++".icurry")
-ghcBenchmark   mod = (mod++"@GHC  ",ghcCompile mod,"./"++mod,
+ghcBenchmark   mod = (mod++"@GHC   ",ghcCompile mod,"./"++mod,
                       "rm "++mod++" "++mod++".hi "++mod++".o")
-ghcOBenchmark  mod = (mod++"@GHC+ ",ghcCompileO mod,"./"++mod,
+ghcOBenchmark  mod = (mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
                       "rm "++mod++" "++mod++".hi "++mod++".o")
-sicsBenchmark  mod = (mod++"@SICS ", sicstusCompile mod,
+sicsBenchmark  mod = (mod++"@SICS  ", sicstusCompile mod,
                       "./"++mod++".state", "rm "++mod++".state")
-swiBenchmark   mod = (mod++"@SWI  ", swiCompile mod,
+swiBenchmark   mod = (mod++"@SWI   ", swiCompile mod,
                       "./"++mod++".state", "rm "++mod++".state")
 
 reverseBench =
@@ -140,17 +152,6 @@ reverseHOBench =
  ,ghcOBenchmark  "ReverseHO"
  ]
 
-primesPeanoBench =
- [idcBenchmark   "PrimesPeano"
- ,idcOBenchmark  "PrimesPeano"
- ,idcBenchmarkD  "PrimesPeano"
- ,idcOBenchmarkD "PrimesPeano"
- ,pakcsBenchmark "PrimesPeano"
- ,mccBenchmark   "PrimesPeano"
- ,ghcBenchmark   "PrimesPeano"
- ,ghcOBenchmark  "PrimesPeano"
- ]
-
 primReverseBench =
  [idcBenchmark   "PrimReverse"
  ,idcOBenchmark  "PrimReverse"
@@ -162,6 +163,50 @@ primReverseBench =
  ,ghcOBenchmark  "PrimReverse"
  ]
 
+primesPeanoBench =
+ [idcBenchmark   "PrimesPeano"
+ ,idcOBenchmark  "PrimesPeano"
+ ,idcBenchmarkD  "PrimesPeano"
+ ,idcOBenchmarkD "PrimesPeano"
+ ,pakcsBenchmark "PrimesPeano"
+ ,mccBenchmark   "PrimesPeano"
+ ,ghcBenchmark   "PrimesPeano"
+ ,ghcOBenchmark  "PrimesPeano"
+ ]
+
+primesBench =
+ [idcBenchmark   "Primes"
+ ,idcOBenchmark  "Primes"
+ ,idcBenchmarkD  "Primes"
+ ,idcOBenchmarkD "Primes"
+ ,pakcsBenchmark "Primes"
+ ,mccBenchmark   "Primes"
+ ,ghcBenchmark   "Primes"
+ ,ghcOBenchmark  "Primes"
+ ]
+
+primPrimesBench =
+ [idcBenchmark   "PrimPrimes"
+ ,idcOBenchmark  "PrimPrimes"
+ ,idcBenchmarkD  "PrimPrimes"
+ ,idcOBenchmarkD "PrimPrimes"
+ ,pakcsBenchmark "PrimPrimes"
+ ,mccBenchmark   "PrimPrimes"
+ ,ghcBenchmark   "PrimPrimes"
+ ,ghcOBenchmark  "PrimPrimes"
+ ]
+
+queensBench =
+ [idcBenchmark   "Queens"
+ ,idcOBenchmark  "Queens"
+ ,idcBenchmarkD  "Queens"
+ ,idcOBenchmarkD "Queens"
+ ,pakcsBenchmark "Queens"
+ ,mccBenchmark   "Queens"
+ ,ghcBenchmark   "Queens"
+ ,ghcOBenchmark  "Queens"
+ ]
+
 
 allBenchmarks = concat
   [ reverseBench
@@ -169,7 +214,11 @@ allBenchmarks = concat
   , takBench
   , takPeanoBench
   , reverseHOBench
+  , primReverseBench
   , primesPeanoBench
+  , primesBench
+  , primPrimesBench
+  , queensBench
   ]
 
 -- Run all benchmarks and show results
@@ -179,6 +228,6 @@ run num benchmarks = do
   putStrLn (unlines (("Benchmarks at "++calendarTimeToString ltime) : results))
 
 -- main = run 3 allBenchmarks
--- main = run 1 allBenchmarks
--- main = run 1 primesPeanoBench
-main = run 1 primReverseBench
+main = run 1 allBenchmarks
+--main = run 1 queensBench
+--main = run 1 primReverseBench
