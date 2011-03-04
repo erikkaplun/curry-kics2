@@ -6,7 +6,7 @@
 --- --------------------------------------------------------------------------
 module Compile where
 
-import Prelude hiding (lookup)
+import Prelude
 import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM, plusFM)
 import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
@@ -14,6 +14,7 @@ import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
 import FlatCurryGoodies (funcName, consName, updQNamesInProg)
+import ReadShowTerm (readQTermFile, writeQTermFile)
 
 import qualified AbstractHaskell as AH
 import AbstractHaskellPrinter (showProg)
@@ -26,28 +27,54 @@ import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName
-  , mkGuardName, externalFunc, externalModule )
+  , mkGuardName, externalFunc, externalModule, destFile, analysisFile )
+import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate)
 
 main :: IO ()
 main = do
   (opts, files) <- compilerOpts
-  mapIO_ (compile opts) files
+  mapIO_ (build opts) files
 
-compile :: Options -> String -> IO ()
-compile opts fn = do
-  (mods, errs) <- deps (opts -> optImportPaths) fn
-  if null errs
-    then foldIO (compileModule (length mods))
-         initState (zip mods [1 .. ]) >> done
-    else mapIO_ putStrLn errs
-    where initState = { compOptions := opts | defaultState }
+build :: Options -> String -> IO ()
+build opts fn = do
+  exists <- doesFileExist fn
+  mbFn <- if exists
+    then return (Just fn)
+    else lookupFileInPath fn [".curry", ".lcurry"] ["."]
+  case mbFn of
+    Nothing -> putStrLn $ "Could not find file " ++ fn
+    Just f -> do
+      (mods, errs) <- deps (opts -> optImportPaths) f
+      if null errs
+        then foldIO (makeModule mods)
+            initState (zip mods [1 .. ]) >> done
+        else mapIO_ putStrLn errs
+        where initState = { compOptions := opts | defaultState }
+
+makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
+makeModule mods state mod@((_, (fn, fcy)), _)
+  = smake (destFile fn)
+          depFiles
+          (compileModule (length mods) state mod)
+          (loadAnalysis (length mods) state mod)
+    where depFiles = fn : map (\i -> destFile $ fst $ fromJust $ lookup i mods) imps
+          (Prog _ imps _ _ _) = fcy
+
+loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
+loadAnalysis total state ((mid, (fn, _)), current) = do
+  putStrLn $ compMessage current total ("Analyzing " ++ mid) ndaFile
+  (analysis, types) <- readQTermFile ndaFile
+  return { ndResult := (state -> ndResult) `plusFM` analysis
+         , typeMap  := (state ->  typeMap) `plusFM` types
+         | state }
+    where ndaFile = analysisFile fn
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
   let opts = state -> compOptions
-  putStrLn $ compMessage current total mid fn
+  putStrLn $ compMessage current total ("Compiling " ++ mid) fn
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
@@ -62,6 +89,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   status opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
+  writeQTermFile (analysisFile fn) ((state' -> ndResult), (state' -> typeMap))
   let ahsFun@(AH.Prog n imps _ ops funs) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -79,8 +107,8 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   status opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  status opts $ "Generating Haskell module " ++ destFile
-  writeFile destFile integrated
+  status opts $ "Generating Haskell module " ++ destFile fn
+  writeFile (destFile fn) integrated
 
   return state'
 
@@ -91,10 +119,8 @@ compileModule total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
     abstractHsName = ahsFile mid
-    destFile       =  hsFile $ withBaseName renameFile mid
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
-    hsFile  f = withExtension (const ".hs")  f
 
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
 patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
@@ -103,9 +129,9 @@ patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
     where curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
 
 compMessage :: Int -> Int -> String -> String -> String
-compMessage curNum maxNum mod fn
+compMessage curNum maxNum msg fn
   = '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
-    ++ " Compiling " ++ mod
+    ++ ' ' : msg
     ++ " ( " ++ fn ++ " )"
     where
       sCurNum = show curNum

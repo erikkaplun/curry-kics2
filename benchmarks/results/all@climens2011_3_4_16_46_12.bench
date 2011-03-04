@@ -1,0 +1,82 @@
+Benchmarks at Linux climens 2.6.26-2-686 #1 SMP Thu Nov 25 01:53:57 UTC 2010 i686 GNU/Linux
+
+Reverse@IDC_D : 0m0.164s | 0m0.164s | 0m0.164s
+Reverse@IDC+_D: 0m0.128s | 0m0.120s | 0m0.124s
+Reverse@PAKCS : 0m2.068s | 0m2.044s | 0m2.068s
+Reverse@MCC   : 0m0.444s | 0m0.392s | 0m0.476s
+Reverse@GHC   : 0m0.124s | 0m0.124s | 0m0.124s
+Reverse@GHC+  : 0m0.124s | 0m0.124s | 0m0.128s
+reverse@SICS  : 0m0.396s | 0m0.396s | 0m0.396s
+reverse@SWI   : 0m1.584s | 0m1.576s | 0m1.588s
+ReversePrimList@IDC_D : 0m0.172s | 0m0.168s | 0m0.172s
+ReversePrimList@IDC+_D: 0m0.120s | 0m0.120s | 0m0.120s
+ReversePrimList@PAKCS : 0m1.888s | 0m1.892s | 0m1.864s
+ReversePrimList@MCC   : 0m0.488s | 0m0.428s | 0m0.456s
+ReversePrimList@GHC   : 0m0.128s | 0m0.120s | 0m0.120s
+ReversePrimList@GHC+  : 0m0.124s | 0m0.128s | 0m0.124s
+reverseprimlist@SICS  : 0m0.292s | 0m0.296s | 0m0.288s
+reverseprimlist@SWI   : 0m1.404s | 0m1.404s | 0m1.376s
+Tak@IDC_D : 0m2.544s | 0m2.572s | 0m2.544s
+Tak@IDC+_D: 0m1.352s | 0m1.352s | 0m1.344s
+Tak@PAKCS : 0m39.690s | 0m39.422s | 0m39.886s
+Tak@MCC   : 0m1.364s | 0m1.400s | 0m1.372s
+Tak@GHC   : 0m0.288s | 0m0.292s | 0m0.288s
+Tak@GHC+  : 0m0.044s | 0m0.044s | 0m0.044s
+tak@SICS  : 0m0.480s | 0m0.484s | 0m0.512s
+tak@SWI   : 0m1.776s | 0m1.796s | 0m1.816s
+TakPeano@IDC_D : 0m0.968s | 0m0.972s | 0m0.976s
+TakPeano@IDC+_D: 0m0.768s | 0m0.768s | 0m0.764s
+TakPeano@PAKCS : 1m1.508s | 1m1.188s | 1m2.492s
+TakPeano@MCC   : 0m6.024s | 0m5.748s | 0m6.068s
+TakPeano@GHC   : 0m0.652s | 0m0.648s | 0m0.648s
+TakPeano@GHC+  : 0m0.492s | 0m0.492s | 0m0.492s
+takpeano@SICS  : 0m5.200s | 0m5.212s | 0m5.228s
+takpeano@SWI   : 0m11.689s | 0m11.829s | 0m11.745s
+ReverseHO@IDC   : 0m1.072s | 0m1.084s | 0m1.052s
+ReverseHO@IDC+  : 0m0.440s | 0m0.444s | 0m0.432s
+ReverseHO@IDC_D : 0m0.604s | 0m0.600s | 0m0.580s
+ReverseHO@IDC+_D: 0m0.220s | 0m0.236s | 0m0.232s
+ReverseHO@PAKCS : 0m7.740s | 0m7.828s | 0m7.516s
+ReverseHO@MCC   : 0m0.276s | 0m0.280s | 0m0.304s
+ReverseHO@GHC   : 0m0.340s | 0m0.348s | 0m0.332s
+ReverseHO@GHC+  : 0m0.244s | 0m0.228s | 0m0.240s
+PrimReverse@IDC   : 0m1.040s | 0m1.036s | 0m1.052s
+PrimReverse@IDC+  : 0m0.492s | 0m0.520s | 0m0.484s
+PrimReverse@IDC_D : 0m0.424s | 0m0.444s | 0m0.416s
+PrimReverse@IDC+_D: 0m0.232s | 0m0.236s | 0m0.240s
+PrimReverse@PAKCS : 0m7.612s | 0m7.964s | 0m7.596s
+PrimReverse@MCC   : 0m0.248s | 0m0.232s | 0m0.212s
+PrimReverse@GHC   : 0m0.236s | 0m0.216s | 0m0.216s
+PrimReverse@GHC+  : 0m0.128s | 0m0.140s | 0m0.136s
+PrimesPeano@IDC   : 0m0.332s | 0m0.340s | 0m0.340s
+PrimesPeano@IDC+  : 0m0.284s | 0m0.296s | 0m0.296s
+PrimesPeano@IDC_D : 0m0.312s | 0m0.312s | 0m0.308s
+PrimesPeano@IDC+_D: 0m0.280s | 0m0.276s | 0m0.280s
+PrimesPeano@PAKCS : 0m22.981s | 0m22.753s | 0m22.817s
+PrimesPeano@MCC   : 0m1.788s | 0m1.812s | 0m1.812s
+PrimesPeano@GHC   : 0m0.252s | 0m0.240s | 0m0.252s
+PrimesPeano@GHC+  : 0m0.228s | 0m0.224s | 0m0.220s
+Primes@IDC   : 0m1.812s | 0m1.824s | 0m1.812s
+Primes@IDC+  : 0m0.680s | 0m0.680s | 0m0.704s
+Primes@IDC_D : 0m0.944s | 0m0.948s | 0m0.960s
+Primes@IDC+_D: 0m0.444s | 0m0.440s | 0m0.448s
+Primes@PAKCS : 0m14.241s | 0m14.261s | 0m14.601s
+Primes@MCC   : 0m0.328s | 0m0.360s | 0m0.372s
+Primes@GHC   : 0m0.120s | 0m0.124s | 0m0.124s
+Primes@GHC+  : 0m0.064s | 0m0.064s | 0m0.068s
+PrimPrimes@IDC   : 0m8.845s | 0m8.793s | 0m8.769s
+PrimPrimes@IDC+  : 0m2.992s | 0m3.040s | 0m3.044s
+PrimPrimes@IDC_D : 0m4.124s | 0m4.116s | 0m4.112s
+PrimPrimes@IDC+_D: 0m1.972s | 0m2.088s | 0m2.076s
+PrimPrimes@PAKCS : 0m59.828s | 1m1.056s | 0m58.720s
+PrimPrimes@MCC   : 0m1.120s | 0m1.096s | 0m1.204s
+PrimPrimes@GHC   : 0m0.476s | 0m0.468s | 0m0.460s
+PrimPrimes@GHC+  : 0m0.252s | 0m0.256s | 0m0.252s
+Queens@IDC   : 0m4.612s | 0m4.596s | 0m4.532s
+Queens@IDC+  : 0m1.636s | 0m1.632s | 0m1.648s
+Queens@IDC_D : 0m3.940s | 0m3.908s | 0m3.888s
+Queens@IDC+_D: 0m1.444s | 0m1.460s | 0m1.456s
+Queens@PAKCS : 1m21.705s | 1m23.369s | 1m22.289s
+Queens@MCC   : 0m3.124s | 0m3.168s | 0m3.112s
+Queens@GHC   : 0m0.844s | 0m0.864s | 0m0.852s
+Queens@GHC+  : 0m0.064s | 0m0.064s | 0m0.064s

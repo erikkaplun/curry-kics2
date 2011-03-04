@@ -2,6 +2,7 @@
 
 # Compile a Curry program with idcompiler and ghc
 SYSDIR=`dirname "$0"`
+PRELUDEDIR=$SYSDIR/lib
 OPTIM=
 if [ "$1" = "-o" ] ; then # compile with optimizations
   OPTIM="-O2" ; shift
@@ -14,10 +15,10 @@ PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
 PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
 
-$SYSDIR/idc -q -i $SYSDIR/examples/ $1
+$SYSDIR/idc -q -i $PRELUDEDIR $1
 echo "module Main where" > Main.hs
 echo "import Basics (eval)" >> Main.hs
 echo "import Curry_$PROG" >> Main.hs
 echo "main = ${MAIN}" >> Main.hs
-ghc $OPTIM --make -fforce-recomp -i$SYSDIR Main.hs
+ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$PRELUDEDIR Main.hs
 # auch: -funbox-strict-fields

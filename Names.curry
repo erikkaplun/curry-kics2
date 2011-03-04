@@ -10,6 +10,7 @@ import Maybe (fromJust, isJust)
 
 import AbstractHaskell
 import Base
+import Files
 
 {-
 --- Rename qualified type constructor.
@@ -111,6 +112,15 @@ mkModName = ("Curry_" ++)
 
 renameFile :: String -> String
 renameFile = renameModule -- until hierarchical module names are supported
+
+destFile :: String -> String
+destFile = hsFile . withBaseName renameFile
+
+analysisFile :: String -> String
+analysisFile = withExtension (const ".nda") . withBaseName renameFile
+
+hsFile :: String -> String
+hsFile  f = withExtension (const ".hs")  f
 
 {-
 mkExtModName :: String -> String

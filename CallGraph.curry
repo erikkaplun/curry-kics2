@@ -32,7 +32,7 @@ initNDResult :: NDResult
 initNDResult = listToFM (<) [(qmark, ND), (apply, DHO)]
 
 analyseNd :: Prog -> NDResult -> NDResult
-analyseNd p nds = plusFM nds (listToFM (<) (map (\ f -> (f, ndClass f)) funs))
+analyseNd p nds = nds `plusFM` listToFM (<) (map (\ f -> (f, ndClass f)) funs)
   where
   (funs, graph) = callGraph p
 --   qmarkNode    = find qmark funs

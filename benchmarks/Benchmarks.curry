@@ -245,8 +245,8 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
--- main = run 3 allBenchmarks
+main = run 3 allBenchmarks
 -- main = run 1 allBenchmarks
 -- main = run 1 queensBench
 --main = run 1 primReverseBench
-main = run 3 (takBench ++ queensBench)
+-- main = run 3 (takBench ++ queensBench)
