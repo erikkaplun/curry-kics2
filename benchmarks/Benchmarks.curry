@@ -8,13 +8,19 @@ import System
 import Time
 import SetFunctions
 
+unless :: Bool -> IO () -> IO ()
+unless p act = if p then done else act
+
+evalCmd :: String -> IO String
+evalCmd cmd = connectToCommand cmd >>= hGetContents
+
 --isUbuntu :: IO Bool
 isUbuntu = do
-  hdl <- connectToCommand "lsb_release -i"
-  bsid <- hGetContents hdl
+  bsid <- evalCmd "lsb_release -i"
   return (not (isEmpty (set1 findUbuntu bsid)))
  where
   findUbuntu (_++"Ubuntu"++_) = ()
+  -- isInfixOf ? =)
 
 -- Execute shell command and return time of its execution:
 benchmarkCommand cmd = do
@@ -118,9 +124,7 @@ reversePrimListBench =
  ]
 
 takBench =
- [idcBenchmark   "Tak"
- ,idcOBenchmark  "Tak"
- ,idcBenchmarkD  "Tak"
+ [idcBenchmarkD  "Tak"
  ,idcOBenchmarkD "Tak"
  ,pakcsBenchmark "Tak"
  ,mccBenchmark   "Tak"
@@ -223,11 +227,26 @@ allBenchmarks = concat
 
 -- Run all benchmarks and show results
 run num benchmarks = do
+  args <- getArgs
   results <- mapIO (runBenchmark num) benchmarks
   ltime <- getLocalTime
-  putStrLn (unlines (("Benchmarks at "++calendarTimeToString ltime) : results))
+  info <- evalCmd "uname -a"
+  mach <- evalCmd "uname -n"
+  let res = unlines $ ("Benchmarks at " ++ info) : results
+  putStrLn res
+  unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
+    where
+      init :: [a] -> [a]
+      init []  = []
+      init [_] = []
+      init (x:y:zs) = x : init (y : zs)
+
+outputFile :: String -> String -> CalendarTime -> String
+outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
+  name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 -- main = run 3 allBenchmarks
-main = run 1 allBenchmarks
---main = run 1 queensBench
+-- main = run 1 allBenchmarks
+-- main = run 1 queensBench
 --main = run 1 primReverseBench
+main = run 3 (takBench ++ queensBench)

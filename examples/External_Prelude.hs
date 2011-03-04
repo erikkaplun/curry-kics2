@@ -48,15 +48,6 @@ data C_Int
   | C_Int Int#
 --   | C_Integer Integer
 
-instance Eq C_Int where
-  C_Int x == C_Int y = x ==# y
-  x       == y       = error $ "(==) for C_Int with " ++ show x ++ " and " ++ show y
---   C_Integer i == C_Integer j = i == j
-
-instance Ord C_Int where
-  C_Int x <= C_Int y = x <=# y
-  x       <= y       = error $ "(<=) for C_Int with " ++ show x ++ " and " ++ show y
-
 instance Show C_Int where
   showsPrec d (Choice_C_Int i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
@@ -100,14 +91,6 @@ data C_Float
      | Guard_C_Float Constraint C_Float
      | C_Float Float#
 
-instance Eq C_Float where
-  C_Float x == C_Float y = x `eqFloat#` y
-  x         == y         = error $ "(==) for C_Float with " ++ show x ++ " and " ++ show y
-
-instance Ord C_Float where
-  C_Float x <= C_Float y = x `leFloat#` y
-  x         <= y         = error $ "(<=) for C_Float with " ++ show x ++ " and " ++ show y
-
 instance Show C_Float where
   showsPrec d (Choice_C_Float i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Float c e) = showsGuard d c e
@@ -149,14 +132,6 @@ data C_Char
      | Fail_C_Char
      | Guard_C_Char Constraint C_Char
      | C_Char Char#
-
-instance Eq C_Char where
-  C_Char x == C_Char y = x `eqChar#` y
-  x        == y        = error $ "(==) for C_Char with " ++ show x ++ " and " ++ show y
-
-instance Ord C_Char where
-  C_Char x <= C_Char y = x `leChar#` y
-  x        <= y        = error $ "(<=) for C_Char with " ++ show x ++ " and " ++ show y
 
 instance Show C_Char where
   showsPrec d (Choice_C_Char i x y) = showsChoice d i x y
@@ -259,14 +234,26 @@ external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
 external_d_C_prim_chr :: C_Int -> C_Char
 external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
 
-external_d_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (y +# x)
+external_d_OP_plus :: C_Int -> C_Int -> C_Int
+external_d_OP_plus (C_Int x) (C_Int y) = C_Int (x +# y)
+external_d_OP_plus x y = (\a -> (\b -> (a `external_d_OP_plus` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
-external_d_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_minus (C_Int x) (C_Int y) = C_Int (y -# x)
+external_d_OP_minus :: C_Int -> C_Int -> C_Int
+external_d_OP_minus (C_Int x) (C_Int y) = C_Int (x -# y)
+external_d_OP_minus x y = (\a -> (\b -> (a `external_d_OP_minus` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
-external_d_C_prim_Int_times :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_times (C_Int x) (C_Int y) = C_Int (y *# x)
+external_d_OP_star :: C_Int -> C_Int -> C_Int
+external_d_OP_star (C_Int x) (C_Int y) = C_Int (x *# y)
+external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_dollar_bang` y) `d_dollar_bang` x
+
+-- external_d_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
+-- external_d_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (y +# x)
+--
+-- external_d_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
+-- external_d_C_prim_Int_minus (C_Int x) (C_Int y) = C_Int (y -# x)
+--
+-- external_d_C_prim_Int_times :: C_Int -> C_Int -> C_Int
+-- external_d_C_prim_Int_times (C_Int x) (C_Int y) = C_Int (y *# x)
 
 external_d_C_prim_Int_div :: C_Int -> C_Int -> C_Int
 external_d_C_prim_Int_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)

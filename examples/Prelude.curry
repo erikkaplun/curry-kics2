@@ -485,24 +485,30 @@ prim_chr external
 
 --- Adds two integers.
 (+)   :: Int -> Int -> Int
-x + y = (prim_Int_plus $# y) $# x
+(+) external
 
-prim_Int_plus :: Int -> Int -> Int
-prim_Int_plus external
+-- x + y = (prim_Int_plus $# y) $# x
+--
+-- prim_Int_plus :: Int -> Int -> Int
+-- prim_Int_plus external
 
 --- Subtracts two integers.
 (-)   :: Int -> Int -> Int
-x - y = (prim_Int_minus $# y) $# x
+(-) external
 
-prim_Int_minus :: Int -> Int -> Int
-prim_Int_minus external
+-- x - y = (prim_Int_minus $# y) $# x
+--
+-- prim_Int_minus :: Int -> Int -> Int
+-- prim_Int_minus external
 
 --- Multiplies two integers.
 (*)   :: Int -> Int -> Int
-x * y = (prim_Int_times $# y) $# x
+(*) external
 
-prim_Int_times :: Int -> Int -> Int
-prim_Int_times external
+-- x * y = (prim_Int_times $# y) $# x
+--
+-- prim_Int_times :: Int -> Int -> Int
+-- prim_Int_times external
 
 --- Integer division. The value is the integer quotient of its arguments
 --- and always truncated towards zero.
