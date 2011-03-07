@@ -1,4 +1,5 @@
 -- Compute the number of solutions to queens placements
+-- Uses prelude operations and list comprehensions.
 
 queens nq = length (gen nq)
  where

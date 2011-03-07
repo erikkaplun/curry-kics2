@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Compile and load into ghci
+# Compile a Curry program with idcompiler and load into ghci
 SYSDIR=`dirname "$0"`
+PRELUDEDIR=$SYSDIR/lib
 PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
 PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
 
-$SYSDIR/idc $1 && ghci -i$SYSDIR Curry_$PROG.hs
+$SYSDIR/idc -q -i $PRELUDEDIR $1 && ghci -i$SYSDIR:$PRELUDEDIR Curry_$PROG.hs

@@ -7,6 +7,7 @@ import IOExts
 import System
 import Time
 import SetFunctions
+import Char(toLower)
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -62,8 +63,15 @@ idcCompileD mod = "../compilecurry -d " ++ mod
 -- Command to compile a module and execute main with idcompiler (optimized):
 idcCompileOD mod = "../compilecurry -o -d " ++ mod
 
+-- Command to compile a module and execute main with idcompiler:
+idcCompileDFS mod = "../compilecurry -prdfs " ++ mod
+
+-- Command to compile a module and execute main with idcompiler (optimized):
+idcCompileODFS mod = "../compilecurry -o -prdfs " ++ mod
+
 -- Command to compile a module and execute main with GHC:
-mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
+--mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
+mccCompile mod = "/home/mcc/bin/cyc -e\"main\" " ++ mod ++".curry"
 
 -- Command to compile a module and execute main with GHC:
 ghcCompile mod = "ghc --make -fforce-recomp " ++ mod
@@ -87,6 +95,10 @@ idcBenchmark   mod = (mod++"@IDC   ",idcCompile mod,"./Main","rm Main* Curry_*")
 idcOBenchmark  mod = (mod++"@IDC+  ",idcCompileO mod,"./Main","rm Main* Curry_*")
 idcBenchmarkD  mod = (mod++"@IDC_D ",idcCompileD mod,"./Main","rm Main* Curry_*")
 idcOBenchmarkD mod = (mod++"@IDC+_D",idcCompileOD mod,"./Main","rm Main* Curry_*")
+idcBenchmarkDFS mod = (mod++"@IDC_DFS ",idcCompileDFS mod,"./Main",
+                       "rm Main* Curry_*")
+idcOBenchmarkDFS mod = (mod++"@IDC+_DFS",idcCompileODFS mod,"./Main",
+                        "rm Main* Curry_*")
 pakcsBenchmark mod = (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state",
                       "rm "++mod++".state")
 mccBenchmark   mod = (mod++"@MCC   ",mccCompile mod,
@@ -101,128 +113,55 @@ sicsBenchmark  mod = (mod++"@SICS  ", sicstusCompile mod,
 swiBenchmark   mod = (mod++"@SWI   ", swiCompile mod,
                       "./"++mod++".state", "rm "++mod++".state")
 
-reverseBench =
- [idcBenchmarkD  "Reverse"
- ,idcOBenchmarkD "Reverse"
- ,pakcsBenchmark "Reverse"
- ,mccBenchmark   "Reverse"
- ,ghcBenchmark   "Reverse"
- ,ghcOBenchmark  "Reverse"
- ,sicsBenchmark  "reverse"
- ,swiBenchmark   "reverse"
+----------------------------------------------------------------------
+-- The various kinds of benchmarks:
+
+-- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
+benchFPpl prog =
+ [idcBenchmarkD  prog
+ ,idcOBenchmarkD prog
+ ,pakcsBenchmark prog
+ ,mccBenchmark   prog
+ ,ghcBenchmark   prog
+ ,ghcOBenchmark  prog
+ ,sicsBenchmark  (map toLower prog)
+ ,swiBenchmark   (map toLower prog)
  ]
 
-reversePrimListBench =
- [idcBenchmarkD  "ReversePrimList"
- ,idcOBenchmarkD "ReversePrimList"
- ,pakcsBenchmark "ReversePrimList"
- ,mccBenchmark   "ReversePrimList"
- ,ghcBenchmark   "ReversePrimList"
- ,ghcOBenchmark  "ReversePrimList"
- ,sicsBenchmark  "reverseprimlist"
- ,swiBenchmark   "reverseprimlist"
+-- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
+benchHOFP prog =
+ [idcBenchmark   prog
+ ,idcOBenchmark  prog
+ ,idcBenchmarkD  prog
+ ,idcOBenchmarkD prog
+ ,pakcsBenchmark prog
+ ,mccBenchmark   prog
+ ,ghcBenchmark   prog
+ ,ghcOBenchmark  prog
  ]
 
-takBench =
- [idcBenchmarkD  "Tak"
- ,idcOBenchmarkD "Tak"
- ,pakcsBenchmark "Tak"
- ,mccBenchmark   "Tak"
- ,ghcBenchmark   "Tak"
- ,ghcOBenchmark  "Tak"
- ,sicsBenchmark  "tak"
- ,swiBenchmark   "tak"
- ]
-
-takPeanoBench =
- [idcBenchmarkD  "TakPeano"
- ,idcOBenchmarkD "TakPeano"
- ,pakcsBenchmark "TakPeano"
- ,mccBenchmark   "TakPeano"
- ,ghcBenchmark   "TakPeano"
- ,ghcOBenchmark  "TakPeano"
- ,sicsBenchmark  "takpeano"
- ,swiBenchmark   "takpeano"
- ]
-
-reverseHOBench =
- [idcBenchmark   "ReverseHO"
- ,idcOBenchmark  "ReverseHO"
- ,idcBenchmarkD  "ReverseHO"
- ,idcOBenchmarkD "ReverseHO"
- ,pakcsBenchmark "ReverseHO"
- ,mccBenchmark   "ReverseHO"
- ,ghcBenchmark   "ReverseHO"
- ,ghcOBenchmark  "ReverseHO"
- ]
-
-primReverseBench =
- [idcBenchmark   "PrimReverse"
- ,idcOBenchmark  "PrimReverse"
- ,idcBenchmarkD  "PrimReverse"
- ,idcOBenchmarkD "PrimReverse"
- ,pakcsBenchmark "PrimReverse"
- ,mccBenchmark   "PrimReverse"
- ,ghcBenchmark   "PrimReverse"
- ,ghcOBenchmark  "PrimReverse"
- ]
-
-primesPeanoBench =
- [idcBenchmark   "PrimesPeano"
- ,idcOBenchmark  "PrimesPeano"
- ,idcBenchmarkD  "PrimesPeano"
- ,idcOBenchmarkD "PrimesPeano"
- ,pakcsBenchmark "PrimesPeano"
- ,mccBenchmark   "PrimesPeano"
- ,ghcBenchmark   "PrimesPeano"
- ,ghcOBenchmark  "PrimesPeano"
- ]
-
-primesBench =
- [idcBenchmark   "Primes"
- ,idcOBenchmark  "Primes"
- ,idcBenchmarkD  "Primes"
- ,idcOBenchmarkD "Primes"
- ,pakcsBenchmark "Primes"
- ,mccBenchmark   "Primes"
- ,ghcBenchmark   "Primes"
- ,ghcOBenchmark  "Primes"
- ]
-
-primPrimesBench =
- [idcBenchmark   "PrimPrimes"
- ,idcOBenchmark  "PrimPrimes"
- ,idcBenchmarkD  "PrimPrimes"
- ,idcOBenchmarkD "PrimPrimes"
- ,pakcsBenchmark "PrimPrimes"
- ,mccBenchmark   "PrimPrimes"
- ,ghcBenchmark   "PrimPrimes"
- ,ghcOBenchmark  "PrimPrimes"
- ]
-
-queensBench =
- [idcBenchmark   "Queens"
- ,idcOBenchmark  "Queens"
- ,idcBenchmarkD  "Queens"
- ,idcOBenchmarkD "Queens"
- ,pakcsBenchmark "Queens"
- ,mccBenchmark   "Queens"
- ,ghcBenchmark   "Queens"
- ,ghcOBenchmark  "Queens"
+-- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
+benchFLPDFS prog =
+ [idcBenchmarkDFS  prog
+ ,idcOBenchmarkDFS prog
+ ,pakcsBenchmark prog
+ ,mccBenchmark   prog
  ]
 
 
 allBenchmarks = concat
-  [ reverseBench
-  , reversePrimListBench
-  , takBench
-  , takPeanoBench
-  , reverseHOBench
-  , primReverseBench
-  , primesPeanoBench
-  , primesBench
-  , primPrimesBench
-  , queensBench
+  [ benchFPpl "Reverse"
+  , benchFPpl "ReversePrimList"
+  , benchFPpl "Tak"
+  , benchFPpl "TakPeano"
+  , benchHOFP  "ReverseHO"
+  , benchHOFP "PrimReverse"
+  , benchHOFP "PrimesPeano"
+  , benchHOFP "Primes"
+  , benchHOFP "PrimPrimes"
+  , benchHOFP "Queens"
+  , benchHOFP "PrimQueens"
+  , benchFLPDFS "PermSort"
   ]
 
 -- Run all benchmarks and show results
@@ -245,8 +184,6 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 3 allBenchmarks
--- main = run 1 allBenchmarks
--- main = run 1 queensBench
---main = run 1 primReverseBench
--- main = run 3 (takBench ++ queensBench)
+--main = run 3 allBenchmarks
+--main = run 1 allBenchmarks
+main = run 1 (benchFLPDFS "PermSort")
