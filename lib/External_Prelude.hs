@@ -278,6 +278,18 @@ external_d_OP_star :: C_Int -> C_Int -> C_Int
 external_d_OP_star (C_Int x) (C_Int y) = C_Int (x *# y)
 external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
+external_d_C_div :: C_Int -> C_Int -> C_Int
+external_d_C_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)
+external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_dollar_bang` y) `d_dollar_bang` x
+
+external_d_C_mod :: C_Int -> C_Int -> C_Int
+external_d_C_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
+external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_dollar_bang` y) `d_dollar_bang` x
+
+external_d_C_negateFloat :: C_Float -> C_Float
+external_d_C_negateFloat (C_Float x) = C_Float (negateFloat# x)
+external_d_C_negateFloat x = external_d_C_negateFloat `d_dollar_bang` x
+
 -- external_d_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
 -- external_d_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (y +# x)
 --
@@ -287,14 +299,14 @@ external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_dollar_ban
 -- external_d_C_prim_Int_times :: C_Int -> C_Int -> C_Int
 -- external_d_C_prim_Int_times (C_Int x) (C_Int y) = C_Int (y *# x)
 
-external_d_C_prim_Int_div :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)
+-- external_d_C_prim_Int_div :: C_Int -> C_Int -> C_Int
+-- external_d_C_prim_Int_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)
 
-external_d_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
-external_d_C_prim_Int_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
+-- external_d_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
+-- external_d_C_prim_Int_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
 
-external_d_C_prim_negateFloat :: C_Float -> C_Float
-external_d_C_prim_negateFloat (C_Float x) = C_Float (negateFloat# x)
+-- external_d_C_prim_negateFloat :: C_Float -> C_Float
+-- external_d_C_prim_negateFloat (C_Float x) = C_Float (negateFloat# x)
 
 external_d_OP_eq_colon_eq :: Unifiable a => a -> a -> C_Success
 external_d_OP_eq_colon_eq = (=:=)

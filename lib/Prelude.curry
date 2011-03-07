@@ -515,20 +515,20 @@ prim_chr external
 --- Thus, the value of <code>13 `div` 5</code> is <code>2</code>,
 --- and the value of <code>-15 `div` 4</code> is <code>-3</code>.
 div   :: Int -> Int -> Int
-x `div` y = (prim_Int_div $# y) $# x
+div external
 
-prim_Int_div :: Int -> Int -> Int
-prim_Int_div external
+-- prim_Int_div :: Int -> Int -> Int
+-- prim_Int_div external
 
 --- Integer remainder. The value is the remainder of the integer division and
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
 --- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
 mod   :: Int -> Int -> Int
-x `mod` y = (prim_Int_mod $# y) $# x
+mod external
 
-prim_Int_mod :: Int -> Int -> Int
-prim_Int_mod external
+-- prim_Int_mod :: Int -> Int -> Int
+-- prim_Int_mod external
 
 --- Unary minus. Usually written as "- e".
 negate :: Int -> Int
@@ -536,10 +536,10 @@ negate x = 0 - x
 
 --- Unary minus on Floats. Usually written as "-e".
 negateFloat :: Float -> Float
-negateFloat x = prim_negateFloat $# x
+negateFloat external
 
-prim_negateFloat :: Float -> Float
-prim_negateFloat external
+-- prim_negateFloat :: Float -> Float
+-- prim_negateFloat external
 
 
 -- Constraints
