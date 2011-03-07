@@ -162,6 +162,7 @@ allBenchmarks = concat
   , benchHOFP "Queens"
   , benchHOFP "PrimQueens"
   , benchFLPDFS "PermSort"
+  , benchFLPDFS "PermSortPeano"
   ]
 
 -- Run all benchmarks and show results
@@ -186,4 +187,5 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 
 --main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
-main = run 1 (benchFLPDFS "PermSort")
+main = run 1 (benchFLPDFS "PermSortPeano")
+--main = run 1 (benchFPpl "Tak")
