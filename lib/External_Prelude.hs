@@ -26,11 +26,21 @@ class ( Show a -- TODO remove Eq and Ord later
   (<?=) = error "(<?=) is undefined"
 
 instance Curry C_Success where
-  C_Success =?= C_Success = C_True
-  _         =?= _         = C_False
+  Choice_C_Success i x y =?= z                      = Choice_C_Bool i (x =?= z) (y =?= z)
+  Guard_C_Success c x    =?= y                      = Guard_C_Bool c (x =?= y)
+  Fail_C_Success         =?= _                      = Fail_C_Bool
+  x                      =?= Choice_C_Success i y z = Choice_C_Bool i (x =?= y) (x =?= z)
+  x                      =?= Guard_C_Success c y    = Guard_C_Bool c (x =?= y)
+  _                      =?= Fail_C_Success         = Fail_C_Bool
+  C_Success              =?= C_Success              = C_True
 
-  C_Success <?= C_Success = C_True
-  _         <?= _         = C_False
+  Choice_C_Success i x y <?= z                      = Choice_C_Bool i (x <?= z) (y <?= z)
+  Guard_C_Success c x    <?= y                      = Guard_C_Bool c (x <?= y)
+  Fail_C_Success         <?= _                      = Fail_C_Bool
+  x                      <?= Choice_C_Success i y z = Choice_C_Bool i (x <?= y) (x <?= z)
+  x                      <?= Guard_C_Success c y    = Guard_C_Bool c (x <?= y)
+  _                      <?= Fail_C_Success         = Fail_C_Bool
+  C_Success              <?= C_Success              = C_True
 
 instance Curry (Func a b) where
 
@@ -76,11 +86,21 @@ instance Unifiable C_Int where
   bind i (Choice_C_Int j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
 instance Curry C_Int where
-  C_Int x =?= C_Int y = fromBool (x ==# y)
-  x       =?= y       = error $ "(=?=) for C_Int with " ++ show x ++ " and " ++ show y
+  Choice_C_Int i x y =?= z                  = Choice_C_Bool i (x =?= z) (y =?= z)
+  Guard_C_Int c x    =?= y                  = Guard_C_Bool c (x =?= y)
+  Fail_C_Int         =?= _                  = Fail_C_Bool
+  x                  =?= Choice_C_Int i y z = Choice_C_Bool i (x =?= y) (x =?= z)
+  x                  =?= Guard_C_Int c y    = Guard_C_Bool c (x =?= y)
+  _                  =?= Fail_C_Int         = Fail_C_Bool
+  C_Int x            =?= C_Int y            = fromBool (x ==# y)
 
-  C_Int x <?= C_Int y = fromBool (x <=# y)
-  x       <?= y       = error $ "(<?=) for C_Int with " ++ show x ++ " and " ++ show y
+  Choice_C_Int i x y <?= z                  = Choice_C_Bool i (x <?= z) (y <?= z)
+  Guard_C_Int c x    <?= y                  = Guard_C_Bool c (x <?= y)
+  Fail_C_Int         <?= _                  = Fail_C_Bool
+  x                  <?= Choice_C_Int i y z = Choice_C_Bool i (x <?= y) (x <?= z)
+  x                  <?= Guard_C_Int c y    = Guard_C_Bool c (x <?= y)
+  _                  <?= Fail_C_Int         = Fail_C_Bool
+  C_Int x            <?= C_Int y            = fromBool (x <=# y)
 
 -- ---------------------------------------------------------------------------
 -- Float
@@ -118,11 +138,21 @@ instance Unifiable C_Float where
   bind i (Choice_C_Float j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
 instance Curry C_Float where
-  C_Float x =?= C_Float y = fromBool (x `eqFloat#` y)
-  x         =?= y         = error $ "(=?=) for C_Float with " ++ show x ++ " and " ++ show y
+  Choice_C_Float i x y =?= z                    = Choice_C_Bool i (x =?= z) (y =?= z)
+  Guard_C_Float c x    =?= y                    = Guard_C_Bool c (x =?= y)
+  Fail_C_Float         =?= _                    = Fail_C_Bool
+  x                    =?= Choice_C_Float i y z = Choice_C_Bool i (x =?= y) (x =?= z)
+  x                    =?= Guard_C_Float c y    = Guard_C_Bool c (x =?= y)
+  _                    =?= Fail_C_Float         = Fail_C_Bool
+  C_Float x            =?= C_Float y            = fromBool (x `eqFloat#` y)
 
-  C_Float x <?= C_Float y = fromBool (x `leFloat#` y)
-  x         <?= y         = error $ "(<?=) for C_Float with " ++ show x ++ " and " ++ show y
+  Choice_C_Float i x y <?= z                    = Choice_C_Bool i (x <?= z) (y <?= z)
+  Guard_C_Float c x    <?= y                    = Guard_C_Bool c (x <?= y)
+  Fail_C_Float         <?= _                    = Fail_C_Bool
+  x                    <?= Choice_C_Float i y z = Choice_C_Bool i (x <?= y) (x <?= z)
+  x                    <?= Guard_C_Float c y    = Guard_C_Bool c (x <?= y)
+  _                    <?= Fail_C_Float         = Fail_C_Bool
+  C_Float x            <?= C_Float y            = fromBool (x `leFloat#` y)
 
 -- ---------------------------------------------------------------------------
 -- Char
@@ -160,11 +190,21 @@ instance Unifiable C_Char where
   bind i (Choice_C_Char j@(FreeID _) _ _) = [(i :=: (BindTo j))]
 
 instance Curry C_Char where
-  C_Char x =?= C_Char y = fromBool (x `eqChar#` y)
-  x        =?= y        = error $ "(=?=) for C_Char with " ++ show x ++ " and " ++ show y
+  Choice_C_Char i x y =?= z                   = Choice_C_Bool i (x =?= z) (y =?= z)
+  Guard_C_Char c x    =?= y                   = Guard_C_Bool c (x =?= y)
+  Fail_C_Char         =?= _                   = Fail_C_Bool
+  x                   =?= Choice_C_Char i y z = Choice_C_Bool i (x =?= y) (x =?= z)
+  x                   =?= Guard_C_Char c y    = Guard_C_Bool c (x =?= y)
+  _                   =?= Fail_C_Char         = Fail_C_Bool
+  C_Char x            =?= C_Char y            = fromBool (x `eqChar#` y)
 
-  C_Char x <?= C_Char y = fromBool (x `leChar#` y)
-  x        <?= y        = error $ "(<?=) for C_Char with " ++ show x ++ " and " ++ show y
+  Choice_C_Char i x y <?= z                   = Choice_C_Bool i (x <?= z) (y <?= z)
+  Guard_C_Char c x    <?= y                   = Guard_C_Bool c (x <?= y)
+  Fail_C_Char         <?= _                   = Fail_C_Bool
+  x                   <?= Choice_C_Char i y z = Choice_C_Bool i (x <?= y) (x <?= z)
+  x                   <?= Guard_C_Char c y    = Guard_C_Bool c (x <?= y)
+  _                   <?= Fail_C_Char         = Fail_C_Bool
+  C_Char x            <?= C_Char y            = fromBool (x `leChar#` y)
 
 -- ---------------------------------------------------------------------------
 -- Conversion from and to primitive Haskell types
@@ -215,18 +255,10 @@ external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
 
 external_d_OP_eq_eq :: Curry a => a -> a -> C_Bool
-external_d_OP_eq_eq x y = (\a -> (\b -> a =?= b) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_OP_eq_eq  = (=?=)
 
-external_d_C_compare :: Curry a => a -> a -> C_Ordering
-external_d_C_compare x y = (\a -> (\b -> (a `comp` b)) `d_dollar_bang` y) `d_dollar_bang` x where
-  comp a b = (\x -> case x of
-                C_True  -> C_EQ
-                C_False ->
-                  (\y -> case y of
-                          C_True  -> C_LT
-                          C_False -> C_GT )
-                  `d_dollar_bang` (a <?= b))
-              `d_dollar_bang` (a =?= b)
+external_d_OP_lt_eq :: Curry a => a -> a -> C_Bool
+external_d_OP_lt_eq = (<?=)
 
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)

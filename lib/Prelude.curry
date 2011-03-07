@@ -167,21 +167,21 @@ data Ordering = LT | EQ | GT
 --- Data constructors are compared in the order of their definition
 --- in the datatype declarations and recursively in the arguments.
 compare :: a -> a -> Ordering
-compare external
+compare x y | x == y    = EQ
+            | x <= y    = LT
+            | otherwise = GT
 
 --- Less-than on ground data terms.
 (<)   :: a -> a -> Bool
-x < y = case compare x y of LT -> True
-                            _  -> False
+x < y = (x <= y) && not (x == y)
 
 --- Greater-than on ground data terms.
 (>)   :: a -> a -> Bool
-x > y = case compare x y of GT -> True
-                            _  -> False
+x > y = not (x <= y)
 
 --- Less-or-equal on ground data terms.
 (<=)  :: a -> a -> Bool
-x <= y = not (x > y)
+(<=)  external
 
 --- Greater-or-equal on ground data terms.
 (>=)  :: a -> a -> Bool

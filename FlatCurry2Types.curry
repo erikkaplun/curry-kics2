@@ -270,12 +270,51 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   curryInstance =
     Instance (basics "Curry") ctype
       (map (\tv -> Context (basics "Curry") [tv]) targs)
-      (map eqConsRule cdecls ++
-      [(pre "=?=", Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "C_False"))] [])]
-      ++ ordConsRules cdecls ++
-      [(pre "<?=", Rule [PVar (1,"_"),PVar (2,"_")] [noGuard (constF (pre "C_False"))] [])])
+      (extConsRules "=?=" ++ map eqConsRule cdecls ++
+      if multipleCons
+       then [(pre "=?=", Rule [PVar (1,"_"),PVar (2,"_")] 
+                              [noGuard (constF (pre "C_False"))] [])]
+       else []
+      ++ extConsRules "<?=" ++ ordConsRules cdecls ++
+      if multipleCons
+       then [(pre "<?=", Rule [PVar (1,"_"),PVar (2,"_")] 
+                              [noGuard (constF (pre "C_False"))][])]
+       else[])
+    where
+     multipleCons = length cdecls > 1
 
-  -- Generate Unifiable instance rule for a data constructor:
+  extConsRules name =
+    [nameRule $ Rule [PComb (mkChoiceName (mn,tc)) [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]
+                     ,PVar (4,"z")]
+                     [noGuard (applyF narrow [Var (1,"i") 
+                                             ,applyF (pre name)[Var (2,"x"),Var (4,"z")]
+                                             ,applyF (pre name) [Var (3,"y"),Var (4, "z")]])
+                                             ] []
+      ,nameRule $ Rule [PComb (mkGuardName (mn,tc)) [PVar (1,"c"),PVar (2,"x")], PVar(3,"y")]
+                     [noGuard (applyF (pre "guardCons") 
+                                      [Var (1,"c")
+                                      ,applyF (pre name) [Var (2,"x"),Var (3,"y")]])
+                                      ] []
+      ,nameRule $ Rule [PComb (mkFailName (mn,tc)) [],PVar (1,"_")]
+                     [noGuard (Symbol (pre "failCons"))] []
+      ,nameRule $ Rule [PVar (4,"z")
+                      ,PComb (mkChoiceName (mn,tc)) [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]]
+                     [noGuard (applyF narrow [Var (1,"i") 
+                                             ,applyF (pre name)[Var (4,"z"),Var (2,"x")]
+                                             ,applyF (pre name) [Var (4,"z"),Var (3, "y")]])
+                                             ] []
+      ,nameRule $ Rule [PVar(3,"y"), PComb (mkGuardName (mn,tc)) [PVar (1,"c"),PVar (2,"x")]]
+                     [noGuard (applyF (pre "guardCons") 
+                                      [Var (1,"c")
+                                      ,applyF (pre name) [Var (3,"y"),Var (2,"x")]])
+                                      ] []
+      ,nameRule $ Rule [PVar (1,"_"),PComb (mkFailName (mn,tc)) []]
+                     [noGuard (Symbol (pre "failCons"))] []
+      ]
+    where
+      nameRule rule = (pre name, rule)
+
+  -- Generate equality instance rule for a data constructor:
   eqConsRule (FC.Cons qn _ _ texps) =
     (pre "=?=",
      Rule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
@@ -332,5 +371,8 @@ basics :: String -> QName
 basics n = ("Basics",n)
 
 idmod n = ("ID",n)
+
+
+narrow = basics "narrow"
 
 ------------------------------------------------------------------------
