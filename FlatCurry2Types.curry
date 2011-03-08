@@ -211,7 +211,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     then applyF (pre "error")
                 [string2ac $ "No constructors for "++tc]
     else foldr1 (\x y -> applyF choiceConsName
-                                [applyF (basics "freeID") [Var (1,"i")], x, y])
+                                [applyF (idmod "freeID") [Var (1,"i")], x, y])
                 (cons2genCons 0 cdecls)
 
   cons2genCons _ [] = []
@@ -258,12 +258,12 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       [(basics "bind",
         Rule [PVar (1,"i"),
               PComb choiceConsName
-                    [PAs (2,"j") (PComb (basics "FreeID") [PVar (3,"_")]),
+                    [PAs (2,"j") (PComb (idmod "FreeID") [PVar (3,"_")]),
                      PVar (4,"_"),PVar (5,"_")]]
              [noGuard (applyF (pre ":")
                               [applyF (basics ":=:")
                                  [Var (1,"i"),
-                                  applyF (basics "BindTo") [Var (2,"j")]],
+                                  applyF (idmod "BindTo") [Var (2,"j")]],
                                constF (pre "[]")])] [])])
 
   -- Generate Unifiable instance rule for a data constructor:
