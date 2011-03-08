@@ -13,6 +13,9 @@ while [ $# -gt 1 ] ; do
     -o         ) OPTIM="-O2" ;;
     -d         ) MAIN="print d_C_main" ;;
     --prdfs    ) MAIN="prdfs nd_C_main" ;;
+    --dfs      ) MAIN="printDFS nd_C_main" ;;
+    --bfs      ) MAIN="printBFS nd_C_main" ;;
+    --ids      ) MAIN="printIDS nd_C_main" ;;
     --idsupply ) shift ; IDSUPPLYDIR=$SYSDIR/idsupply$1 ;;
     * ) echo ERROR: Illegal option: "$@" >&2 ; exit 1 ;;
   esac
@@ -40,7 +43,7 @@ PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
 
 $SYSDIR/idc -q -i $PRELUDEDIR $1
 echo "module Main where" > Main.hs
-echo "import Basics (eval,prdfs)" >> Main.hs
+echo "import Basics" >> Main.hs
 echo "import Curry_$PROG" >> Main.hs
 echo "main = ${MAIN}" >> Main.hs
 ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs

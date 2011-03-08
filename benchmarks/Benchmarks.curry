@@ -51,6 +51,7 @@ runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   system cleancmd
   return (name++": "++ concat (intersperse " | " times))
 
+----------------------------------------------------------------------
 -- Command to compile a module and execute main with idcompiler:
 idcCompile options mod = "../compilecurry " ++ options ++ " " ++ mod
 
@@ -76,42 +77,32 @@ sicstusCompile mod =
 swiCompile mod =
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
-idcBenchmark   mod = (mod++"@IDC   ",idcCompile "" mod,
-                      "./Main","rm Main* Curry_*")
-idcBenchmarkO  mod = (mod++"@IDC+  ",idcCompile "-o" mod,
-                      "./Main","rm Main* Curry_*")
-idcBenchmarkD  mod = (mod++"@IDC_D ",idcCompile "-d" mod,
-                      "./Main","rm Main* Curry_*")
-idcBenchmarkOD mod = (mod++"@IDC+_D",idcCompile "-o -d" mod,
-                      "./Main","rm Main* Curry_*")
-idcBenchmarkDFS mod = (mod++"@IDC_DFS ",idcCompile "--prdfs" mod,
-                       "./Main", "rm Main* Curry_*")
-idcBenchmarkODFS mod = (mod++"@IDC+_DFS",idcCompile "-o --prdfs" mod,
-                        "./Main", "rm Main* Curry_*")
-idcBenchmarkODFSIORef mod = (mod++"@IDC+_DFS_IORef",
-                             idcCompile "-o --prdfs --idsupply ioref" mod,
-                             "./Main", "rm Main* Curry_*")
-pakcsBenchmark mod = (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state",
-                      "rm "++mod++".state")
-mccBenchmark   mod = (mod++"@MCC   ",mccCompile mod,
-                      "./a.out +RTS -h512m -RTS",
-                      "rm a.out "++mod++".icurry")
-ghcBenchmark   mod = (mod++"@GHC   ",ghcCompile mod,"./"++mod,
-                      "rm "++mod++" "++mod++".hi "++mod++".o")
-ghcOBenchmark  mod = (mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
-                      "rm "++mod++" "++mod++".hi "++mod++".o")
-sicsBenchmark  mod = (mod++"@SICS  ", sicstusCompile mod,
-                      "./"++mod++".state", "rm "++mod++".state")
-swiBenchmark   mod = (mod++"@SWI   ", swiCompile mod,
-                      "./"++mod++".state", "rm "++mod++".state")
+idcBenchmark tag options mod =
+  (mod++"@"++tag, idcCompile options mod, "./Main", "rm Main* Curry_*")
+pakcsBenchmark mod =
+  (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state","rm "++mod++".state")
+mccBenchmark mod =
+  (mod++"@MCC   ",mccCompile mod,"./a.out +RTS -h512m -RTS",
+   "rm a.out "++mod++".icurry")
+ghcBenchmark mod =
+  (mod++"@GHC   ",ghcCompile mod,"./"++mod,
+   "rm "++mod++" "++mod++".hi "++mod++".o")
+ghcOBenchmark mod =
+  (mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
+   "rm "++mod++" "++mod++".hi "++mod++".o")
+sicsBenchmark mod =
+  (mod++"@SICS  ", sicstusCompile mod,
+   "./"++mod++".state", "rm "++mod++".state")
+swiBenchmark  mod =
+  (mod++"@SWI   ", swiCompile mod, "./"++mod++".state", "rm "++mod++".state")
 
 ----------------------------------------------------------------------
 -- The various kinds of benchmarks:
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl prog =
- [idcBenchmarkD  prog
- ,idcBenchmarkOD prog
+ [idcBenchmark "IDC_D " "-d"  prog
+ ,idcBenchmark "IDC+_D" "-o -d" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
  ,ghcBenchmark   prog
@@ -122,10 +113,10 @@ benchFPpl prog =
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog =
- [idcBenchmark   prog
- ,idcBenchmarkO  prog
- ,idcBenchmarkD  prog
- ,idcBenchmarkOD prog
+ [idcBenchmark "IDC   " "" prog
+ ,idcBenchmark "IDC+  " "-o"  prog
+ ,idcBenchmark "IDC_D " "-d"  prog
+ ,idcBenchmark "IDC+_D" "-o -d" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
  ,ghcBenchmark   prog
@@ -134,11 +125,19 @@ benchHOFP prog =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog =
- [idcBenchmarkDFS  prog
- ,idcBenchmarkODFS prog
- ,idcBenchmarkODFSIORef prog
+ [idcBenchmark "IDC_DFS       " "--prdfs"  prog
+ ,idcBenchmark "IDC+_DFS      " "-o --prdfs" prog
+ ,idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
+ ]
+
+-- Benchmarking functional logic programs with different search strategies
+benchFLPSearch prog =
+ [idcBenchmark "IDC+PrDFS_IOREF" "-o --prdfs --idsupply ioref" prog
+ ,idcBenchmark "IDC+DFS_IOREF  " "-o --dfs   --idsupply ioref" prog
+ ,idcBenchmark "IDC+BFS_IOREF  " "-o --bfs   --idsupply ioref" prog
+ ,idcBenchmark "IDC+IDS_IOREF  " "-o --ids   --idsupply ioref" prog
  ]
 
 
@@ -156,6 +155,8 @@ allBenchmarks = concat
   , benchHOFP "PrimQueens"
   , benchFLPDFS "PermSort"
   , benchFLPDFS "PermSortPeano"
+  , benchFLPSearch "PermSort"
+  , benchFLPSearch "PermSortPeano"
   ]
 
 -- Run all benchmarks and show results
@@ -180,6 +181,6 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 
 --main = run 3 allBenchmarks
 main = run 1 allBenchmarks
---main = run 1 (benchFLPDFS "PermSort")
+--main = run 1 (benchFLPSearch "PermSortPeano")
 --main = run 1 (benchFLPDFS "PermSort" ++ benchFLPDFS "PermSortPeano")
 --main = run 1 (benchFPpl "Tak")

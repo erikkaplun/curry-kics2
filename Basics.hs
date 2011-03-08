@@ -321,9 +321,9 @@ unwrap (Func f) s x = f x s
 -}
 
 
------------------------
--- print vals dfs
------------------------
+----------------------------------------------------------------------
+-- Printing all results of a computation in a depth-first manner
+----------------------------------------------------------------------
 
 -- Evaluate a nondeterministic expression and show all results
 -- in depth-first order
@@ -351,4 +351,188 @@ printValsDFS (Choice i x y) = lookupChoice i >>= choose
    newChoice j a = do setChoice i j
                       printValsDFS (try a)
                       setChoice i NoChoice
+
+----------------------------------------------------------------------
+-- Data structures and operations for various search strategies
+----------------------------------------------------------------------
+
+-- Monadic lists as a general representation of values obtained
+-- in a mondic manner
+data MList m a = MCons a (m (MList m a))
+               | MNil
+               | Abort
+               | WithReset (m (MList m a)) (m ())
+
+-- Construct an empty monadic list
+mnil :: Monad m => m (MList m a)
+mnil = return MNil
+
+-- Construct a non-empty monadic list
+mcons :: Monad m => a -> m (MList m a) -> m (MList m a)
+mcons x xs = return (MCons x xs)
+
+--- ???
+abort :: Monad m => m (MList m a)
+abort = return Abort
+
+--- Concatenate two monadic lists
+(+++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
+get +++ getYs = withReset get (return ())
+  where
+    withReset getList reset = do
+     l <- getList
+     case l of
+       WithReset getList' reset' -> withReset getList' (reset >> reset')
+       MNil -> reset >> getYs
+       Abort -> reset >> mayAbort getYs
+       MCons x getXs -> mcons x (withReset getXs reset)
+    mayAbort getYs = do
+     ys <- getYs
+     case ys of
+       WithReset getYs' reset' -> mayAbort getYs' |< reset'
+       MNil -> return Abort
+       ys'  -> return ys'
+
+-- Add a monadic action of with result type () to the end of a monadic list
+(|<) :: Monad m => m (MList m a) ->  m () -> m (MList m a)
+l |< r = return (WithReset l r)
+{-getXs |< reset = do
+  xs <- getXs
+  case xs of
+    MCons x getTail -> mcons x (getTail |< reset)
+    end -> reset >> return end
+-}
+
+-- For convencience, we define a monadic list for the IO monad:
+type IOList a = MList IO a
+
+-- Print all values of a IO monad list:
+printVals :: Show a => IOList a -> IO ()
+printVals MNil              = return ()
+printVals (MCons x getRest) = print x >> getRest >>= printVals
+printVals (WithReset l _) = l >>= printVals
+
+-- Count and print the number of elements of a IO monad list:
+countVals :: IOList a -> IO ()
+countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
+  where
+    count i MNil = return i
+    count i (WithReset l _) = l >>= count i
+    count i (MCons _ cont) = do
+          let !i' = i+1
+          cont >>= count i'
+
+----------------------------------------------------------------------
+-- Depth-first search into a monadic list
+----------------------------------------------------------------------
+
+-- Print all values of a non-deterministic goal in a depth-first manner:
+printDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printDFS mainexp =
+  eval mainexp >>= \x -> searchDFS (try (id $!! x)) >>= printVals -- countVals
+
+--searchDFS :: (NormalFormIO a,NonDet a) => Try a -> IO (IOList a)
+searchDFS :: NonDet a => Try a -> IO (IOList a)
+searchDFS Fail             = mnil
+{-
+searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
+  where
+    choose ChooseLeft  = (searchDFS . try) $!< x1
+    choose ChooseRight = (searchDFS . try) $!< x2
+    choose NoChoice    = mcons (choiceCons i x1 x2) mnil
+-}
+searchDFS (Val v)          = mcons v mnil
+searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
+  where
+    choose ChooseLeft  = searchDFS (try x1)
+    choose ChooseRight = searchDFS (try x2)
+    choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
+
+    newChoice c x = do setChoice i c
+                       searchDFS (try x) |< setChoice i NoChoice
+{-
+searchDFS (Guard cs e) = do
+  mreset <- solves cs
+  case mreset of
+    Nothing    -> mnil
+    Just reset -> ((searchDFS . try) $!< e) |< reset
+-}
+
+----------------------------------------------------------------------
+-- Breadth-first search into a monadic list
+----------------------------------------------------------------------
+
+-- Print all values of a non-deterministic goal in a breadth-first manner:
+printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printBFS mainexp =
+  eval mainexp >>= \x -> searchBFS (try (id $!! x)) >>= printVals -- countVals
+
+searchBFS :: NonDet a => Try a -> IO (IOList a)
+searchBFS x = bfs [] [] (return ()) (return ()) x
+  where
+    bfs xs ys _   reset Fail           = reset >> next xs ys
+    bfs xs ys _   reset (Val v)        = reset >> mcons v (next xs ys)
+    bfs xs ys set reset (Choice i x y) = set   >> lookupChoice i >>= choose
+
+     where
+        choose ChooseLeft  = bfs xs ys (return ()) reset (try x)
+        choose ChooseRight = bfs xs ys (return ()) reset (try y)
+        choose NoChoice    = do
+          reset
+          next xs ((newSet ChooseLeft , newReset, x) :
+                   (newSet ChooseRight, newReset, y) : ys)
+
+        newSet c = set   >> setChoice i c
+        newReset = reset >> setChoice i NoChoice
+
+    --TODO: cases for Free, Guard
+
+    next []  []                 = mnil
+    next []  ((set,reset,y):ys) = bfs ys [] set reset (try y)
+    next ((set,reset,x):xs) ys  = bfs xs ys set reset (try x)
+
+----------------------------------------------------------------------
+-- Iterative depth-first search into a monadic list
+----------------------------------------------------------------------
+
+-- The increase step size for the iterative deepening strategy:
+stepIDFS = 100
+
+-- Print all values of a non-deterministic goal with a iterative
+-- deepening strategy:
+printIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printIDS goal = initSupply >>= \s -> iter s 0 >>= printVals
+  where iter s n = startIDS s goal n ++++ iter s (n+stepIDFS)
+
+(++++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
+get ++++ getYs = withReset get (return ())
+  where
+    withReset getList reset = do
+     l <- getList
+     case l of
+       WithReset getList' reset' -> withReset getList' (reset >> reset')
+       MNil -> reset >> mnil
+       Abort -> reset >> getYs
+       MCons x getXs -> mcons x (withReset getXs reset)
+
+
+startIDS s goal n = idsHNF n (id $!! goal s)
+
+idsHNF :: (Show a,NonDet a) => Int -> a -> IO (IOList a)
+idsHNF n x = case try x of
+  Val v -> if n<stepIDFS then mcons x mnil else mnil
+  Fail  -> mnil
+  Choice i x1 x2 -> do
+    c <- lookupChoice i
+    case c of
+      ChooseLeft   -> idsHNF n x1
+      ChooseRight  -> idsHNF n x2
+      NoChoice -> if n > 0
+                  then choose ChooseLeft x1 +++ choose ChooseRight x2
+                  else abort
+     where
+      choose c x = do
+       setChoice i c
+       idsHNF (n - 1) x |< setChoice i NoChoice
+
 
