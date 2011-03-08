@@ -226,9 +226,20 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
    Instance (basics "NormalForm") ctype
      (map (\tv -> Context (basics "NormalForm") [tv]) targs)
      (map normalformConsRule cdecls ++
-      [(basics "$!!",
-        Rule [PVar (1,"cont"),PVar (2,"x")]
-           [noGuard (applyF (basics "$$!!") [Var (1,"cont"),Var (2,"x")])] [])])
+         [(basics "$!!",
+           Rule [PVar (1,"cont"),
+                 PComb (mkChoiceName (mn,tc)) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
+                     [noGuard (applyF (pre "choiceCons") 
+                                      [Var (2,"i")
+                                      , applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]
+                                      ,applyF (basics "$!!")[Var (1,"cont"),Var (4,"y")]])] [])
+      ,(basics "$!!", Rule [PVar (1,"cont"), 
+                            PComb (mkGuardName (mn,tc)) [PVar (2,"c"),PVar (3,"x")]]
+                     [noGuard (applyF (pre "guardCons") 
+                                      [Var (2,"c")
+                                      ,applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]])] [])
+      ,(basics "$!!", Rule [PVar (1,"_"),PComb (mkFailName (mn,tc)) []]
+                     [noGuard (Symbol (pre "failCons"))] [])])
 
   -- Generate NormalForm instance rule for a data constructor:
   normalformConsRule (FC.Cons qn _ _ texps) =

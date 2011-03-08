@@ -79,7 +79,9 @@ instance Generable C_Int where
 
 instance NormalForm C_Int where
   cont $!! i@(C_Int _) = cont i
-  cont $!! v           = cont $$!! v
+  cont $!! Choice_C_Int i x y = nfChoice cont i x y
+  cont $!! Guard_C_Int c x = guardCons c (cont $!! x)
+  _    $!! Fail_C_Int = failCons
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
@@ -130,8 +132,10 @@ instance Generable C_Float where
   generate i = error "No constructors for C_Float"
 
 instance NormalForm C_Float where
-  cont $!! f@(C_Float _) = cont f
-  cont $!! v             = cont $$!! v
+  cont $!! f@(C_Float _)        = cont f
+  cont $!! Choice_C_Float i x y = nfChoice cont i x y
+  cont $!! Guard_C_Float c x    = guardCons c (cont $!! x)
+  _    $!! Fail_C_Float         = failCons      
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
@@ -182,8 +186,10 @@ instance Generable C_Char where
   generate i = error "No constructors for C_Char"
 
 instance NormalForm C_Char where
-  cont $!! c@(C_Char _) = cont c
-  cont $!! v            = cont $$!! v
+  cont $!! c@(C_Char _)          = cont c
+  cont $!! Choice_C_Char i c1 c2 = nfChoice cont i c1 c2
+  cont $!! Guard_C_Char c char   = guardCons c (cont $!! char)
+  _    $!! Fail_C_Char           = failCons
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success

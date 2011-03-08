@@ -54,8 +54,12 @@ store :: IORef SetOfChoices
 store = unsafePerformIO (newIORef Data.Map.empty)
 
 lookupChoice :: ID -> IO Choice
-lookupChoice (ID r) = do
-  st <- readIORef store 
+lookupChoice (ID r) = lookupRef r
+lookupChoice (FreeID r) = lookupRef r
+
+lookupRef :: Integer -> IO Choice
+lookupRef r = do
+  st <- readIORef store
   return $ maybe NoChoice id (Data.Map.lookup r st)
 
 setChoice :: ID -> Choice -> IO ()

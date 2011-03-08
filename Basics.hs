@@ -48,16 +48,8 @@ class NonDet a => Generable a where
 class NonDet a => NormalForm a where
   ($!!) :: NonDet b => (a -> b) -> a -> b
 
--- Auxiliary operation to apply a continuation to the normal form.
-($$!!) :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
-cont $$!! x = nf (try x)
-  where
-    nf (Val v)        = cont $!! v
-    nf Fail           = failCons
-    nf (Choice i x y) = choiceCons i (nf (try x)) (nf (try y))
-    nf (Free i x y)   = error "($$!!) with free variable" -- was: cont (choiceCons i x y)
-    nf (Guard c e)    = guardCons c (nf (try e))
-
+-- Auxilary Function to create a Choice and apply a continuation to
+-- the normal forms of its alternatives
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
 nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 
@@ -88,14 +80,6 @@ data C_Success
   | Fail_C_Success
   | Guard_C_Success Constraint C_Success
 
-instance Eq C_Success where
-  C_Success == C_Success = True
-  _         == _         = False
-
-instance Ord C_Success where
-  C_Success <= C_Success = True
-  _         <= _         = False
-
 instance Show C_Success where
   showsPrec d C_Success = showString "success"
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
@@ -115,7 +99,9 @@ instance Generable C_Success where
 
 instance NormalForm C_Success where
   cont $!! s@C_Success = cont s
-  cont $!! x = cont $$!! x
+  cont $!! Choice_C_Success i x y = nfChoice cont i x y
+  cont $!! Guard_C_Success c x = guardCons c (cont $!! x)
+  _    $!! Fail_C_Success      = failCons
 
 instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
@@ -151,7 +137,9 @@ instance Generable (Func a b) where
 
 instance NormalForm (Func a b) where
   cont $!! f@(Func _) = cont f
-  cont $!! f          = cont $$!! f
+  cont $!! Func_Choice i f1 f2 = nfChoice cont i f1 f2
+  cont $!! Func_Guard c f      = guardCons c (cont $!! f)
+  _    $!! Func_Fail           = failCons
 
 instance Unifiable (Func a b) where
   (=.=) = error "(=.=) for Func is undefined"
@@ -219,7 +207,9 @@ instance Generable (C_IO a) where
 
 instance NormalForm (C_IO a) where
   cont $!! io@(C_IO _) = cont io
-  cont $!! x           = cont $$!! x
+  cont $!! Choice_C_IO i io1 io2 = nfChoice cont i io1 io2
+  cont $!! Guard_C_IO c io = guardCons c (cont $!! io)
+  _    $!! Fail_C_IO = failCons
 
 instance Unifiable (C_IO a) where
   (=.=) _ _ = Fail_C_Success
@@ -333,14 +323,13 @@ prdfs mainexp = eval mainexp >>= \x -> printValsDFS (try (id $!! x))
 printValsDFS :: (Show a,NonDet a) => Try a -> IO ()
 printValsDFS x@Fail         = return () --print "Failure: " >> print x
 printValsDFS (Val v)        = print v
-{-
-printValsDFS (Free i x y)   = print "case: Free" >> lookupChoice i >>= choose
+printValsDFS (Free i x y)   = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = (printValsDFS . try) $!< x
-   choose ChooseRight = (printValsDFS . try) $!< y
+   choose ChooseLeft  = (printValsDFS . try)  x
+   choose ChooseRight = (printValsDFS . try)  y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
--}
+
 printValsDFS (Choice i x y) = lookupChoice i >>= choose
  where
    choose ChooseLeft  = printValsDFS (try x)

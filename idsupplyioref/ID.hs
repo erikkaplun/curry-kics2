@@ -55,6 +55,7 @@ freeID (IDSupply (ID i) _ _) = FreeID i
 
 lookupChoice :: ID -> IO Choice
 lookupChoice (ID r) = readIORef r
+lookupChoice (FreeID r) = readIORef r
 
 setChoice :: ID -> Choice -> IO ()
 setChoice (ID r) c = writeIORef r c
