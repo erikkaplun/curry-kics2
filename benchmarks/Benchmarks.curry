@@ -52,22 +52,7 @@ runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   return (name++": "++ concat (intersperse " | " times))
 
 -- Command to compile a module and execute main with idcompiler:
-idcCompile mod = "../compilecurry " ++ mod
-
--- Command to compile a module and execute main with idcompiler (optimized):
-idcCompileO mod = "../compilecurry -o " ++ mod
-
--- Command to compile a module and execute main with idcompiler:
-idcCompileD mod = "../compilecurry -d " ++ mod
-
--- Command to compile a module and execute main with idcompiler (optimized):
-idcCompileOD mod = "../compilecurry -o -d " ++ mod
-
--- Command to compile a module and execute main with idcompiler:
-idcCompileDFS mod = "../compilecurry -prdfs " ++ mod
-
--- Command to compile a module and execute main with idcompiler (optimized):
-idcCompileODFS mod = "../compilecurry -o -prdfs " ++ mod
+idcCompile options mod = "../compilecurry " ++ options ++ " " ++ mod
 
 -- Command to compile a module and execute main with GHC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
@@ -91,14 +76,21 @@ sicstusCompile mod =
 swiCompile mod =
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
-idcBenchmark   mod = (mod++"@IDC   ",idcCompile mod,"./Main","rm Main* Curry_*")
-idcOBenchmark  mod = (mod++"@IDC+  ",idcCompileO mod,"./Main","rm Main* Curry_*")
-idcBenchmarkD  mod = (mod++"@IDC_D ",idcCompileD mod,"./Main","rm Main* Curry_*")
-idcOBenchmarkD mod = (mod++"@IDC+_D",idcCompileOD mod,"./Main","rm Main* Curry_*")
-idcBenchmarkDFS mod = (mod++"@IDC_DFS ",idcCompileDFS mod,"./Main",
-                       "rm Main* Curry_*")
-idcOBenchmarkDFS mod = (mod++"@IDC+_DFS",idcCompileODFS mod,"./Main",
-                        "rm Main* Curry_*")
+idcBenchmark   mod = (mod++"@IDC   ",idcCompile "" mod,
+                      "./Main","rm Main* Curry_*")
+idcBenchmarkO  mod = (mod++"@IDC+  ",idcCompile "-o" mod,
+                      "./Main","rm Main* Curry_*")
+idcBenchmarkD  mod = (mod++"@IDC_D ",idcCompile "-d" mod,
+                      "./Main","rm Main* Curry_*")
+idcBenchmarkOD mod = (mod++"@IDC+_D",idcCompile "-o -d" mod,
+                      "./Main","rm Main* Curry_*")
+idcBenchmarkDFS mod = (mod++"@IDC_DFS ",idcCompile "--prdfs" mod,
+                       "./Main", "rm Main* Curry_*")
+idcBenchmarkODFS mod = (mod++"@IDC+_DFS",idcCompile "-o --prdfs" mod,
+                        "./Main", "rm Main* Curry_*")
+idcBenchmarkODFSIORef mod = (mod++"@IDC+_DFS_IORef",
+                             idcCompile "-o --prdfs --idsupply ioref" mod,
+                             "./Main", "rm Main* Curry_*")
 pakcsBenchmark mod = (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state",
                       "rm "++mod++".state")
 mccBenchmark   mod = (mod++"@MCC   ",mccCompile mod,
@@ -119,7 +111,7 @@ swiBenchmark   mod = (mod++"@SWI   ", swiCompile mod,
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl prog =
  [idcBenchmarkD  prog
- ,idcOBenchmarkD prog
+ ,idcBenchmarkOD prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
  ,ghcBenchmark   prog
@@ -131,9 +123,9 @@ benchFPpl prog =
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog =
  [idcBenchmark   prog
- ,idcOBenchmark  prog
+ ,idcBenchmarkO  prog
  ,idcBenchmarkD  prog
- ,idcOBenchmarkD prog
+ ,idcBenchmarkOD prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
  ,ghcBenchmark   prog
@@ -143,7 +135,8 @@ benchHOFP prog =
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog =
  [idcBenchmarkDFS  prog
- ,idcOBenchmarkDFS prog
+ ,idcBenchmarkODFS prog
+ ,idcBenchmarkODFSIORef prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
  ]
@@ -186,6 +179,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 3 allBenchmarks
---main = run 1 allBenchmarks
-main = run 1 (benchFLPDFS "PermSortPeano")
+main = run 1 allBenchmarks
+--main = run 1 (benchFLPDFS "PermSort")
+--main = run 1 (benchFLPDFS "PermSort" ++ benchFLPDFS "PermSortPeano")
 --main = run 1 (benchFPpl "Tak")

@@ -150,7 +150,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     (pre "showsPrec",
      Rule [PVar (0,"d"),
            PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-          [noGuard showBody] [])
+          [noGuard (if snd qn == "OP_Cons" then showListCons else showBody)] [])
    where
      carity = length texps
 
@@ -166,6 +166,21 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                          (applyF (pre "showChar") [Lit (Charc ')')])
                          (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
                               [1..carity])]
+
+     -- specific definition to show a list constructor:
+     showListCons =
+       applyF (pre "if_then_else")
+         [applyF (pre ">") [Var (0,"d"),Lit (Intc 5)],
+          foldr1 (\f1 f2 -> applyF (pre ".") [f1,f2])
+                 [applyF (pre "showChar") [Lit (Charc '(')],
+                  applyF (pre "shows") [Var (1,"x1")],
+                  applyF (pre "showChar") [Lit (Charc ':')],
+                  applyF (pre "shows") [Var (2,"x2")],
+                  applyF (pre "showChar") [Lit (Charc ')')]],
+          foldr1 (\f1 f2 -> applyF (pre ".") [f1,f2])
+                 [applyF (pre "shows") [Var (1,"x1")],
+                  applyF (pre "showChar") [Lit (Charc ':')],
+                  applyF (pre "shows") [Var (2,"x2")]]]
 
   -- Generate instance of NonDet class:
   nondetInstance =

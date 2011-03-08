@@ -3,19 +3,37 @@
 # Compile a Curry program with idcompiler and ghc
 SYSDIR=`dirname "$0"`
 PRELUDEDIR=$SYSDIR/lib
+
 OPTIM=
-if [ "$1" = "-o" ] ; then # compile with optimizations
-  OPTIM="-O2" ; shift
-fi
 MAIN="eval nd_C_main >>= print"
-if [ "$1" = "-d" ] ; then
-  # call deterministic version of main goal
-  MAIN="print d_C_main" ; shift
+IDSUPPLYDIR=$SYSDIR/idsupplyinteger
+
+while [ $# -gt 1 ] ; do
+  case $1 in
+    -o         ) OPTIM="-O2" ;;
+    -d         ) MAIN="print d_C_main" ;;
+    --prdfs    ) MAIN="prdfs nd_C_main" ;;
+    --idsupply ) shift ; IDSUPPLYDIR=$SYSDIR/idsupply$1 ;;
+    * ) echo ERROR: Illegal option: "$@" >&2 ; exit 1 ;;
+  esac
+  shift
+done
+
+if [ $# != 1 ] ; then
+  echo >&2
+  echo "Usage: compilecurry [<options>] <progname>" >&2
+  echo >&2
+  echo "Compile Curry program stored in <progname>.(l)curry" >&2
+  echo >&2
+  echo "<options> is a sequence of:"  >&2
+  echo "-o     : compile with optimizations" >&2
+  echo "-d     : call deterministic version of main goal" >&2
+  echo "--prdfs : evaluate non-deterministic(!) main goal and print results via dfs" >&2
+  echo "--idsupply I : choose implementation I for choice identifiers" >&2
+  echo "               (where I=integer (default) or I=ioref)" >&2
+  exit 1
 fi
-if [ "$1" = "-prdfs" ] ; then
-  # evaluate non-deterministic(!) main goal and print results via dfs
-  MAIN="prdfs nd_C_main" ; shift
-fi
+
 PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
 PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
@@ -25,5 +43,5 @@ echo "module Main where" > Main.hs
 echo "import Basics (eval,prdfs)" >> Main.hs
 echo "import Curry_$PROG" >> Main.hs
 echo "main = ${MAIN}" >> Main.hs
-ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$PRELUDEDIR Main.hs
+ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
 # auch: -funbox-strict-fields

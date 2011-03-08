@@ -3,18 +3,6 @@
 module Basics where
 
 import ID
-import Data.IORef
-import qualified Data.Map 
-import System.IO.Unsafe
-
--- Type to encode the selection taken in a Choice structure
-data Choice
-  = NoChoice
-  | ChooseLeft
-  | ChooseRight
-  | BindTo ID
-  | BoundTo ID
-  deriving Show
 
 data Constraint = ID :=: Choice
  deriving Show
@@ -334,28 +322,6 @@ unwrap (Func f) s x = f x s
 
 
 -----------------------
--- Managing choices
------------------------
-
-type SetOfChoices = Data.Map.Map Integer Choice
-
-store :: IORef SetOfChoices
-store = unsafePerformIO (newIORef Data.Map.empty)
-
-lookupChoice :: ID -> IO Choice
-lookupChoice (ID r) = do
-  st <- readIORef store 
-  return $ maybe NoChoice id (Data.Map.lookup r st)
-
-setChoice :: ID -> Choice -> IO ()
-setChoice (ID r) c = do
-  st <- readIORef store 
-  writeIORef store $ case c of 
-    NoChoice -> Data.Map.delete r st
-    _        -> Data.Map.insert r c st
-
-
------------------------
 -- print vals dfs
 -----------------------
 
@@ -366,7 +332,7 @@ prdfs mainexp = eval mainexp >>= \x -> printValsDFS (try (id $!! x))
 
 printValsDFS :: (Show a,NonDet a) => Try a -> IO ()
 printValsDFS x@Fail         = return () --print "Failure: " >> print x
-printValsDFS (Val v)        = putStr "Result: " >> print v
+printValsDFS (Val v)        = print v
 {-
 printValsDFS (Free i x y)   = print "case: Free" >> lookupChoice i >>= choose
  where
