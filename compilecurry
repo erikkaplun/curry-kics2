@@ -6,13 +6,15 @@ PRELUDEDIR=$SYSDIR/lib
 
 OPTIM=
 MAINOP="eval"
-MAINEXP="nd_C_main"
+MAINPREFIX="nd_C_"
+MAINNAME="main"
 IDSUPPLYDIR=$SYSDIR/idsupplyinteger
 
 while [ $# -gt 1 ] ; do
   case $1 in
+    -e         ) shift; MAINNAME="$1" ;;
     -o         ) OPTIM="-O2" ;;
-    -d         ) MAINOP="evalD" ; MAINEXP="d_C_main" ;;
+    -d         ) MAINOP="evalD" ; MAINPREFIX="d_C_" ;;
     -io        ) MAINOP="evalIO" ;;
     --prdfs    ) MAINOP="prdfs" ;;
     --dfs      ) MAINOP="printDFS" ;;
@@ -26,10 +28,10 @@ while [ $# -gt 1 ] ; do
   esac
   shift
 done
-if [ $MAINOP = "evalIO" -a $MAINEXP = "d_C_main" ] ; then
+if [ $MAINOP = "evalIO" -a $MAINPREFIX = "d_C_" ] ; then
   MAINOP="evalDIO"
 fi
-MAIN="$MAINOP $MAINEXP"
+MAIN="$MAINOP $MAINPREFIX$MAINNAME"
 
 if [ $# != 1 ] ; then
   echo >&2
@@ -38,6 +40,7 @@ if [ $# != 1 ] ; then
   echo "Compile Curry program stored in <progname>.(l)curry" >&2
   echo >&2
   echo "<options> is a sequence of:"  >&2
+  echo "-e n    : use n (instead of main) as main operation to evaluate" >&2
   echo "-o      : compile with optimizations" >&2
   echo "-d      : call deterministic version of main goal" >&2
   echo "-io     : call main goal of IO type" >&2

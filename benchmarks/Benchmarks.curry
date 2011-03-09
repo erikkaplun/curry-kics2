@@ -9,6 +9,7 @@ import Time
 import SetFunctions
 import Char
 import ReadShowTerm
+import Float
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -50,10 +51,34 @@ runBenchmarks num benchmarks = do
   return $ unlines $
     take 70 (repeat '=') :
     map (\ (n,ts) -> n ++ take (maxnamelength - length n) (repeat ' ') ++
-                     ": " ++ concat (intersperse " | " (map show ts)))
-        results
+                     ":" ++ concat (intersperse "|" (map showFloat ts)))
+        (if all (not . null) (map snd results)
+         then processResults results
+         else results)
+ where
+  showFloat x = let (x1,x2) = break (=='.') (show x)
+                 in take (3-length x1) (repeat ' ') ++ x1 ++ x2 ++
+                    take (3-length x2) (repeat '0') ++ " "
+
+processResults results =
+  let (names,times) = unzip results
+   in zip names (processTimes times)
+
+processTimes timings =
+  let means = map mean timings
+      roundedmeans = map truncateFloat means
+      mintime = foldr1 min means
+      minNonZero = if mintime==0.0 then 0.0001 else mintime
+      normalized = map (truncateFloat . (/.minNonZero)) means
+   in zipWith (:) normalized (zipWith (:) roundedmeans timings)
+ where
+  mean :: [Float] -> Float
+  mean xs = (foldr1 (+.) xs) /. (i2f (length xs))
+
+  truncateFloat x = i2f (round (x*.100)) /. 100
 
 -- Run a benchmark and return the timings
+runBenchmark :: Int -> (String,String,String,String) -> IO (String,[Float])
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   let line = take 70 (repeat '=')
   putStr (unlines [line, "Running benchmark: "++name, line])
@@ -82,7 +107,8 @@ idcCompile options mod = "../compilecurry " ++ options ++ " " ++ mod
 
 -- Command to compile a module and execute main with GHC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
-mccCompile mod = "/home/mcc/bin/cyc -e\"main\" " ++ mod ++".curry"
+mccCompile options mod =
+  "/home/mcc/bin/cyc " ++ options ++ " " ++ mod ++".curry"
 
 -- Command to compile a module and execute main with GHC:
 ghcCompile mod = "ghc --make -fforce-recomp " ++ mod
@@ -91,8 +117,9 @@ ghcCompile mod = "ghc --make -fforce-recomp " ++ mod
 ghcCompileO mod = "ghc -O2 --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and print main in PAKCS:
-pakcsCompile mod =
-  "/home/pakcs/pakcs/bin/pakcs -m \"print main\" -s  " ++ mod
+pakcsCompile options mod =
+  "/home/pakcs/pakcs/bin/pakcs "++
+  (if null options then "-m \"print main\"" else options) ++" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
 sicstusCompile mod =
@@ -104,10 +131,11 @@ swiCompile mod =
 
 idcBenchmark tag options mod =
   (mod++"@"++tag, idcCompile options mod, "./Main", "rm Main* Curry_*")
-pakcsBenchmark mod =
-  (mod++"@PAKCS ",pakcsCompile mod,"./"++mod++".state","rm "++mod++".state")
-mccBenchmark mod =
-  (mod++"@MCC   ",mccCompile mod,"./a.out +RTS -h512m -RTS",
+pakcsBenchmark options mod =
+  (mod++"@PAKCS ",pakcsCompile options mod,
+   "./"++mod++".state","rm "++mod++".state")
+mccBenchmark options mod =
+  (mod++"@MCC   ",mccCompile options mod,"./a.out +RTS -h512m -RTS",
    "rm a.out "++mod++".icurry")
 ghcBenchmark mod =
   (mod++"@GHC   ",ghcCompile mod,"./"++mod,
@@ -128,8 +156,8 @@ swiBenchmark  mod =
 benchFPpl prog =
  [idcBenchmark "IDC_D" "-d"  prog
  ,idcBenchmark "IDC+_D" "-o -d" prog
- ,pakcsBenchmark prog
- ,mccBenchmark   prog
+ ,pakcsBenchmark "" prog
+ ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ,sicsBenchmark  (map toLower prog)
@@ -142,8 +170,8 @@ benchHOFP prog =
  ,idcBenchmark "IDC+"   "-o"  prog
  ,idcBenchmark "IDC_D"  "-d"  prog
  ,idcBenchmark "IDC+_D" "-o -d" prog
- ,pakcsBenchmark prog
- ,mccBenchmark   prog
+ ,pakcsBenchmark "" prog
+ ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ]
@@ -153,8 +181,19 @@ benchFLPDFS prog =
  [idcBenchmark "IDC_DFS"        "--prdfs"  prog
  ,idcBenchmark "IDC+_DFS"       "-o --prdfs" prog
  ,idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
- ,pakcsBenchmark prog
- ,mccBenchmark   prog
+ ,pakcsBenchmark "" prog
+ ,mccBenchmark ""   prog
+ ]
+
+-- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
+-- with a given name for the main operation
+benchFLPDFSWithMain name prog =
+ [idcBenchmark ("IDC_DFS:"++name)  ("-e "++name++" --prdfs") prog
+ ,idcBenchmark ("IDC+_DFS:"++name) ("-e "++name++" -o --prdfs") prog
+ ,idcBenchmark ("IDC+_DFS_IORef:"++name)
+               ("-e "++name++" -o --prdfs --idsupply ioref") prog
+ ,pakcsBenchmark ("-m \"print "++name++"\"") prog
+ ,mccBenchmark ("-e\""++name++"\"")   prog
  ]
 
 -- Benchmarking functional logic programs with different search strategies
@@ -184,6 +223,9 @@ allBenchmarks =
   , benchFLPSearch "PermSort"
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
+  , benchFLPDFSWithMain "goal1" "ShareNonDet"
+  , benchFLPDFSWithMain "goal2" "ShareNonDet"
+  , benchFLPDFSWithMain "goal3" "ShareNonDet"
   ]
 
 -- Run all benchmarks and show results
@@ -193,7 +235,9 @@ run num benchmarks = do
   ltime <- getLocalTime
   info <- evalCmd "uname -a"
   mach <- evalCmd "uname -n"
-  let res = "Benchmarks at " ++ info ++ "\n" ++ concat results
+  let res = "Benchmarks at " ++ info ++ "\n" ++
+            "Format of timings: normalized|mean|runtimes...\n\n" ++
+            concat results
   putStrLn res
   unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
     where
@@ -206,10 +250,13 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
---main = run 3 allBenchmarks
+main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPSearch "PermSortPeano"]
---main = run 1 [benchFLPDFS "ShareNonDet1",benchFLPDFS "ShareNonDet2",benchFLPDFS "ShareNonDet3"]
-main = run 1 [benchHOFP "Primes"]
+--main = run 3 [benchFLPDFSWithMain "goal1" "ShareNonDet"]
+amain = run 1 [benchFLPDFSWithMain "goal1" "ShareNonDet",
+              benchFLPDFSWithMain "goal2" "ShareNonDet",
+              benchFLPDFSWithMain "goal3" "ShareNonDet"]
+--main = run 1 [benchHOFP "Primes"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPDFS "Half"]

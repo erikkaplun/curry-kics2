@@ -1,5 +1,7 @@
 -- Benchmark to measure sharing across non-determinism
 
+module ShareNonDet where
+
 data List a = Nil | Cons a (List a)
 
 suCC :: Int -> Int
@@ -55,18 +57,16 @@ guard True e = e
 myand True y  = y
 myand False _ = False
 
-maxN = 800
-
-list = fromDown 4 0
+primeList = fromDown 4 0
 
 fromDown n m = if n==m then []
-                       else at primes (maxN+n) : fromDown (n-1) m
+                       else at primes (799+n) : fromDown (n-1) m
 
-goal1 = list
+goal1 = primeList -- [primes!!803, primes!!802, primes!!801, primes!!800]
 
 goal2 = sortNoShare [6173,6163,6151,6143]
 
-goal3 = sortNoShare list
+goal3 = sortNoShare primeList
 
 
 goal4 = at primes 1000
