@@ -259,10 +259,10 @@ evalD :: Show a => a -> IO ()
 evalD goal = print goal
 
 evalIO :: Show a => (IDSupply -> C_IO a) -> IO ()
-evalIO goal = initSupply >>= (\s -> let (C_IO act) = goal s in act) >>= print
+evalIO goal = initSupply >>= \s -> toIO (goal s) >>= print
 
 evalDIO :: Show a => C_IO a -> IO ()
-evalDIO goal = let (C_IO act) = goal in act >>= print
+evalDIO goal = toIO goal >>= print
 
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 d_dollar_bang f x = hnf (try x)
