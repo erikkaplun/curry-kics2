@@ -38,8 +38,8 @@ import Utils (foldIO, intercalate)
 ----------------------------------------------------------------------
 
 -- Chooce let-Type for IdSupply Variables 
-letIdVar = lazyLet
--- letIdVar = strictLet
+--letIdVar = lazyLet
+letIdVar = strictLet
 
 ----------------------------------------------------------------------
 
