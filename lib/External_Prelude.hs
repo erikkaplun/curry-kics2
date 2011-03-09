@@ -285,11 +285,11 @@ external_d_OP_star (C_Int x) (C_Int y) = C_Int (x *# y)
 external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
 external_d_C_div :: C_Int -> C_Int -> C_Int
-external_d_C_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)
+external_d_C_div (C_Int x) (C_Int y) = C_Int (quotInt# x y)
 external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
 external_d_C_mod :: C_Int -> C_Int -> C_Int
-external_d_C_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
+external_d_C_mod (C_Int x) (C_Int y) = C_Int (remInt# x y)
 external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_dollar_bang` y) `d_dollar_bang` x
 
 external_d_C_negateFloat :: C_Float -> C_Float

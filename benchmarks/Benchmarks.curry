@@ -30,7 +30,7 @@ benchmarkCommand cmd = do
   let timecmd = if isubuntu
                 then "time --format=\"BENCHMARKTIME=%U\" "++cmd
                 else -- for Debian-PCs:
-                     "export TIMEFORMAT=\"BENCHMARKTIME=%3lU\" && time "++cmd
+                     "export TIMEFORMAT=\"BENCHMARKTIME=%3U\" && time "++cmd
   (hin,hout,herr) <- execCmd timecmd
   outcnt <- hGetContents hout
   errcnt <- hGetContents herr
@@ -209,6 +209,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 --main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPSearch "PermSortPeano"]
-main = run 1 [benchFLPDFS "ShareNonDet1",benchFLPDFS "ShareNonDet2",benchFLPDFS "ShareNonDet3"]
+--main = run 1 [benchFLPDFS "ShareNonDet1",benchFLPDFS "ShareNonDet2",benchFLPDFS "ShareNonDet3"]
+main = run 1 [benchHOFP "Primes"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPDFS "Half"]
