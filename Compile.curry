@@ -32,6 +32,17 @@ import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate)
 
+
+----------------------------------------------------------------------
+-- Configurations
+----------------------------------------------------------------------
+
+-- Chooce let-Type for IdSupply Variables 
+letIdVar = lazyLet
+-- letIdVar = strictLet
+
+----------------------------------------------------------------------
+
 main :: IO ()
 main = do
   (opts, files) <- compilerOpts
@@ -173,7 +184,8 @@ splitExternals :: String -> ([String], [String], [String])
 splitExternals content = se (lines content) ([], [], []) where
   se [] res = res
   se (ln:lns) res
-    | take 3 ln == "{-#"     = (ln : pragmas, imps, decls)
+    | take 3 ln == "{-#" -- -} Comment to fix syntax highlighting in emacs    
+        = (ln : pragmas, imps, decls)
     | take 7 ln == "import " = (pragmas, drop 7 ln : imps, decls)
     | otherwise              = (pragmas, imps, ln : decls)
       where (pragmas, imps, decls) = se lns res
@@ -492,7 +504,7 @@ transCompleteExpr e =
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
               []  -> e'
-              [v] ->  lazyLet [(v, Var suppVarIdx)] e' in
+              [v] ->  letIdVar [(v, Var suppVarIdx)] e' in
   setNextID i `bindM_` -- and reset it variable id
   returnM e''
 
@@ -575,7 +587,7 @@ genIds ns@(_:_) expr =
   returnM ([vroot], foldr addSplit expr vs)
   where
     addSplit (v, v1, v2) e =
-      lazyLet [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+      letIdVar [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
 {-
   case vs of
     -- no splitting necessary
