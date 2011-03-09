@@ -5,22 +5,31 @@ SYSDIR=`dirname "$0"`
 PRELUDEDIR=$SYSDIR/lib
 
 OPTIM=
-MAIN="eval nd_C_main >>= print"
+MAINOP="eval"
+MAINEXP="nd_C_main"
 IDSUPPLYDIR=$SYSDIR/idsupplyinteger
 
 while [ $# -gt 1 ] ; do
   case $1 in
     -o         ) OPTIM="-O2" ;;
-    -d         ) MAIN="print d_C_main" ;;
-    --prdfs    ) MAIN="prdfs nd_C_main" ;;
-    --dfs      ) MAIN="printDFS nd_C_main" ;;
-    --bfs      ) MAIN="printBFS nd_C_main" ;;
-    --ids      ) MAIN="printIDS nd_C_main" ;;
+    -d         ) MAINOP="evalD" ; MAINEXP="d_C_main" ;;
+    -io        ) MAINOP="evalIO" ;;
+    --prdfs    ) MAINOP="prdfs" ;;
+    --dfs      ) MAINOP="printDFS" ;;
+    --dfsi     ) MAINOP="printDFSi" ;;
+    --bfs      ) MAINOP="printBFS" ;;
+    --bfsi     ) MAINOP="printBFSi" ;;
+    --ids      ) MAINOP="printIDS" ;;
+    --idsi     ) MAINOP="printIDSi" ;;
     --idsupply ) shift ; IDSUPPLYDIR=$SYSDIR/idsupply$1 ;;
     * ) echo ERROR: Illegal option: "$@" >&2 ; exit 1 ;;
   esac
   shift
 done
+if [ $MAINOP = "evalIO" -a $MAINEXP = "d_C_main" ] ; then
+  MAINOP="evalDIO"
+fi
+MAIN="$MAINOP $MAINEXP"
 
 if [ $# != 1 ] ; then
   echo >&2
@@ -29,9 +38,16 @@ if [ $# != 1 ] ; then
   echo "Compile Curry program stored in <progname>.(l)curry" >&2
   echo >&2
   echo "<options> is a sequence of:"  >&2
-  echo "-o     : compile with optimizations" >&2
-  echo "-d     : call deterministic version of main goal" >&2
-  echo "--prdfs : evaluate non-deterministic(!) main goal and print results via dfs" >&2
+  echo "-o      : compile with optimizations" >&2
+  echo "-d      : call deterministic version of main goal" >&2
+  echo "-io     : call main goal of IO type" >&2
+  echo "--prdfs : evaluate non-det.(!) main goal and print results via dfs" >&2
+  echo "--dfs   : evaluate non-det.(!) main goal and print results via dfs" >&2
+  echo "--dfsi  : evaluate non-det.(!) main goal and print results on request via dfs" >&2
+  echo "--bfs   : evaluate non-det.(!) main goal and print results via bfs" >&2
+  echo "--bfsi  : evaluate non-det.(!) main goal and print results on request via bfs" >&2
+  echo "--ids   : evaluate non-det.(!) main goal and print results via ids" >&2
+  echo "--idsi  : evaluate non-det.(!) main goal and print results on request via ids" >&2
   echo "--idsupply I : choose implementation I for choice identifiers" >&2
   echo "               (where I=integer (default) or I=ioref)" >&2
   exit 1

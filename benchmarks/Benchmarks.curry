@@ -7,7 +7,8 @@ import IOExts
 import System
 import Time
 import SetFunctions
-import Char(toLower)
+import Char
+import ReadShowTerm
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -42,14 +43,38 @@ extractTimeInOutput =
   tail . snd . break (=='=') . head . filter ("BENCHMARKTIME" `isPrefixOf`)
        . lines
 
--- Run a benchmark and the timings
+-- Run a set of benchmarks and return the timings
+runBenchmarks num benchmarks = do
+  results <- mapIO (runBenchmark num) benchmarks
+  let maxnamelength = foldr1 max (map (length . fst) results)
+  return $ unlines $
+    take 70 (repeat '=') :
+    map (\ (n,ts) -> n ++ take (maxnamelength - length n) (repeat ' ') ++
+                     ": " ++ concat (intersperse " | " (map show ts)))
+        results
+
+-- Run a benchmark and return the timings
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   let line = take 70 (repeat '=')
   putStr (unlines [line, "Running benchmark: "++name, line])
   system preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
-  return (name++": "++ concat (intersperse " | " times))
+  if all isFloatString times
+   then return (name,map readFloat times)
+   else return ("ERROR: "++name++": "++ concat (intersperse " | " times),[])
+
+----------------------------------------------------------------------
+-- Does the string contains a float number?
+isFloatString :: String -> Bool
+isFloatString s = let p = dropWhile isDigit (dropWhile isSpace s) in
+  if null p || head p /= '.'
+  then False
+  else null (dropWhile isSpace (dropWhile isDigit (tail p)))
+
+readFloat :: String -> Float
+readFloat s = if isFloatString s then readQTerm s
+                                 else error ("ERROR: readFloat: "++s)
 
 ----------------------------------------------------------------------
 -- Command to compile a module and execute main with idcompiler:
@@ -101,7 +126,7 @@ swiBenchmark  mod =
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl prog =
- [idcBenchmark "IDC_D " "-d"  prog
+ [idcBenchmark "IDC_D" "-d"  prog
  ,idcBenchmark "IDC+_D" "-o -d" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
@@ -113,9 +138,9 @@ benchFPpl prog =
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog =
- [idcBenchmark "IDC   " "" prog
- ,idcBenchmark "IDC+  " "-o"  prog
- ,idcBenchmark "IDC_D " "-d"  prog
+ [idcBenchmark "IDC"    "" prog
+ ,idcBenchmark "IDC+"   "-o"  prog
+ ,idcBenchmark "IDC_D"  "-d"  prog
  ,idcBenchmark "IDC+_D" "-o -d" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
@@ -125,8 +150,8 @@ benchHOFP prog =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog =
- [idcBenchmark "IDC_DFS       " "--prdfs"  prog
- ,idcBenchmark "IDC+_DFS      " "-o --prdfs" prog
+ [idcBenchmark "IDC_DFS"        "--prdfs"  prog
+ ,idcBenchmark "IDC+_DFS"       "-o --prdfs" prog
  ,idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
  ,pakcsBenchmark prog
  ,mccBenchmark   prog
@@ -135,18 +160,18 @@ benchFLPDFS prog =
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog =
  [idcBenchmark "IDC+PrDFS_IOREF" "-o --prdfs --idsupply ioref" prog
- ,idcBenchmark "IDC+DFS_IOREF  " "-o --dfs   --idsupply ioref" prog
- ,idcBenchmark "IDC+BFS_IOREF  " "-o --bfs   --idsupply ioref" prog
- ,idcBenchmark "IDC+IDS_IOREF  " "-o --ids   --idsupply ioref" prog
+ ,idcBenchmark "IDC+DFS_IOREF"   "-o --dfs   --idsupply ioref" prog
+ ,idcBenchmark "IDC+BFS_IOREF"   "-o --bfs   --idsupply ioref" prog
+ ,idcBenchmark "IDC+IDS_IOREF"   "-o --ids   --idsupply ioref" prog
  ]
 
 
-allBenchmarks = concat
+allBenchmarks =
   [ benchFPpl "Reverse"
   , benchFPpl "ReversePrimList"
   , benchFPpl "Tak"
   , benchFPpl "TakPeano"
-  , benchHOFP  "ReverseHO"
+  , benchHOFP "ReverseHO"
   , benchHOFP "PrimReverse"
   , benchHOFP "PrimesPeano"
   , benchHOFP "Primes"
@@ -164,11 +189,11 @@ allBenchmarks = concat
 -- Run all benchmarks and show results
 run num benchmarks = do
   args <- getArgs
-  results <- mapIO (runBenchmark num) benchmarks
+  results <- mapIO (runBenchmarks num) benchmarks
   ltime <- getLocalTime
   info <- evalCmd "uname -a"
   mach <- evalCmd "uname -n"
-  let res = unlines $ ("Benchmarks at " ++ info) : results
+  let res = "Benchmarks at " ++ info ++ "\n" ++ concat results
   putStrLn res
   unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
     where
@@ -183,7 +208,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 
 --main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
---main = run 1 (benchFLPSearch "PermSortPeano")
-main = run 1 (benchFLPDFS "PermSort" ++ benchFLPDFS "PermSortPeano")
---main = run 1 (benchFPpl "Tak")
---main = run 1 (benchFLPDFS "Half")
+--main = run 1 [benchFLPSearch "PermSortPeano"]
+main = run 1 [benchFLPDFS "ShareNonDet1",benchFLPDFS "ShareNonDet2",benchFLPDFS "ShareNonDet3"]
+--main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
+--main = run 1 [benchFLPDFS "Half"]

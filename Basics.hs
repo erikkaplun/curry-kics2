@@ -3,6 +3,7 @@
 module Basics where
 
 import ID
+import System.IO
 
 data Constraint = ID :=: Choice
  deriving Show
@@ -251,11 +252,17 @@ wrapDX wrap f = wrapNX wrap (nd f)
 wrapNX :: (c -> b) -> (a -> IDSupply -> c) -> Func a b
 wrapNX wrap f = Func (\a s -> wrap $ f a s)
 
-eval :: (IDSupply -> a) -> IO a
-eval goal = initSupply >>= return . goal
+eval :: Show a => (IDSupply -> a) -> IO ()
+eval goal = initSupply >>= print . goal
 
-evalIO :: (IDSupply -> C_IO a) -> IO a
-evalIO goal = initSupply >>= (\s -> let (C_IO act) = goal s in act)
+evalD :: Show a => a -> IO ()
+evalD goal = print goal
+
+evalIO :: Show a => (IDSupply -> C_IO a) -> IO ()
+evalIO goal = initSupply >>= (\s -> let (C_IO act) = goal s in act) >>= print
+
+evalDIO :: Show a => C_IO a -> IO ()
+evalDIO goal = let (C_IO act) = goal in act >>= print
 
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 d_dollar_bang f x = hnf (try x)
@@ -318,7 +325,7 @@ unwrap (Func f) s x = f x s
 -- Evaluate a nondeterministic expression and show all results
 -- in depth-first order
 prdfs :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-prdfs mainexp = eval mainexp >>= \x -> printValsDFS (try (id $!! x))
+prdfs mainexp = initSupply >>= \s -> printValsDFS (try (id $!! (mainexp s)))
 
 printValsDFS :: (Show a,NonDet a) => Try a -> IO ()
 printValsDFS x@Fail         = return () --print "Failure: " >> print x
@@ -342,7 +349,8 @@ printValsDFS (Choice i x y) = lookupChoice i >>= choose
                       setChoice i NoChoice
 
 ----------------------------------------------------------------------
--- Data structures and operations for various search strategies
+-- Data structures and operations to collect and show results
+-- w.r.t. various search strategies
 ----------------------------------------------------------------------
 
 -- Monadic lists as a general representation of values obtained
@@ -395,12 +403,6 @@ l |< r = return (WithReset l r)
 -- For convencience, we define a monadic list for the IO monad:
 type IOList a = MList IO a
 
--- Print all values of a IO monad list:
-printVals :: Show a => IOList a -> IO ()
-printVals MNil              = return ()
-printVals (MCons x getRest) = print x >> getRest >>= printVals
-printVals (WithReset l _) = l >>= printVals
-
 -- Count and print the number of elements of a IO monad list:
 countVals :: IOList a -> IO ()
 countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
@@ -411,14 +413,49 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
           let !i' = i+1
           cont >>= count i'
 
+-- Print all values of a IO monad list:
+printAllValues :: Show a => IOList a -> IO ()
+printAllValues MNil              = return ()
+printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
+printAllValues (WithReset l _) = l >>= printAllValues
+
+-- Print all values of a IO monad list on request by the user:
+printValsOnDemand :: Show a => IOList a -> IO ()
+printValsOnDemand MNil              = return ()
+printValsOnDemand (MCons x getRest) = print x >> askUser getRest
+printValsOnDemand (WithReset l _) = l >>= printValsOnDemand
+
+-- ask the user for more values
+askUser :: Show a => IO (IOList a) -> IO ()
+askUser getrest = do
+  putStr "More solutions? [y(es)/n(o)/A(ll)] "
+  hFlush stdout
+  hSetBuffering stdin NoBuffering
+  c <- getChar
+  if c== '\n' then return () else putChar '\n'
+  case c of
+    'y'  -> getrest >>= printValsOnDemand
+    'n'  -> return ()
+    'a'  -> getrest >>= printAllValues
+    '\n' -> getrest >>= printAllValues
+    _    -> askUser getrest
+
 ----------------------------------------------------------------------
 -- Depth-first search into a monadic list
 ----------------------------------------------------------------------
 
--- Print all values of a non-deterministic goal in a depth-first manner:
+-- Print all values of an expression in a depth-first manner:
 printDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printDFS mainexp =
-  eval mainexp >>= \x -> searchDFS (try (id $!! x)) >>= printVals -- countVals
+printDFS mainexp = computeWithDFS mainexp >>= printAllValues
+
+-- Print all values on demand of an expression in a depth-first manner:
+printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
+
+-- Compute all values of a non-deterministic goal in a depth-first manner:
+computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithDFS mainexp =
+  initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
 
 --searchDFS :: (NormalFormIO a,NonDet a) => Try a -> IO (IOList a)
 searchDFS :: NonDet a => Try a -> IO (IOList a)
@@ -453,8 +490,16 @@ searchDFS (Guard cs e) = do
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printBFS mainexp =
-  eval mainexp >>= \x -> searchBFS (try (id $!! x)) >>= printVals -- countVals
+printBFS mainexp = computeWithBFS mainexp >>= printAllValues
+
+-- Print all values of a non-deterministic goal in a breadth-first manner:
+printBFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printBFSi mainexp = computeWithBFS mainexp >>= printValsOnDemand
+
+-- Compute all values of a non-deterministic goal in a breadth-first manner:
+computeWithBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithBFS mainexp =
+  initSupply >>= \s -> searchBFS (try (id $!! (mainexp s)))
 
 searchBFS :: NonDet a => Try a -> IO (IOList a)
 searchBFS x = bfs [] [] (return ()) (return ()) x
@@ -487,10 +532,18 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
 -- The increase step size for the iterative deepening strategy:
 stepIDFS = 100
 
--- Print all values of a non-deterministic goal with a iterative
--- deepening strategy:
+-- Print all values of an expression with iterative deepening:
 printIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printIDS goal = initSupply >>= \s -> iter s 0 >>= printVals
+printIDS mainexp = computeWithIDS mainexp >>= printAllValues
+
+-- Print all values on demand of an expression with iterative deepening:
+printIDSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printIDSi mainexp = computeWithIDS mainexp >>= printValsOnDemand
+
+-- Compute all values of a non-deterministic goal with a iterative
+-- deepening strategy:
+computeWithIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithIDS goal = initSupply >>= \s -> iter s 0
   where iter s n = startIDS s goal n ++++ iter s (n+stepIDFS)
 
 (++++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
