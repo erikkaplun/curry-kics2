@@ -372,7 +372,11 @@ printValsDFS (Choice i x y) = lookupChoice i >>= choose
 ----------------------------------------------------------------------
 
 -- Monadic lists as a general representation of values obtained
--- in a mondic manner
+-- in a mondic manner. The additional constructor Abort
+-- represents an incomplete list due to reaching the depth-bound in
+-- iterative deepening. The constructor (WithReset lis act) represents
+-- a list lis where the monadic action act has to be performed at the
+-- end of the list.
 data MList m a = MCons a (m (MList m a))
                | MNil
                | Abort
@@ -386,29 +390,32 @@ mnil = return MNil
 mcons :: Monad m => a -> m (MList m a) -> m (MList m a)
 mcons x xs = return (MCons x xs)
 
---- ???
+-- Aborts a monadic list due to reaching the search depth (in iter. deepening)
 abort :: Monad m => m (MList m a)
 abort = return Abort
 
---- Concatenate two monadic lists
+-- Concatenate two monadic lists
 (+++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
 get +++ getYs = withReset get (return ())
-  where
-    withReset getList reset = do
-     l <- getList
-     case l of
-       WithReset getList' reset' -> withReset getList' (reset >> reset')
-       MNil -> reset >> getYs
-       Abort -> reset >> mayAbort getYs
-       MCons x getXs -> mcons x (withReset getXs reset)
-    mayAbort getYs = do
-     ys <- getYs
-     case ys of
-       WithReset getYs' reset' -> mayAbort getYs' |< reset'
-       MNil -> return Abort
-       ys'  -> return ys'
+ where
+  withReset getList reset = do
+   l <- getList
+   case l of
+     WithReset getList' reset' -> withReset getList' (reset >> reset')
+     MNil -> reset >> getYs -- perform action before going to next list
+     Abort -> reset >> abortEnd getYs
+     MCons x getXs -> mcons x (withReset getXs reset) -- move action down to end
 
--- Add a monadic action of with result type () to the end of a monadic list
+  abortEnd getYs = do -- move Abort down to end of second list
+   ys <- getYs
+   case ys of
+     WithReset getYs' reset' -> abortEnd getYs' |< reset'
+     MNil -> return Abort -- replace end of second list by Abort
+     Abort  -> return Abort
+     MCons z getZs -> mcons z (abortEnd getZs)
+
+-- Add a monadic action of with result type () to the end of a monadic list.
+-- Used to reset a choice made via a dfs strategy.
 (|<) :: Monad m => m (MList m a) ->  m () -> m (MList m a)
 l |< r = return (WithReset l r)
 {-getXs |< reset = do
@@ -431,15 +438,21 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
           let !i' = i+1
           cont >>= count i'
 
+-- Print the first value of a IO monad list:
+printOneValue :: Show a => IOList a -> IO ()
+printOneValue MNil              = putStrLn "No solution"
+printOneValue (MCons x getRest) = print x
+printOneValue (WithReset l _) = l >>= printOneValue
+
 -- Print all values of a IO monad list:
 printAllValues :: Show a => IOList a -> IO ()
-printAllValues MNil              = return ()
+printAllValues MNil              = putStrLn "No more solutions"
 printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
 printAllValues (WithReset l _) = l >>= printAllValues
 
 -- Print all values of a IO monad list on request by the user:
 printValsOnDemand :: Show a => IOList a -> IO ()
-printValsOnDemand MNil              = return ()
+printValsOnDemand MNil              = putStrLn "No more solutions"
 printValsOnDemand (MCons x getRest) = print x >> askUser getRest
 printValsOnDemand (WithReset l _) = l >>= printValsOnDemand
 
@@ -465,6 +478,10 @@ askUser getrest = do
 -- Print all values of an expression in a depth-first manner:
 printDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printDFS mainexp = computeWithDFS mainexp >>= printAllValues
+
+-- Print one value of an expression in a depth-first manner:
+printDFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printDFS1 mainexp = computeWithDFS mainexp >>= printOneValue
 
 -- Print all values on demand of an expression in a depth-first manner:
 printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -510,6 +527,10 @@ searchDFS (Guard cs e) = do
 printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printBFS mainexp = computeWithBFS mainexp >>= printAllValues
 
+-- Print first value of a non-deterministic goal in a breadth-first manner:
+printBFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printBFS1 mainexp = computeWithBFS mainexp >>= printOneValue
+
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 printBFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printBFSi mainexp = computeWithBFS mainexp >>= printValsOnDemand
@@ -547,12 +568,19 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
 -- Iterative depth-first search into a monadic list
 ----------------------------------------------------------------------
 
--- The increase step size for the iterative deepening strategy:
-stepIDFS = 100
+-- The initial depth size for the iterative deepening strategy:
+initDepth4IDFS = 100
+
+-- A function to increase the depth for the iterative deepening strategy:
+incrDepth4IDFS n = n*2
 
 -- Print all values of an expression with iterative deepening:
 printIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printIDS mainexp = computeWithIDS mainexp >>= printAllValues
+
+-- Print one value of an expression with iterative deepening:
+printIDS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printIDS1 mainexp = computeWithIDS mainexp >>= printOneValue
 
 -- Print all values on demand of an expression with iterative deepening:
 printIDSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -561,9 +589,14 @@ printIDSi mainexp = computeWithIDS mainexp >>= printValsOnDemand
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
 computeWithIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
-computeWithIDS goal = initSupply >>= \s -> iter s 0
-  where iter s n = startIDS s goal n ++++ iter s (n+stepIDFS)
+--computeWithIDS goal = initSupply >>= \s -> iter s 0
+--  where iter s n = startIDS (id $!! goal s) stepIDFS n ++++ iter s (n+stepIDFS)
+computeWithIDS goal = initSupply >>= \s -> iter s 0 initDepth4IDFS
+ where
+   iter s olddepth newdepth = startIDS (id $!! goal s) olddepth newdepth
+                              ++++ iter s newdepth (incrDepth4IDFS newdepth)
 
+-- Concatenate two monadic lists if the first ends with an Abort
 (++++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
 get ++++ getYs = withReset get (return ())
   where
@@ -572,15 +605,15 @@ get ++++ getYs = withReset get (return ())
      case l of
        WithReset getList' reset' -> withReset getList' (reset >> reset')
        MNil -> reset >> mnil
-       Abort -> reset >> getYs
+       Abort -> reset >> getYs -- ignore Abort when concatenating further vals
        MCons x getXs -> mcons x (withReset getXs reset)
 
-
-startIDS s goal n = idsHNF n (id $!! goal s)
-
-idsHNF :: (Show a,NonDet a) => Int -> a -> IO (IOList a)
-idsHNF n x = case try x of
-  Val v -> if n<stepIDFS then mcons x mnil else mnil
+-- start iterative deepening for a given depth intervall
+startIDS :: (Show a,NonDet a) => a -> Int -> Int -> IO (IOList a)
+startIDS exp olddepth newdepth = idsHNF newdepth exp
+ where
+ idsHNF n x = case try x of
+  Val v -> if n<newdepth-olddepth then mcons x mnil else mnil
   Fail  -> mnil
   Choice i x1 x2 -> do
     c <- lookupChoice i
