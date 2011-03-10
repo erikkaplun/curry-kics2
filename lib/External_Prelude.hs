@@ -91,7 +91,7 @@ instance NormalForm C_Int where
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
-  bind i (Choice_C_Int j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Int j@(FreeID _) _ _) = [thisID i :=: BindTo j]
 
 instance Curry C_Int where
   Choice_C_Int i x y =?= z                  = Choice_C_Bool i (x =?= z) (y =?= z)
@@ -149,7 +149,7 @@ instance NormalForm C_Float where
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
-  bind i (Choice_C_Float j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Float j@(FreeID _) _ _) = [thisID i :=: BindTo j]
 
 instance Curry C_Float where
   Choice_C_Float i x y =?= z                    = Choice_C_Bool i (x =?= z) (y =?= z)
@@ -203,7 +203,7 @@ instance NormalForm C_Char where
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
-  bind i (Choice_C_Char j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Char j@(FreeID _) _ _) = [thisID i :=: BindTo j]
 
 instance Curry C_Char where
   Choice_C_Char i x y =?= z                   = Choice_C_Bool i (x =?= z) (y =?= z)

@@ -200,26 +200,26 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     Rule [PVar (1,"x")] [noGuard (applyF (basics "Val") [cvar "x"])] []]
 
   -- Generate instance of Generable class:
+
   generableInstance =
    Instance (basics "Generable") ctype
       (map (\tv -> Context (basics "Generable") [tv]) targs)
       [((basics "generate"),
-        Rule [PVar (1,"i")] [noGuard genBody] [])]
+        Rule [PVar (1,"i")] [noGuard (genBody (Var (1,"i")) cdecls)] [])]
 
-  genBody =
-    if null cdecls
-    then applyF (pre "error")
-                [string2ac $ "No constructors for "++tc]
-    else foldr1 (\x y -> applyF choiceConsName
-                                [applyF (idmod "freeID") [Var (1,"i")], x, y])
-                (cons2genCons 0 cdecls)
-
-  cons2genCons _ [] = []
-  cons2genCons i (FC.Cons qn _ _ texps : cs) = let ar = length texps in
-    applyF qn (map (\j -> applyF (basics "generate")
-                                           [freshID (i+j) (Var (1,"i"))])
-                   [0 .. ar-1])
-     : cons2genCons (i+ar) cs
+  genBody idSupp cds=
+    case cds of
+      [] -> applyF (pre "error") [string2ac $ "No constructors for "++tc]
+      [FC.Cons qn _ _ texps] -> applyF qn (consArgs2gen idSupp texps)
+      c:cs                   -> applyF choiceConsName [applyF (idmod "freeID") [idSupp]
+                                                      ,genBody (left idSupp)  [c]
+                                                      ,genBody (right idSupp) cs]
+  consArgs2gen idSupp texps = 
+   case texps of
+    []  -> []
+    [_] -> [applyF (basics "generate") [idSupp]]
+    (_:xs) -> applyF (basics "generate") [left idSupp] 
+              : consArgs2gen (right idSupp) xs
 
   -- Generate instance of NormalForm class:
   normalformInstance =
@@ -265,7 +265,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       [(basics "=.=",
         Rule [PVar (1,"_"),PVar (2,"_")]
              [noGuard (constF (basics "Fail_C_Success"))] [])] ++
-      -- TODO: bind rules for constructors
+      bindConsRules cdecls id (const (constF (pre "[]"))) ++
       [(basics "bind",
         Rule [PVar (1,"i"),
               PComb choiceConsName
@@ -273,7 +273,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                      PVar (4,"_"),PVar (5,"_")]]
              [noGuard (applyF (pre ":")
                               [applyF (basics ":=:")
-                                 [Var (1,"i"),
+                                 [applyF (idmod "thisID") [Var (1,"i")],
                                   applyF (idmod "BindTo") [Var (2,"j")]],
                                constF (pre "[]")])] [])])
 
@@ -292,6 +292,39 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                   (map (\i -> applyF (basics "=:=")
                                      [Var (i,'x':show i),Var (i,'y':show i)])
                        [1..carity])
+  -- Generate bindRules for a data constructor:
+--  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
+  bindConsRules cds getSuppVar makeBinds =
+    case cds of
+      [FC.Cons qn _ _ texps] 
+        -> let cArgVars =  map (\i -> (i, 'x':show i)) [2..(length texps)+1] in 
+          [(basics "bind", 
+            Rule [PVar (1,"i") 
+                  ,PComb qn (map PVar cArgVars)]
+              [noGuard  (applyF (pre "++") 
+                                [makeBinds (Var (1,"i"))
+                                ,(bindConsArgs (map Var cArgVars) 
+                                               (getSuppVar (Var (1,"i"))))])][])]
+      (c:cs) -> bindConsRules [c] (left . getSuppVar)
+                (\supp -> applyF (pre ":") 
+                           [applyF (basics ":=:")
+                             [applyF (idmod "thisID") [supp]
+                             , constF (basics "ChooseLeft")]
+                           ,makeBinds supp])
+                ++ bindConsRules cs (right . getSuppVar)
+                   (\supp -> applyF (pre ":")
+                              [applyF (basics ":=:")
+                                [applyF (idmod "thisID") [supp]
+                                ,constF (basics "ChooseRight")]
+                              ,makeBinds supp])
+
+  bindConsArgs vars supp =
+   case vars of
+    [] -> constF (pre "[]") -- TODO: omit generation of empty lists
+    [v] -> applyF (pre "bind") [supp, v]
+    (v:vs) -> applyF (pre "++") [bindConsArgs [v] (left supp)
+                                , bindConsArgs vs (right supp)]
+
 
   curryInstance =
     Instance (basics "Curry") ctype
@@ -384,10 +417,13 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
            PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
           [noGuard (constF (pre "C_True"))] [])
 
-
+ 
 freshID n i =
-  if n==0 then applyF (idmod "leftSupply") [i]
-          else freshID (n-1) (applyF (idmod "rightSupply") [i])
+  if n==0 then left i
+          else freshID (n-1) (right i)
+
+left  i = applyF (idmod "leftSupply") [i]
+right i = applyF (idmod "rightSupply") [i]
 
 idType = baseType (idmod "ID")
 

@@ -70,7 +70,7 @@ nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 -- Class for data that support unification
 class (NonDet a, NormalForm a) => Unifiable a where
   (=.=) :: a -> a -> C_Success
-  bind :: ID -> a -> [Constraint]
+  bind :: IDSupply -> a -> [Constraint]
 
 (=:=) :: Unifiable a => a -> a -> C_Success
 _ =:= _ = error "(=:=) undefined"
@@ -116,7 +116,7 @@ instance NormalForm C_Success where
 instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
   _         =.= _         = Fail_C_Success
-  bind i (Choice_C_Success j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Success j@(FreeID _) _ _) = [thisID i :=: (BindTo j)]
 
 -- Higher Order Funcs
 
@@ -223,7 +223,7 @@ instance NormalForm (C_IO a) where
 
 instance Unifiable (C_IO a) where
   (=.=) _ _ = Fail_C_Success
-  bind i (Choice_C_IO j@(FreeID _) _ _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_IO j@(FreeID _) _ _) = [thisID i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io

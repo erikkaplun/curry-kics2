@@ -5,6 +5,9 @@ Things we have to do
 
 - generate instances for match and get rid of try
 
+- Replace the generic <= in PermSort with a specialiced lt_int
+  for a benchmark
+
 - The frontend generates FlatCurry files in the curry subdir respective to the
   directory in which a module is found. This may cause trouble with library
   modules, especially in case of insufficient file permissions.
