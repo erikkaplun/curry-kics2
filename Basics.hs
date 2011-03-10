@@ -420,6 +420,12 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
           let !i' = i+1
           cont >>= count i'
 
+-- Print the first value of a IO monad list:
+printOneValue :: Show a => IOList a -> IO ()
+printOneValue MNil              = putStrLn "No solution"
+printOneValue (MCons x getRest) = print x
+printOneValue (WithReset l _) = l >>= printOneValue
+
 -- Print all values of a IO monad list:
 printAllValues :: Show a => IOList a -> IO ()
 printAllValues MNil              = putStrLn "No more solutions"
@@ -454,6 +460,10 @@ askUser getrest = do
 -- Print all values of an expression in a depth-first manner:
 printDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printDFS mainexp = computeWithDFS mainexp >>= printAllValues
+
+-- Print one value of an expression in a depth-first manner:
+printDFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printDFS1 mainexp = computeWithDFS mainexp >>= printOneValue
 
 -- Print all values on demand of an expression in a depth-first manner:
 printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -498,6 +508,10 @@ searchDFS (Guard cs e) = do
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printBFS mainexp = computeWithBFS mainexp >>= printAllValues
+
+-- Print first value of a non-deterministic goal in a breadth-first manner:
+printBFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printBFS1 mainexp = computeWithBFS mainexp >>= printOneValue
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 printBFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -545,6 +559,10 @@ incrDepth4IDFS n = n*2
 -- Print all values of an expression with iterative deepening:
 printIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printIDS mainexp = computeWithIDS mainexp >>= printAllValues
+
+-- Print one value of an expression with iterative deepening:
+printIDS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printIDS1 mainexp = computeWithIDS mainexp >>= printOneValue
 
 -- Print all values on demand of an expression with iterative deepening:
 printIDSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()

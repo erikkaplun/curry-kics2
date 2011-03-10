@@ -207,6 +207,12 @@ benchFLPSearch prog =
  ,idcBenchmark "IDC+IDS_IOREF"   "-o --ids   --idsupply ioref" prog
  ]
 
+-- Benchmarking FL programs that require complete search strategy
+benchFLPCompleteSearch prog =
+ [idcBenchmark "IDC+BFS_IOREF"   "-o --bfs1 --idsupply ioref" prog
+ ,idcBenchmark "IDC+IDS_IOREF"   "-o --ids1 --idsupply ioref" prog
+ ]
+
 
 allBenchmarks =
   [ benchFPpl "Reverse"
@@ -226,6 +232,7 @@ allBenchmarks =
   , benchFLPSearch "PermSort"
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
+  , benchFLPCompleteSearch "BFSvsIDS"
   , benchFLPDFSWithMain "ShareNonDet" "goal1"
   , benchFLPDFSWithMain "ShareNonDet" "goal2"
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
@@ -255,7 +262,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 
 main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
---main = run 1 [benchFLPSearch "Half"]
+--main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
 --main = run 3 [benchFLPDFSWithMain "goal1" "ShareNonDet"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])

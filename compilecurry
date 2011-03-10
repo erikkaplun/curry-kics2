@@ -18,10 +18,13 @@ while [ $# -gt 1 ] ; do
     -io        ) MAINOP="evalIO" ;;
     --prdfs    ) MAINOP="prdfs" ;;
     --dfs      ) MAINOP="printDFS" ;;
+    --dfs1     ) MAINOP="printDFS1" ;;
     --dfsi     ) MAINOP="printDFSi" ;;
     --bfs      ) MAINOP="printBFS" ;;
+    --bfs1     ) MAINOP="printBFS1" ;;
     --bfsi     ) MAINOP="printBFSi" ;;
     --ids      ) MAINOP="printIDS" ;;
+    --ids1     ) MAINOP="printIDS1" ;;
     --idsi     ) MAINOP="printIDSi" ;;
     --idsupply ) shift ; IDSUPPLYDIR=$SYSDIR/idsupply$1 ;;
     * ) echo ERROR: Illegal option: "$@" >&2 ; exit 1 ;;
