@@ -1,6 +1,10 @@
 Things we have to do
 ====================
 
+- $! still uses try which is highly inefficient
+
+- generate instances for match and get rid of try
+
 - The frontend generates FlatCurry files in the curry subdir respective to the
-  directory in whch a module is found. This may cause trouble with library
+  directory in which a module is found. This may cause trouble with library
   modules, especially in case of insufficient file permissions.

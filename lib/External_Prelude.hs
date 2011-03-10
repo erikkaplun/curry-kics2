@@ -74,6 +74,12 @@ instance NonDet C_Int where
   try (Guard_C_Int c e) = Guard c e
   try x = Val x
 
+  match valF _ _ _ _ v@(C_Int _) = valF v
+  match _ fail _ _ _ Fail_C_Int  = fail
+  match _ _ choiceF _ _ (Choice_C_Int i@(ID _) x y) = choiceF i x y
+  match _ _ _ freeF _ (Choice_C_Int i@(FreeID _) x y) = freeF i x y
+  match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x     
+
 instance Generable C_Int where
   generate _ = error "No constructors for C_Int"
 
@@ -95,6 +101,8 @@ instance Curry C_Int where
   x                  =?= Guard_C_Int c y    = Guard_C_Bool c (x =?= y)
   _                  =?= Fail_C_Int         = Fail_C_Bool
   C_Int x            =?= C_Int y            = fromBool (x ==# y)
+--  x =?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a==#b)) `d_dollar_bang_test` y)
+--             `d_dollar_bang_test` x 
 
   Choice_C_Int i x y <?= z                  = Choice_C_Bool i (x <?= z) (y <?= z)
   Guard_C_Int c x    <?= y                  = Guard_C_Bool c (x <?= y)
@@ -103,6 +111,8 @@ instance Curry C_Int where
   x                  <?= Guard_C_Int c y    = Guard_C_Bool c (x <?= y)
   _                  <?= Fail_C_Int         = Fail_C_Bool
   C_Int x            <?= C_Int y            = fromBool (x <=# y)
+--  x <?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a <=# b)) `d_dollar_bang_test` y)
+--             `d_dollar_bang_test` x 
 
 -- ---------------------------------------------------------------------------
 -- Float

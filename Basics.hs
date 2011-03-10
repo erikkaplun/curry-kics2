@@ -30,6 +30,15 @@ class NonDet a where
   failCons   :: a
   guardCons  :: Constraint -> a -> a
   try        :: a -> Try a
+                                -- matching for
+  match      :: (a -> b)                   -- Head Normal Forms
+                -> b                       -- Failures
+                -> (ID -> a -> a -> b)     -- Choices 
+                -> (ID -> a -> a -> b)     -- Free Variables
+                -> (Constraint -> a -> b)  -- Constraints
+                -> a -> b
+
+  match = error "match: not implemented yet"
 
 narrow :: NonDet a => ID -> a -> a -> a
 narrow (FreeID i) = choiceCons (ID i)
@@ -263,6 +272,15 @@ evalIO goal = initSupply >>= \s -> toIO (goal s) >>= print
 
 evalDIO :: Show a => C_IO a -> IO ()
 evalDIO goal = toIO goal >>= print
+
+-- TODO: test implementation for $! replace if more efficient
+d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b
+d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
+  where
+    choiceF id a b =  choiceCons id (f `d_dollar_bang_test` a) 
+                                    (f `d_dollar_bang_test` b)
+    freeF id a b   =  error "d_dollar_bang with free variable"
+    guardF c e     =  guardCons c (f  `d_dollar_bang_test` e)
 
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 d_dollar_bang f x = hnf (try x)
