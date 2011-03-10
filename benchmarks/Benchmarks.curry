@@ -31,7 +31,7 @@ benchmarkCommand cmd = do
   let timecmd = if isubuntu
                 then "time --format=\"BENCHMARKTIME=%U\" "++cmd
                 else -- for Debian-PCs:
-                     "export TIMEFORMAT=\"BENCHMARKTIME=%3U\" && time "++cmd
+                     "export TIMEFORMAT=\"BENCHMARKTIME=%2U\" && time "++cmd
   (hin,hout,herr) <- execCmd timecmd
   outcnt <- hGetContents hout
   errcnt <- hGetContents herr
@@ -85,6 +85,7 @@ runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   system preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
+  putStrLn ("RUNTIMES: " ++ concat (intersperse " | " times))
   if all isFloatString times
    then return (name,map readFloat times)
    else return ("ERROR: "++name++": "++ concat (intersperse " | " times),[])
@@ -108,7 +109,9 @@ idcCompile options mod = "../compilecurry " ++ options ++ " " ++ mod
 -- Command to compile a module and execute main with GHC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
 mccCompile options mod =
-  "/home/mcc/bin/cyc " ++ options ++ " " ++ mod ++".curry"
+  "/home/mcc/bin/cyc " ++
+  (if null options then "-e\"main\"" else options) ++
+  " " ++ mod ++".curry"
 
 -- Command to compile a module and execute main with GHC:
 ghcCompile mod = "ghc --make -fforce-recomp " ++ mod
@@ -187,7 +190,7 @@ benchFLPDFS prog =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
-benchFLPDFSWithMain name prog =
+benchFLPDFSWithMain prog name =
  [idcBenchmark ("IDC_DFS:"++name)  ("-e "++name++" --prdfs") prog
  ,idcBenchmark ("IDC+_DFS:"++name) ("-e "++name++" -o --prdfs") prog
  ,idcBenchmark ("IDC+_DFS_IORef:"++name)
@@ -223,9 +226,9 @@ allBenchmarks =
   , benchFLPSearch "PermSort"
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
-  , benchFLPDFSWithMain "goal1" "ShareNonDet"
-  , benchFLPDFSWithMain "goal2" "ShareNonDet"
-  , benchFLPDFSWithMain "goal3" "ShareNonDet"
+  , benchFLPDFSWithMain "ShareNonDet" "goal1"
+  , benchFLPDFSWithMain "ShareNonDet" "goal2"
+  , benchFLPDFSWithMain "ShareNonDet" "goal3"
   ]
 
 -- Run all benchmarks and show results
@@ -250,13 +253,12 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 3 allBenchmarks
+main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
---main = run 1 [benchFLPSearch "PermSortPeano"]
+--main = run 1 [benchFLPSearch "Half"]
 --main = run 3 [benchFLPDFSWithMain "goal1" "ShareNonDet"]
-amain = run 1 [benchFLPDFSWithMain "goal1" "ShareNonDet",
-              benchFLPDFSWithMain "goal2" "ShareNonDet",
-              benchFLPDFSWithMain "goal3" "ShareNonDet"]
---main = run 1 [benchHOFP "Primes"]
+--main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
+--                  ["goal1","goal2","goal3"])
+--main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPDFS "Half"]
