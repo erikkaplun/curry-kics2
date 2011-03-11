@@ -17,7 +17,7 @@ import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 import ReadShowTerm (readQTermFile, writeQTermFile)
 
 import qualified AbstractHaskell as AH
-import AbstractHaskellPrinter (showProg)
+import AbstractHaskellPrinter (showProg,showLiteral)
 import CallGraph
 import CompilerOpts
 import Files
@@ -699,8 +699,8 @@ fun i n xs | length xs == i = funcCall n xs
 int :: Integer -> Expr
 int i = constant (prelude, "(C_Int " ++ show i ++ "#)")
 
-char :: Char -> Expr
-char c = constant (prelude, "(C_Char " ++ show c ++ "#)")
+char :: Char -> Expr                      -- due to bug in show --
+char c = constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
 
 float :: Float -> Expr
 float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
