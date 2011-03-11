@@ -1,6 +1,6 @@
 module ID(Choice(..), ID(..), IDSupply,
           initSupply, leftSupply, rightSupply, thisID, freeID,
-          lookupChoice, setChoice)
+          lookupChoice, setChoice, leftID, rightID, narrowID)
  where
 
 import Data.IORef
@@ -20,7 +20,7 @@ data Choice
 -- Here we implement it as integer values.
 data ID
   = ID Integer
-  | FreeID Integer
+  | FreeID IDSupply
     deriving (Eq, Ord)
 
 instance Show ID where
@@ -28,6 +28,10 @@ instance Show ID where
   show (FreeID i)   = "Free" ++ show i
 
 newtype IDSupply = IDSupply Integer
+  deriving (Eq,Ord)
+
+instance Show IDSupply where
+  show (IDSupply i) = show i
 
 initSupply :: IO IDSupply
 initSupply = return (IDSupply 1)
@@ -42,8 +46,15 @@ thisID :: IDSupply -> ID
 thisID (IDSupply i) = ID i
 
 freeID :: IDSupply -> ID
-freeID (IDSupply i) = FreeID i
+freeID s = FreeID s
 
+leftID, rightID :: ID -> ID
+leftID  (FreeID s) = freeID (leftSupply s)
+rightID (FreeID s) = freeID (rightSupply s)
+
+narrowID :: ID -> ID
+narrowID (FreeID s) = thisID s
+narrowID i          = i
 -----------------------
 -- Managing choices
 -----------------------
@@ -55,7 +66,7 @@ store = unsafePerformIO (newIORef Data.Map.empty)
 
 lookupChoice :: ID -> IO Choice
 lookupChoice (ID r) = lookupRef r
-lookupChoice (FreeID r) = lookupRef r
+lookupChoice (FreeID (IDSupply r)) = lookupRef r
 
 lookupRef :: Integer -> IO Choice
 lookupRef r = do

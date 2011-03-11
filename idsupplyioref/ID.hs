@@ -1,6 +1,6 @@
 module ID(Choice(..), ID(..), IDSupply,
           initSupply, leftSupply, rightSupply, thisID, freeID,
-          lookupChoice, setChoice)
+          lookupChoice, setChoice, leftID, rightID, narrowID)
  where
 
 import Data.IORef
@@ -17,8 +17,10 @@ data Choice
 
 -- Type to identify different Choice structures in a non-deterministic result.
 -- Here we implement it as IO references
-data ID = ID (IORef Choice)
-        | FreeID (IORef Choice)
+data ID = ID Ref
+        | FreeID IDSupply
+
+type Ref = IORef Choice
 
 instance Show ID where 
   show (ID _)       = "ID" 
@@ -40,6 +42,7 @@ getPureSupply def = do
 leftSupply :: IDSupply -> IDSupply
 leftSupply  (IDSupply _ s _) = s
 
+
 rightSupply :: IDSupply -> IDSupply
 rightSupply (IDSupply _ _ s) = s
 
@@ -47,15 +50,39 @@ thisID :: IDSupply -> ID
 thisID (IDSupply i _ _) = i
 
 freeID :: IDSupply -> ID
-freeID (IDSupply (ID i) _ _) = FreeID i
+freeID i = FreeID i
+
+leftID, rightID :: ID -> ID
+leftID  (FreeID s) = freeID (leftSupply s)
+rightID (FreeID s) = freeID (rightSupply s)
+
+ref :: ID -> Ref
+ref (ID x)       = x
+ref (FreeID (IDSupply (ID x) _ _)) = x
+
+narrowID :: ID -> ID
+narrowID (FreeID s) = let! r =  ref (thisID s) in (ID r)
+narrowID i          = i
 
 -----------------------
 -- Managing choices
 -----------------------
 
+lookupChoiceRaw :: ID -> IO Choice
+lookupChoiceRaw i = readIORef (ref i) 
+
 lookupChoice :: ID -> IO Choice
-lookupChoice (ID r) = readIORef r
-lookupChoice (FreeID r) = readIORef r
+lookupChoice i = lookupChoiceRaw i >>= unchain
+  where
+    unchain (BoundTo j) = lookupChoice j
+
+    unchain (BindTo j)  = do 
+      setChoice i (BoundTo j)
+      setChoice (leftID i) (BindTo (leftID j))
+      setChoice (rightID i) (BindTo (rightID j))
+      lookupChoice j
+      
+    unchain c           = return c
 
 setChoice :: ID -> Choice -> IO ()
 setChoice (ID r) c = writeIORef r c

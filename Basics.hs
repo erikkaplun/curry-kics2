@@ -13,7 +13,7 @@ data Try a
   | Fail
   | Choice ID a a
   | Free ID a a
-  | Guard Constraint a
+  | Guard [Constraint] a
   deriving Show
 
 tryChoice :: ID -> a -> a -> Try a
@@ -28,21 +28,20 @@ tryChoice i@(FreeID _) = Free i
 class NonDet a where
   choiceCons :: ID -> a -> a -> a
   failCons   :: a
-  guardCons  :: Constraint -> a -> a
+  guardCons  :: [Constraint] -> a -> a
   try        :: a -> Try a
                                 -- matching for
   match      :: (a -> b)                   -- Head Normal Forms
                 -> b                       -- Failures
                 -> (ID -> a -> a -> b)     -- Choices 
                 -> (ID -> a -> a -> b)     -- Free Variables
-                -> (Constraint -> a -> b)  -- Constraints
+                -> ([Constraint] -> a -> b)  -- Constraints
                 -> a -> b
 
   match = error "match: not implemented yet"
 
 narrow :: NonDet a => ID -> a -> a -> a
-narrow (FreeID i) = choiceCons (ID i)
-narrow i = choiceCons i
+narrow id = choiceCons (narrowID id)
 
 -- Class for data that support generators
 class NonDet a => Generable a where
@@ -70,13 +69,37 @@ nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 -- Class for data that support unification
 class (NonDet a, NormalForm a) => Unifiable a where
   (=.=) :: a -> a -> C_Success
-  bind :: IDSupply -> a -> [Constraint]
+  bind :: ID -> a -> [Constraint]
 
 (=:=) :: Unifiable a => a -> a -> C_Success
-_ =:= _ = error "(=:=) undefined"
+x =:= y = unify (try x) (try y)
+  where
+    unify Fail _    = failCons
+    unify _    Fail = failCons
 
+    unify (Choice i x1 x2) y = 
+       choiceCons i (unify (try x1) y) (unify (try x2) y)
+
+    unify x (Choice i x1 x2) = 
+       choiceCons i (unify x (try x1)) (unify x (try x2))
+
+    unify (Guard c e) y = guardCons c (unify (try e) y)
+    unify x (Guard c e) = guardCons c (unify x (try e))
+
+    unify (Val vx) (Val vy) = vx =.= vy
+
+    unify (Val v)      (Free j _ _) = 
+      (\ v' -> guardCons (bind j v') C_Success) $!! v
+
+    unify (Free i _ _) (Val v)      = 
+      (\ v' -> guardCons (bind i v') C_Success) $!! v
+
+    unify (Free i _ _) (Free j _ _)      = 
+      guardCons [i :=: BindTo j] C_Success
+
+-- TODO: is this correct?
 (&) :: C_Success -> C_Success -> C_Success
-_ & _ = error "(&) undefined"
+x & y = (\ C_Success -> (\C_Success -> C_Success) $!! y) $!! x
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -88,7 +111,7 @@ data C_Success
   = C_Success
   | Choice_C_Success ID C_Success C_Success
   | Fail_C_Success
-  | Guard_C_Success Constraint C_Success
+  | Guard_C_Success [Constraint] C_Success
 
 instance Show C_Success where
   showsPrec d C_Success = showString "success"
@@ -116,14 +139,14 @@ instance NormalForm C_Success where
 instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
   _         =.= _         = Fail_C_Success
-  bind i (Choice_C_Success j@(FreeID _) _ _) = [thisID i :=: (BindTo j)]
+  bind i (Choice_C_Success j@(FreeID _) _ _) = [i :=: (BindTo j)]
 
 -- Higher Order Funcs
 
 data Func a b = Func (a -> IDSupply -> b)
               | Func_Choice ID (Func a b) (Func a b)
               | Func_Fail
-              | Func_Guard Constraint (Func a b)
+              | Func_Guard [Constraint] (Func a b)
 
 instance Eq (Func a b) where
   f == g = False
@@ -191,7 +214,7 @@ instance Unifiable (a -> b) where
 data C_IO a
      = Choice_C_IO ID (C_IO a) (C_IO a)
      | Fail_C_IO
-     | Guard_C_IO Constraint (C_IO a)
+     | Guard_C_IO [Constraint] (C_IO a)
      | C_IO (IO a)
 
 instance Eq (C_IO a) where
@@ -223,7 +246,7 @@ instance NormalForm (C_IO a) where
 
 instance Unifiable (C_IO a) where
   (=.=) _ _ = Fail_C_Success
-  bind i (Choice_C_IO j@(FreeID _) _ _) = [thisID i :=: (BindTo j)]
+  bind i (Choice_C_IO j@(FreeID _) _ _) = [i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io

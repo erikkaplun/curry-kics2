@@ -212,14 +212,14 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       [] -> applyF (pre "error") [string2ac $ "No constructors for "++tc]
       [FC.Cons qn _ _ texps] -> applyF qn (consArgs2gen idSupp texps)
       c:cs                   -> applyF choiceConsName [applyF (idmod "freeID") [idSupp]
-                                                      ,genBody (left idSupp)  [c]
-                                                      ,genBody (right idSupp) cs]
+                                                      ,genBody (leftsupp idSupp)  [c]
+                                                      ,genBody (rightsupp idSupp) cs]
   consArgs2gen idSupp texps = 
    case texps of
     []  -> []
     [_] -> [applyF (basics "generate") [idSupp]]
-    (_:xs) -> applyF (basics "generate") [left idSupp] 
-              : consArgs2gen (right idSupp) xs
+    (_:xs) -> applyF (basics "generate") [leftsupp idSupp] 
+              : consArgs2gen (rightsupp idSupp) xs
 
   -- Generate instance of NormalForm class:
   normalformInstance =
@@ -273,7 +273,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                      PVar (4,"_"),PVar (5,"_")]]
              [noGuard (applyF (pre ":")
                               [applyF (basics ":=:")
-                                 [applyF (idmod "thisID") [Var (1,"i")],
+                                 [Var (1,"i"),
                                   applyF (idmod "BindTo") [Var (2,"j")]],
                                constF (pre "[]")])] [])])
 
@@ -306,24 +306,24 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                                 ,(bindConsArgs (map Var cArgVars) 
                                                (getSuppVar (Var (1,"i"))))])][])]
       (c:cs) -> bindConsRules [c] (left . getSuppVar)
-                (\supp -> applyF (pre ":") 
+                (\bindID -> applyF (pre ":") 
                            [applyF (basics ":=:")
-                             [applyF (idmod "thisID") [supp]
+                             [bindID
                              , constF (basics "ChooseLeft")]
-                           ,makeBinds supp])
+                           ,makeBinds bindID])
                 ++ bindConsRules cs (right . getSuppVar)
-                   (\supp -> applyF (pre ":")
+                   (\bindID -> applyF (pre ":")
                               [applyF (basics ":=:")
-                                [applyF (idmod "thisID") [supp]
+                                [bindID
                                 ,constF (basics "ChooseRight")]
-                              ,makeBinds supp])
+                              ,makeBinds bindID])
 
-  bindConsArgs vars supp =
+  bindConsArgs vars bindID =
    case vars of
     [] -> constF (pre "[]") -- TODO: omit generation of empty lists
-    [v] -> applyF (pre "bind") [supp, v]
-    (v:vs) -> applyF (pre "++") [bindConsArgs [v] (left supp)
-                                , bindConsArgs vs (right supp)]
+    [v] -> applyF (pre "bind") [bindID, v]
+    (v:vs) -> applyF (pre "++") [bindConsArgs [v] (left bindID)
+                                , bindConsArgs vs (right bindID)]
 
 
   curryInstance =
@@ -422,12 +422,15 @@ freshID n i =
   if n==0 then left i
           else freshID (n-1) (right i)
 
-left  i = applyF (idmod "leftSupply") [i]
-right i = applyF (idmod "rightSupply") [i]
+left  i = applyF (idmod "leftID") [i]
+right i = applyF (idmod "rightID") [i]
+
+leftsupp  s = applyF (idmod "leftSupply") [s]
+rightsupp s = applyF (idmod "rightSupply") [s]
 
 idType = baseType (idmod "ID")
 
-constraintType = baseType (pre "Constraint")
+constraintType = listType $ baseType (pre "Constraint")
 
 basics :: String -> QName
 basics n = ("Basics",n)
