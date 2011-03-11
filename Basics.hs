@@ -139,6 +139,7 @@ instance NormalForm C_Success where
 instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
   _         =.= _         = Fail_C_Success
+  bind i C_Success                           = []
   bind i (Choice_C_Success j@(FreeID _) _ _) = [i :=: (BindTo j)]
 
 -- Higher Order Funcs
@@ -196,7 +197,7 @@ instance NonDet (a -> b) where
   try = undefined
 
 instance Generable (a -> b) where
-  generate = undefined
+  generate = error "generate for function is undefined"
 
 instance NormalForm (a -> b) where
   cont $!! f = cont f
@@ -388,6 +389,50 @@ printValsDFS (Choice i x y) = lookupChoice i >>= choose
    newChoice j a = do setChoice i j
                       printValsDFS (try a)
                       setChoice i NoChoice
+
+printValsDFS (Guard cs e) = do
+  mreset <- solves cs
+  case mreset of
+    Nothing    -> return ()
+    Just reset -> printValsDFS (try e) >> reset
+
+solves :: [Constraint] -> Solved
+solves [] = solved
+solves (c:cs) = do
+  mreset <- solve c
+  case mreset of
+    Nothing    -> return Nothing
+    Just reset -> do 
+      mreset' <- solves cs
+      case mreset' of
+        Nothing -> return Nothing
+        Just reset' -> return (Just (reset >> reset'))
+
+type Solved = IO (Maybe (IO ()))
+
+solved :: Solved
+solved = return (Just (return ()))
+
+unsolvable :: Solved
+unsolvable = return Nothing
+
+solve :: Constraint -> Solved
+solve (i :=: cc) = lookupChoice i >>= choose cc
+  where
+    choose (BindTo j) ci       = lookupChoice j >>= check j ci 
+    choose c          NoChoice = setUnsetChoice i c
+    choose c          x | c==x = solved
+    choose c          ci       = unsolvable
+           
+    check j NoChoice NoChoice = setUnsetChoice i (BindTo j)
+
+    check _ NoChoice y        = setUnsetChoice i y
+    check j x        NoChoice = setUnsetChoice j x
+
+    check _ x        y | x==y = solved
+
+    check _ _ _               = unsolvable
+
 
 ----------------------------------------------------------------------
 -- Data structures and operations to collect and show results

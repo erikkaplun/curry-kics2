@@ -1,6 +1,7 @@
 module ID(Choice(..), ID(..), IDSupply,
           initSupply, leftSupply, rightSupply, thisID, freeID,
-          lookupChoice, setChoice, leftID, rightID, narrowID)
+          lookupChoice, setChoice, leftID, rightID, narrowID,
+          setUnsetChoice)
  where
 
 import Data.IORef
@@ -13,12 +14,13 @@ data Choice
   | ChooseRight
   | BindTo ID
   | BoundTo ID
-  deriving Show
+  deriving (Eq,Show)
 
 -- Type to identify different Choice structures in a non-deterministic result.
 -- Here we implement it as IO references
 data ID = ID Ref
         | FreeID IDSupply
+ deriving Eq
 
 type Ref = IORef Choice
 
@@ -27,6 +29,7 @@ instance Show ID where
   show (FreeID _)   = "Free"
 
 data IDSupply = IDSupply ID IDSupply IDSupply
+instance Eq IDSupply where IDSupply i _ _ == IDSupply j _ _ = i == j
 
 initSupply :: IO IDSupply
 initSupply = getPureSupply NoChoice
@@ -84,6 +87,32 @@ lookupChoice i = lookupChoiceRaw i >>= unchain
       
     unchain c           = return c
 
+resetFreeVar :: ID -> IO ()
+resetFreeVar i = lookupChoiceRaw i >>= propagate 
+  where
+    propagate (BindTo _)  = setChoice i NoChoice
+    propagate (BoundTo _) = do
+        let il = leftID i
+            ir = rightID i
+        setChoice i NoChoice
+        resetFreeVar il
+        resetFreeVar ir
+
 setChoice :: ID -> Choice -> IO ()
-setChoice (ID r) c = writeIORef r c
+setChoice i c = writeIORef (ref i) c
+
+setChoiceGetID :: ID -> Choice -> IO ID
+setChoiceGetID i c = lookupChoiceRaw i >>= unchain
+  where
+    unchain (BindTo j)  = setChoiceGetID j c --error "assumption violated" 
+    unchain (BoundTo j) = setChoiceGetID j c
+    unchain _           = setChoice i c >> return i
+
+
+
+setUnsetChoice :: ID -> Choice -> IO (Maybe (IO ()))
+setUnsetChoice i c = do j <- setChoiceGetID i c
+                        case c of
+                         BindTo _ -> return (Just (resetFreeVar j))
+                         _        -> return (Just (setChoice j NoChoice))
 

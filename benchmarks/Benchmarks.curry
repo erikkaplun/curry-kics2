@@ -190,6 +190,13 @@ benchFLPDFS prog =
  ,mccBenchmark ""   prog
  ]
 
+-- Benchmarking functional logic programs with unification with idc/pakcs/mcc
+benchFLPDFSU prog =
+ [idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
+ ,pakcsBenchmark "" prog
+ ,mccBenchmark ""   prog
+ ]
+
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name =
@@ -262,7 +269,7 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 2 allBenchmarks
+--main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
 --main = run 3 [benchFLPDFSWithMain "goal1" "ShareNonDet"]
@@ -271,3 +278,4 @@ main = run 2 allBenchmarks
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPDFS "Half"]
+main = run 1 [benchFLPDFSU "Last"]
