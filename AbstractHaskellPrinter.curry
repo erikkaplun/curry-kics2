@@ -13,7 +13,7 @@ module AbstractHaskellPrinter(showProg,
                               showTypeDecls,
                               showTypeDecl,
                               showTypeExpr,
-                              showFuncDecl,
+                              showFuncDecl,showLiteral,
                               showExpr, showPattern) where
 
 import AbstractHaskell
@@ -388,11 +388,12 @@ showLiteral (Charc c) = "'"++showCharc (Charc c)++"'"
 
 showCharc :: Literal -> String
 showCharc (Charc c) | c=='\n' = "\\n"
-                      | c=='\r' = "\\r"
-                      | c=='\t' = "\\t"
-                      | c=='\\' = "\\\\"
-                      | c=='\"' = "\\\""
-                      | otherwise = [c]
+                    | c=='\r' = "\\r"
+                    | c=='\t' = "\\t"
+                    | c=='\\' = "\\\\"
+                    | c=='\"' = "\\\""
+                    | c=='\'' = "\\\'"
+                    | otherwise = [c]
 
 showBlock :: String -> String
 showBlock text
@@ -452,7 +453,7 @@ showCharListApplication :: Options -> Expr -> String
 showCharListApplication opts (Apply (Apply _ (Lit c)) tail)
    = case tail of
        (Symbol _) -> showCharc c
-       _           -> showCharc c ++ showCharListApplication opts tail
+       _          -> showCharc c ++ showCharListApplication opts tail
 
 showConsListApplication :: Options -> Expr -> String
 showConsListApplication opts (Apply (Apply _ head) tail)

@@ -49,10 +49,13 @@ if [ $# != 1 ] ; then
   echo "-io     : call main goal of IO type" >&2
   echo "--prdfs : evaluate non-det.(!) main goal and print results via dfs" >&2
   echo "--dfs   : evaluate non-det.(!) main goal and print results via dfs" >&2
+  echo "--dfs1  : evaluate non-det.(!) main goal and print first result via dfs" >&2
   echo "--dfsi  : evaluate non-det.(!) main goal and print results on request via dfs" >&2
   echo "--bfs   : evaluate non-det.(!) main goal and print results via bfs" >&2
+  echo "--bfs1  : evaluate non-det.(!) main goal and print first result via bfs" >&2
   echo "--bfsi  : evaluate non-det.(!) main goal and print results on request via bfs" >&2
   echo "--ids   : evaluate non-det.(!) main goal and print results via ids" >&2
+  echo "--ids1  : evaluate non-det.(!) main goal and print first result via ids" >&2
   echo "--idsi  : evaluate non-det.(!) main goal and print results on request via ids" >&2
   echo "--idsupply I : choose implementation I for choice identifiers" >&2
   echo "               (where I=integer (default) or I=ioref)" >&2

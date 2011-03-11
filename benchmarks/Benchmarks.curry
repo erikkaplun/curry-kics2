@@ -70,7 +70,9 @@ processTimes timings =
       mintime = foldr1 min means
       minNonZero = if mintime==0.0 then 0.0001 else mintime
       normalized = map (truncateFloat . (/.minNonZero)) means
-   in zipWith (:) normalized (zipWith (:) roundedmeans timings)
+   in zipWith (:) normalized (if length (head timings) == 1
+                              then timings
+                              else zipWith (:) roundedmeans timings)
  where
   mean :: [Float] -> Float
   mean xs = (foldr1 (+.) xs) /. (i2f (length xs))
