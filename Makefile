@@ -3,7 +3,7 @@
 ########################################################################
 
 .PHONY: all
-all: idc
+all: idc REPL.state
 	chmod -R go+rX .
 
 # generate saved state for Curry->FLVM compiler:
@@ -12,6 +12,17 @@ all: idc
 # 	         AbstractHaskellGoodies.curry AbstractHaskellPrinter.curry
 idc: *.curry
 	pakcs -s Compile && mv Compile.state idc
+
+# generate saved state for REPL:
+REPL.state: REPL.curry
+	pakcs -s REPL
+
+# install required cabal packages 
+.PHONY: installhaskell
+installhaskell:
+	cabal install parallel
+	cabal install tree-monad
+	cabal install parallel-tree-search
 
 .PHONY: clean
 clean:

@@ -2,7 +2,7 @@
 
 # Compile a Curry program with idcompiler and load into ghci
 SYSDIR=`dirname "$0"`
-IDSUPPLYDIR=$SYSDIR/idsupplyioref
+IDSUPPLYDIR=$SYSDIR/idsupplyinteger
 PRELUDEDIR=$SYSDIR/lib
 PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`

@@ -14,7 +14,8 @@ module ModuleDeps (ModuleIdent, Source, deps) where
 
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
-import FlatCurry (readFlatCurry, Prog (..))
+import FlatCurry (readFlatCurryWithParseOptions, Prog (..))
+import Distribution
 import List (partition)
 import Maybe (fromJust, isJust)
 
@@ -45,12 +46,16 @@ moduleDeps importPaths mEnv m = case lookupFM mEnv m of
       Just fn -> sourceDeps importPaths m fn mEnv
 
 lookupModule :: [String] -> String -> IO (Maybe String)
-lookupModule importPaths mod = lookupFileInPath mod [".curry", ".lcurry"]
-                               (map dropTrailingPathSeparator importPaths)
+lookupModule importPaths mod =
+  lookupFileInPath mod [".curry", ".lcurry"]
+                   (map dropTrailingPathSeparator importPaths)
 
 sourceDeps :: [String] -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps importPaths m fn mEnv = do
-  fcy@(Prog _ imps _ _ _) <- readFlatCurry (stripSuffix fn)
+  fcy@(Prog _ imps _ _ _) <-
+     readFlatCurryWithParseOptions (stripSuffix fn)
+                                   (setFullPath importPaths
+                                                (setQuiet True defaultParams))
   foldIO (moduleDeps importPaths)
          (addToFM mEnv m (Just (fn, fcy))) imps
 

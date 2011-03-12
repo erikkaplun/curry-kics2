@@ -1,5 +1,5 @@
 module ID(Choice(..), ID(..), IDSupply,
-          initSupply, leftSupply, rightSupply, thisID, freeID,
+          mkInt,initSupply, leftSupply, rightSupply, thisID, freeID,
           lookupChoice, setChoice, leftID, rightID, narrowID,
           setUnsetChoice)
  where
@@ -27,6 +27,11 @@ data ID
 instance Show ID where
   show (ID i)       = show i --"ID"
   show (FreeID i)   = "Free" ++ show i
+
+-- Conversion of ID into integer (for monadic search operators).
+mkInt :: ID -> Integer
+mkInt (ID i) = i
+mkInt (FreeID _) = error "IDSupplyInteger.mkInt: FreeID occurred?" 
 
 newtype IDSupply = IDSupply Integer
   deriving (Eq,Ord)
@@ -60,6 +65,7 @@ narrowID i          = i
 rawID :: ID -> Integer
 rawID (ID i) = i
 rawID (FreeID (IDSupply i)) = i
+
 -----------------------
 -- Managing choices
 -----------------------

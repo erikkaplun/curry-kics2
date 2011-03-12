@@ -3,7 +3,10 @@
 module Basics where
 
 import ID
+import qualified Data.Map 
 import System.IO
+import Control.Monad
+import Control.Parallel.TreeSearch
 
 data Constraint = ID :=: Choice
  deriving Show
@@ -697,3 +700,33 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
        idsHNF (n - 1) x |< setChoice i NoChoice
 
 
+----------------------------------------------------------------------
+-- Parallel search by mapping search results into monadic structure
+----------------------------------------------------------------------
+
+--par :: (NonDet a, NormalForm a) => a -> IO ()
+par g = print (length $ parSearch (searchMPlus Data.Map.empty (try (id $!! g))))
+
+type SetOfChoices = Data.Map.Map Integer Choice
+
+lookupChoice' :: SetOfChoices -> ID -> Choice
+lookupChoice' set r =
+  maybe NoChoice id (Data.Map.lookup (mkInt r) set)
+
+setChoice' :: SetOfChoices -> ID -> Choice -> SetOfChoices
+setChoice' set r c = Data.Map.insert (mkInt r) c set
+
+-- Collect results of a non-deterministic computation in a monadic structure.
+searchMPlus :: (NonDet a, MonadPlus m) => SetOfChoices -> Try a -> m a
+searchMPlus _   Fail           = mzero
+searchMPlus _   (Val v)        = return v
+searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
+  where
+    choose ChooseLeft  = searchMPlus set (try x)
+    choose ChooseRight = searchMPlus set (try y)
+    choose NoChoice    = searchMPlus (pick ChooseLeft)  (try x)
+                 `mplus` searchMPlus (pick ChooseRight) (try y)
+
+    pick = setChoice' set i
+
+----------------------------------------------------------------------

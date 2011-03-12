@@ -1,5 +1,5 @@
 module ID(Choice(..), ID(..), IDSupply,
-          initSupply, leftSupply, rightSupply, thisID, freeID,
+          mkInt,initSupply, leftSupply, rightSupply, thisID, freeID,
           lookupChoice, setChoice, leftID, rightID, narrowID,
           setUnsetChoice)
  where
@@ -27,6 +27,10 @@ type Ref = IORef Choice
 instance Show ID where 
   show (ID _)       = "ID" 
   show (FreeID _)   = "Free"
+
+-- Conversion of ID into integer not possible for this implementation
+mkInt :: ID -> Integer
+mkInt = error "IDSupplyIORef.mkInt" 
 
 data IDSupply = IDSupply ID IDSupply IDSupply
 instance Eq IDSupply where IDSupply i _ _ == IDSupply j _ _ = i == j

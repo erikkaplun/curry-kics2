@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Interactive read-eval-print loop for Curry compiler
+IDCHOME=`dirname "$0"`
+export IDCHOME
+
+# use readline wrapper rlwrap if it is installed and we have tty as stdin:
+USERLWRAP=no
+if tty -s ; then
+  RLWRAP=`which rlwrap`
+  if [ -x "$RLWRAP" ] ; then
+    USERLWRAP=yes
+  fi
+fi
+
+for i in $* ; do
+  if [ $i = "--noreadline" ] ; then
+    USERLWRAP=no
+  fi
+done
+
+if [ $USERLWRAP = yes ] ; then
+  exec rlwrap -a -c "$IDCHOME/REPL.state" ${1+"$@"}
+else
+  exec "$IDCHOME/REPL.state" ${1+"$@"}
+fi

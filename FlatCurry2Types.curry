@@ -24,11 +24,6 @@ import Time
 import Distribution
 import Names
 
-banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
- where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 10/02/11)"
-   bannerLine = take (length bannerText) (repeat '=')
-
 ------------------------------------------------------------------------
 -- Data type for compiler parameters
 data CParam = CParam Bool -- quiet?
@@ -48,7 +43,7 @@ main = do
   processArgs cparam args = case args of
      ("-q":moreargs) -> processArgs (setQuiet cparam) moreargs
      [mname]         -> transform cparam (stripSuffix mname)
-     _ -> putStrLn $ banner++"ERROR: Illegal arguments for transformation: "++
+     _ -> putStrLn $ "ERROR: Illegal arguments for transformation: "++
                      unwords args ++ "\n" ++
                      "Usage: idc [-q] <module_name>\n"++
                      "-q : quiet mode\n"
@@ -59,7 +54,6 @@ mtest = transform defaultCParam "Test"
 -- The main transformation function.
 transform :: CParam -> String -> IO ()
 transform cparam modname = do
-  if isQuiet cparam then done else putStrLn banner
   prog <- FC.readFlatCurry modname
   let saveprog  = transProg cparam prog
       savefile  = mkModName modname ++ ".hs"
