@@ -9,6 +9,8 @@ MAINOP="eval"
 MAINPREFIX="nd_C_"
 MAINNAME="main"
 IDSUPPLYDIR=$SYSDIR/idsupplyinteger
+GENMAIN="yes"
+COMPILE="yes"
 
 while [ $# -gt 1 ] ; do
   case $1 in
@@ -27,6 +29,8 @@ while [ $# -gt 1 ] ; do
     --ids1     ) MAINOP="printIDS1" ;;
     --idsi     ) MAINOP="printIDSi" ;;
     --idsupply ) shift ; IDSUPPLYDIR=$SYSDIR/idsupply$1 ;;
+    --nomain   ) GENMAIN="no" ;;
+    --nocompile) COMPILE="no" ;;
     * ) echo ERROR: Illegal option: "$@" >&2 ; exit 1 ;;
   esac
   shift
@@ -66,11 +70,16 @@ PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
 PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
 
-$SYSDIR/idc -q -i $PRELUDEDIR $1
-echo "module Main where" > Main.hs
-echo "import Basics" >> Main.hs
-echo "import Curry_$PROG" >> Main.hs
-echo "main = ${MAIN}" >> Main.hs
-#ghc $OPTIM --make -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
-ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
-# auch: -funbox-strict-fields
+if [ $COMPILE = yes ] ; then
+  $SYSDIR/idc -q -i $PRELUDEDIR $1
+fi
+
+if [ $GENMAIN = yes ] ; then
+  echo "module Main where" > Main.hs
+  echo "import Basics" >> Main.hs
+  echo "import Curry_$PROG" >> Main.hs
+  echo "main = ${MAIN}" >> Main.hs
+  #ghc $OPTIM --make -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
+  ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
+  # auch: -funbox-strict-fields
+fi

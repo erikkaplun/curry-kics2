@@ -521,26 +521,35 @@ printAllValues MNil              = putStrLn "No more solutions"
 printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
 printAllValues (WithReset l _) = l >>= printAllValues
 
+askKey = do
+  putStr "Hit any key to terminate..."
+  hFlush stdout
+  hSetBuffering stdin NoBuffering
+  getChar
+  return ()
+
 -- Print all values of a IO monad list on request by the user:
 printValsOnDemand :: Show a => IOList a -> IO ()
-printValsOnDemand MNil              = putStrLn "No more solutions"
-printValsOnDemand (MCons x getRest) = print x >> askUser getRest
-printValsOnDemand (WithReset l _) = l >>= printValsOnDemand
+printValsOnDemand = printValsInteractive True
+
+printValsInteractive st MNil = putStrLn "No more solutions" >> askKey
+printValsInteractive st (MCons x getRest) = print x >> askUser st getRest
+printValsInteractive st (WithReset l _) = l >>= printValsInteractive st
 
 -- ask the user for more values
-askUser :: Show a => IO (IOList a) -> IO ()
-askUser getrest = do
+askUser :: Show a => Bool -> IO (IOList a) -> IO ()
+askUser st getrest = if not st then getrest >>= printValsInteractive st else do
   putStr "More solutions? [y(es)/n(o)/A(ll)] "
   hFlush stdout
   hSetBuffering stdin NoBuffering
   c <- getChar
   if c== '\n' then return () else putChar '\n'
   case c of
-    'y'  -> getrest >>= printValsOnDemand
+    'y'  -> getrest >>= printValsInteractive st
     'n'  -> return ()
-    'a'  -> getrest >>= printAllValues
-    '\n' -> getrest >>= printAllValues
-    _    -> askUser getrest
+    'a'  -> getrest >>= printValsInteractive False
+    '\n' -> getrest >>= printValsInteractive False
+    _    -> askUser st getrest
 
 ----------------------------------------------------------------------
 -- Depth-first search into a monadic list

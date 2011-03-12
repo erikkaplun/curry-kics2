@@ -6,6 +6,10 @@ import IO
 import IOExts
 import SetFunctions
 import FileGoodies
+import Directory (doesFileExist)
+import Names
+import ReadShowTerm (readQTermFile)
+import List (isPrefixOf)
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
@@ -17,10 +21,10 @@ mainGoalFile = "Curry_Main_Goal.curry"
 -- REPL state:
 type ReplState =
   { idcHome :: String  -- installation directory of the system
+  , quiet   :: Bool    -- be quiet?
+  , importPaths :: [String] -- additional directories to search for imports
   , mainMod :: String  -- main module
   , optim   :: Bool    -- compile with optimization
-  , detGoal :: Bool    -- call deterministic version of main goal?
-  , ioGoal  :: Bool    -- call main goal of IO type?
   , ndMode  :: NonDetMode -- mode for nd main goal
   , oneSol  :: Bool    -- print only first solution to nd main goal?
   , interactive :: Bool -- interactive execution of goal?
@@ -31,10 +35,10 @@ data NonDetMode = DFS | BFS | IDS
 
 initReplState :: ReplState
 initReplState = { idcHome = ""
+                , quiet   = True
+                , importPaths = []
                 , mainMod = "Prelude"
                 , optim   = False
-                , detGoal = False
-                , ioGoal  = False
                 , ndMode  = DFS
                 , oneSol  = False
                 , interactive = False
@@ -42,10 +46,12 @@ initReplState = { idcHome = ""
 
 main = do
   putStrLn banner
+  putStrLn "Type \":h\" for help"
   idchome <- getEnviron "IDCHOME"
   if null idchome
    then putStrLn "Environment variable IDCHOME undefined!"
-   else repl { idcHome := idchome | initReplState }
+   else repl { idcHome := idchome
+             , importPaths := [idchome++"/lib"] | initReplState }
 
 -- The main read-eval-print loop:
 repl rst = do
@@ -61,13 +67,34 @@ processInput rst g
   | otherwise = compileAndExecGoal rst g >> repl rst
 
 -- Compile main program with goal:
-compileAndExecGoal rst g = do
-  writeMain (rst -> mainMod) g
+compileAndExecGoal rst goal = do
+  writeFile mainGoalFile
+            ("import "++(rst -> mainMod)++"\nidcMainGoal = "++goal++"\n")
+  let compileCmd = (rst->idcHome)++"/idc"
+      idcoptions = (if rst->quiet then "-q " else "") ++
+                   (concatMap (\i -> "-i "++i) (rst->importPaths))
+  putStrLn $ "Compiling with options: "++idcoptions
+  status <- system (unwords [compileCmd,idcoptions,mainGoalFile])
+  exinfo <- doesFileExist (funcInfoFile mainGoalFile)
+  unless (status>0 || not exinfo) (createAndExecMain rst)
+
+createAndExecMain rst = do
+  infos <- readQTermFile (funcInfoFile mainGoalFile)
+  --print infos
+  let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
+                                infos))
+      isio  = snd
+               (head
+                (filter (\i -> snd (fst i) ==
+                           (if isdet then "d" else "nd") ++ "_C_idcMainGoal")
+                        infos))
+  putStrLn $ "Initial goal is " ++
+             (if isdet then "" else "non-") ++ "deterministic and " ++
+             (if isio then "" else "not ") ++ "of IO type..."
   let compilescript = (rst->idcHome)++"/compilecurry "
-      options = "-e idcMainGoal "++
+      options = "-e idcMainGoal --nocompile "++
                 (if (rst->optim) then "-o " else "") ++
-                (if (rst->ioGoal) then "-io " else "") ++
-                (if (rst->detGoal) then "-d " else
+                (if isdet then "-d " else
                  if (rst->interactive) then
                     case rst->ndMode of
                       DFS -> "--dfsi "
@@ -82,7 +109,8 @@ compileAndExecGoal rst g = do
                     case rst->ndMode of
                       DFS -> "--dfs "
                       BFS -> "--bfs "
-                      IDS -> "--ids ")
+                      IDS -> "--ids ") ++
+                (if isio then "-io " else "")
   putStrLn $ "Compiling with options: "++options
   status <- system (unwords [compilescript,options,mainGoalFile])
   unless (status>0) (execMain rst)
@@ -104,24 +132,44 @@ execMain rst = do
    where
     findUbuntu (_++"Ubuntu"++_) = ()
 
+allCommands = ["quite","help","?","load","show","optimize","interactive",
+               "one","dfs","bfs","ids"]
+
 -- Process a command of the REPL
-processCommand rst cmd 
-  | null cmd = putStrLn "Error: unknown command" >> repl rst
-  | cmd=="q" = done
-  | cmd=="h" || cmd=="?" = printHelp >> repl rst
-  | head cmd == 'l' = repl { mainMod := stripSuffix (strip (tail cmd)) | rst }
-  | cmd=="o" = do putStrLn $ "Optimization turned "++
-                            if (rst -> optim) then "off" else "on"
-                  repl { optim := not (rst -> optim) | rst }
-  | cmd=="d" = do putStrLn $ "Determinism version turned "++
-                            if (rst -> detGoal) then "off" else "on"
-                  repl { detGoal := not (rst -> detGoal) | rst }
-  | cmd=="int" = do putStrLn $ "Interactive execution turned "++
-                               if (rst -> interactive) then "off" else "on"
-                    repl { interactive := not (rst -> interactive) | rst }
-  | cmd=="io"  = do putStrLn $ "IO execution turned "++
-                               if (rst -> ioGoal) then "off" else "on"
-                    repl { ioGoal := not (rst -> ioGoal) | rst }
+processCommand rst cmds 
+  | null cmds = putStrLn "Error: unknown command" >> repl rst
+  | otherwise = let (cmd,args) = break (==' ') cmds
+                    allcmds = filter (isPrefixOf cmd) allCommands
+                 in
+      if null allcmds
+      then putStrLn ("Error: unknown command: ':"++cmds++"'") >> repl rst
+      else if length allcmds > 1
+           then putStrLn ("Error: ambiguous command: ':"++cmds++"'") >> repl rst
+           else processThisCommand rst (head allcmds) (strip args)
+
+processThisCommand rst cmd args
+  | cmd=="quit" = done
+  | cmd=="help" || cmd=="?" = printHelp >> repl rst
+  | cmd == "load"
+   = do let modname = stripSuffix args
+            compilescript = (rst->idcHome)++"/compilecurry "
+        system (unwords [compilescript,"--nomain",modname])
+        repl { mainMod := modname | rst }
+  | cmd=="show"
+   = do mbf <- lookupFileInPath (rst->mainMod) [".curry", ".lcurry"]
+                                ("." : rst->importPaths)
+        maybe (putStrLn "Source file not found!")
+              (\fn -> system ("cat "++fn) >> done)
+              mbf
+        repl rst
+  | cmd=="optimize"
+   = do putStrLn $ "Optimization turned "++
+                   if (rst -> optim) then "off" else "on"
+        repl { optim := not (rst -> optim) | rst }
+  | cmd=="interactive"
+   = do putStrLn $ "Interactive execution turned "++
+                   if (rst -> interactive) then "off" else "on"
+        repl { interactive := not (rst -> interactive) | rst }
   | cmd=="one" = do putStrLn $ "First solution execution turned "++
                                if (rst -> oneSol) then "off" else "on"
                     repl { oneSol := not (rst -> oneSol) | rst }
@@ -133,25 +181,19 @@ processCommand rst cmd
                     repl { ndMode := IDS | rst }
   | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >> repl rst
 
--- Write main program containing the goal:
-writeMain mainprog goal =
-  writeFile mainGoalFile
-            ("import "++mainprog++"\nidcMainGoal = "++goal++"\n")
-
 printHelp = putStrLn $ banner ++
-  "Commands\n"++
-  ":l <prog>     - load program \"<prog>.curry\" as main program\n"++
+  "Commands (can be abbreviated to a prefix if unique)\n"++
+  ":load <prog>  - load program \"<prog>.curry\" as main program\n"++
   "<expression>  - evaluate <expression> to normal form and show results\n"++
-  ":o            - turn on/off optimization\n"++
-  ":d            - turn on/off call deterministic main goal\n"++
-  ":int          - turn on/off interactive execution of main goal\n"++
-  ":io           - turn on/off execution of main goal of IO type\n"++
+  ":show         - show currently loaded source program\n"++
+  ":optimize     - turn on/off optimization\n"++
+  ":interactive  - turn on/off interactive execution of main goal\n"++
   ":one          - turn on/off printing only first solution\n"++
   ":dfs          - set search mode to depth-first search\n"++
   ":bfs          - set search mode to breadth-first search\n"++
   ":ids          - set search mode to iterative deepening search\n"++
-  ":h            - show this message\n"++
-  ":q            - leave the system\n"
+  ":help         - show this message\n"++
+  ":quite        - leave the system\n"
 
 -----------------------------------------------------------------------
 -- Auxiliaries:

@@ -119,6 +119,11 @@ destFile = hsFile . withBaseName renameFile
 analysisFile :: String -> String
 analysisFile = withExtension (const ".nda") . withBaseName renameFile
 
+-- Auxiliary file containing some basic information about functions
+-- (might become unnecessary in the future)
+funcInfoFile :: String -> String
+funcInfoFile = withExtension (const ".info") . withBaseName renameFile
+
 hsFile :: String -> String
 hsFile  f = withExtension (const ".hs")  f
 

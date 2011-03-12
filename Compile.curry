@@ -17,6 +17,7 @@ import FlatCurryGoodies (funcName, consName, updQNamesInProg)
 import ReadShowTerm (readQTermFile, writeQTermFile)
 
 import qualified AbstractHaskell as AH
+import qualified AbstractHaskellGoodies as AHG
 import AbstractHaskellPrinter (showProg,showLiteral)
 import CallGraph
 import CompilerOpts
@@ -27,7 +28,8 @@ import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName
-  , mkGuardName, externalFunc, externalModule, destFile, analysisFile )
+  , mkGuardName, externalFunc, externalModule, destFile, analysisFile
+  , funcInfoFile  )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate)
@@ -101,7 +103,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   status opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
   writeQTermFile (analysisFile fn) ((state' -> ndResult), (state' -> typeMap))
-  let ahsFun@(AH.Prog n imps _ ops funs) = fcy2abs tProg
+  let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
   status opts "Transforming type declarations"
@@ -109,7 +111,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
 
   status opts "Combining to Abstract Haskell"
-  let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls ops funs)
+  let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls funs ops)
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
@@ -120,6 +122,9 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   status opts $ "Generating Haskell module " ++ destFile fn
   writeFile (destFile fn) integrated
+
+  status opts $ "Writing auxiliary info file " ++ funcInfoFile fn
+  writeQTermFile (funcInfoFile fn) (extractFuncInfos funs)
 
   return state'
 
@@ -132,6 +137,19 @@ compileModule total state ((mid, (fn, fcy)), current) = do
     abstractHsName = ahsFile mid
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
+
+-- Extract some basic information (deterministic, IO) about all functions
+extractFuncInfos funs =
+  map (\fd -> (AHG.funcName fd, isIO (AHG.typeOf fd))) funs
+ where
+  isIO AH.Untyped = False
+  isIO (AH.FType texp) = withIOResult texp
+  isIO (AH.CType _ texp) = withIOResult texp
+
+  withIOResult (AH.TVar _) = False
+  withIOResult (AH.FuncType _ texp) = withIOResult texp
+  withIOResult (AH.TCons tc _) = tc == ("Curry_Prelude","C_IO")
+
 
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
 patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
