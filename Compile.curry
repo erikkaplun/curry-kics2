@@ -717,9 +717,14 @@ fun i n xs | length xs == i = funcCall n xs
 int :: Integer -> Expr
 int i = constant (prelude, "(C_Int " ++ show i ++ "#)")
 
-char :: Char -> Expr                      -- due to bug in show --
-char c = constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
-
+char :: Char -> Expr
+char c =
+  if ord c < 127
+  then                                  -- due to bug in show --
+       constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
+  else -- due to problems with non-ASCII characters in ghc
+       constant (prelude,"(C_Char (nonAsciiChr "++show (ord c)++ "#))")
+              
 float :: Float -> Expr
 float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
 

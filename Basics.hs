@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE MagicHash #-}
 
 module Basics where
 
@@ -7,6 +8,10 @@ import qualified Data.Map
 import System.IO
 import Control.Monad
 import Control.Parallel.TreeSearch
+import GHC.Exts (Int#, Char#, chr#)
+
+nonAsciiChr :: Int# -> Char#
+nonAsciiChr i = chr# i
 
 data Constraint = ID :=: Choice
  deriving Show

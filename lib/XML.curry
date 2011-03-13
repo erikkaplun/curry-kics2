@@ -212,13 +212,13 @@ xmlUnquoteSpecial special cs
   | special=="amp"  = '&'  : xmlUnquoteSpecials cs
   | special=="quot" = '"'  : xmlUnquoteSpecials cs
   | special=="apos" = '\'' : xmlUnquoteSpecials cs
-  --| special=="auml" = '\228' : xmlUnquoteSpecials cs
-  --| special=="ouml" = '\246' : xmlUnquoteSpecials cs
-  --| special=="uuml" = '\252' : xmlUnquoteSpecials cs
-  --| special=="Auml" = '\196' : xmlUnquoteSpecials cs
-  --| special=="Ouml" = '\214' : xmlUnquoteSpecials cs
-  --| special=="Uuml" = '\220' : xmlUnquoteSpecials cs
-  --| special=="szlig"= '\223' : xmlUnquoteSpecials cs
+  | special=="auml" = '\228' : xmlUnquoteSpecials cs
+  | special=="ouml" = '\246' : xmlUnquoteSpecials cs
+  | special=="uuml" = '\252' : xmlUnquoteSpecials cs
+  | special=="Auml" = '\196' : xmlUnquoteSpecials cs
+  | special=="Ouml" = '\214' : xmlUnquoteSpecials cs
+  | special=="Uuml" = '\220' : xmlUnquoteSpecials cs
+  | special=="szlig"= '\223' : xmlUnquoteSpecials cs
   | otherwise       = unquoteUnicode special ++ xmlUnquoteSpecials cs
 
 unquoteUnicode :: String -> String
