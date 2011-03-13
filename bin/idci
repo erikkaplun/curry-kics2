@@ -1,7 +1,10 @@
 #!/bin/sh
 
 # Interactive read-eval-print loop for Curry compiler
-IDCHOME=`dirname "$0"`
+
+# Compute the installation directory of the system
+PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
+IDCHOME=`expr "$PATHNAME" : '\(.*\)/bin'`
 export IDCHOME
 
 # use readline wrapper rlwrap if it is installed and we have tty as stdin:

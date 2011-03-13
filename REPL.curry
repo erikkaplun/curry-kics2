@@ -6,27 +6,29 @@ import IO
 import IOExts
 import SetFunctions
 import FileGoodies
-import Directory (doesFileExist)
+import Directory (doesFileExist,removeFile)
 import Names
 import ReadShowTerm (readQTermFile)
-import List (isPrefixOf)
+import List (isPrefixOf,intersperse)
+import FlatCurry(flatCurryFileName)
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 11/03/11)"
+   bannerText = "ID-based Curry->Haskell Compiler (Version of 12/03/11)"
    bannerLine = take (length bannerText) (repeat '=')
 
 mainGoalFile = "Curry_Main_Goal.curry"
 
 -- REPL state:
 type ReplState =
-  { idcHome :: String  -- installation directory of the system
-  , quiet   :: Bool    -- be quiet?
+  { idcHome     :: String  -- installation directory of the system
+  , idSupply    :: String  -- directory containing IDSupply implementation
+  , quiet       :: Bool    -- be quiet?
   , importPaths :: [String] -- additional directories to search for imports
-  , mainMod :: String  -- main module
-  , optim   :: Bool    -- compile with optimization
-  , ndMode  :: NonDetMode -- mode for nd main goal
-  , oneSol  :: Bool    -- print only first solution to nd main goal?
+  , mainMod     :: String  -- main module
+  , optim       :: Bool    -- compile with optimization
+  , ndMode      :: NonDetMode -- mode for nd main goal
+  , oneSol      :: Bool    -- print only first solution to nd main goal?
   , interactive :: Bool -- interactive execution of goal?
   }
 
@@ -34,24 +36,30 @@ type ReplState =
 data NonDetMode = DFS | BFS | IDS
 
 initReplState :: ReplState
-initReplState = { idcHome = ""
-                , quiet   = True
+initReplState = { idcHome     = ""
+                , idSupply    = "idsupplyinteger"
+                , quiet       = False
                 , importPaths = []
-                , mainMod = "Prelude"
-                , optim   = False
-                , ndMode  = DFS
-                , oneSol  = False
+                , mainMod     = "Prelude"
+                , optim       = False
+                , ndMode      = DFS
+                , oneSol      = False
                 , interactive = False
                 }
 
+-- Show an info message if not quiet
+writeInfo :: ReplState -> String -> IO ()
+writeInfo rst msg = if rst->quiet then done else putStrLn msg
+
 main = do
-  putStrLn banner
-  putStrLn "Type \":h\" for help"
   idchome <- getEnviron "IDCHOME"
   if null idchome
    then putStrLn "Environment variable IDCHOME undefined!"
-   else repl { idcHome := idchome
-             , importPaths := [idchome++"/lib"] | initReplState }
+   else do let rst = { idcHome := idchome
+                     , importPaths := [idchome++"/lib"] | initReplState }
+           writeInfo rst banner
+           writeInfo rst "Type \":h\" for help"
+           repl rst
 
 -- The main read-eval-print loop:
 repl rst = do
@@ -59,7 +67,8 @@ repl rst = do
   hFlush stdout
   eof <- isEOF
   if eof then done
-   else getLine >>= processInput rst
+   else do input <- getLine
+           processInput rst (strip input)
 
 processInput rst g
   | null g = repl rst
@@ -68,15 +77,19 @@ processInput rst g
 
 -- Compile main program with goal:
 compileAndExecGoal rst goal = do
+  oldmaincurryexists <- doesFileExist (funcInfoFile mainGoalFile)
+  unless (not oldmaincurryexists) $ removeFile (funcInfoFile mainGoalFile)
+  oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
+  unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeFile mainGoalFile
             ("import "++(rst -> mainMod)++"\nidcMainGoal = "++goal++"\n")
   let compileCmd = (rst->idcHome)++"/idc"
-      idcoptions = (if rst->quiet then "-q " else "") ++
+      idcoptions = "-q " ++ --(if rst->quiet then "-q " else "") ++
                    (concatMap (\i -> "-i "++i) (rst->importPaths))
-  putStrLn $ "Compiling with options: "++idcoptions
+  writeInfo rst $ "Compiling with options: "++idcoptions
   status <- system (unwords [compileCmd,idcoptions,mainGoalFile])
   exinfo <- doesFileExist (funcInfoFile mainGoalFile)
-  unless (status>0 || not exinfo) (createAndExecMain rst)
+  unless (status>0 || not exinfo) $ createAndExecMain rst
 
 createAndExecMain rst = do
   infos <- readQTermFile (funcInfoFile mainGoalFile)
@@ -88,32 +101,34 @@ createAndExecMain rst = do
                 (filter (\i -> snd (fst i) ==
                            (if isdet then "d" else "nd") ++ "_C_idcMainGoal")
                         infos))
-  putStrLn $ "Initial goal is " ++
-             (if isdet then "" else "non-") ++ "deterministic and " ++
-             (if isio then "" else "not ") ++ "of IO type..."
-  let compilescript = (rst->idcHome)++"/compilecurry "
-      options = "-e idcMainGoal --nocompile "++
-                (if (rst->optim) then "-o " else "") ++
-                (if isdet then "-d " else
-                 if (rst->interactive) then
-                    case rst->ndMode of
-                      DFS -> "--dfsi "
-                      BFS -> "--bfsi "
-                      IDS -> "--idsi "
-                 else if (rst->oneSol) then
-                    case rst->ndMode of
-                      DFS -> "--dfs1 "
-                      BFS -> "--bfs1 "
-                      IDS -> "--ids1 "
-                  else
-                    case rst->ndMode of
-                      DFS -> "--dfs "
-                      BFS -> "--bfs "
-                      IDS -> "--ids ") ++
-                (if isio then "-io " else "")
-  putStrLn $ "Compiling with options: "++options
-  status <- system (unwords [compilescript,options,mainGoalFile])
+  writeInfo rst $ "Initial goal is " ++
+                  (if isdet then "" else "non-") ++ "deterministic and " ++
+                  (if isio then "" else "not ") ++ "of IO type..."
+  createHaskellMain rst isdet isio
+  let ghcImports = [rst->idcHome,rst->idcHome++"/"++rst->idSupply]
+                   ++ rst->importPaths
+      ghcCompile = unwords ["ghc",if rst->optim then "-O2" else "","--make",
+                            "-i"++concat (intersperse ":" ghcImports),"Main.hs"]
+                     -- also: -fforce-recomp -funbox-strict-fields ?
+  writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
+  status <- system ghcCompile
   unless (status>0) (execMain rst)
+
+-- Create the Main.hs program containing the call to the initial expression:
+createHaskellMain rst isdet isio =
+  let mainPrefix = if isdet then "d_C_" else "nd_C_"
+      mainOperation =
+        if isio then (if isdet then "evalDIO" else "evalIO" ) else
+        if isdet then "evalD"
+        else "print"++show (rst->ndMode)++
+             (if (rst->interactive) then "i" else
+              if (rst->oneSol) then "1" else "")
+   in writeFile "Main.hs" $
+       "module Main where\n"++
+       "import Basics\n"++
+       "import Curry_"++stripSuffix mainGoalFile++"\n"++
+       "main = "++mainOperation++" "++mainPrefix++"idcMainGoal\n"
+     
 
 -- Execute main program and show run time:
 execMain rst = do
@@ -123,7 +138,7 @@ execMain rst = do
                  else -- for Debian-PCs:
                       "export TIMEFORMAT=\"Execution time: %2Us\" && time ")
                 ++ " ./Main"
-  putStrLn "Executing main goal..."
+  writeInfo rst "Executing main goal..."
   system (if rst->interactive then "xterm -e ./Main" else timecmd) >> done
  where
   isUbuntu = do
@@ -132,12 +147,13 @@ execMain rst = do
    where
     findUbuntu (_++"Ubuntu"++_) = ()
 
-allCommands = ["quite","help","?","load","show","optimize","interactive",
-               "one","dfs","bfs","ids"]
+-- all the available commands:
+allCommands = ["quit","help","?","load","show","set"]
 
 -- Process a command of the REPL
 processCommand rst cmds 
   | null cmds = putStrLn "Error: unknown command" >> repl rst
+  | head cmds == '!' = system (tail cmds) >> repl rst
   | otherwise = let (cmd,args) = break (==' ') cmds
                     allcmds = filter (isPrefixOf cmd) allCommands
                  in
@@ -162,38 +178,63 @@ processThisCommand rst cmd args
               (\fn -> system ("cat "++fn) >> done)
               mbf
         repl rst
-  | cmd=="optimize"
-   = do putStrLn $ "Optimization turned "++
-                   if (rst -> optim) then "off" else "on"
-        repl { optim := not (rst -> optim) | rst }
-  | cmd=="interactive"
-   = do putStrLn $ "Interactive execution turned "++
-                   if (rst -> interactive) then "off" else "on"
-        repl { interactive := not (rst -> interactive) | rst }
-  | cmd=="one" = do putStrLn $ "First solution execution turned "++
-                               if (rst -> oneSol) then "off" else "on"
-                    repl { oneSol := not (rst -> oneSol) | rst }
-  | cmd=="dfs" = do putStrLn "Search mode set to DFS"
-                    repl { ndMode := DFS | rst }
-  | cmd=="bfs" = do putStrLn "Search mode set to BFS"
-                    repl { ndMode := BFS | rst }
-  | cmd=="ids" = do putStrLn "Search mode set to IDS"
-                    repl { ndMode := IDS | rst }
+  | cmd=="set" = processSetOption rst args >>= repl
   | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >> repl rst
 
+-- Process setting of an option
+processSetOption rst option
+  | null (strip option) = printOptions rst >> return rst
+  | option=="bfs" = return { ndMode := BFS | rst }
+  | option=="dfs" = return { ndMode := DFS | rst }
+  | option=="ids" = return { ndMode := IDS | rst }
+  | take 8 option == "idsupply"
+   = return { idSupply := strip (drop 8 option) | rst }
+  | option=="+interactive" = return { interactive := True  | rst }
+  | option=="-interactive" = return { interactive := False | rst }
+  | option=="+one" = return { oneSol := True  | rst }
+  | option=="-one" = return { oneSol := False | rst }
+  | option=="+optimize" = return { optim := True  | rst }
+  | option=="-optimize" = return { optim := False | rst }
+  | option=="+quiet" = return { quiet := True  | rst }
+  | option=="-quiet" = return { quiet := False | rst }
+  | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >> return rst
+
+printOptions rst = putStrLn $
+  "Options for ':set' command:\n"++
+  "dfs            - set search mode to depth-first search\n"++
+  "bfs            - set search mode to breadth-first search\n"++
+  "ids            - set search mode to iterative deepening search\n"++
+  "idsupply <D>   - set idsupply implementation to directory <D>\n"++
+  "+/-interactive - turn on/off interactive execution of main goal\n"++
+  "+/-one         - turn on/off printing only first solution\n"++
+  "+/-optimize    - turn on/off optimization\n"++
+  "+/-quiet       - set quiet mode\n"++
+  showCurrentOptions rst
+
+showCurrentOptions rst = "Current settings:\n"++
+  "search mode  : " ++ (case (rst->ndMode) of
+                        DFS -> "depth-first search"
+                        BFS -> "breadth-first search"
+                        IDS -> "iterative deepening"
+                     ) ++ "\n" ++
+  "idsupply dir : " ++ rst->idSupply ++ "\n" ++
+  showOnOff (rst->interactive) ++ "interactive " ++
+  showOnOff (rst->oneSol) ++ "one " ++
+  showOnOff (rst->optim) ++ "optimize " ++
+  showOnOff (rst->quiet) ++ "quiet "
+ where
+   showOnOff b = if b then "+" else "-"
+  
 printHelp = putStrLn $ banner ++
   "Commands (can be abbreviated to a prefix if unique)\n"++
   ":load <prog>  - load program \"<prog>.curry\" as main program\n"++
   "<expression>  - evaluate <expression> to normal form and show results\n"++
   ":show         - show currently loaded source program\n"++
-  ":optimize     - turn on/off optimization\n"++
-  ":interactive  - turn on/off interactive execution of main goal\n"++
-  ":one          - turn on/off printing only first solution\n"++
-  ":dfs          - set search mode to depth-first search\n"++
-  ":bfs          - set search mode to breadth-first search\n"++
-  ":ids          - set search mode to iterative deepening search\n"++
+  ":set <option> - set an option\n"++
+  ":set          - see help on options and current options\n"++
   ":help         - show this message\n"++
-  ":quite        - leave the system\n"
+  ":!<command>   - execute <command> in shell\n"++
+  ":quit         - leave the system\n"
 
 -----------------------------------------------------------------------
 -- Auxiliaries:

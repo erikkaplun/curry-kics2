@@ -79,7 +79,6 @@ if [ $GENMAIN = yes ] ; then
   echo "import Basics" >> Main.hs
   echo "import Curry_$PROG" >> Main.hs
   echo "main = ${MAIN}" >> Main.hs
-  #ghc $OPTIM --make -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
   ghc $OPTIM --make -fforce-recomp -i$SYSDIR:$IDSUPPLYDIR:$PRELUDEDIR Main.hs
   # auch: -funbox-strict-fields
 fi
