@@ -568,7 +568,7 @@ printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
-computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithDFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
   initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
 
@@ -616,7 +616,7 @@ printBFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printBFSi mainexp = computeWithBFS mainexp >>= printValsOnDemand
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
-computeWithBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithBFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithBFS mainexp =
   initSupply >>= \s -> searchBFS (try (id $!! (mainexp s)))
 
@@ -713,8 +713,28 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
 -- Parallel search by mapping search results into monadic structure
 ----------------------------------------------------------------------
 
---par :: (NonDet a, NormalForm a) => a -> IO ()
-par g = print (length $ parSearch (searchMPlus Data.Map.empty (try (id $!! g))))
+-- Print all values of an expression in a parallel manner:
+printPar :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printPar mainexp = computeWithPar mainexp >>= printAllValues
+
+-- Print one value of an expression in a parallel manner:
+printPar1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printPar1 mainexp = computeWithPar mainexp >>= printOneValue
+
+-- Print all values on demand of an expression in a parallel manner:
+printPari :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
+printPari mainexp = computeWithPar mainexp >>= printValsOnDemand
+
+list2iolist :: [a] -> IO (IOList a)
+list2iolist [] = mnil
+list2iolist (x:xs) = mcons x (list2iolist xs)
+
+-- Compute all values of a non-deterministic goal in a parallel manner:
+computeWithPar :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
+computeWithPar mainexp = do
+  s <- initSupply
+  list2iolist
+    (parSearch (searchMPlus Data.Map.empty (try (id $!! (mainexp s)))))
 
 type SetOfChoices = Data.Map.Map Integer Choice
 

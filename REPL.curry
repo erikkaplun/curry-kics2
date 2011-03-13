@@ -14,7 +14,7 @@ import FlatCurry(flatCurryFileName)
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 12/03/11)"
+   bannerText = "ID-based Curry->Haskell Compiler (Version of 13/03/11)"
    bannerLine = take (length bannerText) (repeat '=')
 
 mainGoalFile = "Curry_Main_Goal.curry"
@@ -22,7 +22,7 @@ mainGoalFile = "Curry_Main_Goal.curry"
 -- REPL state:
 type ReplState =
   { idcHome     :: String  -- installation directory of the system
-  , idSupply    :: String  -- directory containing IDSupply implementation
+  , idSupply    :: String  -- IDSupply implementation (ioref or integer)
   , quiet       :: Bool    -- be quiet?
   , importPaths :: [String] -- additional directories to search for imports
   , mainMod     :: String  -- main module
@@ -33,11 +33,11 @@ type ReplState =
   }
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS
+data NonDetMode = DFS | BFS | IDS | Par
 
 initReplState :: ReplState
 initReplState = { idcHome     = ""
-                , idSupply    = "idsupplyinteger"
+                , idSupply    = "integer"
                 , quiet       = False
                 , importPaths = []
                 , mainMod     = "Prelude"
@@ -83,13 +83,19 @@ compileAndExecGoal rst goal = do
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeFile mainGoalFile
             ("import "++(rst -> mainMod)++"\nidcMainGoal = "++goal++"\n")
-  let compileCmd = (rst->idcHome)++"/idc"
-      idcoptions = "-q " ++ --(if rst->quiet then "-q " else "") ++
-                   (concatMap (\i -> "-i "++i) (rst->importPaths))
-  writeInfo rst $ "Compiling with options: "++idcoptions
-  status <- system (unwords [compileCmd,idcoptions,mainGoalFile])
+  status <- compileCurryProgram rst mainGoalFile
   exinfo <- doesFileExist (funcInfoFile mainGoalFile)
   unless (status>0 || not exinfo) $ createAndExecMain rst
+
+-- Compile a Curry program with IDC compiler:
+compileCurryProgram :: ReplState -> String -> IO Int
+compileCurryProgram rst curryprog = do
+  let compileProg = (rst->idcHome)++"/idc"
+      idcoptions  = "-q " ++ --(if rst->quiet then "-q " else "") ++
+                    (concatMap (\i -> "-i "++i) (rst->importPaths))
+      compileCmd  = unwords [compileProg,idcoptions,curryprog]
+  writeInfo rst $ "Executing: "++compileCmd
+  system compileCmd
 
 createAndExecMain rst = do
   infos <- readQTermFile (funcInfoFile mainGoalFile)
@@ -105,9 +111,12 @@ createAndExecMain rst = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst isdet isio
-  let ghcImports = [rst->idcHome,rst->idcHome++"/"++rst->idSupply]
+  let ghcImports = [rst->idcHome,rst->idcHome++"/idsupply"++rst->idSupply]
                    ++ rst->importPaths
-      ghcCompile = unwords ["ghc",if rst->optim then "-O2" else "","--make",
+      ghcCompile = unwords ["ghc",
+                            if rst->optim then "-O2" else "",
+                            "--make",
+                            if rst->ndMode == Par then "-threaded" else "",
                             "-i"++concat (intersperse ":" ghcImports),"Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
@@ -168,8 +177,7 @@ processThisCommand rst cmd args
   | cmd=="help" || cmd=="?" = printHelp >> repl rst
   | cmd == "load"
    = do let modname = stripSuffix args
-            compilescript = (rst->idcHome)++"/compilecurry "
-        system (unwords [compilescript,"--nomain",modname])
+        compileCurryProgram rst modname
         repl { mainMod := modname | rst }
   | cmd=="show"
    = do mbf <- lookupFileInPath (rst->mainMod) [".curry", ".lcurry"]
@@ -187,6 +195,7 @@ processSetOption rst option
   | option=="bfs" = return { ndMode := BFS | rst }
   | option=="dfs" = return { ndMode := DFS | rst }
   | option=="ids" = return { ndMode := IDS | rst }
+  | option=="par" = return { ndMode := Par | rst }
   | take 8 option == "idsupply"
    = return { idSupply := strip (drop 8 option) | rst }
   | option=="+interactive" = return { interactive := True  | rst }
@@ -204,7 +213,8 @@ printOptions rst = putStrLn $
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
   "ids            - set search mode to iterative deepening search\n"++
-  "idsupply <D>   - set idsupply implementation to directory <D>\n"++
+  "par            - set search mode to parallel search\n"++
+  "idsupply <I>   - set idsupply implementation (integer or ioref)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
   "+/-one         - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
@@ -217,7 +227,7 @@ showCurrentOptions rst = "Current settings:\n"++
                         BFS -> "breadth-first search"
                         IDS -> "iterative deepening"
                      ) ++ "\n" ++
-  "idsupply dir : " ++ rst->idSupply ++ "\n" ++
+  "idsupply     : " ++ rst->idSupply ++ "\n" ++
   showOnOff (rst->interactive) ++ "interactive " ++
   showOnOff (rst->oneSol) ++ "one " ++
   showOnOff (rst->optim) ++ "optimize " ++

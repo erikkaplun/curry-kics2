@@ -11,6 +11,9 @@ import Char
 import ReadShowTerm
 import Float
 
+-- home directory of IDC:
+idcHome = ".."
+
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
@@ -80,11 +83,11 @@ processTimes timings =
   truncateFloat x = i2f (round (x*.100)) /. 100
 
 -- Run a benchmark and return the timings
-runBenchmark :: Int -> (String,String,String,String) -> IO (String,[Float])
+runBenchmark :: Int -> (String,IO Int,String,String) -> IO (String,[Float])
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   let line = take 70 (repeat '=')
   putStr (unlines [line, "Running benchmark: "++name, line])
-  system preparecmd
+  preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
   putStrLn ("RUNTIMES: " ++ concat (intersperse " | " times))
@@ -106,36 +109,64 @@ readFloat s = if isFloatString s then readQTerm s
 
 ----------------------------------------------------------------------
 -- Command to compile a module and execute main with idcompiler:
-idcCompile options mod = "../compilecurry " ++ options ++ " " ++ mod
+-- arg1: module name
+-- arg2: compile with optimization?
+-- arg3: idsupply implementation (integer or ioref)
+-- arg4: main (Haskell!) call
+idcCompile mod optim idsupply mainexp = do
+  let compileCmd = idcHome++"/idc -q -i "++idcHome++"/lib"++" "++mod
+  putStrLn $ "Executing: "++compileCmd
+  system compileCmd
+  createHaskellMainAndCompile mod optim idsupply mainexp
 
+-- Create the Main.hs program containing the call to the initial expression:
+createHaskellMainAndCompile mod optim idsupply mainexp = do
+  writeFile "Main.hs" $
+       "module Main where\n"++
+       "import Basics\n"++
+       "import Curry_"++mod++"\n"++
+       "main = "++mainexp++"\n"
+  let imports = [idcHome,idcHome++"/idsupply"++idsupply,idcHome++"/lib"]
+      compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
+                            "-fforce-recomp",
+                            "-i"++concat (intersperse ":" imports),"Main.hs"]
+                     -- also:  -funbox-strict-fields ?
+  putStrLn $ "Executing: "++compileCmd
+  system compileCmd
+  
+----------------------------------------------------------------------
 -- Command to compile a module and execute main with GHC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
-mccCompile options mod =
+mccCompile options mod = system $ 
   "/home/mcc/bin/cyc " ++
   (if null options then "-e\"main\"" else options) ++
   " " ++ mod ++".curry"
 
 -- Command to compile a module and execute main with GHC:
-ghcCompile mod = "ghc --make -fforce-recomp " ++ mod
+ghcCompile mod = system $ "ghc --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and execute main with GHC (optimized):
-ghcCompileO mod = "ghc -O2 --make -fforce-recomp " ++ mod
+ghcCompileO mod = system $ "ghc -O2 --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and print main in PAKCS:
-pakcsCompile options mod =
+pakcsCompile options mod = system $ 
   "/home/pakcs/pakcs/bin/pakcs "++
   (if null options then "-m \"print main\"" else options) ++" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
-sicstusCompile mod =
+sicstusCompile mod = system $ 
   "echo \"compile("++mod++"), save_program('"++mod++".state',main).\" | /home/sicstus/sicstus4/bin/sicstus && chmod +x "++mod++".state"
 
 -- Command to compile a Prolog program and run main in SWI-Prolog:
-swiCompile mod =
+swiCompile mod = system $ 
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
-idcBenchmark tag options mod =
-  (mod++"@"++tag, idcCompile options mod, "./Main", "rm Main* Curry_*")
+----------------------------------------------------------------------
+-- Benchmarks for various systems
+
+idcBenchmark tag mod optim idsupply mainexp =
+  (mod++"@"++tag, idcCompile mod optim idsupply mainexp,
+   "./Main", "rm Main* Curry_*")
 pakcsBenchmark options mod =
   (mod++"@PAKCS ",pakcsCompile options mod,
    "./"++mod++".state","rm "++mod++".state")
@@ -159,8 +190,8 @@ swiBenchmark  mod =
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl prog =
- [idcBenchmark "IDC_D" "-d"  prog
- ,idcBenchmark "IDC+_D" "-o -d" prog
+ [idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -171,10 +202,10 @@ benchFPpl prog =
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog =
- [idcBenchmark "IDC"    "" prog
- ,idcBenchmark "IDC+"   "-o"  prog
- ,idcBenchmark "IDC_D"  "-d"  prog
- ,idcBenchmark "IDC+_D" "-o -d" prog
+ [idcBenchmark "IDC"    prog False "integer" "eval nd_C_main"
+ ,idcBenchmark "IDC+"   prog True  "integer" "eval nd_C_main"
+ ,idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -183,16 +214,16 @@ benchHOFP prog =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog =
- [idcBenchmark "IDC_DFS"        "--prdfs"  prog
- ,idcBenchmark "IDC+_DFS"       "-o --prdfs" prog
- ,idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
+ [idcBenchmark "IDC_DFS"        prog False "integer" "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_DFS"       prog True  "integer" "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
- [idcBenchmark "IDC+_DFS_IORef" "-o --prdfs --idsupply ioref" prog
+ [idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
@@ -200,26 +231,26 @@ benchFLPDFSU prog =
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name =
- [idcBenchmark ("IDC_DFS:"++name)  ("-e "++name++" --prdfs") prog
- ,idcBenchmark ("IDC+_DFS:"++name) ("-e "++name++" -o --prdfs") prog
+ [idcBenchmark ("IDC_DFS:"++name)  prog False "integer" ("prdfs nd_C_"++name)
+ ,idcBenchmark ("IDC+_DFS:"++name) prog True  "integer" ("prdfs nd_C_"++name)
  ,idcBenchmark ("IDC+_DFS_IORef:"++name)
-               ("-e "++name++" -o --prdfs --idsupply ioref") prog
+               prog True  "ioref" ("prdfs nd_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
  ]
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog =
- [idcBenchmark "IDC+PrDFS_IOREF" "-o --prdfs --idsupply ioref" prog
- ,idcBenchmark "IDC+DFS_IOREF"   "-o --dfs   --idsupply ioref" prog
- ,idcBenchmark "IDC+BFS_IOREF"   "-o --bfs   --idsupply ioref" prog
- ,idcBenchmark "IDC+IDS_IOREF"   "-o --ids   --idsupply ioref" prog
+ [idcBenchmark "IDC+PrDFS_IOREF" prog True "ioref" "prdfs nd_C_main"
+ ,idcBenchmark "IDC+DFS_IOREF"   prog True "ioref" "printDFS nd_C_main"
+ ,idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog =
- [idcBenchmark "IDC+BFS_IOREF"   "-o --bfs1 --idsupply ioref" prog
- ,idcBenchmark "IDC+IDS_IOREF"   "-o --ids1 --idsupply ioref" prog
+ [idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS1 nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS1 nd_C_main"
  ]
 
 
@@ -271,11 +302,10 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
 
 --main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
-main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
---main = run 3 [benchFLPDFSWithMain "goal1" "ShareNonDet"]
+--main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
---main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
+--main = run 1 [benchFLPDFS "PermSort"]
 --main = run 1 [benchFLPDFS "Half"]
---main = run 1 [benchFLPDFSU "Last"]
+main = run 1 [benchFLPDFSU "Last"]

@@ -163,18 +163,12 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
      -- specific definition to show a list constructor:
      showListCons =
-       applyF (pre "if_then_else")
+       applyF (pre "showParen")
          [applyF (pre ">") [Var (0,"d"),Lit (Intc 5)],
           foldr1 (\f1 f2 -> applyF (pre ".") [f1,f2])
-                 [applyF (pre "showChar") [Lit (Charc '(')],
-                  applyF (pre "shows") [Var (1,"x1")],
+                 [applyF (pre "showsPrec") [Lit (Intc 6), Var (1,"x1")],
                   applyF (pre "showChar") [Lit (Charc ':')],
-                  applyF (pre "shows") [Var (2,"x2")],
-                  applyF (pre "showChar") [Lit (Charc ')')]],
-          foldr1 (\f1 f2 -> applyF (pre ".") [f1,f2])
-                 [applyF (pre "shows") [Var (1,"x1")],
-                  applyF (pre "showChar") [Lit (Charc ':')],
-                  applyF (pre "shows") [Var (2,"x2")]]]
+                  applyF (pre "showsPrec") [Lit (Intc 5), Var (2,"x2")]]]
 
   -- Generate instance of NonDet class:
   nondetInstance =
