@@ -4,7 +4,7 @@
 module Basics where
 
 import ID
-import qualified Data.Map 
+import qualified Data.Map
 import System.IO
 import Control.Monad
 import Control.Parallel.TreeSearch
@@ -41,7 +41,7 @@ class NonDet a where
                                 -- matching for
   match      :: (a -> b)                   -- Head Normal Forms
                 -> b                       -- Failures
-                -> (ID -> a -> a -> b)     -- Choices 
+                -> (ID -> a -> a -> b)     -- Choices
                 -> (ID -> a -> a -> b)     -- Free Variables
                 -> ([Constraint] -> a -> b)  -- Constraints
                 -> a -> b
@@ -95,7 +95,7 @@ nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose
 
 nfChoiceIO cont i x1 x2 = do
   x1' <- return $!< x1
-  x2' <- return $!< x2 
+  x2' <- return $!< x2
   cont (choiceCons i x1' x2')
 -- ---------------------------------------------------------------------------
 -- Unification
@@ -112,10 +112,10 @@ x =:= y = unify (try x) (try y)
     unify Fail _    = failCons
     unify _    Fail = failCons
 
-    unify (Choice i x1 x2) y = 
+    unify (Choice i x1 x2) y =
        choiceCons i (unify (try x1) y) (unify (try x2) y)
 
-    unify x (Choice i x1 x2) = 
+    unify x (Choice i x1 x2) =
        choiceCons i (unify x (try x1)) (unify x (try x2))
 
     unify (Guard c e) y = guardCons c (unify (try e) y)
@@ -123,18 +123,18 @@ x =:= y = unify (try x) (try y)
 
     unify (Val vx) (Val vy) = vx =.= vy
 
-    unify (Val v)      (Free j _ _) = 
+    unify (Val v)      (Free j _ _) =
       (\ v' -> guardCons (bind j v') C_Success) $!! v
 
-    unify (Free i _ _) (Val v)      = 
+    unify (Free i _ _) (Val v)      =
       (\ v' -> guardCons (bind i v') C_Success) $!! v
 
-    unify (Free i _ _) (Free j _ _)      = 
+    unify (Free i _ _) (Free j _ _)      =
       guardCons [i :=: BindTo j] C_Success
 
--- TODO: is this correct?
+
 (&) :: C_Success -> C_Success -> C_Success
-x & y = (\ C_Success -> (\C_Success -> C_Success) $!! y) $!! x
+x & y = const y $!! x
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -336,7 +336,7 @@ evalDIO goal = toIO goal >>= print
 d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
   where
-    choiceF id a b =  choiceCons id (f `d_dollar_bang_test` a) 
+    choiceF id a b =  choiceCons id (f `d_dollar_bang_test` a)
                                     (f `d_dollar_bang_test` b)
     freeF id a b   =  error "d_dollar_bang with free variable"
     guardF c e     =  guardCons c (f  `d_dollar_bang_test` e)
@@ -409,8 +409,8 @@ printValsDFS x@Fail         = return () --print "Failure: " >> print x
 printValsDFS (Val v)        = print v
 printValsDFS (Free i x y)   = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = (printValsDFS . try)  $!< x
-   choose ChooseRight = (printValsDFS . try)  $!< y
+   choose ChooseLeft  = (printValsDFS . try)  x -- $!< x
+   choose ChooseRight = (printValsDFS . try)  y -- $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 
@@ -429,7 +429,7 @@ printValsDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> return ()
-    Just reset -> ((printValsDFS.try) $!< e) >> reset
+    Just reset -> ((printValsDFS.try) e) >> reset -- $!< e) >> reset
 
 solves :: [Constraint] -> Solved
 solves [] = solved
@@ -437,10 +437,10 @@ solves (c:cs) = do
   mreset <- solve c
   case mreset of
     Nothing    -> return Nothing
-    Just reset -> do 
+    Just reset -> do
       mreset' <- solves cs
       case mreset' of
-        Nothing -> return Nothing
+        Nothing -> reset >> return Nothing -- TODO : check difference to Bernd
         Just reset' -> return (Just (reset >> reset'))
 
 type Solved = IO (Maybe (IO ()))
@@ -454,11 +454,11 @@ unsolvable = return Nothing
 solve :: Constraint -> Solved
 solve (i :=: cc) = lookupChoice i >>= choose cc
   where
-    choose (BindTo j) ci       = lookupChoice j >>= check j ci 
+    choose (BindTo j) ci       = lookupChoice j >>= check j ci
     choose c          NoChoice = setUnsetChoice i c
     choose c          x | c==x = solved
     choose c          ci       = unsolvable
-           
+
     check j NoChoice NoChoice = setUnsetChoice i (BindTo j)
 
     check _ NoChoice y        = setUnsetChoice i y

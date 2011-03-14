@@ -202,11 +202,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       c:cs                   -> applyF choiceConsName [applyF (idmod "freeID") [idSupp]
                                                       ,genBody (leftsupp idSupp)  [c]
                                                       ,genBody (rightsupp idSupp) cs]
-  consArgs2gen idSupp texps = 
+  consArgs2gen idSupp texps =
    case texps of
     []  -> []
     [_] -> [applyF (basics "generate") [idSupp]]
-    (_:xs) -> applyF (basics "generate") [leftsupp idSupp] 
+    (_:xs) -> applyF (basics "generate") [leftsupp idSupp]
               : consArgs2gen (rightsupp idSupp) xs
 
   -- Generate instance of NormalForm class:
@@ -217,11 +217,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
          [(basics "$!!",
            Rule [PVar (1,"cont"),
                  PComb (mkChoiceName (mn,tc)) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
-                     [noGuard (applyF (pre "nfChoice") 
+                     [noGuard (applyF (pre "nfChoice")
                                       [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")])] [])
-      ,(basics "$!!", Rule [PVar (1,"cont"), 
+      ,(basics "$!!", Rule [PVar (1,"cont"),
                             PComb (mkGuardName (mn,tc)) [PVar (2,"c"),PVar (3,"x")]]
-                     [noGuard (applyF (pre "guardCons") 
+                     [noGuard (applyF (pre "guardCons")
                                       [Var (2,"c")
                                       ,applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]])] [])
       ,(basics "$!!", Rule [PVar (1,"_"),PComb (mkFailName (mn,tc)) []]
@@ -282,17 +282,17 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 --  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
   bindConsRules cds getSuppVar makeBinds =
     case cds of
-      [FC.Cons qn _ _ texps] 
-        -> let cArgVars =  map (\i -> (i, 'x':show i)) [2..(length texps)+1] in 
-          [(basics "bind", 
-            Rule [PVar (1,"i") 
+      [FC.Cons qn _ _ texps]
+        -> let cArgVars =  map (\i -> (i, 'x':show i)) [2..(length texps)+1] in
+          [(basics "bind",
+            Rule [PVar (1,"i")
                   ,PComb qn (map PVar cArgVars)]
-              [noGuard  (applyF (pre "++") 
+              [noGuard  (applyF (pre "++")
                                 [makeBinds (Var (1,"i"))
-                                ,(bindConsArgs (map Var cArgVars) 
+                                ,(bindConsArgs (map Var cArgVars)
                                                (getSuppVar (Var (1,"i"))))])][])]
       (c:cs) -> bindConsRules [c] (left . getSuppVar)
-                (\bindID -> applyF (pre ":") 
+                (\bindID -> applyF (pre ":")
                            [applyF (basics ":=:")
                              [bindID
                              , constF (basics "ChooseLeft")]
@@ -316,27 +316,27 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     Instance (basics "Curry") ctype
       (map (\tv -> Context (basics "Curry") [tv]) targs)
       (extConsRules "=?=" ++ map eqConsRule cdecls ++
-      if multipleCons
-       then [(pre "=?=", Rule [PVar (1,"_"),PVar (2,"_")] 
+      (if multipleCons
+       then [(pre "=?=", Rule [PVar (1,"_"),PVar (2,"_")]
                               [noGuard (constF (pre "C_False"))] [])]
-       else []
+       else [])
       ++ extConsRules "<?=" ++ ordConsRules cdecls ++
-      if multipleCons
-       then [(pre "<?=", Rule [PVar (1,"_"),PVar (2,"_")] 
+      (if multipleCons
+       then [(pre "<?=", Rule [PVar (1,"_"),PVar (2,"_")]
                               [noGuard (constF (pre "C_False"))][])]
-       else[])
+       else[]))
     where
      multipleCons = length cdecls > 1
 
   extConsRules name =
     [nameRule $ Rule [PComb (mkChoiceName (mn,tc)) [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]
                      ,PVar (4,"z")]
-                     [noGuard (applyF narrow [Var (1,"i") 
+                     [noGuard (applyF narrow [Var (1,"i")
                                              ,applyF (pre name)[Var (2,"x"),Var (4,"z")]
                                              ,applyF (pre name) [Var (3,"y"),Var (4, "z")]])
                                              ] []
       ,nameRule $ Rule [PComb (mkGuardName (mn,tc)) [PVar (1,"c"),PVar (2,"x")], PVar(3,"y")]
-                     [noGuard (applyF (pre "guardCons") 
+                     [noGuard (applyF (pre "guardCons")
                                       [Var (1,"c")
                                       ,applyF (pre name) [Var (2,"x"),Var (3,"y")]])
                                       ] []
@@ -344,12 +344,12 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                      [noGuard (Symbol (pre "failCons"))] []
       ,nameRule $ Rule [PVar (4,"z")
                       ,PComb (mkChoiceName (mn,tc)) [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]]
-                     [noGuard (applyF narrow [Var (1,"i") 
+                     [noGuard (applyF narrow [Var (1,"i")
                                              ,applyF (pre name)[Var (4,"z"),Var (2,"x")]
                                              ,applyF (pre name) [Var (4,"z"),Var (3, "y")]])
                                              ] []
       ,nameRule $ Rule [PVar(3,"y"), PComb (mkGuardName (mn,tc)) [PVar (1,"c"),PVar (2,"x")]]
-                     [noGuard (applyF (pre "guardCons") 
+                     [noGuard (applyF (pre "guardCons")
                                       [Var (1,"c")
                                       ,applyF (pre name) [Var (3,"y"),Var (2,"x")]])
                                       ] []
@@ -403,7 +403,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
            PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
           [noGuard (constF (pre "C_True"))] [])
 
- 
+
 freshID n i =
   if n==0 then left i
           else freshID (n-1) (right i)
