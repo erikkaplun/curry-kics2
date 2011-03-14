@@ -64,12 +64,39 @@ class NonDet a => Generable a where
 -- applied to the normal form.
 class NonDet a => NormalForm a where
   ($!!) :: NonDet b => (a -> b) -> a -> b
+  ($!<) :: (a -> IO b) -> a -> IO b
+  ($!<) = error "($!<) not implemented yet" -- TODO generate instances
+
+
+
+-- Auxilary function to extend $!< for non-determinism
+($$!<) :: (NormalForm a) => (a -> IO b) -> a -> IO b
+cont $$!< x = nf (try x)
+  where
+    nf (Val v)        = cont $!< v
+    nf Fail           = cont failCons
+    nf (Choice i x y) = nfChoiceIO cont i x y
+    nf (Free i x y)   = nfChoiceIO cont i x y
+    nf (Guard c e)    = cont (guardCons c e)
 
 -- Auxilary Function to create a Choice and apply a continuation to
 -- the normal forms of its alternatives
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
+nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
 nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 
+
+nfChoiceIO :: (NormalForm a,NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
+nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose
+ where
+   choose ChooseLeft  = cont $!< x1
+   choose ChooseRight = cont $!< x2
+   choose NoChoice    = cont (choiceCons i x1 x2)
+
+nfChoiceIO cont i x1 x2 = do
+  x1' <- return $!< x1
+  x2' <- return $!< x2 
+  cont (choiceCons i x1' x2')
 -- ---------------------------------------------------------------------------
 -- Unification
 -- ---------------------------------------------------------------------------
@@ -377,13 +404,13 @@ unwrap (Func f) s x = f x s
 prdfs :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 prdfs mainexp = initSupply >>= \s -> printValsDFS (try (id $!! (mainexp s)))
 
-printValsDFS :: (Show a,NonDet a) => Try a -> IO ()
+printValsDFS :: (Show a,NonDet a, NormalForm a) => Try a -> IO ()
 printValsDFS x@Fail         = return () --print "Failure: " >> print x
 printValsDFS (Val v)        = print v
 printValsDFS (Free i x y)   = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = (printValsDFS . try)  x
-   choose ChooseRight = (printValsDFS . try)  y
+   choose ChooseLeft  = (printValsDFS . try)  $!< x
+   choose ChooseRight = (printValsDFS . try)  $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 
@@ -402,7 +429,7 @@ printValsDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> return ()
-    Just reset -> printValsDFS (try e) >> reset
+    Just reset -> ((printValsDFS.try) $!< e) >> reset
 
 solves :: [Constraint] -> Solved
 solves [] = solved

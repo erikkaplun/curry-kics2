@@ -217,10 +217,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
          [(basics "$!!",
            Rule [PVar (1,"cont"),
                  PComb (mkChoiceName (mn,tc)) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
-                     [noGuard (applyF (pre "choiceCons") 
-                                      [Var (2,"i")
-                                      , applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]
-                                      ,applyF (basics "$!!")[Var (1,"cont"),Var (4,"y")]])] [])
+                     [noGuard (applyF (pre "nfChoice") 
+                                      [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")])] [])
       ,(basics "$!!", Rule [PVar (1,"cont"), 
                             PComb (mkGuardName (mn,tc)) [PVar (2,"c"),PVar (3,"x")]]
                      [noGuard (applyF (pre "guardCons") 
