@@ -1,14 +1,14 @@
 --- Read-Eval-Print loop for IDC
 
 import System(getEnviron,system)
-import Char(isSpace)
+import Char(isSpace,toLower)
 import IO
 import IOExts
 import SetFunctions
 import FileGoodies
-import Directory (doesFileExist,removeFile)
-import Names
-import ReadShowTerm (readQTermFile)
+import Directory(doesFileExist,removeFile,renameFile)
+import Names(funcInfoFile)
+import ReadShowTerm(readQTermFile)
 import List (isPrefixOf,intersperse)
 import FlatCurry(flatCurryFileName)
 
@@ -21,15 +21,16 @@ mainGoalFile = "Curry_Main_Goal.curry"
 
 -- REPL state:
 type ReplState =
-  { idcHome     :: String  -- installation directory of the system
-  , idSupply    :: String  -- IDSupply implementation (ioref or integer)
-  , quiet       :: Bool    -- be quiet?
-  , importPaths :: [String] -- additional directories to search for imports
-  , mainMod     :: String  -- main module
-  , optim       :: Bool    -- compile with optimization
+  { idcHome     :: String     -- installation directory of the system
+  , idSupply    :: String     -- IDSupply implementation (ioref or integer)
+  , quiet       :: Bool       -- be quiet?
+  , importPaths :: [String]   -- additional directories to search for imports
+  , mainMod     :: String     -- name of main module
+  , optim       :: Bool       -- compile with optimization
   , ndMode      :: NonDetMode -- mode for nd main goal
-  , oneSol      :: Bool    -- print only first solution to nd main goal?
-  , interactive :: Bool -- interactive execution of goal?
+  , firstSol    :: Bool       -- print only first solution to nd main goal?
+  , interactive :: Bool       -- interactive execution of goal?
+  , rtsOpts     :: String     -- run-time options for ghc
   }
 
 -- Mode for non-deterministic evaluation of main goal
@@ -41,10 +42,11 @@ initReplState = { idcHome     = ""
                 , quiet       = False
                 , importPaths = []
                 , mainMod     = "Prelude"
-                , optim       = False
+                , optim       = True
                 , ndMode      = DFS
-                , oneSol      = False
+                , firstSol    = False
                 , interactive = False
+                , rtsOpts     = ""
                 }
 
 -- Show an info message if not quiet
@@ -73,10 +75,13 @@ repl rst = do
 processInput rst g
   | null g = repl rst
   | head g == ':' = processCommand rst (strip (tail g))
-  | otherwise = compileAndExecGoal rst g >> repl rst
+  | otherwise = do status <- compileProgramWithGoal rst g
+                   unless (status>0) (execMain rst >> done)
+                   repl rst
 
 -- Compile main program with goal:
-compileAndExecGoal rst goal = do
+compileProgramWithGoal :: ReplState -> String -> IO Int
+compileProgramWithGoal rst goal = do
   oldmaincurryexists <- doesFileExist (funcInfoFile mainGoalFile)
   unless (not oldmaincurryexists) $ removeFile (funcInfoFile mainGoalFile)
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
@@ -85,7 +90,7 @@ compileAndExecGoal rst goal = do
             ("import "++(rst -> mainMod)++"\nidcMainGoal = "++goal++"\n")
   status <- compileCurryProgram rst mainGoalFile
   exinfo <- doesFileExist (funcInfoFile mainGoalFile)
-  unless (status>0 || not exinfo) $ createAndExecMain rst
+  if status==0 && exinfo then createAndCompileMain rst else return 1
 
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> IO Int
@@ -97,7 +102,9 @@ compileCurryProgram rst curryprog = do
   writeInfo rst $ "Executing: "++compileCmd
   system compileCmd
 
-createAndExecMain rst = do
+-- Create and compile the main module containing the main goal
+createAndCompileMain :: ReplState -> IO Int
+createAndCompileMain rst = do
   infos <- readQTermFile (funcInfoFile mainGoalFile)
   --print infos
   let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
@@ -120,8 +127,7 @@ createAndExecMain rst = do
                             "-i"++concat (intersperse ":" ghcImports),"Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
-  status <- system ghcCompile
-  unless (status>0) (execMain rst)
+  system ghcCompile
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst isdet isio =
@@ -131,7 +137,7 @@ createHaskellMain rst isdet isio =
         if isdet then "evalD"
         else "print"++show (rst->ndMode)++
              (if (rst->interactive) then "i" else
-              if (rst->oneSol) then "1" else "")
+              if (rst->firstSol) then "1" else "")
    in writeFile "Main.hs" $
        "module Main where\n"++
        "import Basics\n"++
@@ -140,15 +146,21 @@ createHaskellMain rst isdet isio =
      
 
 -- Execute main program and show run time:
+execMain :: ReplState -> IO Int
 execMain rst = do
   isubuntu <- isUbuntu
-  let timecmd = (if isubuntu
-                 then "time --format=\"Execution time: %Us\" "
-                 else -- for Debian-PCs:
-                      "export TIMEFORMAT=\"Execution time: %2Us\" && time ")
-                ++ " ./Main"
-  writeInfo rst "Executing main goal..."
-  system (if rst->interactive then "xterm -e ./Main" else timecmd) >> done
+  let timecmd =
+        if isubuntu
+        then "time --format=\"Execution time: %Us / elapsed: %E\" "
+        else -- for Debian-PCs:
+          "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "
+      maincmd = "./Main " ++
+                (if null (rst->rtsOpts)
+                 then ""
+                 else "+RTS "++rst->rtsOpts++" -RTS")
+      cmd = timecmd ++ maincmd
+  writeInfo rst $ "Executing: " ++ maincmd
+  system (if rst->interactive then "xterm -e "++cmd else cmd)
  where
   isUbuntu = do
     bsid <- connectToCommand "lsb_release -i" >>= hGetContents
@@ -157,14 +169,14 @@ execMain rst = do
     findUbuntu (_++"Ubuntu"++_) = ()
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","show","set"]
+allCommands = ["quit","help","?","load","show","set","save"]
 
 -- Process a command of the REPL
 processCommand rst cmds 
   | null cmds = putStrLn "Error: unknown command" >> repl rst
   | head cmds == '!' = system (tail cmds) >> repl rst
   | otherwise = let (cmd,args) = break (==' ') cmds
-                    allcmds = filter (isPrefixOf cmd) allCommands
+                    allcmds = filter (isPrefixOf (map toLower cmd)) allCommands
                  in
       if null allcmds
       then putStrLn ("Error: unknown command: ':"++cmds++"'") >> repl rst
@@ -187,6 +199,15 @@ processThisCommand rst cmd args
               mbf
         repl rst
   | cmd=="set" = processSetOption rst args >>= repl
+  | cmd=="save"
+   = if rst->mainMod == "Prelude"
+     then putStrLn "No program loaded!" >> repl rst
+     else do
+       status <- compileProgramWithGoal rst (if null args then "main" else args)
+       unless (status>0) $ do
+          renameFile "Main" (rst->mainMod)
+          putStrLn ("Executable saved in '"++rst->mainMod++"'")
+       repl rst
   | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >> repl rst
 
 -- Process setting of an option
@@ -195,17 +216,21 @@ processSetOption rst option
   | option=="bfs" = return { ndMode := BFS | rst }
   | option=="dfs" = return { ndMode := DFS | rst }
   | option=="ids" = return { ndMode := IDS | rst }
-  | option=="par" = return { ndMode := Par | rst }
+  | option=="par" = do
+      putStrLn "You might also be interested to set the run-time option -N<x>!"
+      return { ndMode := Par | rst }
   | take 8 option == "idsupply"
    = return { idSupply := strip (drop 8 option) | rst }
   | option=="+interactive" = return { interactive := True  | rst }
   | option=="-interactive" = return { interactive := False | rst }
-  | option=="+one" = return { oneSol := True  | rst }
-  | option=="-one" = return { oneSol := False | rst }
+  | option=="+first" = return { firstSol := True  | rst }
+  | option=="-first" = return { firstSol := False | rst }
   | option=="+optimize" = return { optim := True  | rst }
   | option=="-optimize" = return { optim := False | rst }
   | option=="+quiet" = return { quiet := True  | rst }
   | option=="-quiet" = return { quiet := False | rst }
+  | take 3 option == "rts"
+   = return { rtsOpts := strip (drop 3 option) | rst }
   | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >> return rst
 
 printOptions rst = putStrLn $
@@ -216,20 +241,23 @@ printOptions rst = putStrLn $
   "par            - set search mode to parallel search\n"++
   "idsupply <I>   - set idsupply implementation (integer or ioref)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
-  "+/-one         - turn on/off printing only first solution\n"++
+  "+/-first       - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
   "+/-quiet       - set quiet mode\n"++
+  "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
 
 showCurrentOptions rst = "Current settings:\n"++
-  "search mode  : " ++ (case (rst->ndMode) of
-                        DFS -> "depth-first search"
-                        BFS -> "breadth-first search"
-                        IDS -> "iterative deepening"
-                     ) ++ "\n" ++
-  "idsupply     : " ++ rst->idSupply ++ "\n" ++
+  "search mode      : " ++ (case (rst->ndMode) of
+                             DFS -> "depth-first search"
+                             BFS -> "breadth-first search"
+                             IDS -> "iterative deepening"
+                             Par -> "parallel search"
+                            ) ++ "\n" ++
+  "idsupply         : " ++ rst->idSupply ++ "\n" ++
+  "run-time options : " ++ rst->rtsOpts ++ "\n" ++
   showOnOff (rst->interactive) ++ "interactive " ++
-  showOnOff (rst->oneSol) ++ "one " ++
+  showOnOff (rst->firstSol) ++ "first " ++
   showOnOff (rst->optim) ++ "optimize " ++
   showOnOff (rst->quiet) ++ "quiet "
  where
@@ -237,11 +265,13 @@ showCurrentOptions rst = "Current settings:\n"++
   
 printHelp = putStrLn $ banner ++
   "Commands (can be abbreviated to a prefix if unique)\n"++
-  ":load <prog>  - load program \"<prog>.curry\" as main program\n"++
+  ":load <prog>  - load program \"<prog>.[l]curry\" as main program\n"++
   "<expression>  - evaluate <expression> to normal form and show results\n"++
   ":show         - show currently loaded source program\n"++
   ":set <option> - set an option\n"++
   ":set          - see help on options and current options\n"++
+  ":save         - save executable with main expression 'main'\n"++
+  ":save <exp>   - save executable with main expression <exp>\n"++
   ":help         - show this message\n"++
   ":!<command>   - execute <command> in shell\n"++
   ":quit         - leave the system\n"
