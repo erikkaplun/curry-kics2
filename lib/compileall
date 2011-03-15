@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Compile all a Curry programs in this directory
+SYSDIR=`dirname "$0"`/..
+IDCI=$SYSDIR/bin/idci
+
+for i in *curry ; do
+  echo "Compiling $i"
+  $IDCI :set +quiet :l $i :q
+done

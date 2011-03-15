@@ -6,11 +6,13 @@ import IO
 import IOExts
 import SetFunctions
 import FileGoodies
-import Directory(doesFileExist,removeFile,renameFile)
+import Directory(doesFileExist,removeFile,renameFile,getDirectoryContents)
 import Names(funcInfoFile)
 import ReadShowTerm(readQTermFile)
+import ReadNumeric(readNat)
 import List (isPrefixOf,intersperse)
 import FlatCurry(flatCurryFileName)
+import Sort(mergeSort)
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
@@ -36,7 +38,7 @@ type ReplState =
   }
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS | Par
+data NonDetMode = DFS | BFS | IDS | Par Int
 
 initReplState :: ReplState
 initReplState = { idcHome     = ""
@@ -66,9 +68,12 @@ main = do
            args <- getArgs
            processArgsAndStart rst args
 
-processArgsAndStart rst [] = do writeInfo rst banner
-                                writeInfo rst "Type \":h\" for help"
-                                repl rst
+processArgsAndStart rst [] =
+  if rst->quit
+  then done
+  else do writeInfo rst banner
+          writeInfo rst "Type \":h\" for help"
+          repl rst
 processArgsAndStart rst (arg:args) =
   if head arg /= ':'
   then putStrLn ("Unknown command: " ++ unwords (arg:args)) >> printHelp
@@ -143,11 +148,14 @@ createAndCompileMain rst = do
   createHaskellMain rst isdet isio
   let ghcImports = [rst->idcHome,rst->idcHome++"/idsupply"++rst->idSupply]
                    ++ rst->importPaths
-      ghcCompile = unwords ["ghc",
-                            if rst->optim then "-O2" else "",
-                            "--make",
-                            if rst->ndMode == Par then "-threaded" else "",
-                            "-i"++concat (intersperse ":" ghcImports),"Main.hs"]
+      ghcCompile = unwords ["ghc"
+                           ,if rst->optim then "-O2" else ""
+                           ,"--make"
+                           ,case rst->ndMode of
+                              Par _ -> "-threaded"
+                              _     -> ""
+                           ,"-i"++concat (intersperse ":" ghcImports)
+                           ,"Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
   system ghcCompile
@@ -158,9 +166,13 @@ createHaskellMain rst isdet isio =
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
         if isdet then "evalD"
-        else "print"++show (rst->ndMode)++
-             (if (rst->interactive) then "i" else
-              if (rst->firstSol) then "1" else "")
+        else "print" ++ case (rst->ndMode) of
+                          DFS -> "DFS"
+                          BFS -> "BFS"
+                          IDS -> "IDS"
+                          Par _ -> "Par"
+             ++ (if (rst->interactive) then "i" else
+                 if (rst->firstSol) then "1" else "")
    in writeFile "Main.hs" $
        "module Main where\n"++
        "import Basics\n"++
@@ -177,10 +189,13 @@ execMain rst = do
         then "time --format=\"Execution time: %Us / elapsed: %E\" "
         else -- for Debian-PCs:
           "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "
+      paropts = case rst->ndMode of
+                  Par n -> "-N" ++ (if n==0 then "" else show n)
+                  _     -> ""
       maincmd = "./Main " ++
-                (if null (rst->rtsOpts)
+                (if null (rst->rtsOpts) && null paropts
                  then ""
-                 else "+RTS "++rst->rtsOpts++" -RTS")
+                 else "+RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       cmd = timecmd ++ maincmd
   writeInfo rst $ "Executing: " ++ maincmd
   system (if rst->interactive then execInteractive cmd else cmd)
@@ -192,7 +207,8 @@ execMain rst = do
     findUbuntu (_++"Ubuntu"++_) = ()
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","show","set","save"]
+allCommands = ["quit","help","?","load","reload","add",
+               "programs","show","set","save"]
 
 -- Process a command of the REPL
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
@@ -232,6 +248,7 @@ processThisCommand rst cmd args
         maybe (putStrLn "Source file of module not found!" >> return Nothing)
               (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
+  | cmd=="programs" = printAllLoadPathPrograms rst >> return (Just rst)
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
@@ -275,9 +292,14 @@ processThisOption rst option args
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="ids" = return (Just { ndMode := IDS | rst })
-  | option=="par" = do
-      putStrLn "You might also be interested to set the run-time option -N<x>!"
-      return (Just { ndMode := Par | rst })
+  | option=="par"
+   = if null args
+     then return (Just { ndMode := Par 0 | rst })
+     else maybe (putStrLn "Illegal number" >> return Nothing)
+                (\ (n,s) -> if null (strip s)
+                            then return (Just { ndMode := Par n | rst })
+                            else putStrLn "Illegal number" >> return Nothing)
+                (readNat args)
   | option=="idsupply"     = return (Just { idSupply := args | rst })
   | option=="+interactive" = return (Just { interactive := True  | rst })
   | option=="-interactive" = return (Just { interactive := False | rst })
@@ -296,7 +318,7 @@ printOptions rst = putStrLn $
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
   "ids            - set search mode to iterative deepening search\n"++
-  "par            - set search mode to parallel search\n"++
+  "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "idsupply <I>   - set idsupply implementation (integer or ioref)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
   "+/-first       - turn on/off printing only first solution\n"++
@@ -310,7 +332,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
                              DFS -> "depth-first search"
                              BFS -> "breadth-first search"
                              IDS -> "iterative deepening"
-                             Par -> "parallel search"
+                             Par s -> "parallel search with "++show s++" threads"
                             ) ++ "\n" ++
   "idsupply         : " ++ rst->idSupply ++ "\n" ++
   "run-time options : " ++ rst->rtsOpts ++ "\n" ++
@@ -326,6 +348,7 @@ printHelpOnCommands = putStrLn $
   ":load <prog>  - load program \"<prog>.[l]curry\" as main module\n"++
   ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++
   ":reload       - recompile currently loaded modules\n"++
+  ":programs     - show names of all Curry programs available in load path\n"++
   ":show         - show currently loaded source program\n"++
   ":show <mod>   - show source of module <m>\n"++
   ":set <option> - set an option\n"++
@@ -335,6 +358,20 @@ printHelpOnCommands = putStrLn $
   ":help         - show this message\n"++
   ":!<command>   - execute <command> in shell\n"++
   ":quit         - leave the system\n"
+
+-- Print all Curry programs in current load path:
+printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
+ where
+  printDirPrograms dir = do
+    putStrLn $ "Curry programs in directory "++dir++":"
+    files <- getDirectoryContents dir
+    putStrLn $ concat $ mergeSort (<=) $
+      map (\f -> if take 6 (reverse f) == "yrruc." ||
+                    take 7 (reverse f) == "yrrucl."
+                 then let fb = stripSuffix f
+                       in (if null fb then "" else f++" ")
+                 else "") files
+    putStrLn ""
 
 -----------------------------------------------------------------------
 -- Auxiliaries:
