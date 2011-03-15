@@ -59,7 +59,7 @@ build opts fn = do
   case mbFn of
     Nothing -> putStrLn $ "Could not find file " ++ fn
     Just f -> do
-      (mods, errs) <- deps (opts -> optImportPaths) f
+      (mods, errs) <- deps (opts -> optQuiet) (opts -> optImportPaths) f
       if null errs
         then foldIO (makeModule mods)
             initState (zip mods [1 .. ]) >> done
