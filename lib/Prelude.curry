@@ -99,14 +99,12 @@ f $ x   = f x
 --- to a non-variable term.
 ($#)    :: (a -> b) -> a -> b
 f $# x  = f $! (ensureNotFree x)
--- TODO: do we need ensureNotFree?
 
 --- Right-associative application with strict evaluation of its argument
 --- to ground normal form.
+-- TODO: improve performance
 ($##)   :: (a -> b) -> a -> b
-f $## x = f $!! (ensureNotFree x)
--- TODO: do we need ensureNotFree?
--- f $## x | x=:=y = y==y `seq` f y  where y free
+f $## x | x=:=y = y==y `seq` f y  where y free
 
 --- Aborts the execution with an error message.
 error :: String -> _
@@ -245,7 +243,7 @@ length xs = len xs 0
   where
     len [] n = n
     len (x:xs) n
-        = let np1 = n + 1 
+        = let np1 = n + 1
           in len xs $!! np1
 
 --- List index (subscript) operator, head has index 0.

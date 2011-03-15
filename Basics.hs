@@ -49,7 +49,7 @@ class NonDet a where
   match = error "match: not implemented yet"
 
 narrow :: NonDet a => ID -> a -> a -> a
-narrow id = choiceCons (narrowID id)
+narrow id = choiceCons $! narrowID id
 
 -- Class for data that support generators
 class NonDet a => Generable a where
@@ -87,16 +87,49 @@ nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 
 
 nfChoiceIO :: (NormalForm a,NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
-nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose
- where
+nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
    choose ChooseLeft  = cont $!< x1
    choose ChooseRight = cont $!< x2
    choose NoChoice    = cont (choiceCons i x1 x2)
-
 nfChoiceIO cont i x1 x2 = do
   x1' <- return $!< x1
   x2' <- return $!< x2
   cont (choiceCons i x1' x2')
+
+
+-- Apply a function to the head normal form
+d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
+d_dollar_bang f x = hnf (try x)
+  where
+   hnf (Val v)        = f v -- d_apply f v
+   hnf Fail           = failCons
+   hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
+   hnf (Free i a b)   = f (choiceCons i a b)
+   hnf (Guard c e)    = guardCons c (hnf (try e))
+
+
+-- Apply a function to the head normal form
+nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
+nd_dollar_bang f x s = hnf (try x)
+  where
+   hnf (Val v)        = nd_apply f v s
+   hnf Fail           = failCons
+   -- TODO Do we have to use leftSupply and rightSupply?
+   hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
+   hnf (Free i a b)   = nd_apply f (choiceCons i a b) s
+   hnf (Guard c e)    = guardCons c (hnf (try e))
+
+
+-- TODO: test implementation for $! replace if more efficient
+d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b
+d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
+  where
+    choiceF i a b = choiceCons i (f `d_dollar_bang_test` a)
+                                 (f `d_dollar_bang_test` b)
+    freeF i a b   = f (choiceCons i a b)
+    guardF c e    = guardCons c (f  `d_dollar_bang_test` e)
+
+
 -- ---------------------------------------------------------------------------
 -- Unification
 -- ---------------------------------------------------------------------------
@@ -184,12 +217,6 @@ data Func a b = Func (a -> IDSupply -> b)
               | Func_Fail
               | Func_Guard [Constraint] (Func a b)
 
-instance Eq (Func a b) where
-  f == g = False
-
-instance Ord (Func a b) where
-  f <= g = False
-
 instance Show (Func a b) where
   show = error "show for Func is undefined"
 
@@ -215,12 +242,6 @@ instance Unifiable (Func a b) where
   bind = error "bind for Func is undefined"
 
 -- Higher Order functions
-
-instance Eq (a -> b) where
-  f == g = False
-
-instance Ord (a -> b) where
-  f <= g = False
 
 instance Show (a -> b) where
   show = error "show for function is undefined"
@@ -253,12 +274,6 @@ data C_IO a
      | Guard_C_IO [Constraint] (C_IO a)
      | C_IO (IO a)
 
-instance Eq (C_IO a) where
-  (==) = error "(==) for C_IO"
-
-instance Ord (C_IO a) where
-  (<=) = error "(<=) for C_IO"
-
 instance Show (C_IO a) where
   show = error "show for C_IO"
 
@@ -272,7 +287,7 @@ instance NonDet (C_IO a) where
   try x = Val x
 
 instance Generable (C_IO a) where
-  generate _ = error "C_IO: generate"
+  generate _ = error "generate for C_IO"
 
 instance NormalForm (C_IO a) where
   cont $!! io@(C_IO _) = cont io
@@ -281,7 +296,7 @@ instance NormalForm (C_IO a) where
   _    $!! Fail_C_IO = failCons
 
 instance Unifiable (C_IO a) where
-  (=.=) _ _ = Fail_C_Success
+  (=.=) _ _ = error "(=.=) for C_IO"
   bind i (Choice_C_IO j@(FreeID _) _ _) = [i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
@@ -332,35 +347,7 @@ evalIO goal = initSupply >>= \s -> toIO (goal s) >>= print
 evalDIO :: Show a => C_IO a -> IO ()
 evalDIO goal = toIO goal >>= print
 
--- TODO: test implementation for $! replace if more efficient
-d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b
-d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
-  where
-    choiceF id a b =  choiceCons id (f `d_dollar_bang_test` a)
-                                    (f `d_dollar_bang_test` b)
-    freeF id a b   =  error "d_dollar_bang with free variable"
-    guardF c e     =  guardCons c (f  `d_dollar_bang_test` e)
 
-d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
-d_dollar_bang f x = hnf (try x)
-  where
-   hnf (Val v) = f v
-   hnf Fail    = failCons
-   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
-   -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "d_dollar_bang with free variable"
-   hnf (Guard c e) = guardCons c (hnf (try e))
-
-nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
-nd_dollar_bang f x s = hnf (try x)
-  where
-   hnf (Val v) = nd_apply f v s
-   hnf Fail    = failCons
-   -- TODO Do we have to use leftSupply and rightSupply?
-   hnf (Choice id a b) = choiceCons id (hnf (try a)) (hnf (try b))
-   -- TODO give reasonable implementation (see $$!!)
-   hnf (Free id a b) = error "nd_dollar_bang with free variable"
-   hnf (Guard c e) = guardCons c (hnf (try e))
 
 d_apply :: (a -> b) -> a -> b
 d_apply f a = f a
@@ -402,34 +389,45 @@ unwrap (Func f) s x = f x s
 -- Evaluate a nondeterministic expression and show all results
 -- in depth-first order
 prdfs :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-prdfs mainexp = initSupply >>= \s -> printValsDFS (try (id $!! (mainexp s)))
+prdfs mainexp = initSupply >>= \s -> printValsDFS False (try (id $!! (mainexp s)))
 
-printValsDFS :: (Show a,NonDet a, NormalForm a) => Try a -> IO ()
-printValsDFS x@Fail         = return () --print "Failure: " >> print x
-printValsDFS (Val v)        = print v
-printValsDFS (Free i x y)   = lookupChoice i >>= choose
+printValsDFS :: (Show a,NonDet a, NormalForm a) => Bool -> Try a -> IO ()
+printValsDFS _  Fail           = return ()
+printValsDFS _  (Val v)        = print v
+printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = (printValsDFS . try)  x -- $!< x
-   choose ChooseRight = (printValsDFS . try)  y -- $!< y
+   choose ChooseLeft  = (printValsDFS fb . try) x
+--                                               $!< x
+   choose ChooseRight = (printValsDFS fb . try) y
+--                                               $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 
-printValsDFS (Choice i x y) = lookupChoice i >>= choose
+printValsDFS fb (Choice i x y) = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = printValsDFS (try x)
-   choose ChooseRight = printValsDFS (try y)
-   choose NoChoice    = do newChoice ChooseLeft  x
-                           newChoice ChooseRight y
+   choose ChooseLeft  = printValsDFS fb (try x)
+   choose ChooseRight = printValsDFS fb (try y)
+   choose NoChoice    = if fb
+                          then do
+                            newChoice ChooseLeft x
+                            newChoice ChooseRight y
+                          else do
+                            newChoice ChooseLeft x
+                            setChoice i ChooseRight
+                            printValsDFS False (try y)
 
-   newChoice j a = do setChoice i j
-                      printValsDFS (try a)
-                      setChoice i NoChoice
+   newChoice j a = do
+    setChoice i j
+    printValsDFS True (try a)
+    setChoice i NoChoice
 
-printValsDFS (Guard cs e) = do
+printValsDFS fb (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> return ()
-    Just reset -> ((printValsDFS.try) e) >> reset -- $!< e) >> reset
+    Just reset -> if fb then (printValsDFS fb . try) e >> reset
+--                                                      $!< e >> reset
+                        else (printValsDFS fb . try) e
 
 solves :: [Constraint] -> Solved
 solves [] = solved
@@ -607,13 +605,13 @@ computeWithDFS mainexp =
 --searchDFS :: (NormalFormIO a,NonDet a) => Try a -> IO (IOList a)
 searchDFS :: NonDet a => Try a -> IO (IOList a)
 searchDFS Fail             = mnil
-{-
+
 searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = (searchDFS . try) $!< x1
-    choose ChooseRight = (searchDFS . try) $!< x2
+    choose ChooseLeft  = (searchDFS . try) x1 -- $!< x1
+    choose ChooseRight = (searchDFS . try) x2 -- $!< x2
     choose NoChoice    = mcons (choiceCons i x1 x2) mnil
--}
+
 searchDFS (Val v)          = mcons v mnil
 searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
   where
@@ -623,13 +621,13 @@ searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
 
     newChoice c x = do setChoice i c
                        searchDFS (try x) |< setChoice i NoChoice
-{-
+
 searchDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> mnil
-    Just reset -> ((searchDFS . try) $!< e) |< reset
--}
+    Just reset -> ((searchDFS . try) e) |< reset -- $!< e) |< reset
+
 
 ----------------------------------------------------------------------
 -- Breadth-first search into a monadic list

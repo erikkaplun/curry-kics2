@@ -17,8 +17,7 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 -- ---------------------------------------------------------------------------
 
 -- Class for curry types
-class ( Show a -- TODO remove Eq and Ord later
-      , NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+class (Show a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
   (=?=) :: a -> a -> C_Bool
   (=?=) = error "(=?=) is undefined"
 
@@ -78,10 +77,10 @@ instance NonDet C_Int where
   match _ fail _ _ _ Fail_C_Int  = fail
   match _ _ choiceF _ _ (Choice_C_Int i@(ID _) x y) = choiceF i x y
   match _ _ _ freeF _ (Choice_C_Int i@(FreeID _) x y) = freeF i x y
-  match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x     
+  match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x
 
 instance Generable C_Int where
-  generate _ = error "No constructors for C_Int"
+  generate _ = error "No generator for C_Int"
 
 instance NormalForm C_Int where
   cont $!! i@(C_Int _) = cont i
@@ -102,7 +101,7 @@ instance Curry C_Int where
   _                  =?= Fail_C_Int         = Fail_C_Bool
   C_Int x            =?= C_Int y            = fromBool (x ==# y)
 --  x =?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a==#b)) `d_dollar_bang_test` y)
---             `d_dollar_bang_test` x 
+--             `d_dollar_bang_test` x
 
   Choice_C_Int i x y <?= z                  = Choice_C_Bool i (x <?= z) (y <?= z)
   Guard_C_Int c x    <?= y                  = Guard_C_Bool c (x <?= y)
@@ -112,7 +111,7 @@ instance Curry C_Int where
   _                  <?= Fail_C_Int         = Fail_C_Bool
   C_Int x            <?= C_Int y            = fromBool (x <=# y)
 --  x <?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a <=# b)) `d_dollar_bang_test` y)
---             `d_dollar_bang_test` x 
+--             `d_dollar_bang_test` x
 
 -- ---------------------------------------------------------------------------
 -- Float
@@ -139,13 +138,13 @@ instance NonDet C_Float where
   try x = Val x
 
 instance Generable C_Float where
-  generate i = error "No constructors for C_Float"
+  generate i = error "No generator for C_Float"
 
 instance NormalForm C_Float where
   cont $!! f@(C_Float _)        = cont f
   cont $!! Choice_C_Float i x y = nfChoice cont i x y
   cont $!! Guard_C_Float c x    = guardCons c (cont $!! x)
-  _    $!! Fail_C_Float         = failCons      
+  _    $!! Fail_C_Float         = failCons
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
@@ -193,7 +192,7 @@ instance NonDet C_Char where
   try x = Val x
 
 instance Generable C_Char where
-  generate i = error "No constructors for C_Char"
+  generate i = error "No generator for C_Char"
 
 instance NormalForm C_Char where
   cont $!! c@(C_Char _)          = cont c
@@ -258,11 +257,17 @@ fromOrdering GT = C_GT
 -- External DFO
 -- -------------
 
-external_d_C_seq :: (Curry t0, Curry t1) => t0 -> t1 -> t1
-external_d_C_seq x1 x2 = (d_C_const x2) `d_dollar_bang` x1
-
 external_d_C_ensureNotFree :: Curry a => a -> a
-external_d_C_ensureNotFree x = id `d_dollar_bang` x
+external_d_C_ensureNotFree x =
+  case try x of
+    Choice i a b -> choiceCons i (external_d_C_ensureNotFree a)
+                                 (external_d_C_ensureNotFree b)
+    Free i a b   -> narrow i (external_d_C_ensureNotFree a)
+                             (external_d_C_ensureNotFree b)
+    -- TODO : reason about the case when there is a constraint
+    --        for the free variable e
+    Guard c e    -> guardCons c (external_d_C_ensureNotFree e)
+    _            -> x
 
 external_d_C_prim_error :: C_String -> a
 external_d_C_prim_error s = error (toString s)
@@ -284,45 +289,27 @@ external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
 
 external_d_OP_plus :: C_Int -> C_Int -> C_Int
 external_d_OP_plus (C_Int x) (C_Int y) = C_Int (x +# y)
-external_d_OP_plus x y = (\a -> (\b -> (a `external_d_OP_plus` b)) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_OP_plus x y = (\a -> (\b -> (a `external_d_OP_plus` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_OP_minus :: C_Int -> C_Int -> C_Int
 external_d_OP_minus (C_Int x) (C_Int y) = C_Int (x -# y)
-external_d_OP_minus x y = (\a -> (\b -> (a `external_d_OP_minus` b)) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_OP_minus x y = (\a -> (\b -> (a `external_d_OP_minus` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_OP_star :: C_Int -> C_Int -> C_Int
 external_d_OP_star (C_Int x) (C_Int y) = C_Int (x *# y)
-external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_div :: C_Int -> C_Int -> C_Int
 external_d_C_div (C_Int x) (C_Int y) = C_Int (quotInt# x y)
-external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_mod :: C_Int -> C_Int -> C_Int
 external_d_C_mod (C_Int x) (C_Int y) = C_Int (remInt# x y)
-external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_dollar_bang` y) `d_dollar_bang` x
+external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_negateFloat :: C_Float -> C_Float
 external_d_C_negateFloat (C_Float x) = C_Float (negateFloat# x)
-external_d_C_negateFloat x = external_d_C_negateFloat `d_dollar_bang` x
-
--- external_d_C_prim_Int_plus :: C_Int -> C_Int -> C_Int
--- external_d_C_prim_Int_plus (C_Int x) (C_Int y) = C_Int (y +# x)
---
--- external_d_C_prim_Int_minus :: C_Int -> C_Int -> C_Int
--- external_d_C_prim_Int_minus (C_Int x) (C_Int y) = C_Int (y -# x)
---
--- external_d_C_prim_Int_times :: C_Int -> C_Int -> C_Int
--- external_d_C_prim_Int_times (C_Int x) (C_Int y) = C_Int (y *# x)
-
--- external_d_C_prim_Int_div :: C_Int -> C_Int -> C_Int
--- external_d_C_prim_Int_div (C_Int x) (C_Int y) = C_Int (quotInt# y x)
-
--- external_d_C_prim_Int_mod :: C_Int -> C_Int -> C_Int
--- external_d_C_prim_Int_mod (C_Int x) (C_Int y) = C_Int (remInt# y x)
-
--- external_d_C_prim_negateFloat :: C_Float -> C_Float
--- external_d_C_prim_negateFloat (C_Float x) = C_Float (negateFloat# x)
+external_d_C_negateFloat x = external_d_C_negateFloat `d_OP_dollar_hash` x
 
 external_d_OP_eq_colon_eq :: Unifiable a => a -> a -> C_Success
 external_d_OP_eq_colon_eq = (=:=)
