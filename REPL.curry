@@ -1,6 +1,6 @@
 --- Read-Eval-Print loop for IDC
 
-import System(getEnviron,system)
+import System(getEnviron,system,getArgs)
 import Char(isSpace,toLower)
 import IO
 import IOExts
@@ -14,7 +14,7 @@ import FlatCurry(flatCurryFileName)
 
 banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 13/03/11)"
+   bannerText = "ID-based Curry->Haskell Compiler (Version of 14/03/11)"
    bannerLine = take (length bannerText) (repeat '=')
 
 mainGoalFile = "Curry_Main_Goal.curry"
@@ -26,11 +26,13 @@ type ReplState =
   , quiet       :: Bool       -- be quiet?
   , importPaths :: [String]   -- additional directories to search for imports
   , mainMod     :: String     -- name of main module
+  , addMods     :: [String]   -- names of additionally added modules
   , optim       :: Bool       -- compile with optimization
-  , ndMode      :: NonDetMode -- mode for nd main goal
+  , ndMode      :: NonDetMode -- mode for non-deterministic main goal
   , firstSol    :: Bool       -- print only first solution to nd main goal?
   , interactive :: Bool       -- interactive execution of goal?
   , rtsOpts     :: String     -- run-time options for ghc
+  , quit        :: Bool       -- terminate the REPL?
   }
 
 -- Mode for non-deterministic evaluation of main goal
@@ -42,11 +44,13 @@ initReplState = { idcHome     = ""
                 , quiet       = False
                 , importPaths = []
                 , mainMod     = "Prelude"
+                , addMods     = []
                 , optim       = True
                 , ndMode      = DFS
                 , firstSol    = False
                 , interactive = False
                 , rtsOpts     = ""
+                , quit        = False
                 }
 
 -- Show an info message if not quiet
@@ -59,22 +63,38 @@ main = do
    then putStrLn "Environment variable IDCHOME undefined!"
    else do let rst = { idcHome := idchome
                      , importPaths := [idchome++"/lib"] | initReplState }
-           writeInfo rst banner
-           writeInfo rst "Type \":h\" for help"
-           repl rst
+           args <- getArgs
+           processArgsAndStart rst args
+
+processArgsAndStart rst [] = do writeInfo rst banner
+                                writeInfo rst "Type \":h\" for help"
+                                repl rst
+processArgsAndStart rst (arg:args) =
+  if head arg /= ':'
+  then putStrLn ("Unknown command: " ++ unwords (arg:args)) >> printHelp
+  else do let (cmdargs,more) = break (\a -> head a == ':') args
+          mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
+          maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
+ where
+  printHelp = putStrLn "Usage: idci <list of commands>\n" >> printHelpOnCommands
 
 -- The main read-eval-print loop:
+repl :: ReplState -> IO ()
 repl rst = do
-  putStr ((rst -> mainMod) ++ "> ")
+  putStr (unwords (rst->addMods ++ [rst-> mainMod]) ++ "> ")
   hFlush stdout
   eof <- isEOF
   if eof then done
    else do input <- getLine
            processInput rst (strip input)
 
+processInput :: ReplState -> String -> IO ()
 processInput rst g
   | null g = repl rst
-  | head g == ':' = processCommand rst (strip (tail g))
+  | head g == ':' = do mbrst <- processCommand rst (strip (tail g))
+                       maybe (repl rst)
+                             (\rst' -> if (rst'->quit) then done else repl rst')
+                             mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
                    unless (status>0) (execMain rst >> done)
                    repl rst
@@ -87,16 +107,19 @@ compileProgramWithGoal rst goal = do
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeFile mainGoalFile
-            ("import "++(rst -> mainMod)++"\nidcMainGoal = "++goal++"\n")
-  status <- compileCurryProgram rst mainGoalFile
+            (unlines $ ["import "++(rst -> mainMod)] ++
+                       map ("import "++) (rst->addMods) ++
+                       ["idcMainGoal = "++goal])
+  status <- compileCurryProgram rst True mainGoalFile
   exinfo <- doesFileExist (funcInfoFile mainGoalFile)
   if status==0 && exinfo then createAndCompileMain rst else return 1
 
 -- Compile a Curry program with IDC compiler:
-compileCurryProgram :: ReplState -> String -> IO Int
-compileCurryProgram rst curryprog = do
+compileCurryProgram :: ReplState -> Bool -> String -> IO Int
+compileCurryProgram rst quiet curryprog = do
   let compileProg = (rst->idcHome)++"/idc"
-      idcoptions  = "-q " ++ --(if rst->quiet then "-q " else "") ++
+      idcoptions  = --"-q " ++
+                    (if quiet then "-q " else "") ++
                     (concatMap (\i -> "-i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
   writeInfo rst $ "Executing: "++compileCmd
@@ -160,7 +183,7 @@ execMain rst = do
                  else "+RTS "++rst->rtsOpts++" -RTS")
       cmd = timecmd ++ maincmd
   writeInfo rst $ "Executing: " ++ maincmd
-  system (if rst->interactive then "xterm -e "++cmd else cmd)
+  system (if rst->interactive then execInteractive cmd else cmd)
  where
   isUbuntu = do
     bsid <- connectToCommand "lsb_release -i" >>= hGetContents
@@ -169,69 +192,104 @@ execMain rst = do
     findUbuntu (_++"Ubuntu"++_) = ()
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","show","set","save"]
+allCommands = ["quit","help","?","load","reload","add","show","set","save"]
 
 -- Process a command of the REPL
+processCommand :: ReplState -> String -> IO (Maybe ReplState)
 processCommand rst cmds 
-  | null cmds = putStrLn "Error: unknown command" >> repl rst
-  | head cmds == '!' = system (tail cmds) >> repl rst
+  | null cmds = putStrLn "Error: unknown command" >> return Nothing
+  | head cmds == '!' = system (tail cmds) >> return (Just rst)
   | otherwise = let (cmd,args) = break (==' ') cmds
                     allcmds = filter (isPrefixOf (map toLower cmd)) allCommands
                  in
       if null allcmds
-      then putStrLn ("Error: unknown command: ':"++cmds++"'") >> repl rst
+      then putStrLn ("Error: unknown command: ':"++cmds++"'") >> return Nothing
       else if length allcmds > 1
-           then putStrLn ("Error: ambiguous command: ':"++cmds++"'") >> repl rst
+           then putStrLn ("Error: ambiguous command: ':"++cmds++"'") >>
+                return Nothing
            else processThisCommand rst (head allcmds) (strip args)
 
+processThisCommand :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisCommand rst cmd args
-  | cmd=="quit" = done
-  | cmd=="help" || cmd=="?" = printHelp >> repl rst
+  | cmd=="quit" = return (Just { quit := True | rst })
+  | cmd=="help" || cmd=="?"
+   = do printHelpOnCommands
+        putStrLn "...or type any <expression> to evaluate\n"
+        return (Just rst)
   | cmd == "load"
    = do let modname = stripSuffix args
-        compileCurryProgram rst modname
-        repl { mainMod := modname | rst }
-  | cmd=="show"
-   = do mbf <- lookupFileInPath (rst->mainMod) [".curry", ".lcurry"]
+        compileCurryProgram rst (rst->quiet) modname
+        return (Just { mainMod := modname, addMods := [] | rst })
+  | cmd == "reload"
+   = if rst->mainMod == "Prelude"
+     then putStrLn "No program loaded!" >> return Nothing
+     else do compileCurryProgram rst (rst->quiet) (rst->mainMod)
+             return (Just rst)
+  | cmd=="add"
+   = do let modname = stripSuffix args
+        mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
-        maybe (putStrLn "Source file not found!")
-              (\fn -> system ("cat "++fn) >> done)
+        maybe (putStrLn "Source file of module not found!" >> return Nothing)
+              (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
-        repl rst
-  | cmd=="set" = processSetOption rst args >>= repl
+  | cmd=="show"
+   = do let modname = if null args then rst->mainMod else stripSuffix args
+        mbf <- lookupFileInPath modname [".curry", ".lcurry"]
+                                ("." : rst->importPaths)
+        maybe (putStrLn "Source file not found!" >> return Nothing)
+              (\fn -> system ("cat "++fn) >> return (Just rst))
+              mbf
+  | cmd=="set" = processSetOption rst args
   | cmd=="save"
    = if rst->mainMod == "Prelude"
-     then putStrLn "No program loaded!" >> repl rst
+     then putStrLn "No program loaded!" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
        unless (status>0) $ do
           renameFile "Main" (rst->mainMod)
           putStrLn ("Executable saved in '"++rst->mainMod++"'")
-       repl rst
-  | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >> repl rst
+       return (Just rst)
+  | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >>
+                return Nothing
 
 -- Process setting of an option
+processSetOption :: ReplState -> String -> IO (Maybe ReplState)
 processSetOption rst option
-  | null (strip option) = printOptions rst >> return rst
-  | option=="bfs" = return { ndMode := BFS | rst }
-  | option=="dfs" = return { ndMode := DFS | rst }
-  | option=="ids" = return { ndMode := IDS | rst }
+  | null (strip option) = printOptions rst >> return (Just rst)
+  | otherwise = let (opt,args) = break (==' ') option
+                    allopts = filter (isPrefixOf (map toLower opt)) allOptions
+                 in
+     if null allopts
+     then putStrLn ("Error: unknown option: ':"++option++"'") >> return Nothing
+     else if length allopts > 1
+          then putStrLn ("Error: ambiguous option: ':"++option++"'") >>
+               return Nothing
+          else processThisOption rst (head allopts) (strip args)
+
+allOptions = ["bfs","dfs","ids","par","idsupply","rts"] ++
+             concatMap (\f->['+':f,'-':f])
+                       ["interactive","first","optimize","quiet"]
+
+processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
+processThisOption rst option args
+  | option=="bfs" = return (Just { ndMode := BFS | rst })
+  | option=="dfs" = return (Just { ndMode := DFS | rst })
+  | option=="ids" = return (Just { ndMode := IDS | rst })
   | option=="par" = do
       putStrLn "You might also be interested to set the run-time option -N<x>!"
-      return { ndMode := Par | rst }
-  | take 8 option == "idsupply"
-   = return { idSupply := strip (drop 8 option) | rst }
-  | option=="+interactive" = return { interactive := True  | rst }
-  | option=="-interactive" = return { interactive := False | rst }
-  | option=="+first" = return { firstSol := True  | rst }
-  | option=="-first" = return { firstSol := False | rst }
-  | option=="+optimize" = return { optim := True  | rst }
-  | option=="-optimize" = return { optim := False | rst }
-  | option=="+quiet" = return { quiet := True  | rst }
-  | option=="-quiet" = return { quiet := False | rst }
-  | take 3 option == "rts"
-   = return { rtsOpts := strip (drop 3 option) | rst }
-  | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >> return rst
+      return (Just { ndMode := Par | rst })
+  | option=="idsupply"     = return (Just { idSupply := args | rst })
+  | option=="+interactive" = return (Just { interactive := True  | rst })
+  | option=="-interactive" = return (Just { interactive := False | rst })
+  | option=="+first" = return (Just { firstSol := True  | rst })
+  | option=="-first" = return (Just { firstSol := False | rst })
+  | option=="+optimize" = return (Just { optim := True  | rst })
+  | option=="-optimize" = return (Just { optim := False | rst })
+  | option=="+quiet" = return (Just { quiet := True  | rst })
+  | option=="-quiet" = return (Just { quiet := False | rst })
+  | option=="rts"    = return (Just { rtsOpts := args | rst })
+  | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >>
+                return Nothing
 
 printOptions rst = putStrLn $
   "Options for ':set' command:\n"++
@@ -247,7 +305,7 @@ printOptions rst = putStrLn $
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
 
-showCurrentOptions rst = "Current settings:\n"++
+showCurrentOptions rst = "\nCurrent settings:\n"++
   "search mode      : " ++ (case (rst->ndMode) of
                              DFS -> "depth-first search"
                              BFS -> "breadth-first search"
@@ -263,11 +321,13 @@ showCurrentOptions rst = "Current settings:\n"++
  where
    showOnOff b = if b then "+" else "-"
   
-printHelp = putStrLn $ banner ++
+printHelpOnCommands = putStrLn $ 
   "Commands (can be abbreviated to a prefix if unique)\n"++
-  ":load <prog>  - load program \"<prog>.[l]curry\" as main program\n"++
-  "<expression>  - evaluate <expression> to normal form and show results\n"++
+  ":load <prog>  - load program \"<prog>.[l]curry\" as main module\n"++
+  ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++
+  ":reload       - recompile currently loaded modules\n"++
   ":show         - show currently loaded source program\n"++
+  ":show <mod>   - show source of module <m>\n"++
   ":set <option> - set an option\n"++
   ":set          - see help on options and current options\n"++
   ":save         - save executable with main expression 'main'\n"++
@@ -283,5 +343,9 @@ unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
 strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+
+-- Interactive execution of a main search command: current, a new
+-- terminal is opened due to problematic interaction with readline
+execInteractive cmd = "xterm -e " ++ cmd
 
 -----------------------------------------------------------------------

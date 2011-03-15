@@ -28,35 +28,36 @@ type FilePath = String
 type Source = (FilePath, Prog) -- file name, code
 type SourceEnv = FM ModuleIdent (Maybe Source)
 
-deps :: [String] -> String -> IO ([(ModuleIdent, Source)], [String])
-deps importPaths fn = do
-  mEnv <- sourceDeps ("." : importPaths) ident fn (emptyFM (<))
+deps :: Bool -> [String] -> String -> IO ([(ModuleIdent, Source)], [String])
+deps quiet importPaths fn = do
+  mEnv <- sourceDeps quiet ("." : importPaths) ident fn (emptyFM (<))
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports and sort topologically
   return (mods2, errs1 ++ errs2)
     where ident = stripSuffix $ baseName fn
 
-moduleDeps :: [String] -> SourceEnv -> ModuleIdent -> IO SourceEnv
-moduleDeps importPaths mEnv m = case lookupFM mEnv m of
+moduleDeps :: Bool -> [String] -> SourceEnv -> ModuleIdent -> IO SourceEnv
+moduleDeps quiet importPaths mEnv m = case lookupFM mEnv m of
   Just _  -> return mEnv
   Nothing -> do
     mbFile <- lookupModule importPaths m
     case mbFile of
       Nothing -> return $ addToFM mEnv m Nothing
-      Just fn -> sourceDeps importPaths m fn mEnv
+      Just fn -> sourceDeps quiet importPaths m fn mEnv
 
 lookupModule :: [String] -> String -> IO (Maybe String)
 lookupModule importPaths mod =
   lookupFileInPath mod [".curry", ".lcurry"]
                    (map dropTrailingPathSeparator importPaths)
 
-sourceDeps :: [String] -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
-sourceDeps importPaths m fn mEnv = do
+sourceDeps :: Bool -> [String] -> ModuleIdent -> String -> SourceEnv
+           -> IO SourceEnv
+sourceDeps quiet importPaths m fn mEnv = do
   fcy@(Prog _ imps _ _ _) <-
      readFlatCurryWithParseOptions (stripSuffix fn)
                                    (setFullPath importPaths
-                                                (setQuiet True defaultParams))
-  foldIO (moduleDeps importPaths)
+                                                (setQuiet quiet defaultParams))
+  foldIO (moduleDeps quiet importPaths)
          (addToFM mEnv m (Just (fn, fcy))) imps
 
 filterMissing :: SourceEnv -> ([(ModuleIdent, Source)], [String])
