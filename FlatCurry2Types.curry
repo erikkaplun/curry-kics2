@@ -144,7 +144,9 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     (pre "showsPrec",
      Rule [PVar (0,"d"),
            PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-          [noGuard (if snd qn == "OP_Cons" then showListCons else showBody)] [])
+          [noGuard (if snd qn == "OP_Cons" then showListCons else
+                    if take 8 (snd qn) == "OP_Tuple" then showTupleCons else
+                    showBody)] [])
    where
      carity = length texps
 
@@ -160,6 +162,16 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                          (applyF (pre "showChar") [Lit (Charc ')')])
                          (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
                               [1..carity])]
+
+     -- specific definition to show a tuple constructor
+     showTupleCons =
+       applyF (pre ".")
+              [applyF (pre "showString") [string2ac "("],
+               foldr (\x xs -> applyF (pre ".") [x,xs])
+                     (applyF (pre "showChar") [Lit (Charc ')')])
+                     (intersperse (applyF (pre ":") [Lit (Charc ',')])
+                        (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
+                             [1..carity]))]
 
      -- specific definition to show a list constructor:
      showListCons =

@@ -180,7 +180,7 @@ instance Show C_Char where
   showsPrec d (Choice_C_Char i x y) = showsChoice d i x y
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
-  showsPrec d (C_Char c) = showChar (C# c)
+  showsPrec d (C_Char c) = showString (show (C# c))
 
 instance NonDet C_Char where
   choiceCons = Choice_C_Char
