@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MagicHash #-}
 
 module Basics where
@@ -38,13 +37,14 @@ class NonDet a where
   failCons   :: a
   guardCons  :: [Constraint] -> a -> a
   try        :: a -> Try a
-                                -- matching for
-  match      :: (a -> b)                   -- Head Normal Forms
-                -> b                       -- Failures
-                -> (ID -> a -> a -> b)     -- Choices
-                -> (ID -> a -> a -> b)     -- Free Variables
-                -> ([Constraint] -> a -> b)  -- Constraints
-                -> a -> b
+                                         -- matching for:
+  match      :: (a -> b)                 -- Head Normal Forms
+             -> b                        -- Failures
+             -> (ID -> a -> a -> b)      -- Choices
+             -> (ID -> a -> a -> b)      -- Free Variables
+             -> ([Constraint] -> a -> b) -- Constraints
+             -> a
+             -> b
 
   match = error "match: not implemented yet"
 
@@ -66,7 +66,6 @@ class NonDet a => NormalForm a where
   ($!!) :: NonDet b => (a -> b) -> a -> b
   ($!<) :: (a -> IO b) -> a -> IO b
   ($!<) = error "($!<) not implemented yet" -- TODO generate instances
-
 
 
 -- Auxilary function to extend $!< for non-determinism
@@ -108,7 +107,7 @@ d_dollar_bang f x = hnf (try x)
    hnf (Guard c e)    = guardCons c (hnf (try e))
 
 
--- Apply a function to the head normal form
+-- Apply a non-deterministic function to the head normal form
 nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
 nd_dollar_bang f x s = hnf (try x)
   where
@@ -310,7 +309,7 @@ fromIO io = C_IO io
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
--- showsChoice d i@(FreeID _) _ _ = shows i
+showsChoice d i@(FreeID _) _ _ = shows i
 showsChoice d r x1 x2 =
   showChar '(' .
   showsPrec d x1 .
@@ -347,39 +346,12 @@ evalIO goal = initSupply >>= \s -> toIO (goal s) >>= print
 evalDIO :: Show a => C_IO a -> IO ()
 evalDIO goal = toIO goal >>= print
 
-
-
 d_apply :: (a -> b) -> a -> b
 d_apply f a = f a
 
 -- TODO: Support non-deterministic Funcs
 nd_apply :: NonDet b => Func a b -> a -> IDSupply -> b
 nd_apply fun a s = (\(Func f) -> f a s) `d_dollar_bang` fun
-
-{-
--- wrap a higher-order function with one argument
-wrapD :: (a -> b) -> a :-> b
-wrapD f = wrapDX id f
--- Func (\a _ -> f a)
-
-wrapD2 :: (a -> b -> c) -> a :-> b :-> c
-wrapD2 f = wrapDX (wrapDX id) f
-
-wrapD3 :: (a -> b -> c -> d) -> a :-> b :-> c :-> d
-wrapD3 f = wrapDX (wrapDX (wrapDX id)) f
-
-wrapN :: (a -> IDSupply -> b) -> Func a b
-wrapN f = wrapNX id f
-
-wrapN2 :: (a -> b -> IDSupply -> c) -> a :-> b :-> c
-wrapN2 f = wrapDX (wrapNX id) f
-
-wrapN3 :: (a -> b -> c -> IDSupply -> d) -> a :-> b :-> c :-> d
-wrapN3 f = wrapDX (wrapDX (wrapNX id)) f
-
-unwrap :: Func a b -> IDSupply -> a -> b
-unwrap (Func f) s x = f x s
--}
 
 
 ----------------------------------------------------------------------
@@ -395,7 +367,7 @@ printValsDFS :: (Show a,NonDet a, NormalForm a) => Bool -> Try a -> IO ()
 printValsDFS _  Fail           = return ()
 printValsDFS _  (Val v)        = print v
 printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
- where
+  where
    choose ChooseLeft  = (printValsDFS fb . try) x
 --                                               $!< x
    choose ChooseRight = (printValsDFS fb . try) y
@@ -438,7 +410,7 @@ solves (c:cs) = do
     Just reset -> do
       mreset' <- solves cs
       case mreset' of
-        Nothing -> reset >> return Nothing -- TODO : check difference to Bernd
+        Nothing -> reset >> return Nothing
         Just reset' -> return (Just (reset >> reset'))
 
 type Solved = IO (Maybe (IO ()))
