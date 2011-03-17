@@ -178,7 +178,7 @@ createHaskellMain rst isdet isio =
        "import Basics\n"++
        "import Curry_"++stripSuffix mainGoalFile++"\n"++
        "main = "++mainOperation++" "++mainPrefix++"idcMainGoal\n"
-     
+
 
 -- Execute main program and show run time:
 execMain :: ReplState -> IO Int
@@ -212,7 +212,7 @@ allCommands = ["quit","help","?","load","reload","add",
 
 -- Process a command of the REPL
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
-processCommand rst cmds 
+processCommand rst cmds
   | null cmds = putStrLn "Error: unknown command" >> return Nothing
   | head cmds == '!' = system (tail cmds) >> return (Just rst)
   | otherwise = let (cmd,args) = break (==' ') cmds
@@ -254,7 +254,7 @@ processThisCommand rst cmd args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
         maybe (putStrLn "Source file not found!" >> return Nothing)
-              (\fn -> system ("cat "++fn) >> return (Just rst))
+              (\fn -> system ("cat "++fn) >> putStrLn "" >> return (Just rst))
               mbf
   | cmd=="set" = processSetOption rst args
   | cmd=="save"
@@ -342,8 +342,8 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst->quiet) ++ "quiet "
  where
    showOnOff b = if b then "+" else "-"
-  
-printHelpOnCommands = putStrLn $ 
+
+printHelpOnCommands = putStrLn $
   "Commands (can be abbreviated to a prefix if unique)\n"++
   ":load <prog>  - load program \"<prog>.[l]curry\" as main module\n"++
   ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++

@@ -157,7 +157,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                   [applyF (pre "showString")
                           [string2ac ('(':unGenRename (snd qn))],
                    foldr (\x xs -> applyF (pre ".")
-                                    [applyF (pre ":") [Lit (Charc ' ')],
+                                    [applyF (pre "showChar") [Lit (Charc ' ')],
                                      applyF (pre ".") [x,xs]])
                          (applyF (pre "showChar") [Lit (Charc ')')])
                          (map (\i->applyF (pre "shows") [Var (i,'x':show i)])
@@ -200,7 +200,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
     Rule [PVar (1,"x")] [noGuard (applyF (basics "Val") [cvar "x"])] []]
 
   -- Generate instance of Generable class:
-
+  -- TODO generators for constructor arguments can use the same idsupplies
+  --      for different constructors; change bind accordingly
   generableInstance =
    Instance (basics "Generable") ctype
       (map (\tv -> Context (basics "Generable") [tv]) targs)
