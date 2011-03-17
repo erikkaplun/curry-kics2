@@ -65,7 +65,6 @@ class NonDet a => Generable a where
 class NonDet a => NormalForm a where
   ($!!) :: NonDet b => (a -> b) -> a -> b
   ($!<) :: (a -> IO b) -> a -> IO b
-  ($!<) = error "($!<) not implemented yet" -- TODO generate instances
 
 
 -- Auxilary function to extend $!< for non-determinism
@@ -206,6 +205,9 @@ instance NormalForm C_Success where
   cont $!! Guard_C_Success c x = guardCons c (cont $!! x)
   _    $!! Fail_C_Success      = failCons
 
+  cont $!< Choice_C_Success i x y = nfChoiceIO cont i x y
+  cont $!< x = cont x
+
 instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
   _         =.= _         = Fail_C_Success
@@ -237,10 +239,13 @@ instance Generable (Func a b) where
   generate = error "generate for Func is undefined"
 
 instance NormalForm (Func a b) where
-  cont $!! f@(Func _) = cont f
+  cont $!! f@(Func _)          = cont f
   cont $!! Func_Choice i f1 f2 = nfChoice cont i f1 f2
   cont $!! Func_Guard c f      = guardCons c (cont $!! f)
   _    $!! Func_Fail           = failCons
+
+  cont $!< Func_Choice i f1 f2 = nfChoiceIO cont i f1 f2
+  cont $!< f                   = cont f
 
 instance Unifiable (Func a b) where
   (=.=) = error "(=.=) for Func is undefined"
@@ -265,6 +270,7 @@ instance Generable (a -> b) where
 
 instance NormalForm (a -> b) where
   cont $!! f = cont f
+  cont $!< f = cont f
 
 instance Unifiable (a -> b) where
   (=.=) = error "(=.=) for function is undefined"
@@ -306,6 +312,9 @@ instance NormalForm (C_IO a) where
   cont $!! Guard_C_IO c io = guardCons c (cont $!! io)
   _    $!! Fail_C_IO = failCons
 
+  cont $!< Choice_C_IO i io1 io2 = nfChoiceIO cont i io1 io2
+  cont $!< io                    = cont io
+
 instance Unifiable (C_IO a) where
   (=.=) _ _ = error "(=.=) for C_IO"
   bind i (Choice_C_IO j@(FreeID _) _ _) = [i :=: (BindTo j)]
@@ -334,7 +343,7 @@ showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 
 -- Reads a possibly qualified name
 readQualified :: String -> String -> ReadS ()
-readQualified mod name r =  [((),s)  | (name',s)  <- lex r, name' == name] 
+readQualified mod name r =  [((),s)  | (name',s)  <- lex r, name' == name]
                          ++ [((),s3) | (mod',s1)  <- lex r
                                      , mod' == mod
                                      , (".",s2)   <- lex s1
@@ -389,10 +398,8 @@ printValsDFS _  Fail           = return ()
 printValsDFS _  (Val v)        = print v
 printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
   where
-   choose ChooseLeft  = (printValsDFS fb . try) x
---                                               $!< x
-   choose ChooseRight = (printValsDFS fb . try) y
---                                               $!< y
+   choose ChooseLeft  = (printValsDFS fb . try) $!< x
+   choose ChooseRight = (printValsDFS fb . try) $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 
@@ -418,9 +425,8 @@ printValsDFS fb (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> return ()
-    Just reset -> if fb then (printValsDFS fb . try) e >> reset
---                                                      $!< e >> reset
-                        else (printValsDFS fb . try) e
+    Just reset -> if fb then (printValsDFS fb . try) $!< e >> reset
+                        else (printValsDFS fb . try) $!< e
 
 solves :: [Constraint] -> Solved
 solves [] = solved
@@ -595,14 +601,13 @@ computeWithDFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
   initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
 
---searchDFS :: (NormalFormIO a,NonDet a) => Try a -> IO (IOList a)
-searchDFS :: NonDet a => Try a -> IO (IOList a)
+searchDFS :: NormalForm a => Try a -> IO (IOList a)
 searchDFS Fail             = mnil
 
 searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = (searchDFS . try) x1 -- $!< x1
-    choose ChooseRight = (searchDFS . try) x2 -- $!< x2
+    choose ChooseLeft  = (searchDFS . try) $!< x1
+    choose ChooseRight = (searchDFS . try) $!< x2
     choose NoChoice    = mcons (choiceCons i x1 x2) mnil
 
 searchDFS (Val v)          = mcons v mnil
@@ -619,7 +624,7 @@ searchDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> mnil
-    Just reset -> ((searchDFS . try) e) |< reset -- $!< e) |< reset
+    Just reset -> ((searchDFS . try) $!< e) |< reset
 
 
 ----------------------------------------------------------------------

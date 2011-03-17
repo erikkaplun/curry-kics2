@@ -93,6 +93,9 @@ instance NormalForm C_Int where
   cont $!! Guard_C_Int c x = guardCons c (cont $!! x)
   _    $!! Fail_C_Int = failCons
 
+  cont $!< Choice_C_Int i x y = nfChoiceIO cont i x y
+  cont $!< i                  = cont i
+
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Int j@(FreeID _) _ _) = [i :=: BindTo j]
@@ -151,10 +154,13 @@ instance Generable C_Float where
   generate i = error "No generator for C_Float"
 
 instance NormalForm C_Float where
-  cont $!! f@(C_Float _)        = cont f
+  cont $!! x@(C_Float _)        = cont x
   cont $!! Choice_C_Float i x y = nfChoice cont i x y
   cont $!! Guard_C_Float c x    = guardCons c (cont $!! x)
   _    $!! Fail_C_Float         = failCons
+
+  cont $!< Choice_C_Float i x y = nfChoiceIO cont i x y
+  cont $!< x                    = cont x
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
@@ -214,6 +220,9 @@ instance NormalForm C_Char where
   cont $!! Choice_C_Char i c1 c2 = nfChoice cont i c1 c2
   cont $!! Guard_C_Char c char   = guardCons c (cont $!! char)
   _    $!! Fail_C_Char           = failCons
+
+  cont $!< Choice_C_Char i c1 c2 = nfChoiceIO cont i c1 c2
+  cont $!< c                     = cont c
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success

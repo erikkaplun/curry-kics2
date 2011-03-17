@@ -119,7 +119,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   failConsName = mkFailName (mn,tc)
   guardConsName = mkGuardName (mn,tc)
 
-  
+
   -- Generate instance of Show class:
   showInstance =
    Instance (basics "Show") ctype
@@ -347,8 +347,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   normalformInstance =
    Instance (basics "NormalForm") ctype
      (map (\tv -> Context (basics "NormalForm") [tv]) targs)
-     (map normalformConsRule cdecls ++
-         [(basics "$!!",
+     (map normalformConsRule cdecls
+      ++ [(basics "$!!",
            Rule [PVar (1,"cont"),
                  PComb (mkChoiceName (mn,tc)) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
                      [noGuard (applyF (pre "nfChoice")
@@ -359,7 +359,15 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                                       [Var (2,"c")
                                       ,applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]])] [])
       ,(basics "$!!", Rule [PVar (1,"_"),PComb (mkFailName (mn,tc)) []]
-                     [noGuard (Symbol (pre "failCons"))] [])])
+                     [noGuard (Symbol (pre "failCons"))] [])]
+      ++ map normalformIOConsRule cdecls
+      ++ [(basics "$!<",
+           Rule [PVar (1,"cont"),
+                 PComb (mkChoiceName (mn,tc)) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
+                     [noGuard (applyF (pre "nfChoiceIO")
+                                      [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")])] [])
+      ,(basics "$!<", Rule [PVar (1,"cont"), PVar (2,"x")]
+                     [noGuard (applyV (1,"cont") [Var (2,"x")])] [])])
 
   -- Generate NormalForm instance rule for a data constructor:
   normalformConsRule (FC.Cons qn _ _ texps) =
@@ -372,6 +380,22 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
      nfBody =
       foldr (\i exp -> applyF (basics "$!!")
+                        [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
+            (applyV (1,"cont")
+                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
+            [1..carity]
+
+  -- Generate NormalForm instance rule for a data constructor:
+  normalformIOConsRule (FC.Cons qn _ _ texps) =
+    (basics "$!<",
+     Rule [PVar (1,"cont"),
+           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
+          [noGuard nfBody] [])
+   where
+     carity = length texps
+
+     nfBody =
+      foldr (\i exp -> applyF (basics "$!<")
                         [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
             (applyV (1,"cont")
                     [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
@@ -505,7 +529,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
      eqBody =
       if carity==0 then constF (pre "C_True")
       else foldr1 (\x xs -> applyF (pre "d_OP_ampersand_ampersand") [x,xs])
-                  (map (\i -> applyF (pre "d_OP_eq_eq")
+                  (map (\i -> applyF (pre "=?=")
                                      [Var (i,'x':show i),Var (i,'y':show i)])
                        [1..carity])
 
@@ -526,10 +550,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       let xi = Var (i,'x':show i)
           yi = Var (i,'y':show i)
        in if null is
-          then applyF (pre "d_OP_lt_eq") [xi,yi]
+          then applyF (pre "<?=") [xi,yi]
           else applyF (pre "d_OP_bar_bar")
                  [applyF (pre "d_OP_lt")  [xi,yi],
-                  applyF (pre "d_OP_ampersand_ampersand") [applyF (pre "d_OP_eq_eq") [xi,yi], ordBody is]]
+                  applyF (pre "d_OP_ampersand_ampersand") [applyF (pre "=?=") [xi,yi], ordBody is]]
 
   ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
     (pre "<?=",

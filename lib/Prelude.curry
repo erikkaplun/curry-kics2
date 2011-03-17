@@ -948,4 +948,4 @@ cond external
 -- failure external
 
 -- the end
-data MyData = Dat Int [Int] (Maybe Bool)
+-- data MyData = Dat Int [Int] (Maybe Bool)
