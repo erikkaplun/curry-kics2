@@ -1,0 +1,74 @@
+#!/bin/sh
+# delete all auxiliary files of all Curry programs in a directory
+
+RECURSIVE=no
+if [ "$1" = "-r" ] ; then
+  RECURSIVE=yes
+  shift
+fi
+
+PROG=
+if [ $# = 1 ] ; then
+  # remove possible suffix:
+  PROG=`expr $1 : '\(.*\)\.lcurry' \| $1`
+  PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
+  shift
+fi
+
+if [ $# != 0 ]
+then
+  echo "Usage: $0 [-r] [<prog>]" >&2
+  echo "-r: apply this command recursively to all subdirectories" >&2
+  echo "<prog>: remove only auxiliary Curry files for program <prog>" >&2
+  exit 1
+fi
+
+if [ -z "$PROG" ] ; then
+  CURRYFILES="*.curry *.lcurry"
+  LCURRYFILES="*.lcurry"
+else
+  CURRYFILES="$PROG.curry $PROG.lcurry"
+  if [ -f $PROG.lcurry ] ; then
+    LCURRYFILES="$PROG.lcurry"
+  else
+    LCURRYFILES=""
+  fi
+fi
+
+for F in $CURRYFILES
+do
+  if [ "$F" != "*.curry" -a "$F" != "*.lcurry" ] ; then
+    F=`expr $F : '\(.*\)\.lcurry' \| $F`
+    F=`expr $F : '\(.*\)\.curry' \| $F`
+    if [ -x $F ] ; then
+      rm -f $F  # remove executable main program
+    fi
+    FDIR=`dirname $F`
+    FBASE=`basename $F`
+    TransF=$FDIR/Curry_$FBASE
+    rm -f $TransF.hs $TransF.hi $TransF.o $TransF.nda $TransF.info
+    CURRYDIRF=$FDIR/.curry/$FBASE
+    if [ -d $CURRYDIR ] ; then
+      rm -f $CURRYDIRF.fcy $CURRYDIRF.fint $CURRYDIRF.acy $CURRYDIRF.uacy
+      FDIRFILES=`ls -A $CURRYDIR`
+      if [ -z "$FDIRFILES" ] ; then # .curry directory is empty
+        rmdir $CURRYDIR
+      fi
+    fi
+    rm -f -r COOSYLOGS
+  fi
+done
+rm -f Curry_Main_Goal.curry # delete file containing main goal for idci
+rm -f Main Main.hs Main.hi Main.o # delete Haskell's main program
+
+if [ $RECURSIVE = yes ]
+then
+  PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
+  for i in *
+  do
+    if test -d "$i"
+    then
+      (cd "$i" ; "$PATHNAME/`basename \"$0\"`" -r)
+    fi
+  done
+fi

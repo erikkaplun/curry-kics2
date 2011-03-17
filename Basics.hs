@@ -186,6 +186,9 @@ instance Show C_Success where
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
   showsPrec d Fail_C_Success = showChar '!'
 
+instance Read C_Success where
+  readsPrec = error "read for Success is undefined"
+
 instance NonDet C_Success where
   choiceCons = Choice_C_Success
   failCons   = Fail_C_Success
@@ -220,6 +223,9 @@ data Func a b = Func (a -> IDSupply -> b)
 instance Show (Func a b) where
   show = error "show for Func is undefined"
 
+instance Read (Func a b) where
+  readsPrec = error "read for Func is undefined"
+
 instance NonDet (Func a b) where
   choiceCons = Func_Choice
   failCons = Func_Fail
@@ -245,6 +251,9 @@ instance Unifiable (Func a b) where
 
 instance Show (a -> b) where
   show = error "show for function is undefined"
+
+instance Read (a -> b) where
+  readsPrec = error "read for function is undefined"
 
 instance NonDet (a -> b) where
   choiceCons = undefined
@@ -277,6 +286,9 @@ data C_IO a
 instance Show (C_IO a) where
   show = error "show for C_IO"
 
+instance Read (C_IO a) where
+  readsPrec = error "read for C_IO"
+
 instance NonDet (C_IO a) where
   choiceCons = Choice_C_IO
   failCons = Fail_C_IO
@@ -306,7 +318,7 @@ fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
 
 -- ---------------------------------------------------------------------------
--- Auxiliaries for Show
+-- Auxiliaries for Show and Read
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
@@ -320,6 +332,15 @@ showsChoice d r x1 x2 =
 
 showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
+
+-- Reads a possibly qualified name
+readQualified :: String -> String -> ReadS ()
+readQualified mod name r =  [((),s)  | (name',s)  <- lex r, name' == name] 
+                         ++ [((),s3) | (mod',s1)  <- lex r
+                                     , mod' == mod
+                                     , (".",s2)   <- lex s1
+                                     , (name',s3) <- lex s2
+                                     , name' == name]
 
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for non-determinism

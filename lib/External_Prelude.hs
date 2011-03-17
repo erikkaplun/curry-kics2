@@ -64,6 +64,11 @@ instance Show C_Int where
   showsPrec d (C_Int i) = shows (I# i)
 --   showsPrec d (C_Integer i) = shows i
 
+instance Read C_Int where
+  readsPrec d s = map readInt (readsPrec d s)
+    where
+     readInt (I# i,s) = (C_Int i, s)
+
 instance NonDet C_Int where
   choiceCons = Choice_C_Int
   failCons = Fail_C_Int
@@ -128,6 +133,11 @@ instance Show C_Float where
   showsPrec d Fail_C_Float = showChar '!'
   showsPrec d (C_Float f) = shows (F# f)
 
+instance Read C_Float where
+  readsPrec d s = map readFloat (readsPrec d s)
+    where
+     readFloat (F# f,s) = (C_Float f, s)
+
 instance NonDet C_Float where
   choiceCons = Choice_C_Float
   failCons = Fail_C_Float
@@ -181,6 +191,11 @@ instance Show C_Char where
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
   showsPrec d (C_Char c) = showString (show (C# c))
+
+instance Read C_Char where
+  readsPrec d s = map readChar (readsPrec d s)
+    where
+     readChar (C# c,s) = (C_Char c, s)
 
 instance NonDet C_Char where
   choiceCons = Choice_C_Char

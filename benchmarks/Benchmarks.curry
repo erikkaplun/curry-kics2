@@ -277,6 +277,7 @@ allBenchmarks =
   , benchFLPDFSWithMain "ShareNonDet" "goal1"
   , benchFLPDFSWithMain "ShareNonDet" "goal2"
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
+  , benchFLPDFSU "Last"
   ]
 
 -- Run all benchmarks and show results

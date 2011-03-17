@@ -242,9 +242,9 @@ null (_:_)      = False
 length xs = len xs 0
   where
     len [] n = n
-    len (x:xs) n
+    len (_:ys) n
         = let np1 = n + 1
-          in len xs $!! np1
+          in len ys $!! np1
 
 --- List index (subscript) operator, head has index 0.
 (!!)            :: [a] -> Int -> a
@@ -948,3 +948,4 @@ cond external
 -- failure external
 
 -- the end
+data MyData = Dat Int [Int] (Maybe Bool)

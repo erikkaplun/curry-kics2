@@ -104,6 +104,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
            , Cons guardConsName  3 acvis [constraintType, ctype]
            ])
          , showInstance
+         , readInstance
          , nondetInstance
          , generableInstance
          , normalformInstance
@@ -118,10 +119,12 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   failConsName = mkFailName (mn,tc)
   guardConsName = mkGuardName (mn,tc)
 
+  
   -- Generate instance of Show class:
   showInstance =
    Instance (basics "Show") ctype
-     (map (\tv -> Context (basics "Show") [tv]) targs)
+    (map (\tv -> Context (basics "Show") [tv]) targs)
+    (if tc=="OP_List" then [showRule4List] else
      ([(pre "showsPrec",
         Rule [PVar (1,"d"),
                PComb choiceConsName
@@ -137,7 +140,29 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
        (pre "showsPrec",
         Rule [PVar (1,"d"), PComb failConsName []]
               [noGuard (applyF (pre "showChar") [Lit (Charc '!')])] [])]
-       ++ map showConsRule cdecls)
+       ++ map showConsRule cdecls))
+
+  -- Generate specific show for lists (only for finite determ. lists!)
+  showRule4List =
+     (pre "showsPrec",
+      Rule [PVar (1,"d"), PVar (2,"cl")]
+           [noGuard (applyF (pre "showsPrec")
+                            [Var (1,"d"),
+                             applyF (mn,"transList") [Var (2,"cl")]])]
+           [LocalFunc
+             (ufunc (mn,"transList") 1 Private
+               [Rule [PComb (mn,"OP_List") []]
+                     [noGuard (constF (pre "[]"))] [],
+                Rule [PComb (mn,"OP_Cons") [PVar (1,"x"),PVar (2,"xs")]]
+                     [noGuard (applyF (pre ":")
+                                      [Var (1,"x"),
+                                       applyF (mn,"transList") [Var (2,"xs")]])]
+                     [],
+                Rule [PVar (1,"_")]
+                     [noGuard
+                       (applyF (pre "error")
+                          [string2ac "ERROR: try to show non-standard list"])]
+                     []]) ])
 
   -- Generate Show instance rule for a data constructor:
   showConsRule (FC.Cons qn _ _ texps) =
@@ -181,6 +206,102 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                  [applyF (pre "showsPrec") [Lit (Intc 6), Var (1,"x1")],
                   applyF (pre "showChar") [Lit (Charc ':')],
                   applyF (pre "showsPrec") [Lit (Intc 5), Var (2,"x2")]]]
+
+  -- Generate instance of Read class:
+  readInstance =
+   Instance (pre "Read") ctype
+     (map (\tv -> Context (pre "Read") [tv]) targs)
+     [if tc == "OP_List" then readListRule else
+      if take 8 tc == "OP_Tuple" then readTupleRule (head cdecls)
+      else readRule cdecls]
+
+  -- Generate Read instance rule for lists:
+  readListRule =
+     (pre "readsPrec",
+      Rule [PVar (1,"d"), PVar (2,"s")]
+           [noGuard (applyF (pre "map")
+                            [constF (mn,"readList"),
+                             applyF (pre "readsPrec")
+                                    [Var (1,"d"),Var (2,"s")]])]
+           [LocalFunc
+             (ufunc (mn,"readList") 1 Private
+               [Rule [tuplePat [PVar (3,"xs"), PVar (4,"s")]]
+                     [noGuard
+                        (tupleExpr [applyF (pre "foldr")
+                                           [constF (mn,"OP_Cons"),
+                                            constF (mn,"OP_List"),
+                                            Var (3,"xs")],
+                                    Var (4,"s")])]
+                     []])
+           ])
+
+   --instance Read t0 => Read (OP_List t0) where
+   --  readsPrec d s = map readList (readsPrec d s)
+   --   where
+   --     readList (xs,s) = (foldr OP_Cons OP_List xs,s)
+
+  -- Generate Read instance rule for tuple constructor:
+  readTupleRule (FC.Cons qn carity _ _) =
+     (pre "readsPrec",
+      Rule [PVar (1,"d"), PVar (2,"s")]
+           [noGuard (applyF (pre "map")
+                            [constF (mn,"readTup"),
+                             applyF (pre "readsPrec")
+                                    [Var (1,"d"),Var (2,"s")]])]
+           [LocalFunc
+             (ufunc (mn,"readTup") 1 Private
+               [Rule [tuplePat [tuplePat (map (\i->PVar (i,'x':show i))
+                                              [1..carity]),
+                                PVar (0,"s")]]
+                     [noGuard
+                        (tupleExpr [applyF qn (map (\i->Var (i,'x':show i))
+                                                   [1..carity]),
+                                    Var (0,"s")])]
+                     []])])
+    --readTup ((x1,x2),s) = (OP_Tuple2 x1 x2,s)
+
+  -- Generate Read instance rule for data constructors:
+  readRule conss =
+    (pre "readsPrec",
+     Rule [PVar (0,"d"), PVar (1,"s")]
+          [noGuard (foldr1 (\e1 e2 -> applyF (pre "++") [e1,e2])
+                           (map readParen conss))]
+          [])
+
+  readParen (FC.Cons qn carity _ _) =
+    applyF (pre "readParen")
+           [if carity==0 then constF (pre "False") -- no parentheses required
+                         else applyF (pre ">") [Var (0,"d"),Lit (Intc 10)],
+            Lambda [PVar (2,"r")]
+              (ListComp
+                (tupleExpr
+                  [applyF qn (map (\i->Var (i,'x':show i)) [1..carity]),
+                   Var (carity,'r':show carity)])
+                (SPat (tuplePat [PVar (0,"_"),PVar (1,"r0")])
+                      (applyF (basics "readQualified")
+                              [string2ac (unRenameModule mn),
+                               string2ac (unGenRename (snd qn)),
+                               Var (2,"r")])
+                 : map genReadsPrec [1..carity])
+              ),
+            Var (1,"s")]
+     where
+      genReadsPrec i =
+        SPat (tuplePat [PVar (i,'x':show i), PVar (i,'r':show i)])
+             (applyF (pre "readsPrec") [Lit (Intc 11), Var (i-1,'r':show(i-1))])
+   --instance (Read t0,Read t1) => Read (C_Either t0 t1) where
+   --  readsPrec d r =
+   --    (++) (readParen(d>10)
+   --                   (\s -> [(C_Left x1,r1)
+   --                        | (_,r0) <- readQualified "Prelude" "Left" s,
+   --                          (x1,r1) <- readsPrec 11 r0])
+   --                   r)
+   --         (readParen(d>10)
+   --                   (\s -> [(C_Right(x1),r1)
+   --                        | (_,r0) <- readQualified "Prelude" "Right" s,
+   --                          (x1,r1) <- readsPrec 11 r0])
+   --                   r)
+   --
 
   -- Generate instance of NonDet class:
   nondetInstance =
