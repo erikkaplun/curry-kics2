@@ -17,7 +17,7 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 -- ---------------------------------------------------------------------------
 
 -- Class for curry types
-class (Show a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
   (=?=) :: a -> a -> C_Bool
   (=?=) = error "(=?=) is undefined"
 
