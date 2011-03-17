@@ -27,6 +27,13 @@ constF f = applyF f []
 applyV :: VarIName -> [Expr] -> Expr
 applyV v es = foldl Apply (Var v) es
 
+--- Constructs a tuple pattern from list of component patterns.
+tuplePat :: [Pattern] -> Pattern
+tuplePat ps | l==0 = PComb (pre "()") []
+            | l==1 = head ps
+            | otherwise = PComb (pre ('(' : take (l-1) (repeat ',') ++ ")")) ps
+ where l = length ps
+
 --- Constructs a tuple expression from list of component expressions.
 tupleExpr :: [Expr] -> Expr
 tupleExpr es | l==0 = constF (pre "()")

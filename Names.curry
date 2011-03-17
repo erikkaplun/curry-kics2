@@ -64,6 +64,10 @@ umkConName n | mkConName oldCon =:= n = oldCon where oldCon free
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
 
+unRenameModule :: String -> String
+unRenameModule n | take 6 n == "Curry_" = drop 6 n
+                 | otherwise            = n
+
 renameQName :: QName -> QName
 renameQName (q, n) = (renameModule q, genRename n)
 
