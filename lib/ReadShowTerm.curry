@@ -20,7 +20,7 @@ import Char(isSpace)
 --- (provided that the constructor names are unique without the module
 --- qualifier).
 showTerm :: _ -> String
-showTerm x = prim_showTerm $## x
+showTerm x = prim_showTerm $!! x -- should be $## !
 
 prim_showTerm :: _ -> String
 prim_showTerm external
@@ -32,7 +32,7 @@ prim_showTerm external
 --- since it prefixes constructors with their module name
 --- in order to read them back with <code>readQTerm</code>.
 showQTerm :: _ -> String
-showQTerm x = prim_showQTerm $## x
+showQTerm x = prim_showQTerm $!! x -- should be $## !
 
 prim_showQTerm :: _ -> String
 prim_showQTerm external
@@ -53,7 +53,7 @@ readsUnqualifiedTerm (prefix:prefixes) s =
 
 readsUnqualifiedTermWithPrefixes :: [String] -> String -> [(_,String)]
 readsUnqualifiedTermWithPrefixes prefixes s =
-  (prim_readsUnqualifiedTerm $## prefixes) $## s
+  (prim_readsUnqualifiedTerm $!! prefixes) $!! s
 
 prim_readsUnqualifiedTerm :: [String] -> String -> [(_,String)]
 prim_readsUnqualifiedTerm external
@@ -79,7 +79,7 @@ readUnqualifiedTerm prefixes s = case result of
 --- For backward compatibility. Should not be used since their use can be problematic
 --- in case of constructors with identical names in different modules.
 readsTerm :: String -> [(_,String)]
-readsTerm s = prim_readsUnqualifiedTerm [] $## s
+readsTerm s = prim_readsUnqualifiedTerm [] $!! s
 
 --- For backward compatibility. Should not be used since their use can be problematic
 --- in case of constructors with identical names in different modules.
@@ -90,7 +90,7 @@ readTerm s = case result of
         else error ("ReadShowTerm.readTerm: no parse, unmatched string after term: "++tail)
   [] ->  error "ReadShowTerm.readTerm: no parse"
   _  ->  error "ReadShowTerm.readTerm: ambiguous parse"
- where result = prim_readsUnqualifiedTerm [] $## s
+ where result = prim_readsUnqualifiedTerm [] $!! s
 
 --- Transforms a string containing a term in standard prefix notation
 --- with qualified constructor names into the corresponding data term.
@@ -98,7 +98,7 @@ readTerm s = case result of
 --- containing a pair of the data term and the remaining unparsed string.
 
 readsQTerm :: String -> [(_,String)]
-readsQTerm s = prim_readsQTerm $## s
+readsQTerm s = prim_readsQTerm $!! s
 
 prim_readsQTerm :: String -> [(_,String)]
 prim_readsQTerm external
