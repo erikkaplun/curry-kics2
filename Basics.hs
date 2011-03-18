@@ -86,8 +86,8 @@ nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 
 nfChoiceIO :: (NormalForm a,NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
 nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
-   choose ChooseLeft  = cont $!< x1
-   choose ChooseRight = cont $!< x2
+   choose (ChooseLeft _)  = cont $!< x1
+   choose (ChooseRight _) = cont $!< x2
    choose NoChoice    = cont (choiceCons i x1 x2)
 nfChoiceIO cont i x1 x2 = do
   x1' <- return $!< x1
@@ -398,28 +398,30 @@ printValsDFS _  Fail           = return ()
 printValsDFS _  (Val v)        = print v
 printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
   where
-   choose ChooseLeft  = (printValsDFS fb . try) $!< x
-   choose ChooseRight = (printValsDFS fb . try) $!< y
+   choose (ChooseLeft _)  = (printValsDFS fb . try) $!< x
+   choose (ChooseRight _) = (printValsDFS fb . try) $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 
 printValsDFS fb (Choice i x y) = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = printValsDFS fb (try x)
-   choose ChooseRight = printValsDFS fb (try y)
+   choose (ChooseLeft _)  = printValsDFS fb (try x)
+   choose (ChooseRight _) = printValsDFS fb (try y)
    choose NoChoice    = if fb
                           then do
-                            newChoice ChooseLeft x
-                            newChoice ChooseRight y
+                            newChoice (ChooseLeft errChoice) x
+                            newChoice (ChooseRight errChoice) y
                           else do
-                            newChoice ChooseLeft x
-                            setChoice i ChooseRight
+                            newChoice (ChooseLeft errChoice) x
+                            setChoice i (ChooseRight errChoice)
                             printValsDFS False (try y)
 
    newChoice j a = do
     setChoice i j
     printValsDFS True (try a)
     setChoice i NoChoice
+
+   errChoice = error "propagation number used within non-free Choice"
 
 printValsDFS fb (Guard cs e) = do
   mreset <- solves cs
@@ -606,19 +608,21 @@ searchDFS Fail             = mnil
 
 searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = (searchDFS . try) $!< x1
-    choose ChooseRight = (searchDFS . try) $!< x2
+    choose (ChooseLeft _)  = (searchDFS . try) $!< x1
+    choose (ChooseRight _) = (searchDFS . try) $!< x2
     choose NoChoice    = mcons (choiceCons i x1 x2) mnil
 
 searchDFS (Val v)          = mcons v mnil
 searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = searchDFS (try x1)
-    choose ChooseRight = searchDFS (try x2)
-    choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
+    choose (ChooseLeft _)  = searchDFS (try x1)
+    choose (ChooseRight _) = searchDFS (try x2)
+    choose NoChoice        = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
 
-    newChoice c x = do setChoice i c
+    newChoice c x = do setChoice i (c errChoice)
                        searchDFS (try x) |< setChoice i NoChoice
+
+    errChoice = error "propagation number used within non-free Choice"
 
 searchDFS (Guard cs e) = do
   mreset <- solves cs
@@ -656,15 +660,16 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
     bfs xs ys set reset (Choice i x y) = set   >> lookupChoice i >>= choose
 
      where
-        choose ChooseLeft  = bfs xs ys (return ()) reset (try x)
-        choose ChooseRight = bfs xs ys (return ()) reset (try y)
-        choose NoChoice    = do
+        choose (ChooseLeft _)  = bfs xs ys (return ()) reset (try x)
+        choose (ChooseRight _) = bfs xs ys (return ()) reset (try y)
+        choose NoChoice        = do
           reset
           next xs ((newSet ChooseLeft , newReset, x) :
                    (newSet ChooseRight, newReset, y) : ys)
 
-        newSet c = set   >> setChoice i c
+        newSet c = set   >> setChoice i (c errChoice)
         newReset = reset >> setChoice i NoChoice
+        errChoice = error "propagation number used within non-free Choice"
 
     --TODO: cases for Free, Guard
 
@@ -726,15 +731,16 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
   Choice i x1 x2 -> do
     c <- lookupChoice i
     case c of
-      ChooseLeft   -> idsHNF n x1
-      ChooseRight  -> idsHNF n x2
+      (ChooseLeft _)  -> idsHNF n x1
+      (ChooseRight _) -> idsHNF n x2
       NoChoice -> if n > 0
                   then choose ChooseLeft x1 +++ choose ChooseRight x2
                   else abort
      where
       choose c x = do
-       setChoice i c
+       setChoice i (c errChoice)
        idsHNF (n - 1) x |< setChoice i NoChoice
+      errChoice = error "propagation number used within non-free Choice"
 
 
 ----------------------------------------------------------------------
@@ -779,11 +785,12 @@ searchMPlus _   Fail           = mzero
 searchMPlus _   (Val v)        = return v
 searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
   where
-    choose ChooseLeft  = searchMPlus set (try x)
-    choose ChooseRight = searchMPlus set (try y)
+    choose (ChooseLeft _)  = searchMPlus set (try x)
+    choose (ChooseRight _) = searchMPlus set (try y)
     choose NoChoice    = searchMPlus (pick ChooseLeft)  (try x)
                  `mplus` searchMPlus (pick ChooseRight) (try y)
 
-    pick = setChoice' set i
+    pick c = setChoice' set i (c errChoice)
+    errChoice = error "propagation number used within non-free Choice"
 
 ----------------------------------------------------------------------
