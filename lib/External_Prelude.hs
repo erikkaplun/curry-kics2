@@ -192,10 +192,20 @@ instance Show C_Char where
   showsPrec d Fail_C_Char = showChar '!'
   showsPrec d (C_Char c) = showString (show (C# c))
 
+  -- to show strings in the standard string notation:
+  showList cs = showList (map (\ (C_Char c) -> (C# c)) cs)
+
+
 instance Read C_Char where
   readsPrec d s = map readChar (readsPrec d s)
     where
      readChar (C# c,s) = (C_Char c, s)
+
+  -- to read strings in the standard string notation:
+  readList s = map readString (readList s)
+   where
+     readString (cs,s) = (map (\ (C# c) -> C_Char c) cs, s)
+
 
 instance NonDet C_Char where
   choiceCons = Choice_C_Char
