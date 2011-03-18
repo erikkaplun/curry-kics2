@@ -124,7 +124,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
   showInstance =
    Instance (basics "Show") ctype
     (map (\tv -> Context (basics "Show") [tv]) targs)
-    (if tc=="OP_List" then [showRule4List] else
+--     (if tc=="OP_List" then [showRule4List] else
      ([(pre "showsPrec",
         Rule [PVar (1,"d"),
                PComb choiceConsName
@@ -140,7 +140,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
        (pre "showsPrec",
         Rule [PVar (1,"d"), PComb failConsName []]
               [noGuard (applyF (pre "showChar") [Lit (Charc '!')])] [])]
-       ++ map showConsRule cdecls))
+       ++ map showConsRule cdecls)
+-- )
 
   -- Generate specific show for lists (only for finite determ. lists!)
   showRule4List =
@@ -413,8 +414,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       [(basics "bind",
         Rule [PVar (1,"i"),
               PComb choiceConsName
-                    [PAs (2,"j") (PComb (idmod "FreeID") [PVar (3,"_")]),
-                     PVar (4,"_"),PVar (5,"_")]]
+                    [PVar (2,"j"), PVar (3,"_"),PVar (4,"_")]]
              [noGuard (applyF (pre ":")
                               [applyF (basics ":=:")
                                  [Var (1,"i"),
@@ -565,6 +565,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 freshID n i =
   if n==0 then left i
           else freshID (n-1) (right i)
+
 
 left  i = applyF (idmod "leftID") [i]
 right i = applyF (idmod "rightID") [i]

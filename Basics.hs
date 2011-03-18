@@ -212,7 +212,7 @@ instance Unifiable C_Success where
   C_Success =.= C_Success = C_Success
   _         =.= _         = Fail_C_Success
   bind i C_Success                           = []
-  bind i (Choice_C_Success j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  bind i (Choice_C_Success j _ _) = [i :=: (BindTo j)]
 
 -- Higher Order Funcs
 
@@ -317,7 +317,7 @@ instance NormalForm (C_IO a) where
 
 instance Unifiable (C_IO a) where
   (=.=) _ _ = error "(=.=) for C_IO"
-  bind i (Choice_C_IO j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  bind i (Choice_C_IO j _ _) = [i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
