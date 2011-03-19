@@ -151,6 +151,7 @@ createAndCompileMain rst = do
       ghcCompile = unwords ["ghc"
                            ,if rst->optim then "-O2" else ""
                            ,"--make"
+                           ,"-XMultiParamTypeClasses"
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""

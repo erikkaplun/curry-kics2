@@ -313,9 +313,34 @@ instance Unifiable (C_IO a) where
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
+toIO (Choice_C_IO _ _ _) = error "toIO: Choice_C_IO"
+toIO (Guard_C_IO _ _) = error "toIO: Guard_C_IO"
+toIO Fail_C_IO = error "toIO: Fail_C_IO"
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
+
+-- Use a Haskell IO action to implement a Curry IO action:
+fromHaskellIO0 :: (ConvertCurryHaskell ca ha) => IO ha -> C_IO ca
+fromHaskellIO0 hact = fromIO (hact >>= return . toCurry)
+
+fromHaskellIO1 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb) =>
+                  (ha -> IO hb) -> ca -> C_IO cb
+fromHaskellIO1 hact ca = fromIO (hact (fromCurry ca) >>= return . toCurry)
+
+fromHaskellIO2 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
+                   ConvertCurryHaskell cc hc) =>
+                  (ha -> hb -> IO hc) -> ca -> cb -> C_IO cc
+fromHaskellIO2 hact ca cb =
+  fromIO (hact (fromCurry ca) (fromCurry cb) >>= return . toCurry)
+
+-----------------------------------------------------------------------------
+-- Conversion between Curry and Haskell data types
+-----------------------------------------------------------------------------
+
+class ConvertCurryHaskell ctype htype where
+  fromCurry :: ctype -> htype
+  toCurry   :: htype -> ctype
 
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show and Read
@@ -335,12 +360,14 @@ showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 
 -- Reads a possibly qualified name
 readQualified :: String -> String -> ReadS ()
-readQualified mod name r =  [((),s)  | (name',s)  <- lex r, name' == name] 
-                         ++ [((),s3) | (mod',s1)  <- lex r
-                                     , mod' == mod
-                                     , (".",s2)   <- lex s1
-                                     , (name',s3) <- lex s2
-                                     , name' == name]
+readQualified mod name r =
+ let lexname = lex r in
+     [((),s)  | (name',s)  <- lexname, name' == name] 
+  ++ [((),s3) | (mod',s1)  <- lexname
+              , mod' == mod
+              , (".",s2)   <- lex s1
+              , (name',s3) <- lex s2
+              , name' == name]
 
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for non-determinism

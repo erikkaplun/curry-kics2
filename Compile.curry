@@ -150,12 +150,13 @@ extractFuncInfos funs =
   withIOResult (AH.FuncType _ texp) = withIOResult texp
   withIOResult (AH.TCons tc _) = tc == ("Curry_Prelude","C_IO")
 
-
+-- Patch Prelude in order to add some exports for predefined items
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
 patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
   | m == prelude = AH.Prog m imps (curryDecl:td) fd od
   | otherwise    = p
-    where curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
+ where
+  curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
 
 compMessage :: Int -> Int -> String -> String -> String
 compMessage curNum maxNum msg fn

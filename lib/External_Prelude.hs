@@ -104,8 +104,8 @@ instance Curry C_Int where
   x                  =?= Choice_C_Int i y z = Choice_C_Bool i (x =?= y) (x =?= z)
   x                  =?= Guard_C_Int c y    = Guard_C_Bool c (x =?= y)
   _                  =?= Fail_C_Int         = Fail_C_Bool
-  C_Int x            =?= C_Int y            = fromBool (x ==# y)
---  x =?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a==#b)) `d_dollar_bang_test` y)
+  C_Int x            =?= C_Int y            = toCurry (x ==# y)
+--  x =?= y =  (\ (C_Int a) -> (\ (C_Int b) -> toCurry (a==#b)) `d_dollar_bang_test` y)
 --             `d_dollar_bang_test` x
 
   Choice_C_Int i x y <?= z                  = Choice_C_Bool i (x <?= z) (y <?= z)
@@ -114,8 +114,8 @@ instance Curry C_Int where
   x                  <?= Choice_C_Int i y z = Choice_C_Bool i (x <?= y) (x <?= z)
   x                  <?= Guard_C_Int c y    = Guard_C_Bool c (x <?= y)
   _                  <?= Fail_C_Int         = Fail_C_Bool
-  C_Int x            <?= C_Int y            = fromBool (x <=# y)
---  x <?= y =  (\ (C_Int a) -> (\ (C_Int b) -> fromBool (a <=# b)) `d_dollar_bang_test` y)
+  C_Int x            <?= C_Int y            = toCurry (x <=# y)
+--  x <?= y =  (\ (C_Int a) -> (\ (C_Int b) -> toCurry (a <=# b)) `d_dollar_bang_test` y)
 --             `d_dollar_bang_test` x
 
 -- ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ instance Curry C_Float where
   x                    =?= Choice_C_Float i y z = Choice_C_Bool i (x =?= y) (x =?= z)
   x                    =?= Guard_C_Float c y    = Guard_C_Bool c (x =?= y)
   _                    =?= Fail_C_Float         = Fail_C_Bool
-  C_Float x            =?= C_Float y            = fromBool (x `eqFloat#` y)
+  C_Float x            =?= C_Float y            = toCurry (x `eqFloat#` y)
 
   Choice_C_Float i x y <?= z                    = Choice_C_Bool i (x <?= z) (y <?= z)
   Guard_C_Float c x    <?= y                    = Guard_C_Bool c (x <?= y)
@@ -175,7 +175,7 @@ instance Curry C_Float where
   x                    <?= Choice_C_Float i y z = Choice_C_Bool i (x <?= y) (x <?= z)
   x                    <?= Guard_C_Float c y    = Guard_C_Bool c (x <?= y)
   _                    <?= Fail_C_Float         = Fail_C_Bool
-  C_Float x            <?= C_Float y            = fromBool (x `leFloat#` y)
+  C_Float x            <?= C_Float y            = toCurry (x `leFloat#` y)
 
 -- ---------------------------------------------------------------------------
 -- Char
@@ -236,7 +236,7 @@ instance Curry C_Char where
   x                   =?= Choice_C_Char i y z = Choice_C_Bool i (x =?= y) (x =?= z)
   x                   =?= Guard_C_Char c y    = Guard_C_Bool c (x =?= y)
   _                   =?= Fail_C_Char         = Fail_C_Bool
-  C_Char x            =?= C_Char y            = fromBool (x `eqChar#` y)
+  C_Char x            =?= C_Char y            = toCurry (x `eqChar#` y)
 
   Choice_C_Char i x y <?= z                   = Choice_C_Bool i (x <?= z) (y <?= z)
   Guard_C_Char c x    <?= y                   = Guard_C_Bool c (x <?= y)
@@ -244,36 +244,73 @@ instance Curry C_Char where
   x                   <?= Choice_C_Char i y z = Choice_C_Bool i (x <?= y) (x <?= z)
   x                   <?= Guard_C_Char c y    = Guard_C_Bool c (x <?= y)
   _                   <?= Fail_C_Char         = Fail_C_Bool
-  C_Char x            <?= C_Char y            = fromBool (x `leChar#` y)
+  C_Char x            <?= C_Char y            = toCurry (x `leChar#` y)
 
 -- ---------------------------------------------------------------------------
 -- Conversion from and to primitive Haskell types
 -- ---------------------------------------------------------------------------
 
-fromChar :: Char -> C_Char
-fromChar (C# c) = C_Char c
+instance ConvertCurryHaskell C_Int Int where
+  toCurry (I# i) = C_Int i
 
-toChar :: C_Char -> Char
-toChar (C_Char c) = C# c
-toChar _          = error "Curry_Prelude.toChar with no ground term"
+  fromCurry (C_Int i) = I# i
+  fromCurry _         = error "Int data with no ground term"
 
-fromString :: String -> C_String
-fromString [] = OP_List
-fromString (c:cs) = OP_Cons (fromChar c) (fromString cs)
+instance ConvertCurryHaskell C_Int Integer where
+  toCurry i = int2C_Int (fromInteger i)
 
-toString :: C_String -> String
-toString OP_List = []
-toString (OP_Cons c cs) = toChar c : toString cs
-toString _ = error "Curry_Prelude.toString with no ground term"
+  fromCurry (C_Int i) = toInteger (I# i)
+  fromCurry _         = error "Int data with no ground term"
 
-fromBool :: Bool -> C_Bool
-fromBool True  = C_True
-fromBool False = C_False
+int2C_Int :: Int -> C_Int
+int2C_Int (I# c) = C_Int c
 
-fromOrdering :: Ordering -> C_Ordering
-fromOrdering LT = C_LT
-fromOrdering EQ = C_EQ
-fromOrdering GT = C_GT
+instance ConvertCurryHaskell C_Float Float where
+  toCurry (F# f) = C_Float f
+
+  fromCurry (C_Float f) = F# f
+  fromCurry _           = error "Float data with no ground term"
+
+instance ConvertCurryHaskell C_Char Char where
+  toCurry (C# c) = C_Char c
+
+  fromCurry (C_Char c) = C# c
+  fromCurry _          = error "Char data with no ground term"
+
+instance (ConvertCurryHaskell ct ht) =>
+         ConvertCurryHaskell (OP_List ct) [ht] where
+  toCurry []     = OP_List
+  toCurry (c:cs) = OP_Cons (toCurry c) (toCurry cs)
+
+  fromCurry OP_List        = []
+  fromCurry (OP_Cons c cs) = fromCurry c : fromCurry cs
+  fromCurry _              = error "List data with no ground term"
+
+instance ConvertCurryHaskell C_Bool Bool where
+  toCurry True  = C_True
+  toCurry False = C_False
+
+  fromCurry C_True  = True
+  fromCurry C_False = False
+  fromCurry _       = error "Float data with no ground term"
+
+instance ConvertCurryHaskell OP_Unit () where
+  toCurry ()  = OP_Unit
+
+  fromCurry OP_Unit = ()
+  fromCurry _       = error "Unit data with no ground term"
+
+instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2) =>
+         ConvertCurryHaskell (OP_Tuple2 ct1 ct2) (ht1,ht2) where
+  toCurry (x1,x2)  = OP_Tuple2 (toCurry x1) (toCurry x2)
+
+  fromCurry (OP_Tuple2 x1 x2) = (fromCurry x1, fromCurry x2)
+  fromCurry _       = error "Pair data with no ground term"
+
+--fromOrdering :: Ordering -> C_Ordering
+--fromOrdering LT = C_LT
+--fromOrdering EQ = C_EQ
+--fromOrdering GT = C_GT
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
@@ -295,7 +332,7 @@ external_d_C_ensureNotFree x =
     _            -> x
 
 external_d_C_prim_error :: C_String -> a
-external_d_C_prim_error s = error (toString s)
+external_d_C_prim_error s = error (fromCurry s)
 
 external_d_C_failed :: NonDet a => a
 external_d_C_failed = failCons
@@ -349,34 +386,30 @@ external_d_C_return :: a -> C_IO a
 external_d_C_return a = fromIO (return a)
 
 external_d_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_d_C_prim_putChar c = fromIO $ putChar (toChar c) >> return OP_Unit
+external_d_C_prim_putChar = fromHaskellIO1 putChar
 
 external_d_C_getChar :: C_IO C_Char
-external_d_C_getChar = fromIO $ getChar >>= return . fromChar
+external_d_C_getChar = fromHaskellIO0 getChar
 
-external_d_C_prim_readFile :: OP_List C_Char -> C_IO (OP_List C_Char)
-external_d_C_prim_readFile s = fromIO $ readFile (toString s) >>= return . fromString
-
--- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
--- be non-deterministic
-external_d_C_prim_writeFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_writeFile f s = fromIO $ writeFile f' s' >> return OP_Unit
-  where f' = toString f
-        s' = toString s
+external_d_C_prim_readFile :: C_String -> C_IO C_String
+external_d_C_prim_readFile = fromHaskellIO1 readFile
 
 -- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
 -- be non-deterministic
-external_d_C_prim_appendFile :: OP_List C_Char -> OP_List C_Char -> C_IO OP_Unit
-external_d_C_prim_appendFile f s = fromIO $ appendFile f' s' >> return OP_Unit
-  where f' = toString f
-        s' = toString s
+external_d_C_prim_writeFile :: C_String -> C_String -> C_IO OP_Unit
+external_d_C_prim_writeFile = fromHaskellIO2 writeFile
+
+-- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
+-- be non-deterministic
+external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
+external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
 external_d_C_catchFail act err = fromIO $ catch (toIO act) handle
   where handle ioErr = print ioErr >> (toIO err)
 
-external_d_C_prim_show :: Show a => a -> OP_List C_Char
-external_d_C_prim_show a = fromString (show a)
+external_d_C_prim_show :: Show a => a -> C_String
+external_d_C_prim_show a = toCurry (show a)
 
 external_d_C_cond :: Curry a => C_Success -> a -> a
 external_d_C_cond succ a = const a `d_dollar_bang` succ
@@ -410,11 +443,11 @@ external_nd_C_apply = nd_apply
 
 external_d_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
 external_d_C_catch act cont = fromIO $ catch (toIO act) handle where
-  handle = toIO . cont . C_IOError . fromString . ioe_description
+  handle = toIO . cont . C_IOError . toCurry . ioe_description
 
 external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
 external_nd_C_catch act cont s = C_IO $ catch (toIO act) handle where
-  handle e = toIO (nd_apply cont (C_IOError (fromString (ioe_description e))) s)
+  handle e = toIO (nd_apply cont (C_IOError (toCurry (ioe_description e))) s)
 
 -- TODO: Support non-deterministic IO ?
 external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
