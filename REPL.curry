@@ -152,6 +152,7 @@ createAndCompileMain rst = do
                            ,if rst->optim then "-O2" else ""
                            ,"--make"
                            ,"-XMultiParamTypeClasses"
+                           ,"-XFlexibleInstances"
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""

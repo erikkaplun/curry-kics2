@@ -129,6 +129,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
   putStrLn $ "Main expression: " ++ mainexp
   let imports = [idcHome,idcHome++"/idsupply"++idsupply,idcHome++"/lib"]
       compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
+                            "-XMultiParamTypeClasses","-XFlexibleInstances",
                             "-fforce-recomp",
                             "-i"++concat (intersperse ":" imports),"Main.hs"]
                      -- also:  -funbox-strict-fields ?
@@ -136,7 +137,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
   system compileCmd
   
 ----------------------------------------------------------------------
--- Command to compile a module and execute main with GHC:
+-- Command to compile a module and execute main with MCC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
 mccCompile options mod = system $ 
   "/home/mcc/bin/cyc " ++

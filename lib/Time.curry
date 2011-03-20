@@ -73,7 +73,7 @@ clockTimeToInt (CTime i) = i
 --- (if possible). Since the result depends on the local environment,
 --- it is an I/O operation.
 toCalendarTime :: ClockTime -> IO CalendarTime
-toCalendarTime ctime = prim_toCalendarTime $!! ctime
+toCalendarTime ctime = prim_toCalendarTime $## ctime
 
 prim_toCalendarTime :: ClockTime -> IO CalendarTime
 prim_toCalendarTime external
@@ -81,14 +81,14 @@ prim_toCalendarTime external
 --- Transforms a clock time into a standard UTC calendar time.
 --- Thus, this operationa is independent on the local time.
 toUTCTime :: ClockTime -> CalendarTime
-toUTCTime ctime = prim_toUTCTime $!! ctime
+toUTCTime ctime = prim_toUTCTime $## ctime
 
 prim_toUTCTime :: ClockTime -> CalendarTime
 prim_toUTCTime external
 
 --- Transforms a calendar time (interpreted as UTC time) into a clock time.
 toClockTime :: CalendarTime -> ClockTime
-toClockTime d = prim_toClockTime $!! d
+toClockTime d = prim_toClockTime $## d
 
 prim_toClockTime :: CalendarTime -> ClockTime
 prim_toClockTime external

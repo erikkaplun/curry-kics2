@@ -35,7 +35,7 @@ getEnviron :: String -> IO String
 getEnviron evar = do
   --envs <- readGlobal environ
   --maybe (prim_getEnviron $## evar) return (lookup evar envs)
-  prim_getEnviron $!! evar
+  prim_getEnviron $## evar
   
 prim_getEnviron :: String -> IO String
 prim_getEnviron external
@@ -88,7 +88,7 @@ system :: String -> IO Int
 system cmd = do
    --envs <- readGlobal environ
    --prim_system $## (concatMap envToExport envs ++ cmd)
-   prim_system $!! cmd
+   prim_system $## cmd
  where
    envToExport (var,val) =
      var++"='"++ concatMap encodeShellSpecials val ++"' ; export "++var++" ; "

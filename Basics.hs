@@ -169,6 +169,14 @@ x =:= y = unify (try x) (try y)
 (&) :: C_Success -> C_Success -> C_Success
 x & y = const y $!! x
 
+-----------------------------------------------------------------------------
+-- Conversion between Curry and Haskell data types
+-----------------------------------------------------------------------------
+
+class ConvertCurryHaskell ctype htype where
+  fromCurry :: ctype -> htype
+  toCurry   :: htype -> ctype
+
 -- ---------------------------------------------------------------------------
 -- Built-in types
 -- ---------------------------------------------------------------------------
@@ -334,13 +342,73 @@ fromHaskellIO2 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
 fromHaskellIO2 hact ca cb =
   fromIO (hact (fromCurry ca) (fromCurry cb) >>= return . toCurry)
 
+fromHaskellIO3 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
+                   ConvertCurryHaskell cc hc, ConvertCurryHaskell cd hd) =>
+                  (ha -> hb -> hc -> IO hd) -> ca -> cb -> cc -> C_IO cd
+fromHaskellIO3 hact ca cb cc =
+ fromIO (hact (fromCurry ca) (fromCurry cb) (fromCurry cc) >>= return . toCurry)
+
 -----------------------------------------------------------------------------
--- Conversion between Curry and Haskell data types
+-- Our own implemenation of file handles (put here since used in various
+-- libraries)
 -----------------------------------------------------------------------------
 
-class ConvertCurryHaskell ctype htype where
-  fromCurry :: ctype -> htype
-  toCurry   :: htype -> ctype
+-- since the operation IOExts.connectToCmd uses one handle for reading and
+-- writing, we implement handles either as a single handle or two handles:
+data CurryHandle = OneHandle Handle | InOutHandle Handle Handle
+
+inputHandle :: CurryHandle -> Handle
+inputHandle (OneHandle h)     = h
+inputHandle (InOutHandle h _) = h
+
+outputHandle :: CurryHandle -> Handle
+outputHandle (OneHandle h)     = h
+outputHandle (InOutHandle _ h) = h
+
+-- ---------------------------------------------------------------------------
+-- Primitive data that is built-in (e.g., Handle, IORefs,...)
+-- ---------------------------------------------------------------------------
+
+data PrimData a
+     = Choice_PrimData ID (PrimData a) (PrimData a)
+     | Fail_PrimData
+     | Guard_PrimData [Constraint] (PrimData a)
+     | PrimData a
+
+instance ConvertCurryHaskell (PrimData a) a where
+  fromCurry (PrimData a) = a
+  fromCurry _            = error "PrimData with no ground term occurred"
+
+  toCurry a = PrimData a
+
+instance Show (PrimData a) where
+  show = error "ERROR: no show for PrimData"
+
+instance Read (PrimData a) where
+  readsPrec = error "ERROR: no read for PrimData"
+
+instance NonDet (PrimData a) where
+  choiceCons = Choice_PrimData
+  failCons = Fail_PrimData
+  guardCons = Guard_PrimData
+  try (Choice_PrimData i x y) = tryChoice i x y
+  try Fail_PrimData = Fail
+  try (Guard_PrimData c e) = Guard c e
+  try x = Val x
+
+instance Generable (PrimData a) where
+  generate _ = error "ERROR: no generator for PrimData"
+
+instance NormalForm (PrimData a) where
+  cont $!! io@(PrimData _) = cont io
+  cont $!! Choice_PrimData i io1 io2 = nfChoice cont i io1 io2
+  cont $!! Guard_PrimData c io = guardCons c (cont $!! io)
+  _    $!! Fail_PrimData = failCons
+
+instance Unifiable (PrimData a) where
+  (=.=) _ _ = error "(=.=) for PrimData"
+  bind i (Choice_PrimData j@(FreeID _) _ _) = [i :=: (BindTo j)]
+
 
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show and Read

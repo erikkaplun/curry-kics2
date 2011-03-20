@@ -24,6 +24,12 @@ class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curr
   (<?=) :: a -> a -> C_Bool
   (<?=) = error "(<?=) is undefined"
 
+instance Curry (PrimData a) where
+  (=?=) = error "(=?=) is undefined for primitive data"
+
+  (<?=) = error "(<?=) is undefined for primitive data"
+
+
 instance Curry C_Success where
   Choice_C_Success i x y =?= z                      = Choice_C_Bool i (x =?= z) (y =?= z)
   Guard_C_Success c x    =?= y                      = Guard_C_Bool c (x =?= y)
@@ -306,6 +312,23 @@ instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2) =>
 
   fromCurry (OP_Tuple2 x1 x2) = (fromCurry x1, fromCurry x2)
   fromCurry _       = error "Pair data with no ground term"
+
+instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2,
+          ConvertCurryHaskell ct3 ht3) =>
+         ConvertCurryHaskell (OP_Tuple3 ct1 ct2 ct3) (ht1,ht2,ht3) where
+  toCurry (x1,x2,x3)  = OP_Tuple3 (toCurry x1) (toCurry x2) (toCurry x3)
+
+  fromCurry (OP_Tuple3 x1 x2 x3) = (fromCurry x1, fromCurry x2, fromCurry x3)
+  fromCurry _       = error "Tuple3 data with no ground term occurred"
+
+instance ConvertCurryHaskell ct ht =>
+         ConvertCurryHaskell (C_Maybe ct) (Maybe ht) where
+  toCurry Nothing  = C_Nothing
+  toCurry (Just x) = C_Just (toCurry x)
+
+  fromCurry C_Nothing  = Nothing
+  fromCurry (C_Just x) = Just (fromCurry x)
+  fromCurry _          = error "Maybe data with no ground term occurred"
 
 --fromOrdering :: Ordering -> C_Ordering
 --fromOrdering LT = C_LT
