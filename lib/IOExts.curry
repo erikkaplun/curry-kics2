@@ -104,7 +104,7 @@ prim_getAssoc external
 
 --- Mutable variables containing values of some type.
 --- The values are not evaluated when they are assigned to an IORef.
-data IORef a -- precise structure internally defined
+data IORef _ -- precise structure internally defined
 
 --- Creates a new IORef with an initial values.
 newIORef :: a -> IO (IORef a)
