@@ -10,7 +10,7 @@ module System(getCPUTime,getElapsedTime,
               getHostname,getPID,getProgName,
               system,exitWith,sleep) where
 
---import Global
+import Global
 
 --- Returns the current cpu time of the process in milliseconds.
 
@@ -33,16 +33,15 @@ getArgs external
 
 getEnviron :: String -> IO String
 getEnviron evar = do
-  --envs <- readGlobal environ
-  --maybe (prim_getEnviron $## evar) return (lookup evar envs)
-  prim_getEnviron $## evar
+  envs <- readGlobal environ
+  maybe (prim_getEnviron $## evar) return (lookup evar envs)
   
 prim_getEnviron :: String -> IO String
 prim_getEnviron external
  
 --- internal state of environment variables set via setEnviron
---environ :: Global [(String,String)]
---environ = global [] Temporary
+environ :: Global [(String,String)]
+environ = global [] Temporary
 
 --- Set an environment variable to a value.
 --- The new value will be passed to subsequent shell commands
@@ -51,17 +50,17 @@ prim_getEnviron external
 --- of the process that started the program execution).
 
 setEnviron :: String -> String -> IO ()
-setEnviron evar val = done --do
-  --envs <- readGlobal environ
-  --writeGlobal environ ((evar,val) : filter ((/=evar) . fst) envs)
+setEnviron evar val = do
+  envs <- readGlobal environ
+  writeGlobal environ ((evar,val) : filter ((/=evar) . fst) envs)
  
 --- Removes an environment variable that has been set by
 --- <code>setEnviron</code>.
 
 unsetEnviron :: String -> IO ()
-unsetEnviron evar = done --do
-  --envs <- readGlobal environ
-  --writeGlobal environ (filter ((/=evar) . fst) envs)
+unsetEnviron evar = do
+  envs <- readGlobal environ
+  writeGlobal environ (filter ((/=evar) . fst) envs)
  
 --- Returns the hostname of the machine running this process.
 
@@ -86,9 +85,8 @@ getProgName external
 
 system :: String -> IO Int
 system cmd = do
-   --envs <- readGlobal environ
-   --prim_system $## (concatMap envToExport envs ++ cmd)
-   prim_system $## cmd
+   envs <- readGlobal environ
+   prim_system $## (concatMap envToExport envs ++ cmd)
  where
    envToExport (var,val) =
      var++"='"++ concatMap encodeShellSpecials val ++"' ; export "++var++" ; "

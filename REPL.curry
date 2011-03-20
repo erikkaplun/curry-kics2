@@ -1,6 +1,7 @@
 --- Read-Eval-Print loop for IDC
 
-import System(getEnviron,system,getArgs)
+import Installation
+import System(system,getArgs)
 import Char(isSpace,toLower)
 import IO
 import IOExts
@@ -14,9 +15,12 @@ import List (isPrefixOf,intersperse)
 import FlatCurry(flatCurryFileName)
 import Sort(mergeSort)
 
-banner = bannerLine ++ '\n' : bannerText ++ '\n' : bannerLine ++ "\n"
+banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version of 14/03/11)"
+   bannerText = "ID-based Curry->Haskell Compiler (Version "++
+                show majorVersion ++ "." ++ show minorVersion ++ " of "++
+                compilerDate ++ ")"
+   bannerDate = "(installed at "++installDate++")"
    bannerLine = take (length bannerText) (repeat '=')
 
 mainGoalFile = "Curry_Main_Goal.curry"
@@ -60,13 +64,11 @@ writeInfo :: ReplState -> String -> IO ()
 writeInfo rst msg = if rst->quiet then done else putStrLn msg
 
 main = do
-  idchome <- getEnviron "IDCHOME"
-  if null idchome
-   then putStrLn "Environment variable IDCHOME undefined!"
-   else do let rst = { idcHome := idchome
-                     , importPaths := [idchome++"/lib"] | initReplState }
-           args <- getArgs
-           processArgsAndStart rst args
+  let rst = { idcHome := installDir
+            , importPaths := [installDir++"/lib", installDir++"/lib/meta"]
+            | initReplState }
+  args <- getArgs
+  processArgsAndStart rst args
 
 processArgsAndStart rst [] =
   if rst->quit
@@ -125,7 +127,7 @@ compileCurryProgram rst quiet curryprog = do
   let compileProg = (rst->idcHome)++"/idc"
       idcoptions  = --"-q " ++
                     (if quiet then "-q " else "") ++
-                    (concatMap (\i -> "-i "++i) (rst->importPaths))
+                    (concatMap (\i -> " -i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
   writeInfo rst $ "Executing: "++compileCmd
   system compileCmd
