@@ -246,13 +246,13 @@ benchFLPSearch prog =
  [idcBenchmark "IDC+PrDFS_IOREF" prog True "ioref" "prdfs nd_C_main"
  ,idcBenchmark "IDC+DFS_IOREF"   prog True "ioref" "printDFS nd_C_main"
  ,idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS 100 nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog =
  [idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS1 nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS1 nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS1 100 nd_C_main"
  ]
 
 
@@ -310,5 +310,5 @@ main = run 1 allBenchmarks
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort"]
---main = run 1 [benchFLPDFS "Half"]
+--main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]

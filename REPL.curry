@@ -42,7 +42,7 @@ type ReplState =
   }
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS | Par Int
+data NonDetMode = DFS | BFS | IDS Int | Par Int
 
 initReplState :: ReplState
 initReplState = { idcHome     = ""
@@ -170,13 +170,13 @@ createHaskellMain rst isdet isio =
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
         if isdet then "evalD"
-        else "print" ++ case (rst->ndMode) of
-                          DFS -> "DFS"
-                          BFS -> "BFS"
-                          IDS -> "IDS"
-                          Par _ -> "Par"
-             ++ (if (rst->interactive) then "i" else
-                 if (rst->firstSol) then "1" else "")
+        else let searchSuffix = if rst->interactive then "i" else
+                                if rst->firstSol    then "1" else ""
+              in "print" ++ case (rst->ndMode) of
+                              DFS   -> "DFS"++searchSuffix
+                              BFS   -> "BFS"++searchSuffix
+                              IDS d -> "IDS"++searchSuffix++" "++show d
+                              Par _ -> "Par"++searchSuffix
    in writeFile "Main.hs" $
        "module Main where\n"++
        "import Basics\n"++
@@ -287,7 +287,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","ids","par","idsupply","rts"] ++
+allOptions = ["bfs","dfs","ids","par","supply","rts"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","quiet"]
 
@@ -295,7 +295,14 @@ processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
-  | option=="ids" = return (Just { ndMode := IDS | rst })
+  | option=="ids"
+   = if null args
+     then return (Just { ndMode := IDS 100 | rst })
+     else maybe (putStrLn "Illegal number" >> return Nothing)
+                (\ (n,s) -> if null (strip s)
+                            then return (Just { ndMode := IDS n | rst })
+                            else putStrLn "Illegal number" >> return Nothing)
+                (readNat args)
   | option=="par"
    = if null args
      then return (Just { ndMode := Par 0 | rst })
@@ -304,7 +311,7 @@ processThisOption rst option args
                             then return (Just { ndMode := Par n | rst })
                             else putStrLn "Illegal number" >> return Nothing)
                 (readNat args)
-  | option=="idsupply"     = return (Just { idSupply := args | rst })
+  | option=="supply"       = return (Just { idSupply := args | rst })
   | option=="+interactive" = return (Just { interactive := True  | rst })
   | option=="-interactive" = return (Just { interactive := False | rst })
   | option=="+first" = return (Just { firstSol := True  | rst })
@@ -321,9 +328,9 @@ printOptions rst = putStrLn $
   "Options for ':set' command:\n"++
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
-  "ids            - set search mode to iterative deepening search\n"++
+  "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "idsupply <I>   - set idsupply implementation (integer or ioref)\n"++
+  "supply <I>     - set idsupply implementation (integer or ioref)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
   "+/-first       - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
@@ -332,12 +339,13 @@ printOptions rst = putStrLn $
   showCurrentOptions rst
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
-  "search mode      : " ++ (case (rst->ndMode) of
-                             DFS -> "depth-first search"
-                             BFS -> "breadth-first search"
-                             IDS -> "iterative deepening"
-                             Par s -> "parallel search with "++show s++" threads"
-                            ) ++ "\n" ++
+  "search mode      : " ++
+      (case (rst->ndMode) of
+         DFS -> "depth-first search"
+         BFS -> "breadth-first search"
+         IDS d -> "iterative deepening (initial depth: "++show d++")"
+         Par s -> "parallel search with "++show s++" threads"
+      ) ++ "\n" ++
   "idsupply         : " ++ rst->idSupply ++ "\n" ++
   "run-time options : " ++ rst->rtsOpts ++ "\n" ++
   showOnOff (rst->interactive) ++ "interactive " ++

@@ -794,30 +794,32 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
 -- Iterative depth-first search into a monadic list
 ----------------------------------------------------------------------
 
--- The initial depth size for the iterative deepening strategy:
-initDepth4IDFS = 100
-
--- A function to increase the depth for the iterative deepening strategy:
+-- A function to increase the depth for the iterative deepening strategy
+-- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS n = n*2
 
--- Print all values of an expression with iterative deepening:
-printIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printIDS mainexp = computeWithIDS mainexp >>= printAllValues
+-- Print all values of an expression with iterative deepening where
+-- the first argument is the initial depth size which will be increased
+-- by function incrDepth4IDFS in each iteration:
+printIDS :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
+printIDS initdepth mainexp =
+  computeWithIDS initdepth mainexp >>= printAllValues
 
 -- Print one value of an expression with iterative deepening:
-printIDS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printIDS1 mainexp = computeWithIDS mainexp >>= printOneValue
+printIDS1 :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
+printIDS1 initdepth mainexp =
+  computeWithIDS initdepth mainexp >>= printOneValue
 
 -- Print all values on demand of an expression with iterative deepening:
-printIDSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printIDSi mainexp = computeWithIDS mainexp >>= printValsOnDemand
+printIDSi :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
+printIDSi initdepth mainexp =
+  computeWithIDS initdepth mainexp >>= printValsOnDemand
 
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
-computeWithIDS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
---computeWithIDS goal = initSupply >>= \s -> iter s 0
---  where iter s n = startIDS (id $!! goal s) stepIDFS n ++++ iter s (n+stepIDFS)
-computeWithIDS goal = initSupply >>= \s -> iter s 0 initDepth4IDFS
+computeWithIDS :: (NormalForm a, Show a) => Int -> (IDSupply -> a)
+                                         -> IO (IOList a)
+computeWithIDS initdepth goal = initSupply >>= \s -> iter s 0 initdepth
  where
    iter s olddepth newdepth = startIDS (id $!! goal s) olddepth newdepth
                               ++++ iter s newdepth (incrDepth4IDFS newdepth)
