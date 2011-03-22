@@ -42,7 +42,8 @@ Installation:
 	echo 'installDate = "'`date`'"' >> Installation.hs
 	cp Installation.hs Installation.curry
 
-# install required cabal packages 
+# install required cabal packages
+
 .PHONY: installhaskell
 installhaskell:
 	cabal install parallel
@@ -56,5 +57,5 @@ clean:
 	rm -f *.hi *.o
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
-	rm -f ./examples/Curry_*.hs
+	rm -f ./examples/Curry_*.*
 	cd tools ; ${MAKE} clean

@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MagicHash #-}
 
 module Basics where
@@ -21,12 +20,20 @@ data Try a
   | Fail
   | Choice ID a a
   | Free ID a a
+  | Choices ID [a]
+  | Frees ID [a]
   | Guard [Constraint] a
-  deriving Show
+    deriving Show
 
 tryChoice :: ID -> a -> a -> Try a
-tryChoice i@(ID _)     = Choice i
-tryChoice i@(FreeID _) = Free i
+tryChoice i@(ID _)       = Choice i
+tryChoice i@(FreeID _)   = Free i
+tryChoice i@(Narrowed _) = Choice i
+
+tryChoices :: ID -> [a] -> Try a
+tryChoices i@(ID _)       = Choices i
+tryChoices i@(FreeID _)   = Frees i
+tryChoices i@(Narrowed _) = Choices i
 
 -- ---------------------------------------------------------------------------
 -- Non-determinism
@@ -35,66 +42,28 @@ tryChoice i@(FreeID _) = Free i
 -- Class for data that support nondeterministic values
 class NonDet a where
   choiceCons :: ID -> a -> a -> a
+  choicesCons:: ID -> [a] -> a
   failCons   :: a
   guardCons  :: [Constraint] -> a -> a
   try        :: a -> Try a
-                                -- matching for
-  match      :: (a -> b)                   -- Head Normal Forms
-                -> b                       -- Failures
-                -> (ID -> a -> a -> b)     -- Choices
-                -> (ID -> a -> a -> b)     -- Free Variables
-                -> ([Constraint] -> a -> b)  -- Constraints
-                -> a -> b
+                                         -- matching for:
+  match      :: (a -> b)                 -- Head Normal Forms
+             -> b                        -- Failures
+             -> (ID -> a -> a -> b)      -- Choices
+             -> (ID -> a -> a -> b)      -- Free Variables
+             -> ([Constraint] -> a -> b) -- Constraints
+             -> a
+             -> b
 
   match = error "match: not implemented yet"
+
 
 narrow :: NonDet a => ID -> a -> a -> a
 narrow id = choiceCons $! narrowID id
 
--- Class for data that support generators
-class NonDet a => Generable a where
-  generate :: IDSupply -> a
 
--- ---------------------------------------------------------------------------
--- Computations to normal form
--- ---------------------------------------------------------------------------
-
--- Class for data that supports normal form computations.
--- The normal form computation is combined with a continuation to be
--- applied to the normal form.
-class NonDet a => NormalForm a where
-  ($!!) :: NonDet b => (a -> b) -> a -> b
-  ($!<) :: (a -> IO b) -> a -> IO b
-  ($!<) = error "($!<) not implemented yet" -- TODO generate instances
-
-
-
--- Auxilary function to extend $!< for non-determinism
-($$!<) :: (NormalForm a) => (a -> IO b) -> a -> IO b
-cont $$!< x = nf (try x)
-  where
-    nf (Val v)        = cont $!< v
-    nf Fail           = cont failCons
-    nf (Choice i x y) = nfChoiceIO cont i x y
-    nf (Free i x y)   = nfChoiceIO cont i x y
-    nf (Guard c e)    = cont (guardCons c e)
-
--- Auxilary Function to create a Choice and apply a continuation to
--- the normal forms of its alternatives
-nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
-nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
-nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
-
-
-nfChoiceIO :: (NormalForm a,NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
-nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
-   choose ChooseLeft  = cont $!< x1
-   choose ChooseRight = cont $!< x2
-   choose NoChoice    = cont (choiceCons i x1 x2)
-nfChoiceIO cont i x1 x2 = do
-  x1' <- return $!< x1
-  x2' <- return $!< x2
-  cont (choiceCons i x1' x2')
+narrows :: NonDet a => ID -> [a] -> a
+narrows id = choicesCons $! narrowID id
 
 
 -- Apply a function to the head normal form
@@ -105,10 +74,12 @@ d_dollar_bang f x = hnf (try x)
    hnf Fail           = failCons
    hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
    hnf (Free i a b)   = f (choiceCons i a b)
+   hnf (Choices i xs) = choicesCons i (map (hnf . try) xs)
+   hnf (Frees i xs)   = f (choicesCons i xs)
    hnf (Guard c e)    = guardCons c (hnf (try e))
 
 
--- Apply a function to the head normal form
+-- Apply a non-deterministic function to the head normal form
 nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
 nd_dollar_bang f x s = hnf (try x)
   where
@@ -117,6 +88,8 @@ nd_dollar_bang f x s = hnf (try x)
    -- TODO Do we have to use leftSupply and rightSupply?
    hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
    hnf (Free i a b)   = nd_apply f (choiceCons i a b) s
+   hnf (Choices i xs) = choicesCons i (map (hnf . try) xs)
+   hnf (Frees i xs)   = nd_apply f (choicesCons i xs) s
    hnf (Guard c e)    = guardCons c (hnf (try e))
 
 
@@ -129,6 +102,70 @@ d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
     freeF i a b   = f (choiceCons i a b)
     guardF c e    = guardCons c (f  `d_dollar_bang_test` e)
 
+-- ---------------------------------------------------------------------------
+-- Computations to normal form
+-- ---------------------------------------------------------------------------
+
+-- Class for data that supports normal form computations.
+-- The normal form computation is combined with a continuation to be
+-- applied to the normal form.
+class NonDet a => NormalForm a where
+  ($!!) :: NonDet b => (a -> b) -> a -> b
+  ($!<) :: (a -> IO b) -> a -> IO b
+
+
+-- Auxilary function to extend $!< for non-determinism
+($$!<) :: (NormalForm a) => (a -> IO b) -> a -> IO b
+cont $$!< x = nf (try x)
+  where
+    nf (Val v)        = cont $!< v
+    nf Fail           = cont failCons
+    nf (Choice i x y) = nfChoiceIO cont i x y
+    nf (Free i x y)   = nfChoiceIO cont i x y
+    nf (Choices i xs) = nfChoicesIO cont i xs
+    nf (Frees i xs)   = nfChoicesIO cont i xs
+    nf (Guard c e)    = cont (guardCons c e)
+
+
+-- Auxilary Function to create a Choice and apply a continuation to
+-- the normal forms of its alternatives
+nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
+nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
+nfChoice cont i x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
+
+
+nfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
+nfChoices cont i@(FreeID _) xs = cont (choicesCons i xs)
+nfChoices cont i xs = choicesCons i (map (cont $!!) xs)
+
+
+nfChoiceIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
+nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
+  choose ChooseLeft  = cont $!< x1
+  choose ChooseRight = cont $!< x2
+  choose NoChoice    = cont (choiceCons i x1 x2)
+nfChoiceIO cont i x1 x2 = do
+  x1' <- return $!< x1
+  x2' <- return $!< x2
+  cont (choiceCons i x1' x2')
+
+
+nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
+nfChoicesIO cont i@(FreeID _) xs = lookupChoice i >>= choose where
+  choose (ChooseN c _) = cont $!< (xs !! c)
+  choose NoChoice      = cont (choicesCons i xs)
+nfChoicesIO cont i xs = do
+  ys <- mapM (return $!<) xs
+  cont (choicesCons i ys)
+
+
+-- ---------------------------------------------------------------------------
+-- Generators
+-- ---------------------------------------------------------------------------
+
+-- Class for data that support generators
+class NonDet a => Generable a where
+  generate :: IDSupply -> a
 
 -- ---------------------------------------------------------------------------
 -- Unification
@@ -151,6 +188,12 @@ x =:= y = unify (try x) (try y)
     unify x (Choice i x1 x2) =
        choiceCons i (unify x (try x1)) (unify x (try x2))
 
+    unify (Choices i xs) y =
+       choicesCons i $ map (\x -> unify (try x) y) xs
+
+    unify x (Choices i ys) =
+       choicesCons i $ map (\y -> unify x (try y)) ys
+
     unify (Guard c e) y = guardCons c (unify (try e) y)
     unify x (Guard c e) = guardCons c (unify x (try e))
 
@@ -159,15 +202,21 @@ x =:= y = unify (try x) (try y)
     unify (Val v)      (Free j _ _) =
       (\ v' -> guardCons (bind j v') C_Success) $!! v
 
+    unify (Val v)      (Frees j _) =
+      (\ v' -> guardCons (bind j v') C_Success) $!! v
+
     unify (Free i _ _) (Val v)      =
+      (\ v' -> guardCons (bind i v') C_Success) $!! v
+
+    unify (Frees i _) (Val v)      =
       (\ v' -> guardCons (bind i v') C_Success) $!! v
 
     unify (Free i _ _) (Free j _ _)      =
       guardCons [i :=: BindTo j] C_Success
 
+    unify (Frees i _) (Frees j _)      =
+      guardCons [i :=: BindTo j] C_Success
 
-(&) :: C_Success -> C_Success -> C_Success
-x & y = const y $!! x
 
 -----------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types
@@ -183,48 +232,71 @@ class ConvertCurryHaskell ctype htype where
 
 -- The implementation of the Success type must be added here since it is used
 -- in the class Unifiable.
+
+-- BEGIN GENERATED FROM PrimTypes.curry
 data C_Success
-  = C_Success
-  | Choice_C_Success ID C_Success C_Success
-  | Fail_C_Success
-  | Guard_C_Success [Constraint] C_Success
+     = C_Success
+     | Choice_C_Success ID C_Success C_Success
+     | Choices_C_Success ID ([C_Success])
+     | Fail_C_Success
+     | Guard_C_Success ([Constraint]) C_Success
 
 instance Show C_Success where
-  showsPrec d C_Success = showString "success"
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
+  showsPrec d (Choices_C_Success i xs) = showsChoices d i xs
+  showsPrec d (Guard_C_Success c e) = showsGuard d c e
   showsPrec d Fail_C_Success = showChar '!'
+  showsPrec d C_Success = showString "Success"
+
 
 instance Read C_Success where
-  readsPrec = error "read for Success is undefined"
+  readsPrec d s = readParen False (\r -> [ (C_Success,r0) | (_,r0) <- readQualified "PrimTypes" "Success" r]) s
+
 
 instance NonDet C_Success where
   choiceCons = Choice_C_Success
-  failCons   = Fail_C_Success
-  guardCons  = Guard_C_Success
+  choicesCons = Choices_C_Success
+  failCons = Fail_C_Success
+  guardCons = Guard_C_Success
   try (Choice_C_Success i x y) = tryChoice i x y
-  try Fail_C_Success           = Fail
-  try (Guard_C_Success c e)    = Guard c e
+  try (Choices_C_Success i xs) = tryChoices i xs
+  try Fail_C_Success = Fail
+  try (Guard_C_Success c e) = Guard c e
   try x = Val x
 
+
 instance Generable C_Success where
-  generate _ = C_Success
+  generate s = Choices_C_Success (freeID s) [C_Success]
+
 
 instance NormalForm C_Success where
-  cont $!! s@C_Success = cont s
-  cont $!! Choice_C_Success i x y = nfChoice cont i x y
-  cont $!! Guard_C_Success c x = guardCons c (cont $!! x)
-  _    $!! Fail_C_Success      = failCons
+  ($!!) cont C_Success = cont C_Success
+  ($!!) cont (Choice_C_Success i x y) = nfChoice cont i x y
+  ($!!) cont (Choices_C_Success i xs) = nfChoices cont i xs
+  ($!!) cont (Guard_C_Success c x) = guardCons c (cont $!! x)
+  ($!!) _ Fail_C_Success = failCons
+  ($!<) cont C_Success = cont C_Success
+  ($!<) cont (Choice_C_Success i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_C_Success i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
+
 
 instance Unifiable C_Success where
-  C_Success =.= C_Success = C_Success
-  _         =.= _         = Fail_C_Success
-  bind i C_Success                           = []
-  bind i (Choice_C_Success j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  (=.=) C_Success C_Success = C_Success
+  (=.=) _ _ = Fail_C_Success
+  bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
+  bind i (Choice_C_Success j _ _) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Success j _) = [(i :=: (BindTo j))]
+-- END GENERATED FROM PrimTypes.curry
+
+(&) :: C_Success -> C_Success -> C_Success
+x & y = const y $!! x
 
 -- Higher Order Funcs
 
 data Func a b = Func (a -> IDSupply -> b)
               | Func_Choice ID (Func a b) (Func a b)
+              | Func_Choices ID [Func a b]
               | Func_Fail
               | Func_Guard [Constraint] (Func a b)
 
@@ -236,9 +308,11 @@ instance Read (Func a b) where
 
 instance NonDet (Func a b) where
   choiceCons = Func_Choice
+  choicesCons = Func_Choices
   failCons = Func_Fail
   guardCons = Func_Guard
   try (Func_Choice i x1 x2) = Choice i x1 x2
+  try (Func_Choices i xs) = Choices i xs
   try (Func_Fail) = Fail
   try v = Val v
 
@@ -246,10 +320,15 @@ instance Generable (Func a b) where
   generate = error "generate for Func is undefined"
 
 instance NormalForm (Func a b) where
-  cont $!! f@(Func _) = cont f
+  cont $!! f@(Func _)          = cont f
   cont $!! Func_Choice i f1 f2 = nfChoice cont i f1 f2
+  cont $!! Func_Choices i fs   = nfChoices cont i fs
   cont $!! Func_Guard c f      = guardCons c (cont $!! f)
   _    $!! Func_Fail           = failCons
+
+  cont $!< Func_Choice i f1 f2 = nfChoiceIO cont i f1 f2
+  cont $!< Func_Choices i fs   = nfChoicesIO cont i fs
+  cont $!< f                   = cont f
 
 instance Unifiable (Func a b) where
   (=.=) = error "(=.=) for Func is undefined"
@@ -265,6 +344,7 @@ instance Read (a -> b) where
 
 instance NonDet (a -> b) where
   choiceCons = undefined
+  choicesCons = undefined
   failCons = undefined
   guardCons = undefined
   try = undefined
@@ -274,6 +354,7 @@ instance Generable (a -> b) where
 
 instance NormalForm (a -> b) where
   cont $!! f = cont f
+  cont $!< f = cont f
 
 instance Unifiable (a -> b) where
   (=.=) = error "(=.=) for function is undefined"
@@ -287,6 +368,7 @@ instance Unifiable (a -> b) where
 
 data C_IO a
      = Choice_C_IO ID (C_IO a) (C_IO a)
+     | Choices_C_IO ID [C_IO a]
      | Fail_C_IO
      | Guard_C_IO [Constraint] (C_IO a)
      | C_IO (IO a)
@@ -299,9 +381,11 @@ instance Read (C_IO a) where
 
 instance NonDet (C_IO a) where
   choiceCons = Choice_C_IO
+  choicesCons = Choices_C_IO
   failCons = Fail_C_IO
   guardCons = Guard_C_IO
   try (Choice_C_IO i x y) = tryChoice i x y
+  try (Choices_C_IO i xs) = tryChoices i xs
   try Fail_C_IO = Fail
   try (Guard_C_IO c e) = Guard c e
   try x = Val x
@@ -312,12 +396,17 @@ instance Generable (C_IO a) where
 instance NormalForm (C_IO a) where
   cont $!! io@(C_IO _) = cont io
   cont $!! Choice_C_IO i io1 io2 = nfChoice cont i io1 io2
+  cont $!! Choices_C_IO i ios = nfChoices cont i ios
   cont $!! Guard_C_IO c io = guardCons c (cont $!! io)
   _    $!! Fail_C_IO = failCons
 
+  cont $!< Choice_C_IO i io1 io2 = nfChoiceIO cont i io1 io2
+  cont $!< Choices_C_IO i ios = nfChoicesIO cont i ios
+  cont $!< io                    = cont io
+
 instance Unifiable (C_IO a) where
   (=.=) _ _ = error "(=.=) for C_IO"
-  bind i (Choice_C_IO j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  bind i (Choice_C_IO j _ _) = [i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
@@ -415,13 +504,20 @@ instance Unifiable (PrimData a) where
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
--- showsChoice d i@(FreeID _) _ _ = shows i
+showsChoice d i@(FreeID _) _ _ = shows i
 showsChoice d r x1 x2 =
   showChar '(' .
   showsPrec d x1 .
   showString " ?" . shows r . showChar ' ' .
   showsPrec d x2 .
   showChar ')'
+
+showsChoices :: Show a => Int -> ID -> [a] -> ShowS
+showsChoices d i@(FreeID _) _ = shows i
+showsChoices d r xs =
+  showString "[?" . shows r .
+  foldr (.) id (zipWith (\n x -> showString ", " . shows n . showString "->" . showsPrec d x) [0 ..] xs) .
+  showChar ']'
 
 showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
@@ -430,7 +526,7 @@ showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
 readQualified :: String -> String -> ReadS ()
 readQualified mod name r =
  let lexname = lex r in
-     [((),s)  | (name',s)  <- lexname, name' == name] 
+     [((),s)  | (name',s)  <- lexname, name' == name]
   ++ [((),s3) | (mod',s1)  <- lexname
               , mod' == mod
               , (".",s2)   <- lex s1
@@ -463,40 +559,12 @@ evalIO goal = initSupply >>= \s -> toIO (goal s) >>= print
 evalDIO :: Show a => C_IO a -> IO ()
 evalDIO goal = toIO goal >>= print
 
-
-
 d_apply :: (a -> b) -> a -> b
 d_apply f a = f a
 
 -- TODO: Support non-deterministic Funcs
 nd_apply :: NonDet b => Func a b -> a -> IDSupply -> b
 nd_apply fun a s = (\(Func f) -> f a s) `d_dollar_bang` fun
-
-{-
--- wrap a higher-order function with one argument
-wrapD :: (a -> b) -> a :-> b
-wrapD f = wrapDX id f
--- Func (\a _ -> f a)
-
-wrapD2 :: (a -> b -> c) -> a :-> b :-> c
-wrapD2 f = wrapDX (wrapDX id) f
-
-wrapD3 :: (a -> b -> c -> d) -> a :-> b :-> c :-> d
-wrapD3 f = wrapDX (wrapDX (wrapDX id)) f
-
-wrapN :: (a -> IDSupply -> b) -> Func a b
-wrapN f = wrapNX id f
-
-wrapN2 :: (a -> b -> IDSupply -> c) -> a :-> b :-> c
-wrapN2 f = wrapDX (wrapNX id) f
-
-wrapN3 :: (a -> b -> c -> IDSupply -> d) -> a :-> b :-> c :-> d
-wrapN3 f = wrapDX (wrapDX (wrapNX id)) f
-
-unwrap :: Func a b -> IDSupply -> a -> b
-unwrap (Func f) s x = f x s
--}
-
 
 ----------------------------------------------------------------------
 -- Printing all results of a computation in a depth-first manner
@@ -511,50 +579,74 @@ printValsDFS :: (Show a,NonDet a, NormalForm a) => Bool -> Try a -> IO ()
 printValsDFS _  Fail           = return ()
 printValsDFS _  (Val v)        = print v
 printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
- where
-   choose ChooseLeft  = (printValsDFS fb . try) x
---                                               $!< x
-   choose ChooseRight = (printValsDFS fb . try) y
---                                               $!< y
+  where
+   choose ChooseLeft  = (printValsDFS fb . try) $!< x
+   choose ChooseRight = (printValsDFS fb . try) $!< y
    -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
+printValsDFS fb (Frees i xs)   = lookupChoice i >>= choose
+  where
+   choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
+   -- we need some more deref if we really want to rely on this output
+   choose NoChoice      = print i
 
 printValsDFS fb (Choice i x y) = lookupChoice i >>= choose
  where
    choose ChooseLeft  = printValsDFS fb (try x)
    choose ChooseRight = printValsDFS fb (try y)
-   choose NoChoice    = if fb
-                          then do
-                            newChoice ChooseLeft x
-                            newChoice ChooseRight y
-                          else do
+   choose NoChoice    = do {-if fb
+                          then-}
+                        newChoice ChooseLeft x
+                        newChoice ChooseRight y
+                       {-   else do
                             newChoice ChooseLeft x
                             setChoice i ChooseRight
-                            printValsDFS False (try y)
+                            printValsDFS False (try y) -}
 
    newChoice j a = do
     setChoice i j
     printValsDFS True (try a)
     setChoice i NoChoice
 
+printValsDFS fb x@(Choices i xs) = do
+   putStrLn $ "evaluating " ++ show x
+   lookupChoice i >>= choose
+ where
+   choose (ChooseN c _) = printValsDFS fb (try (xs !! c))
+   -- TODO: not optimized!
+   choose NoChoice      = sequence_ $ zipWith (\n x -> newChoice (ChooseN n errChoice) x) [0 ..] xs
+   choose c             = error $ "choose with choice " ++ show c ++ " for ID " ++ show i
+
+   newChoice j a = do
+    setChoice i j
+    printValsDFS True (try a)
+    setChoice i NoChoice
+
+   errChoice = error "propagation number used within non-free Choice"
+
 printValsDFS fb (Guard cs e) = do
+--   putStrLn $ "Solving constraints: " ++ show cs
+--   putStr "Before: " >> readIORef store >>= print
   mreset <- solves cs
+--   putStr "After: " >> readIORef store >>= print
   case mreset of
     Nothing    -> return ()
-    Just reset -> if fb then (printValsDFS fb . try) e >> reset
---                                                      $!< e >> reset
-                        else (printValsDFS fb . try) e
+    Just reset -> if fb then ((printValsDFS fb . try) $!< e) >> reset
+                        else (printValsDFS fb . try) $!< e
 
 solves :: [Constraint] -> Solved
 solves [] = solved
 solves (c:cs) = do
+--   before <- readIORef store
   mreset <- solve c
+--   after <- readIORef store
+--   putStrLn $ show before ++ " + " ++ show c ++ " -> " ++ show after
   case mreset of
     Nothing    -> return Nothing
     Just reset -> do
       mreset' <- solves cs
       case mreset' of
-        Nothing -> reset >> return Nothing -- TODO : check difference to Bernd
+        Nothing -> reset >> return Nothing
         Just reset' -> return (Just (reset >> reset'))
 
 type Solved = IO (Maybe (IO ()))
@@ -718,15 +810,19 @@ computeWithDFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
   initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
 
---searchDFS :: (NormalFormIO a,NonDet a) => Try a -> IO (IOList a)
-searchDFS :: NonDet a => Try a -> IO (IOList a)
+searchDFS :: NormalForm a => Try a -> IO (IOList a)
 searchDFS Fail             = mnil
 
 searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = (searchDFS . try) x1 -- $!< x1
-    choose ChooseRight = (searchDFS . try) x2 -- $!< x2
+    choose ChooseLeft  = (searchDFS . try) $!< x1
+    choose ChooseRight = (searchDFS . try) $!< x2
     choose NoChoice    = mcons (choiceCons i x1 x2) mnil
+
+searchDFS (Frees i xs)     = lookupChoice i >>= choose
+  where
+    choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
+    choose NoChoice      = mcons (choicesCons i xs) mnil
 
 searchDFS (Val v)          = mcons v mnil
 searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
@@ -738,11 +834,22 @@ searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
     newChoice c x = do setChoice i c
                        searchDFS (try x) |< setChoice i NoChoice
 
+searchDFS (Choices i xs) = lookupChoice i >>= choose
+  where
+    choose (ChooseN c _) = searchDFS (try (xs !! c))
+    choose NoChoice      = foldl (+++) mnil $ zipWith (\n x -> newChoice (ChooseN n) x) [0 ..] xs
+    choose x = error ("choose: " ++ show x)
+
+    newChoice c x = do setChoice i (c errChoice)
+                       searchDFS (try x) |< setChoice i NoChoice
+
+    errChoice = error "propagation number used within non-free Choice"
+
 searchDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> mnil
-    Just reset -> ((searchDFS . try) e) |< reset -- $!< e) |< reset
+    Just reset -> ((searchDFS . try) $!< e) |< reset
 
 
 ----------------------------------------------------------------------
@@ -846,8 +953,8 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
   Choice i x1 x2 -> do
     c <- lookupChoice i
     case c of
-      ChooseLeft   -> idsHNF n x1
-      ChooseRight  -> idsHNF n x2
+      ChooseLeft  -> idsHNF n x1
+      ChooseRight -> idsHNF n x2
       NoChoice -> if n > 0
                   then choose ChooseLeft x1 +++ choose ChooseRight x2
                   else abort
@@ -904,6 +1011,6 @@ searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
     choose NoChoice    = searchMPlus (pick ChooseLeft)  (try x)
                  `mplus` searchMPlus (pick ChooseRight) (try y)
 
-    pick = setChoice' set i
+    pick c = setChoice' set i c
 
 ----------------------------------------------------------------------

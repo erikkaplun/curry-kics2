@@ -26,38 +26,54 @@ class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curr
 
 instance Curry (PrimData a) where
   (=?=) = error "(=?=) is undefined for primitive data"
-
   (<?=) = error "(<?=) is undefined for primitive data"
 
-
+-- BEGIN GENERATED FROM PrimTypes.curry
 instance Curry C_Success where
-  Choice_C_Success i x y =?= z                      = Choice_C_Bool i (x =?= z) (y =?= z)
-  Guard_C_Success c x    =?= y                      = Guard_C_Bool c (x =?= y)
-  Fail_C_Success         =?= _                      = Fail_C_Bool
-  x                      =?= Choice_C_Success i y z = Choice_C_Bool i (x =?= y) (x =?= z)
-  x                      =?= Guard_C_Success c y    = Guard_C_Bool c (x =?= y)
-  _                      =?= Fail_C_Success         = Fail_C_Bool
-  C_Success              =?= C_Success              = C_True
-
-  Choice_C_Success i x y <?= z                      = Choice_C_Bool i (x <?= z) (y <?= z)
-  Guard_C_Success c x    <?= y                      = Guard_C_Bool c (x <?= y)
-  Fail_C_Success         <?= _                      = Fail_C_Bool
-  x                      <?= Choice_C_Success i y z = Choice_C_Bool i (x <?= y) (x <?= z)
-  x                      <?= Guard_C_Success c y    = Guard_C_Bool c (x <?= y)
-  _                      <?= Fail_C_Success         = Fail_C_Bool
-  C_Success              <?= C_Success              = C_True
+  (=?=) (Choice_C_Success i x y) z = narrow i (x =?= z) (y =?= z)
+  (=?=) (Choices_C_Success i xs) y = narrows i (map ((=?= y)) xs)
+  (=?=) (Guard_C_Success c x) y = guardCons c (x =?= y)
+  (=?=) Fail_C_Success _ = failCons
+  (=?=) z (Choice_C_Success i x y) = narrow i (z =?= x) (z =?= y)
+  (=?=) y (Choices_C_Success i xs) = narrows i (map ((y =?=)) xs)
+  (=?=) y (Guard_C_Success c x) = guardCons c (y =?= x)
+  (=?=) _ Fail_C_Success = failCons
+  (=?=) C_Success C_Success = C_True
+  (<?=) (Choice_C_Success i x y) z = narrow i (x <?= z) (y <?= z)
+  (<?=) (Choices_C_Success i xs) y = narrows i (map ((<?= y)) xs)
+  (<?=) (Guard_C_Success c x) y = guardCons c (x <?= y)
+  (<?=) Fail_C_Success _ = failCons
+  (<?=) z (Choice_C_Success i x y) = narrow i (z <?= x) (z <?= y)
+  (<?=) y (Choices_C_Success i xs) = narrows i (map ((y <?=)) xs)
+  (<?=) y (Guard_C_Success c x) = guardCons c (y <?= x)
+  (<?=) _ Fail_C_Success = failCons
+  (<?=) C_Success C_Success = C_True
 
 instance Curry (Func a b) where
 
-instance Curry (a -> b) where
+
 
 instance Curry (C_IO a) where
+
+
+
+-- END GENERATED FROM PrimTypes.curry
+
+instance Curry (a -> b) where
+
+
 
 -- ---------------------------------------------------------------------------
 -- Int
 -- ---------------------------------------------------------------------------
+
+-- BEGIN GENERATED FROM PrimTypes.curry
+
+-- END GENERATED FROM PrimTypes.curry
+
 data C_Int
   = Choice_C_Int ID C_Int C_Int
+  | Choices_C_Int ID [C_Int]
   | Fail_C_Int
   | Guard_C_Int [Constraint] C_Int
   | C_Int Int#
@@ -65,30 +81,27 @@ data C_Int
 
 instance Show C_Int where
   showsPrec d (Choice_C_Int i x y) = showsChoice d i x y
+  showsPrec d (Choices_C_Int i xs) = showsChoices d i xs
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
   showsPrec d Fail_C_Int = showChar '!'
   showsPrec d (C_Int i) = shows (I# i)
 --   showsPrec d (C_Integer i) = shows i
 
 instance Read C_Int where
-  readsPrec d s = map readInt (readsPrec d s)
-    where
-     readInt (I# i,s) = (C_Int i, s)
+  readsPrec d s = map readInt (readsPrec d s) where readInt (I# i, s) = (C_Int i, s)
 
 instance NonDet C_Int where
   choiceCons = Choice_C_Int
+  choicesCons = Choices_C_Int
   failCons = Fail_C_Int
   guardCons = Guard_C_Int
   try (Choice_C_Int i x y) = tryChoice i x y
+  try (Choices_C_Int i xs) = tryChoices i xs
   try Fail_C_Int = Fail
   try (Guard_C_Int c e) = Guard c e
   try x = Val x
 
-  match valF _ _ _ _ v@(C_Int _) = valF v
-  match _ fail _ _ _ Fail_C_Int  = fail
-  match _ _ choiceF _ _ (Choice_C_Int i@(ID _) x y) = choiceF i x y
-  match _ _ _ freeF _ (Choice_C_Int i@(FreeID _) x y) = freeF i x y
-  match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x
+
 
 instance Generable C_Int where
   generate _ = error "No generator for C_Int"
@@ -96,18 +109,26 @@ instance Generable C_Int where
 instance NormalForm C_Int where
   cont $!! i@(C_Int _) = cont i
   cont $!! Choice_C_Int i x y = nfChoice cont i x y
+  cont $!! Choices_C_Int i xs = nfChoices cont i xs
   cont $!! Guard_C_Int c x = guardCons c (cont $!! x)
   _    $!! Fail_C_Int = failCons
+
+  cont $!< Choice_C_Int i x y = nfChoiceIO cont i x y
+  cont $!< Choices_C_Int i xs = nfChoicesIO cont i xs
+  cont $!< i                  = cont i
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   bind i (Choice_C_Int j@(FreeID _) _ _) = [i :=: BindTo j]
+  bind i (Choices_C_Int j@(FreeID _) _) = [i :=: BindTo j]
 
 instance Curry C_Int where
   Choice_C_Int i x y =?= z                  = Choice_C_Bool i (x =?= z) (y =?= z)
+  Choices_C_Int i xs =?= z                  = Choices_C_Bool i (map (=?= z) xs)
   Guard_C_Int c x    =?= y                  = Guard_C_Bool c (x =?= y)
   Fail_C_Int         =?= _                  = Fail_C_Bool
   x                  =?= Choice_C_Int i y z = Choice_C_Bool i (x =?= y) (x =?= z)
+  x                  =?= Choices_C_Int i ys = Choices_C_Bool i (map (x =?=) ys)
   x                  =?= Guard_C_Int c y    = Guard_C_Bool c (x =?= y)
   _                  =?= Fail_C_Int         = Fail_C_Bool
   C_Int x            =?= C_Int y            = toCurry (x ==# y)
@@ -115,14 +136,26 @@ instance Curry C_Int where
 --             `d_dollar_bang_test` x
 
   Choice_C_Int i x y <?= z                  = Choice_C_Bool i (x <?= z) (y <?= z)
+  Choices_C_Int i xs <?= z                  = Choices_C_Bool i (map (<?= z) xs)
   Guard_C_Int c x    <?= y                  = Guard_C_Bool c (x <?= y)
   Fail_C_Int         <?= _                  = Fail_C_Bool
   x                  <?= Choice_C_Int i y z = Choice_C_Bool i (x <?= y) (x <?= z)
+  x                  <?= Choices_C_Int i ys = Choices_C_Bool i (map (x <?=) ys)
   x                  <?= Guard_C_Int c y    = Guard_C_Bool c (x <?= y)
   _                  <?= Fail_C_Int         = Fail_C_Bool
   C_Int x            <?= C_Int y            = toCurry (x <=# y)
 --  x <?= y =  (\ (C_Int a) -> (\ (C_Int b) -> toCurry (a <=# b)) `d_dollar_bang_test` y)
 --             `d_dollar_bang_test` x
+
+
+
+
+
+--   match valF _ _ _ _ v@(C_Int _) = valF v
+--   match _ fail _ _ _ Fail_C_Int  = fail
+--   match _ _ choiceF _ _ (Choice_C_Int i@(ID _) x y) = choiceF i x y
+--   match _ _ _ freeF _ (Choice_C_Int i@(FreeID _) x y) = freeF i x y
+--   match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x
 
 -- ---------------------------------------------------------------------------
 -- Float
@@ -157,10 +190,13 @@ instance Generable C_Float where
   generate i = error "No generator for C_Float"
 
 instance NormalForm C_Float where
-  cont $!! f@(C_Float _)        = cont f
+  cont $!! x@(C_Float _)        = cont x
   cont $!! Choice_C_Float i x y = nfChoice cont i x y
   cont $!! Guard_C_Float c x    = guardCons c (cont $!! x)
   _    $!! Fail_C_Float         = failCons
+
+  cont $!< Choice_C_Float i x y = nfChoiceIO cont i x y
+  cont $!< x                    = cont x
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
@@ -230,6 +266,9 @@ instance NormalForm C_Char where
   cont $!! Choice_C_Char i c1 c2 = nfChoice cont i c1 c2
   cont $!! Guard_C_Char c char   = guardCons c (cont $!! char)
   _    $!! Fail_C_Char           = failCons
+
+  cont $!< Choice_C_Char i c1 c2 = nfChoiceIO cont i c1 c2
+  cont $!< c                     = cont c
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
@@ -349,6 +388,8 @@ external_d_C_ensureNotFree x =
                                  (external_d_C_ensureNotFree b)
     Free i a b   -> narrow i (external_d_C_ensureNotFree a)
                              (external_d_C_ensureNotFree b)
+    Choices i xs -> choicesCons i (map external_d_C_ensureNotFree xs)
+    Frees i xs   -> narrows i (map external_d_C_ensureNotFree xs)
     -- TODO : reason about the case when there is a constraint
     --        for the free variable e
     Guard c e    -> guardCons c (external_d_C_ensureNotFree e)
