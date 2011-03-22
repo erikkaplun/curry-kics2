@@ -1,7 +1,7 @@
 --- Read-Eval-Print loop for IDC
 
 import Installation
-import System(system,getArgs)
+import System(system,getArgs,getEnviron)
 import Char(isSpace,toLower)
 import IO
 import IOExts
@@ -212,7 +212,7 @@ execMain rst = do
 
 -- all the available commands:
 allCommands = ["quit","help","?","load","reload","add",
-               "programs","show","set","save"]
+               "programs","edit","show","set","save"]
 
 -- Process a command of the REPL
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
@@ -253,6 +253,15 @@ processThisCommand rst cmd args
               (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
   | cmd=="programs" = printAllLoadPathPrograms rst >> return (Just rst)
+  | cmd=="edit"
+   = do let modname = if null args then rst->mainMod else stripSuffix args
+        mbf <- lookupFileInPath modname [".curry", ".lcurry"]
+                                ("." : rst->importPaths)
+        editenv <- getEnviron "EDITOR"
+        let editprog = if null editenv then "vi" else editenv
+        maybe (putStrLn "Source file not found!" >> return Nothing)
+              (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
+              mbf
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
@@ -361,6 +370,8 @@ printHelpOnCommands = putStrLn $
   ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++
   ":reload       - recompile currently loaded modules\n"++
   ":programs     - show names of all Curry programs available in load path\n"++
+  ":edit         - load source of currently loaded module into editor\n"++
+  ":edit <mod>   - load source of module <m> into editor\n"++
   ":show         - show currently loaded source program\n"++
   ":show <mod>   - show source of module <m>\n"++
   ":set <option> - set an option\n"++
