@@ -35,6 +35,7 @@ mkFunName = replaceNonIdChars "c_" "op_"
 
 -- Generating Names for introduced constructors
 mkChoiceName (q, n) = (q, "Choice" +|+ n)
+mkChoicesName (q, n) = (q, "Choices" +|+ n)
 mkFailName   (q, n) = (q, "Fail" +|+ n)
 mkGuardName  (q, n) = (q, "Guard" +|+ n)
 s +|+ t = s ++ "_" ++ t

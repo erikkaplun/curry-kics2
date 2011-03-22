@@ -17,7 +17,7 @@ idc: *.curry
 REPL.state: REPL.curry
 	pakcs -s REPL
 
-# install required cabal packages 
+# install required cabal packages
 .PHONY: installhaskell
 installhaskell:
 	cabal install parallel
@@ -31,4 +31,4 @@ clean:
 	rm -f *.hi *.o
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
-	rm -f ./examples/Curry_*.hs
+	rm -f ./examples/Curry_*.*

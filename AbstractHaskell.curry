@@ -129,7 +129,7 @@ type VarIName = (Int,String)
 
 
 --- Data type for representing function declarations.
---- 
+---
 --- A function declaration in AbstractHaskell is a term of the form
 ---
 --- <code>(Func cmt name arity visibility type (Rules eval [Rule rule1,...,rulek]))</code>
@@ -171,7 +171,7 @@ data LocalDecl =
    | LocalPat  Pattern Expr [LocalDecl] -- local pattern declaration
    | LocalVar  VarIName                   -- local free variable declaration
 
---- Data type for representing Curry expressions.
+--- Data type for representing Haskell expressions.
 
 data Expr =
    Var      VarIName              -- variable (unique index / name)

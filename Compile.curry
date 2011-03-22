@@ -27,7 +27,7 @@ import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
-  ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName
+  ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName, mkChoicesName
   , mkGuardName, externalFunc, externalModule, destFile, analysisFile
   , funcInfoFile  )
 import SimpleMake (smake)
@@ -39,7 +39,7 @@ import Utils (foldIO, intercalate)
 -- Configurations
 ----------------------------------------------------------------------
 
--- Chooce let-Type for IdSupply Variables 
+-- Chooce let-Type for IdSupply Variables
 --letIdVar = lazyLet
 letIdVar = strictLet
 
@@ -202,7 +202,7 @@ splitExternals :: String -> ([String], [String], [String])
 splitExternals content = se (lines content) ([], [], []) where
   se [] res = res
   se (ln:lns) res
-    | take 3 ln == "{-#" -- -} Comment to fix syntax highlighting in emacs    
+    | take 3 ln == "{-#" -- -} Comment to fix syntax highlighting in emacs
         = (ln : pragmas, imps, decls)
     | take 7 ln == "import " = (pragmas, drop 7 ln : imps, decls)
     | otherwise              = (pragmas, imps, ln : decls)
@@ -504,10 +504,20 @@ newBranches qn' vs i pConsName =
   let Just pos = find (==i) vs
       is = if dm then [] else [suppVarIdx]
       (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ is) in
+      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ is)
+      -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
+      -- TODO: This is probably the dirtiest hack in the compiler:
+      -- Because FlatCurry does not allow lambda abstractions, we construct
+      -- a call to a function like "\f x1 x2 x-42 x3" which is replaced to
+      -- the expression (map (\z -> f x1 x2 z x3) x1001) in the module
+      -- FlatCurry2AbstractHaskell.
+      -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
+      mapLambdaCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ is) in
   returnM $
     [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002])
              (liftOr [Var 1000, call 1001, call 1002])
+    , Branch (Pattern (mkChoicesName typeName) [1000, 1001])
+             (liftOrs [Var 1000, mapLambdaCall])
     , Branch (Pattern (mkGuardName typeName) [1000, 1001])
              (liftGuard [Var 1000, call 1001])
     , Branch (Pattern ("", "_") [])
@@ -707,6 +717,7 @@ seqCall :: Expr -> Expr -> Expr
 seqCall e1 e2 = funcCall (prelude, "seq") [e1, e2]
 
 funcCall n xs = Comb FuncCall n xs
+lambdaCall (q,n) xs = Comb FuncCall (q, '\\' : n) xs
 consCall n xs = Comb ConsCall n xs
 constant qn = consCall qn []
 
@@ -724,11 +735,12 @@ char c =
        constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
   else -- due to problems with non-ASCII characters in ghc
        constant (prelude,"(C_Char (nonAsciiChr "++show (ord c)++ "#))")
-              
+
 float :: Float -> Expr
 float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
 
 liftOr      = funcCall (prelude, "narrow")
+liftOrs     = funcCall (prelude, "narrows")
 liftGuard   = funcCall (prelude, "guardCons")
 liftFail    = funcCall (prelude, "failCons") []
 qmark e1 e2 = funcCall (prelude, "OP_qmark") [e1, e2]
