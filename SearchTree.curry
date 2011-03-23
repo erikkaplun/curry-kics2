@@ -20,8 +20,8 @@ searchTree external
 showSearchTree :: SearchTree a -> String
 showSearchTree = showST 0
  where
-   showST i (Value a)  = "Value: " ++ show a ++ "\n"
-   showST i Fail       = "Fail\n"
+   showST _ (Value a)  = "Value: " ++ show a ++ "\n"
+   showST _ Fail       = "Fail\n"
    showST i (Or t1 t2) = "Or " ++ showST (i+3) t1 ++
                          tab (i+3) ++ showST (i+3) t2
    
