@@ -42,7 +42,7 @@ type ReplState =
   }
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int
+data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 initReplState :: ReplState
 initReplState = { idcHome     = ""
@@ -169,7 +169,8 @@ createHaskellMain rst isdet isio =
   let mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
-        if isdet then "evalD"
+        if isdet then "evalD" else
+        if rst->ndMode == PrDFS then "prdfs"
         else let searchSuffix = if rst->interactive then "i" else
                                 if rst->firstSol    then "1" else ""
               in "print" ++ case (rst->ndMode) of
@@ -296,7 +297,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","ids","par","supply","rts"] ++
+allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","quiet"]
 
@@ -304,6 +305,7 @@ processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
+  | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -335,6 +337,7 @@ processThisOption rst option args
 
 printOptions rst = putStrLn $
   "Options for ':set' command:\n"++
+  "prdfs          - set search mode to primitive depth-first search\n"++
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
@@ -350,6 +353,7 @@ printOptions rst = putStrLn $
 showCurrentOptions rst = "\nCurrent settings:\n"++
   "search mode      : " ++
       (case (rst->ndMode) of
+         PrDFS -> "primitive non-monadic depth-first search"
          DFS -> "depth-first search"
          BFS -> "breadth-first search"
          IDS d -> "iterative deepening (initial depth: "++show d++")"
