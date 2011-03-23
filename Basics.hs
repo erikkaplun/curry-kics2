@@ -639,6 +639,8 @@ solves (c:cs) = do
         Nothing -> reset >> return Nothing
         Just reset' -> return (Just (reset >> reset'))
 
+ -- Noting -> Constraint is unsolvable
+ -- Just reset -> Constraint has been solved
 type Solved = IO (Maybe (IO ()))
 
 solved :: Solved
@@ -862,16 +864,20 @@ computeWithBFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithBFS mainexp =
   initSupply >>= \s -> searchBFS (try (id $!! (mainexp s)))
 
-searchBFS :: NonDet a => Try a -> IO (IOList a)
+searchBFS :: (NormalForm a, NonDet a) => Try a -> IO (IOList a)
 searchBFS x = bfs [] [] (return ()) (return ()) x
   where
+    -- bfs searches the levels in alternating order, left to right and then
+    -- right to left, TODO is this behavior desired?
+    -- xs is the list of values to be processed in this level
+    -- ys is the list of values to be processed in the next level
     bfs xs ys _   reset Fail           = reset >> next xs ys
     bfs xs ys _   reset (Val v)        = reset >> mcons v (next xs ys)
     bfs xs ys set reset (Choice i x y) = set   >> lookupChoice i >>= choose
 
      where
-        choose ChooseLeft  = bfs xs ys (return ()) reset (try x)
-        choose ChooseRight = bfs xs ys (return ()) reset (try y)
+        choose ChooseLeft  = (bfs xs ys (return ()) reset . try) $!< x
+        choose ChooseRight = (bfs xs ys (return ()) reset . try) $!< y
         choose NoChoice    = do
           reset
           next xs ((newSet ChooseLeft , newReset, x) :
@@ -880,11 +886,33 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
         newSet c = set   >> setChoice i c
         newReset = reset >> setChoice i NoChoice
 
-    --TODO: cases for Free, Guard
+    bfs xs ys set reset (Choices i cs) = set   >> lookupChoice i >>= choose
 
+     where
+        choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
+        choose NoChoice    = do
+          reset
+          next xs ((zipWith newChoice [0..] cs) ++ ys)
+        newChoice n x = (newSet n, newReset, x)
+        newSet n = set   >> setChoice i (ChooseN n errChoice)
+        newReset = reset >> setChoice i NoChoice
+        errChoice = error "propagation number used within non-free Choice"
+
+    bfs _ _ _ _(Free _ _ _) = error "bfs: asumption violated"
+    bfs xs ys set reset (Frees i cs) = lookupChoice i >>= choose
+      where
+        choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
+        choose NoChoice      = reset >> mcons (choicesCons i cs) (next xs ys)
+{-
+    bfs xs ys set reset (Guard cs e) = do
+      mreset <- solves cs
+      case mreset of
+       Nothing    -> reset >> next xs ys
+       Just newReset -> bfs xs ys set (newReset >> reset) -- (searchDFS . try) $!< e |< reset
+-}
     next []  []                 = mnil
-    next []  ((set,reset,y):ys) = bfs ys [] set reset (try y)
-    next ((set,reset,x):xs) ys  = bfs xs ys set reset (try x)
+    next []  ((set,reset,y):ys) = (bfs ys [] set reset . try) $!< y
+    next ((set,reset,x):xs) ys  = (bfs xs ys set reset . try) $!< x
 
 ----------------------------------------------------------------------
 -- Iterative depth-first search into a monadic list
