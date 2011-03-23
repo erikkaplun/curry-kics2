@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
 
 module Basics where
 
@@ -140,23 +140,27 @@ nfChoices cont i xs = choicesCons i (map (cont $!!) xs)
 
 
 nfChoiceIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
-nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
-  choose ChooseLeft  = cont $!< x1
-  choose ChooseRight = cont $!< x2
-  choose NoChoice    = cont (choiceCons i x1 x2)
-nfChoiceIO cont i x1 x2 = do
-  x1' <- return $!< x1
-  x2' <- return $!< x2
-  cont (choiceCons i x1' x2')
+{-nfChoiceIO cont i@(FreeID _) x1 x2 = lookupChoice i >>= choose where
+  choose ChooseLeft  = cont x1 -- TODO: $!< x1
+  choose ChooseRight = cont x2 -- $!< x2
+  choose NoChoice    = cont (choiceCons i x1 x2)-}
+nfChoiceIO cont i x1 x2 = cont $ choiceCons i x1 x2
+-- nfChoiceIO cont i x1 x2 = do
+-- --   x1' <- return $!< x1
+-- --   x2' <- return $!< x2
+--   cont (choiceCons i x1 x2)
+
+
 
 
 nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
 nfChoicesIO cont i@(FreeID _) xs = lookupChoice i >>= choose where
   choose (ChooseN c _) = cont $!< (xs !! c)
   choose NoChoice      = cont (choicesCons i xs)
-nfChoicesIO cont i xs = do
-  ys <- mapM (return $!<) xs
-  cont (choicesCons i ys)
+nfChoicesIO cont i xs = cont (choicesCons i xs)
+-- nfChoicesIO cont i xs = do
+-- --   ys <- mapM (return $!<) xs
+--   cont (choicesCons i xs)
 
 
 -- ---------------------------------------------------------------------------
@@ -218,11 +222,11 @@ x =:= y = unify (try x) (try y)
       guardCons [i :=: BindTo j] C_Success
 
 
------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types
------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
-class ConvertCurryHaskell ctype htype where
+class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
   fromCurry :: ctype -> htype
   toCurry   :: htype -> ctype
 
@@ -464,7 +468,7 @@ data PrimData a
      | Guard_PrimData [Constraint] (PrimData a)
      | PrimData a
 
-instance ConvertCurryHaskell (PrimData a) a where
+instance ConvertCurryHaskell (PrimData a) a where -- needs FlexibleInstances
   fromCurry (PrimData a) = a
   fromCurry _            = error "PrimData with no ground term occurred"
 
@@ -582,53 +586,46 @@ printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
   where
    choose ChooseLeft  = (printValsDFS fb . try) $!< x
    choose ChooseRight = (printValsDFS fb . try) $!< y
-   -- we need some more deref if we really want to rely on this output
    choose NoChoice    = print i
 printValsDFS fb (Frees i xs)   = lookupChoice i >>= choose
   where
    choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
-   -- we need some more deref if we really want to rely on this output
    choose NoChoice      = print i
 
 printValsDFS fb (Choice i x y) = lookupChoice i >>= choose
  where
-   choose ChooseLeft  = printValsDFS fb (try x)
-   choose ChooseRight = printValsDFS fb (try y)
-   choose NoChoice    = do {-if fb
-                          then-}
-                        newChoice ChooseLeft x
-                        newChoice ChooseRight y
-                       {-   else do
+   choose ChooseLeft  = (printValsDFS fb . try) $!< x
+   choose ChooseRight = (printValsDFS fb . try) $!< y
+   choose NoChoice    = if fb
+                           then do
+                            newChoice ChooseLeft x
+                            newChoice ChooseRight y
+                           else do
                             newChoice ChooseLeft x
                             setChoice i ChooseRight
-                            printValsDFS False (try y) -}
+                            printValsDFS False (try y)
 
    newChoice j a = do
     setChoice i j
-    printValsDFS True (try a)
+    (printValsDFS True . try) $!< a
     setChoice i NoChoice
 
-printValsDFS fb x@(Choices i xs) = do
-   putStrLn $ "evaluating " ++ show x
-   lookupChoice i >>= choose
+printValsDFS fb (Choices i xs) = lookupChoice i >>= choose
  where
-   choose (ChooseN c _) = printValsDFS fb (try (xs !! c))
+   choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
    -- TODO: not optimized!
    choose NoChoice      = sequence_ $ zipWith (\n x -> newChoice (ChooseN n errChoice) x) [0 ..] xs
    choose c             = error $ "choose with choice " ++ show c ++ " for ID " ++ show i
 
    newChoice j a = do
     setChoice i j
-    printValsDFS True (try a)
+    (printValsDFS True . try) $!< a
     setChoice i NoChoice
 
    errChoice = error "propagation number used within non-free Choice"
 
 printValsDFS fb (Guard cs e) = do
---   putStrLn $ "Solving constraints: " ++ show cs
---   putStr "Before: " >> readIORef store >>= print
   mreset <- solves cs
---   putStr "After: " >> readIORef store >>= print
   case mreset of
     Nothing    -> return ()
     Just reset -> if fb then ((printValsDFS fb . try) $!< e) >> reset
@@ -637,10 +634,7 @@ printValsDFS fb (Guard cs e) = do
 solves :: [Constraint] -> Solved
 solves [] = solved
 solves (c:cs) = do
---   before <- readIORef store
   mreset <- solve c
---   after <- readIORef store
---   putStrLn $ show before ++ " + " ++ show c ++ " -> " ++ show after
   case mreset of
     Nothing    -> return Nothing
     Just reset -> do
@@ -806,11 +800,11 @@ printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
-computeWithDFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
+computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
   initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
 
-searchDFS :: NormalForm a => Try a -> IO (IOList a)
+searchDFS :: (Show a, NormalForm a) => Try a -> IO (IOList a)
 searchDFS Fail             = mnil
 
 searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
@@ -827,21 +821,21 @@ searchDFS (Frees i xs)     = lookupChoice i >>= choose
 searchDFS (Val v)          = mcons v mnil
 searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = searchDFS (try x1)
-    choose ChooseRight = searchDFS (try x2)
+    choose ChooseLeft  = (searchDFS . try) $!< x1
+    choose ChooseRight = (searchDFS . try) $!< x2
     choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
 
     newChoice c x = do setChoice i c
-                       searchDFS (try x) |< setChoice i NoChoice
+                       (searchDFS .try) $!< x |< setChoice i NoChoice
 
 searchDFS (Choices i xs) = lookupChoice i >>= choose
   where
-    choose (ChooseN c _) = searchDFS (try (xs !! c))
+    choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
     choose NoChoice      = foldl (+++) mnil $ zipWith (\n x -> newChoice (ChooseN n) x) [0 ..] xs
     choose x = error ("choose: " ++ show x)
 
     newChoice c x = do setChoice i (c errChoice)
-                       searchDFS (try x) |< setChoice i NoChoice
+                       (searchDFS .try) $!< x |< setChoice i NoChoice
 
     errChoice = error "propagation number used within non-free Choice"
 
@@ -849,8 +843,7 @@ searchDFS (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> mnil
-    Just reset -> ((searchDFS . try) $!< e) |< reset
-
+    Just reset -> (searchDFS . try) $!< e |< reset
 
 ----------------------------------------------------------------------
 -- Breadth-first search into a monadic list

@@ -5,6 +5,7 @@ module IDImpl
   ( Choice (..), ID (..), IDSupply
   , mkInt, initSupply, leftSupply, rightSupply, thisID
   , lookupChoiceRaw, setChoice
+  , store
   ) where
 
 import Data.IORef
@@ -25,7 +26,16 @@ data Choice
   | BoundTo ID Int  -- a free or narrowed variable is bound to the variable
                     -- with the given ID; the bindings for the n arguments
                     -- have also been propagated
-  deriving (Eq, Show)
+    deriving Show
+
+instance Eq Choice where
+  NoChoice    == NoChoice    = True
+  ChooseLeft  == ChooseLeft  = True
+  ChooseRight == ChooseRight = True
+  ChooseN c _ == ChooseN d _ = c == d
+  BindTo  i   == BindTo  j   = i == j
+  BoundTo i _ == BoundTo j _ = i == j
+  _           == _           = False
 
 -- Type to identify different Choice structures in a non-deterministic result.
 -- Here we implement it as integer values.

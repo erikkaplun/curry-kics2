@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
 
 import GHC.IO.Exception (IOException (..))
 
