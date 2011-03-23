@@ -252,10 +252,8 @@ instance Show C_Success where
   showsPrec d Fail_C_Success = showChar '!'
   showsPrec d C_Success = showString "Success"
 
-
 instance Read C_Success where
-  readsPrec d s = readParen False (\r -> [ (C_Success,r0) | (_,r0) <- readQualified "PrimTypes" "Success" r]) s
-
+  readsPrec d s = readParen False (\r -> [ (C_Success,r0) | (_,r0) <- readQualified "Prelude" "Success" r]) s
 
 instance NonDet C_Success where
   choiceCons = Choice_C_Success
@@ -268,10 +266,8 @@ instance NonDet C_Success where
   try (Guard_C_Success c e) = Guard c e
   try x = Val x
 
-
 instance Generable C_Success where
   generate s = Choices_C_Success (freeID s) [C_Success]
-
 
 instance NormalForm C_Success where
   ($!!) cont C_Success = cont C_Success
@@ -283,7 +279,6 @@ instance NormalForm C_Success where
   ($!<) cont (Choice_C_Success i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Success i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
-
 
 instance Unifiable C_Success where
   (=.=) C_Success C_Success = C_Success
@@ -298,48 +293,49 @@ x & y = const y $!! x
 
 -- Higher Order Funcs
 
-data Func a b = Func (a -> IDSupply -> b)
-              | Func_Choice ID (Func a b) (Func a b)
-              | Func_Choices ID [Func a b]
-              | Func_Fail
-              | Func_Guard [Constraint] (Func a b)
+-- BEGIN GENERATED FROM PrimTypes.curry
+data Func t0 t1
+     = Func (t0 -> IDSupply -> t1)
+     | Choice_Func ID (Func t0 t1) (Func t0 t1)
+     | Choices_Func ID ([Func t0 t1])
+     | Fail_Func
+     | Guard_Func ([Constraint]) (Func t0 t1)
 
-instance Show (Func a b) where
-  show = error "show for Func is undefined"
+instance Show (Func a b) where show = error "show for Func"
 
-instance Read (Func a b) where
-  readsPrec = error "read for Func is undefined"
+instance Read (Func a b) where readsPrec = error "readsPrec for Func"
 
-instance NonDet (Func a b) where
-  choiceCons = Func_Choice
-  choicesCons = Func_Choices
-  failCons = Func_Fail
-  guardCons = Func_Guard
-  try (Func_Choice i x1 x2) = Choice i x1 x2
-  try (Func_Choices i xs) = Choices i xs
-  try (Func_Fail) = Fail
-  try v = Val v
+instance NonDet (Func t0 t1) where
+  choiceCons = Choice_Func
+  choicesCons = Choices_Func
+  failCons = Fail_Func
+  guardCons = Guard_Func
+  try (Choice_Func i x y) = tryChoice i x y
+  try (Choices_Func i xs) = tryChoices i xs
+  try Fail_Func = Fail
+  try (Guard_Func c e) = Guard c e
+  try x = Val x
 
-instance Generable (Func a b) where
-  generate = error "generate for Func is undefined"
+instance Generable (Func a b) where generate _ = error "generate for Func"
 
-instance NormalForm (Func a b) where
-  cont $!! f@(Func _)          = cont f
-  cont $!! Func_Choice i f1 f2 = nfChoice cont i f1 f2
-  cont $!! Func_Choices i fs   = nfChoices cont i fs
-  cont $!! Func_Guard c f      = guardCons c (cont $!! f)
-  _    $!! Func_Fail           = failCons
+instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
+  ($!!) cont f@(Func _) = cont f
+  ($!!) cont (Choice_Func i x y) = nfChoice cont i x y
+  ($!!) cont (Choices_Func i xs) = nfChoices cont i xs
+  ($!!) cont (Guard_Func c x) = guardCons c (cont $!! x)
+  ($!!) _ Fail_Func = failCons
+  ($!<) cont (Choice_Func i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_Func i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
 
-  cont $!< Func_Choice i f1 f2 = nfChoiceIO cont i f1 f2
-  cont $!< Func_Choices i fs   = nfChoicesIO cont i fs
-  cont $!< f                   = cont f
+instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_Func j _ _) = [(i :=: (BindTo j))]
+  bind i (Choices_Func j _) = [(i :=: (BindTo j))]
+-- END GENERATED FROM PrimTypes.curry
 
-instance Unifiable (Func a b) where
-  (=.=) = error "(=.=) for Func is undefined"
-  bind = error "bind for Func is undefined"
 
 -- Higher Order functions
-
 instance Show (a -> b) where
   show = error "show for function is undefined"
 
@@ -370,20 +366,19 @@ instance Unifiable (a -> b) where
 
 -- TODO: reason about IO and non-determinism
 
-data C_IO a
-     = Choice_C_IO ID (C_IO a) (C_IO a)
-     | Choices_C_IO ID [C_IO a]
+-- BEGIN GENERATED FROM PrimTypes.curry
+data C_IO t0
+     = C_IO (IO t0)
+     | Choice_C_IO ID (C_IO t0) (C_IO t0)
+     | Choices_C_IO ID ([C_IO t0])
      | Fail_C_IO
-     | Guard_C_IO [Constraint] (C_IO a)
-     | C_IO (IO a)
+     | Guard_C_IO ([Constraint]) (C_IO t0)
 
-instance Show (C_IO a) where
-  show = error "show for C_IO"
+instance Show (C_IO a) where show = error "show for C_IO"
 
-instance Read (C_IO a) where
-  readsPrec = error "read for C_IO"
+instance Read (C_IO a) where readsPrec = error "readsPrec for C_IO"
 
-instance NonDet (C_IO a) where
+instance NonDet (C_IO t0) where
   choiceCons = Choice_C_IO
   choicesCons = Choices_C_IO
   failCons = Fail_C_IO
@@ -394,23 +389,24 @@ instance NonDet (C_IO a) where
   try (Guard_C_IO c e) = Guard c e
   try x = Val x
 
-instance Generable (C_IO a) where
-  generate _ = error "generate for C_IO"
+instance Generable (C_IO a) where generate _ = error "generate for C_IO"
 
-instance NormalForm (C_IO a) where
-  cont $!! io@(C_IO _) = cont io
-  cont $!! Choice_C_IO i io1 io2 = nfChoice cont i io1 io2
-  cont $!! Choices_C_IO i ios = nfChoices cont i ios
-  cont $!! Guard_C_IO c io = guardCons c (cont $!! io)
-  _    $!! Fail_C_IO = failCons
+instance NormalForm t0 => NormalForm (C_IO t0) where
+  ($!!) cont io@(C_IO _) = cont io
+  ($!!) cont (Choice_C_IO i x y) = nfChoice cont i x y
+  ($!!) cont (Choices_C_IO i xs) = nfChoices cont i xs
+  ($!!) cont (Guard_C_IO c x) = guardCons c (cont $!! x)
+  ($!!) _ Fail_C_IO = failCons
+  ($!<) cont (Choice_C_IO i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_C_IO i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
 
-  cont $!< Choice_C_IO i io1 io2 = nfChoiceIO cont i io1 io2
-  cont $!< Choices_C_IO i ios = nfChoicesIO cont i ios
-  cont $!< io                    = cont io
+instance Unifiable t0 => Unifiable (C_IO t0) where
+  (=.=) _ _ = Fail_C_Success
+  bind i (Choice_C_IO j _ _) = [(i :=: (BindTo j))]
+  bind i (Choices_C_IO j _) = [(i :=: (BindTo j))]
+-- END GENERATED FROM PrimTypes.curry
 
-instance Unifiable (C_IO a) where
-  (=.=) _ _ = error "(=.=) for C_IO"
-  bind i (Choice_C_IO j _ _) = [i :=: (BindTo j)]
 
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
