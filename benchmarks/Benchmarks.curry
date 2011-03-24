@@ -305,11 +305,11 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 2 allBenchmarks
---main = run 1 allBenchmarks
+main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort"]
 --main = run 1 [benchFLPSearch "Half"]
-main = run 1 [benchFLPDFSU "Last"]
+--main = run 1 [benchFLPDFSU "Last"]
