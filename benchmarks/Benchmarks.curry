@@ -52,9 +52,9 @@ runBenchmarks num benchmarks = do
   results <- mapIO (runBenchmark num) benchmarks
   let maxnamelength = foldr1 max (map (length . fst) results)
   return $ unlines $
-    take 70 (repeat '=') :
+    take 8 (repeat '-') :
     map (\ (n,ts) -> n ++ take (maxnamelength - length n) (repeat ' ') ++
-                     ":" ++ concat (intersperse "|" (map showFloat ts)))
+                     "|" ++ concat (intersperse "|" (map showFloat ts)))
         (if all (not . null) (map snd results)
          then processResults results
          else results)
@@ -85,7 +85,7 @@ processTimes timings =
 -- Run a benchmark and return the timings
 runBenchmark :: Int -> (String,IO Int,String,String) -> IO (String,[Float])
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
-  let line = take 70 (repeat '=')
+  let line = take 8 (repeat '-')
   putStr (unlines [line, "Running benchmark: "++name, line])
   preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
