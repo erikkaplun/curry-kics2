@@ -929,15 +929,15 @@ cond external
 -- letrec :: a -> a -> Success
 -- letrec external
 
--- --- Non-strict equational constraint. Experimental.
--- (=:<=) :: a -> a -> Success
--- (=:<=) external
---
--- --- Non-strict equational constraint for linear function patterns.
--- --- Thus, it must be ensured that the first argument is always (after evalutation
--- --- by narrowing) a linear pattern. Experimental.
--- (=:<<=) :: a -> a -> Success
--- (=:<<=) external
+--- Non-strict equational constraint. Experimental.
+(=:<=) :: a -> a -> Success
+(=:<=) external
+
+--- Non-strict equational constraint for linear function patterns.
+--- Thus, it must be ensured that the first argument is always (after evalutation
+--- by narrowing) a linear pattern. Experimental.
+(=:<<=) :: a -> a -> Success
+(=:<<=) external
 
 -- --- internal function to implement =:<=
 -- ifVar :: _ -> a -> a -> a

@@ -135,11 +135,11 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
                      -- also:  -funbox-strict-fields ?
   putStrLn $ "Executing: "++compileCmd
   system compileCmd
-  
+
 ----------------------------------------------------------------------
 -- Command to compile a module and execute main with MCC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
-mccCompile options mod = system $ 
+mccCompile options mod = system $
   "/home/mcc/bin/cyc " ++
   (if null options then "-e\"main\"" else options) ++
   " " ++ mod ++".curry"
@@ -151,16 +151,16 @@ ghcCompile mod = system $ "ghc --make -fforce-recomp " ++ mod
 ghcCompileO mod = system $ "ghc -O2 --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and print main in PAKCS:
-pakcsCompile options mod = system $ 
+pakcsCompile options mod = system $
   "/home/pakcs/pakcs/bin/pakcs "++
   (if null options then "-m \"print main\"" else options) ++" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
-sicstusCompile mod = system $ 
+sicstusCompile mod = system $
   "echo \"compile("++mod++"), save_program('"++mod++".state',main).\" | /home/sicstus/sicstus4/bin/sicstus && chmod +x "++mod++".state"
 
 -- Command to compile a Prolog program and run main in SWI-Prolog:
-swiCompile mod = system $ 
+swiCompile mod = system $
   "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
 ----------------------------------------------------------------------
@@ -225,7 +225,8 @@ benchFLPDFS prog =
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
- [idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ [idcBenchmark "IDC+_PRDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "printDFS nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
@@ -304,11 +305,11 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 2 allBenchmarks
-main = run 1 allBenchmarks
+--main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort"]
 --main = run 1 [benchFLPSearch "Half"]
---main = run 1 [benchFLPDFSU "Last"]
+main = run 1 [benchFLPDFSU "Last"]

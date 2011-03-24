@@ -4,6 +4,7 @@ module Basics where
 
 import ID
 import qualified Data.Map
+import Data.List (foldl')
 import System.IO
 import Control.Monad
 import Control.Parallel.TreeSearch
@@ -214,6 +215,47 @@ x =:= y = unify (try x) (try y)
 
     unify (Frees i _) (Val v)      =
       (\ v' -> guardCons (bind i v') C_Success) $!! v
+
+    unify (Free i _ _) (Free j _ _)      =
+      guardCons [i :=: BindTo j] C_Success
+
+    unify (Frees i _) (Frees j _)      =
+      guardCons [i :=: BindTo j] C_Success
+
+(=:<=) :: Unifiable a => a -> a -> C_Success
+x =:<= y = unify (try x) (try y)
+  where
+    unify Fail _    = failCons
+    unify _    Fail = failCons
+
+    unify (Choice i x1 x2) y =
+       choiceCons i (unify (try x1) y) (unify (try x2) y)
+
+    unify x (Choice i x1 x2) =
+       choiceCons i (unify x (try x1)) (unify x (try x2))
+
+    unify (Choices i xs) y =
+       choicesCons i $ map (\x -> unify (try x) y) xs
+
+    unify x (Choices i ys) =
+       choicesCons i $ map (\y -> unify x (try y)) ys
+
+    unify (Guard c e) y = guardCons c (unify (try e) y)
+    unify x (Guard c e) = guardCons c (unify x (try e))
+
+    unify (Val vx) (Val vy) = vx =.= vy -- TODO: correct?
+
+    unify (Val v)      (Free j _ _) =
+      guardCons (bind j v) C_Success
+
+    unify (Val v)      (Frees j _) =
+      guardCons (bind j v) C_Success
+
+    unify (Free i _ _) (Val v)      =
+      guardCons (bind i v) C_Success
+
+    unify (Frees i _) (Val v)      =
+      guardCons (bind i v) C_Success
 
     unify (Free i _ _) (Free j _ _)      =
       guardCons [i :=: BindTo j] C_Success
@@ -578,53 +620,75 @@ prdfs mainexp = initSupply >>= \s -> printValsDFS False (try (id $!! (mainexp s)
 printValsDFS :: (Show a,NonDet a, NormalForm a) => Bool -> Try a -> IO ()
 printValsDFS _  Fail           = return ()
 printValsDFS _  (Val v)        = print v
-printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
-  where
-   choose ChooseLeft  = (printValsDFS fb . try) $!< x
-   choose ChooseRight = (printValsDFS fb . try) $!< y
-   choose NoChoice    = print i
+printValsDFS _ (Free _ _ _)    = error "free occurred"
+-- printValsDFS fb (Free i x y)   = lookupChoice i >>= choose
+--   where
+--    choose ChooseLeft  = (printValsDFS fb . try) $!< x
+--    choose ChooseRight = (printValsDFS fb . try) $!< y
+--    choose NoChoice    = print i
 printValsDFS fb (Frees i xs)   = lookupChoice i >>= choose
   where
    choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
    choose NoChoice      = print i
 
 printValsDFS fb (Choice i x y) = lookupChoice i >>= choose
- where
-   choose ChooseLeft  = (printValsDFS fb . try) $!< x
-   choose ChooseRight = (printValsDFS fb . try) $!< y
-   choose NoChoice    = if fb
-                           then do
-                            newChoice ChooseLeft x
-                            newChoice ChooseRight y
-                           else do
-                            newChoice ChooseLeft x
-                            setChoice i ChooseRight
-                            printValsDFS False (try y)
+  where
+    choose ChooseLeft  = (printValsDFS fb . try) $!< x
+    choose ChooseRight = (printValsDFS fb . try) $!< y
+    choose NoChoice    = if fb
+                         then do
+                           newChoice True ChooseLeft  x
+                           newChoice True ChooseRight y
+                           setChoice i NoChoice
+                         else do
+                           newChoice True ChooseLeft  x
+                           newChoice False ChooseRight y
 
-   newChoice j a = do
-    setChoice i j
-    (printValsDFS True . try) $!< a
-    setChoice i NoChoice
+--     choose ChooseLeft  = (printValsDFS fb . try) $!< x
+--     choose ChooseRight = (printValsDFS fb . try) $!< y
+--     choose NoChoice    = do
+--       -- Resetting the Choice is only necessary if we perform further
+--       -- backtracking (indicated by flag fb). The reset action is computed
+--       -- early to prevent space leaks for ID i.
+--       let !maybeReset = if fb then setChoice i NoChoice else return ()
+--       newChoice True ChooseLeft  x
+--       newChoice fb   ChooseRight y
+--       maybeReset
+
+    newChoice fbt j a = do
+      setChoice i j
+      (printValsDFS fbt . try) $!< a
 
 printValsDFS fb (Choices i xs) = lookupChoice i >>= choose
- where
-   choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
-   -- TODO: not optimized!
-   choose NoChoice      = sequence_ $ zipWith (\n x -> newChoice (ChooseN n errChoice) x) [0 ..] xs
-   choose c             = error $ "choose with choice " ++ show c ++ " for ID " ++ show i
+  where
+    choose (ChooseN c _) = (printValsDFS fb . try) $!< (xs !! c)
+    choose NoChoice      =
+      if fb
+        then do
+          foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
+          setChoice i NoChoice
+        else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
 
-   newChoice j a = do
-    setChoice i j
-    (printValsDFS True . try) $!< a
-    setChoice i NoChoice
+    choose c             = error $ "choose with " ++ show c ++ " for ID " ++ show i
 
-   errChoice = error "propagation number used within non-free Choice"
+    newChoice fbt n a = do
+      setChoice i (ChooseN n errChoice)
+      (printValsDFS fbt . try) $!< a
+
+    errChoice = error "propagation number used within non-free Choice"
+
+    zipWithButLast :: (a -> b -> c) -> (a -> b -> c) -> [a] -> [b] -> [c]
+    zipWithButLast _ _     []     _      = []
+    zipWithButLast _ _      _     []     = []
+    zipWithButLast _ lastf (a:[]) (b:_ ) = lastf a b : []
+    zipWithButLast _ lastf (a:_ ) (b:[]) = lastf a b : []
+    zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
 
 printValsDFS fb (Guard cs e) = do
   mreset <- solves cs
   case mreset of
     Nothing    -> return ()
-    Just reset -> if fb then ((printValsDFS fb . try) $!< e) >> reset
+    Just reset -> if fb then (printValsDFS fb . try) $!< e >> reset
                         else (printValsDFS fb . try) $!< e
 
 solves :: [Constraint] -> Solved
@@ -804,19 +868,19 @@ computeWithDFS mainexp =
 
 searchDFS :: (Show a, NormalForm a) => Try a -> IO (IOList a)
 searchDFS Fail             = mnil
-
-searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
-  where
-    choose ChooseLeft  = (searchDFS . try) $!< x1
-    choose ChooseRight = (searchDFS . try) $!< x2
-    choose NoChoice    = mcons (choiceCons i x1 x2) mnil
-
+searchDFS (Val v)          = mcons v mnil
+searchDFS (Free _ _ _)     = error "free occurred"
+-- searchDFS (Free i x1 x2)   = lookupChoice i >>= choose
+--   where
+--     choose ChooseLeft  = (searchDFS . try) $!< x1
+--     choose ChooseRight = (searchDFS . try) $!< x2
+--     choose NoChoice    = mcons (choiceCons i x1 x2) mnil
 searchDFS (Frees i xs)     = lookupChoice i >>= choose
   where
     choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
     choose NoChoice      = mcons (choicesCons i xs) mnil
 
-searchDFS (Val v)          = mcons v mnil
+
 searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
   where
     choose ChooseLeft  = (searchDFS . try) $!< x1
@@ -829,10 +893,10 @@ searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
 searchDFS (Choices i xs) = lookupChoice i >>= choose
   where
     choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
-    choose NoChoice      = foldl (+++) mnil $ zipWith (\n x -> newChoice (ChooseN n) x) [0 ..] xs
-    choose x = error ("choose: " ++ show x)
+    choose NoChoice      = foldr1 (+++) $ zipWith newChoice [0 ..] xs
+    choose x             = error ("choose: " ++ show x)
 
-    newChoice c x = do setChoice i (c errChoice)
+    newChoice n x = do setChoice i (ChooseN n errChoice)
                        (searchDFS .try) $!< x |< setChoice i NoChoice
 
     errChoice = error "propagation number used within non-free Choice"

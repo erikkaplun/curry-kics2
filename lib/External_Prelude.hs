@@ -463,6 +463,12 @@ external_d_C_prim_show a = toCurry (show a)
 external_d_C_cond :: Curry a => C_Success -> a -> a
 external_d_C_cond succ a = const a `d_dollar_bang` succ
 
+external_d_OP_eq_colon_lt_eq :: Curry a => a -> a -> C_Success
+external_d_OP_eq_colon_lt_eq = (=:<=)
+
+external_d_OP_eq_colon_lt_lt_eq :: Curry a => a -> a -> C_Success
+external_d_OP_eq_colon_lt_lt_eq = error "external_d_OP_eq_colon_lt_lt_eq"
+
 -- External ND
 -- -----------
 
