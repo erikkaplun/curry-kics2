@@ -1,5 +1,5 @@
 module ID
-  ( Choice (..), ID (..), IDSupply
+  ( Choice (..), ID (..), Constraint (..), IDSupply
   , mkInt, leftID, rightID, narrowID
   , initSupply, leftSupply, rightSupply, thisID, freeID
   , lookupChoice, setChoice, setUnsetChoice
@@ -33,6 +33,7 @@ lookupChoice i = do
       case c of
         NoChoice      -> return ()
         ChooseN _ num -> propagateBind i j num
+        LazyBind _    -> return ()
         errChoice     -> error $ "ID.lookupChoice returned " ++ show errChoice
       return c
 

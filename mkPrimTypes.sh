@@ -12,7 +12,9 @@ function replace ()
   | sed "s/(\$!!) cont (C_Int x1).*$/(\$!!) cont i@(C_Int _) = cont i/" \
   | sed "/(\$!<) cont (C_Int x1)/d" \
   | sed "/(=\.=) (C_Int x1) (C_Int y1)/d" \
+  | sed "/(=\.<=) (C_Int x1) (C_Int y1)/d" \
   | sed "/bind i (C_Int x2) =/d" \
+  | sed "/lazyBind i (C_Int x2) =/d" \
   | sed "s/\((=?=) (C_Int x1) (C_Int y1) = \).*$/\1toCurry (x1 ==# y1)/" \
   | sed "s/\((<?=) (C_Int x1) (C_Int y1) = \).*$/\1toCurry (x1 <=# y1)/" \
   | sed "s/C_FloatPrim/Float#/" \
@@ -22,7 +24,9 @@ function replace ()
   | sed "s/(\$!!) cont (C_Float x1).*$/(\$!!) cont x@(C_Float _) = cont x/" \
   | sed "/(\$!<) cont (C_Float x1)/d" \
   | sed "/(=\.=) (C_Float x1) (C_Float y1)/d" \
+  | sed "/(=\.<=) (C_Float x1) (C_Float y1)/d" \
   | sed "/bind i (C_Float x2) =/d" \
+  | sed "/lazyBind i (C_Float x2) =/d" \
   | sed "s/\((=?=) (C_Float x1) (C_Float y1) = \).*$/\1toCurry (x1 \`eqFloat#\` y1)/" \
   | sed "s/\((<?=) (C_Float x1) (C_Float y1) = \).*$/\1toCurry (x1 \`leFloat#\` y1)/" \
   | sed "s/C_CharPrim/Char#/" \
@@ -32,7 +36,9 @@ function replace ()
   | sed "s/(\$!!) cont (C_Char x1).*$/(\$!!) cont x@(C_Char _) = cont x/" \
   | sed "/(\$!<) cont (C_Char x1)/d" \
   | sed "/(=\.=) (C_Char x1) (C_Char y1)/d" \
+  | sed "/(=\.<=) (C_Char x1) (C_Char y1)/d" \
   | sed "/bind i (C_Char x2) =/d" \
+  | sed "/lazyBind i (C_Char x2) =/d" \
   | sed "s/\((=?=) (C_Char x1) (C_Char y1) = \).*$/\1toCurry (x1 \`eqChar#\` y1)/" \
   | sed "s/\((<?=) (C_Char x1) (C_Char y1) = \).*$/\1toCurry (x1 \`leChar#\` y1)/" \
   | sed "s/C_IOPrim/IO/" \
@@ -45,7 +51,9 @@ function replace ()
   | sed "s/(\$!!) cont (C_IO x1).*$/(\$!!) cont io@(C_IO _) = cont io/" \
   | sed "/(\$!<) cont (C_IO x1)/d" \
   | sed "/(=\.=) (C_IO x1) (C_IO y1)/d" \
+  | sed "/(=\.<=) (C_IO x1) (C_IO y1)/d" \
   | sed "/bind i (C_IO x2) =/d" \
+  | sed "/lazyBind i (C_IO x2) =/d" \
   | sed "/(=?=).*C_IO/d" \
   | sed "/(<?=).*C_IO/d" \
   | sed "s/C_IDSupply/IDSupply/" \
@@ -58,10 +66,27 @@ function replace ()
   | sed "s/(\$!!) cont (C_Func x1).*$/(\$!!) cont f@(C_Func _) = cont f/" \
   | sed "/(\$!<) cont (C_Func x1)/d" \
   | sed "/(=\.=) (C_Func x1) (C_Func y1)/d" \
+  | sed "/(=\.<=) (C_Func x1) (C_Func y1)/d" \
   | sed "/bind i (C_Func x2) =/d" \
+  | sed "/lazyBind i (C_Func x2) =/d" \
   | sed "/(=?=).*C_Func/d" \
   | sed "/(<?=).*C_Func/d" \
   | sed "s/C_Func/Func/g" \
+  | sed 's/instance .* Show (C_PrimData t0) where.*$/instance Show (C_PrimData a) where show = error "show for PrimData"/' \
+  | sed "/showsPrec d.*C_PrimData/d" \
+  | sed "/readsPrec d.*C_PrimData/d" \
+  | sed 's/instance .* Read (C_PrimData t0) where.*$/instance Read (C_PrimData a) where readsPrec = error "readsPrec for PrimData"/' \
+  | sed "/generate .*C_PrimData/d" \
+  | sed 's/instance .* Generable (C_PrimData t0) where.*$/instance Generable (C_PrimData a) where generate _ = error "generate for PrimData"/' \
+  | sed "s/(\$!!) cont (C_PrimData x1).*$/(\$!!) cont p@(C_PrimData _) = cont p/" \
+  | sed "/(\$!<) cont (C_PrimData x1)/d" \
+  | sed "/(=\.=) (C_PrimData x1) (C_PrimData y1)/d" \
+  | sed "/(=\.<=) (C_PrimData x1) (C_PrimData y1)/d" \
+  | sed "/bind i (C_PrimData x2) =/d" \
+  | sed "/lazyBind i (C_PrimData x2) =/d" \
+  | sed "/(=?=).*C_PrimData/d" \
+  | sed "/(<?=).*C_PrimData/d" \
+  | sed "s/C_PrimData/PrimData/g" \
   | sed "s/PrimTypes/Prelude/g" \
   | sed '/^$/{N;/^\n$/D}' \
   > $1

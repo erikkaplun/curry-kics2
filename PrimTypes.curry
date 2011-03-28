@@ -14,3 +14,5 @@ data IOPrim _
 
 data Func a b = Func (a -> IDSupply -> b)
 data IDSupply
+
+data PrimData a = PrimData a

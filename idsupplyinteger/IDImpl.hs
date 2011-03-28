@@ -2,7 +2,7 @@
 -- | ID implementation using Integers
 -- ---------------------------------------------------------------------------
 module IDImpl
-  ( Choice (..), ID (..), IDSupply
+  ( Choice (..), ID (..), Constraint (..), IDSupply
   , mkInt, initSupply, leftSupply, rightSupply, thisID
   , lookupChoiceRaw, setChoice
   , store
@@ -26,6 +26,7 @@ data Choice
   | BoundTo ID Int  -- a free or narrowed variable is bound to the variable
                     -- with the given ID; the bindings for the n arguments
                     -- have also been propagated
+  | LazyBind [Constraint]
     deriving Show
 
 instance Eq Choice where
@@ -35,6 +36,7 @@ instance Eq Choice where
   ChooseN c _ == ChooseN d _ = c == d
   BindTo  i   == BindTo  j   = i == j
   BoundTo i _ == BoundTo j _ = i == j
+  LazyBind cs == LazyBind ds = cs == ds
   _           == _           = False
 
 -- Type to identify different Choice structures in a non-deterministic result.
@@ -51,6 +53,10 @@ instance Show ID where
   show (ID i)       = show i
   show (FreeID i)   = "Free" ++ show i
   show (Narrowed i) = "Narrowed" ++ show i
+
+data Constraint = ID :=: Choice
+                | Failed
+  deriving (Eq, Show)
 
 -- Conversion of ID into integer (for monadic search operators).
 mkInt :: ID -> Integer
@@ -88,7 +94,7 @@ thisID (IDSupply i) = ID i
 -- Managing choices
 -- ---------------------
 
-type SetOfChoices = Data.Map.Map Integer Choice
+type SetOfChoices = Data.Map.Map Ref Choice
 
 store :: IORef SetOfChoices
 store = unsafePerformIO (newIORef Data.Map.empty)
