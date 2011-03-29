@@ -1,0 +1,830 @@
+\documentclass{llncs}
+
+\usepackage{times}
+\usepackage{url}
+\def\UrlFont{\tt}
+\usepackage{latexsym}
+\usepackage{xspace}
+\usepackage{hyperref}
+\usepackage{color}
+
+\usepackage{listings}
+\lstset{aboveskip=1.0ex,
+        belowskip=1.0ex,
+        showstringspaces=false, % no special string space
+        mathescape=true,
+        flexiblecolumns=false,
+        basewidth=0.55em,
+        basicstyle=\small\ttfamily}
+
+\lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
+       }
+
+\lstnewenvironment{curry}{\lstset{backgroundcolor=\color[rgb]{0.9,0.9,0.9}}}{}
+\lstnewenvironment{haskell}{}{}
+\newcommand{\listline}{\vrule width0pt depth1.75ex}
+
+\newcommand{\code}[1]{\mbox{\texttt{#1}}}
+\newcommand{\ccode}[1]{``\code{#1}''}
+\newcommand{\bs}{\char92\xspace} % backslash
+\newcommand{\us}{\char95\xspace} % underscore
+\newcommand{\Choice}[2]{#1 \mathop{?} #2}
+\newcommand{\ol}[1]{\overline{#1}}
+
+% ------------------------------------------------------------------
+% SYMBOLS & FORMULAS
+
+\newcommand{\Cc}{{\cal{C}}} % constructors
+\newcommand{\Fc}{{\cal{F}}} % defined functions
+\newcommand{\Var}{{\cal V}ar} % variables in an object
+\newcommand{\Dom}{{\cal D}om} % domain of a substitution
+\newcommand{\Rc}{{\cal{R}}} % rewrite system
+\newcommand{\Tc}{{\cal{T}}} % algebra of terms
+\newcommand{\Xc}{{\cal{X}}} % set of all variables
+\renewcommand{\emptyset}{\varnothing}
+\newcommand{\suc}{\mathit{success}}  % success
+\newcommand{\Suc}{\mathtt{Success}}  % success type
+\newcommand{\funset}{\ensuremath{_{\cal S}}}
+\newcommand{\seq}{\mathrel{\code{=:=}}} % strict equality of math mode
+
+\begin{document}
+\pagestyle{plain}
+\sloppy
+
+\title{KiCS2: A New Approach to Compile Curry to Haskell}
+
+\author{
+Bernd Bra{\ss}el
+\kern1em
+Michael Hanus
+\kern1em
+Bj{\"o}rn Peem{\"o}ller
+\kern1em
+Fabian Reck
+}
+\institute{
+Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
+\email{\{bbr|mh|bjp|fre\}@informatik.uni-kiel.de}
+}
+
+\maketitle
+
+\begin{abstract}
+bla bla
+\end{abstract}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:Introduction}
+
+Functional logic languages integrate the most important
+features of functional and logic languages
+(see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
+In particular, they combine higher-oder functions and demand-driven
+evaluation from functional programming with logic programming features
+like nondeterministic search and computing with partial information
+(logic variables).
+The combination of these features
+has led to new design patterns \cite{AntoyHanus02FLOPS}
+and better abstractions for application programming,
+e.g., as shown for programming with databases
+\cite{BrasselHanusMueller08PADL,Fischer05},
+GUI programming \cite{Hanus00PADL},
+web programming \cite{Hanus01PADL,Hanus06PPDP,HanusKoschnicke10PADL},
+or string parsing \cite{CaballeroLopez99}.
+
+The implementation of functional logic languages is challenging
+since a reasonable implementation has to support the operational
+features mentioned above.
+One possible approach
+is the design of new abstract machines appropriately supporting
+these operational features and implementing them in some (typically,
+imperative) language, like C \cite{Lux99FLOPS}
+or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP}.
+Another approach is the reuse of already existing implementations
+of some of these features by translating
+functional logic programs into logic or functional languages.
+For instance, if one compiles into Prolog, one can reuse
+the existing backtracking implementation for nondeterministic
+search and logic variables and unification for computing with partial
+information. However, one has to implement demand-driven evaluation
+and higher-order functions \cite{AntoyHanus00FROCOS}.
+A disadvantage of this approach is the commitment to a fixed
+search strategy (backtracking).
+
+If one compiles into a non-strict functional language like Haskell,
+one can reuse the implementation
+of lazy evaluation and higher-order functions, but one has
+to implement nondeterministic evaluations
+\cite{BrasselFischerHanusReck11,BrasselHuch07}.
+Although Haskell offers list comprehensions for modelling
+backtracking \cite{Wadler85}, this cannot be exploited
+due to the specific semantical requirements of the combination
+of non-strict and nondeterministic operations
+\cite{GonzalezEtAl99}. Thus, additional implementation efforts
+are necessary like implementation of shared
+nondeterministic computations \cite{FischerKiselyovShan09}.
+
+Nevertheless, the translation of functional logic languages
+into other high-level languages is attractive:
+it limits the implementation efforts compared to an implementation
+from scratch and one can exploit the existing implementation technologies
+provided that the efforts to implement the missing features
+are reasonable.
+
+In this paper we describe an implementation that is based
+on the latter principles. We present a method to compile
+programs written in the functional logic language Curry \cite{Hanus06Curry}
+into Haskell programs
+The difficulty of such an implementation is the fact
+that nondeterministic results can occur in any place of a
+computation. Thus, one cannot separate logic computations
+by the use of list comprehensions \cite{Wadler85},
+but any outcome of some operation could be potentially nondeterministic,
+i.e., it might have more than one result value.
+We solve this problem by an explicit representation of
+nondeterministic values, i.e., we extend each data type by
+another constructor to represent the choice between several values.
+This idea is also the basis of Curry implementation KiCS
+\cite{BrasselHuch07,BrasselHuch09}.
+However, KiCS is based on unsafe features of Haskell
+that inhibit the use of optimizations provided by Haskell compilers
+like GHC.\footnote{\url{http://www.haskell.org/ghc/}}
+In contrast, our implementation is not based on unsafe features.
+In addition, we also support more flexible search strategies
+and new features to encapsulate nondeterministic computations.
+
+The general objective of our approach is the support
+of flexible strategies to explore the search space
+resulting from nondeterministic computations.
+In contrast to Prolog-based implementations
+that use backtracking and, therefore, are incomplete,
+we also want to support complete strategies like breadth-first search,
+iterative deepening or parallel search (in order to exploit
+multi-core architectures). We achieve this goal by an
+explicit representation of the search space as data
+that can be traversed by various operations.
+Moreover, purely deterministic computations
+are implemented as purely functional programs so that
+they are executed with almost the same efficiency
+of their purely functional counterparts.
+
+In the next section, we sketch are source language Curry
+and introduce a normalized form of Curry programs that is the
+basis of our translation scheme.
+Section~\ref{sec:Compilation} presents the basic ideas
+of this translation scheme.
+Further aspects related to our compiler are discussed in
+Section~\ref{sec:FurtherAspects}.
+We show benchmarks of our initial implementation in
+Section~\ref{sec:Benchmarks}
+before we conclude in Section~\ref{sec:Conclusions}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Curry Programs}
+\label{sec:Curry}
+
+The syntax the functional logic language Curry \cite{Hanus06Curry}
+is close to Haskell \cite{PeytonJones03Haskell}, i.e.,
+variables and function names usually
+start with lowercase letters, the names of type and data constructors
+start with an uppercase letter, and the application of $f$
+to $e$ is denoted by juxtaposition (``$f~e$'').
+In addition, Curry allows free (logic) 
+variables in conditions and right-hand sides of defining rules.
+In contrast to functional programming and similarly to logic programming,
+operations can be defined by overlapping rules so that
+they might yield more than one result on the same input.
+Such operations are also called \emph{nondeterministic}.
+For instance, Curry offers a \emph{choice} operation that is predefined by
+the following rules:
+%
+\begin{curry}
+  x ? _ = x
+  _ ? y = y
+\end{curry}
+%
+Thus, we can define a nondeterministic operation \code{aBool} by
+\label{ex:aBool}
+%
+\begin{curry}
+  aBool = True ? False
+\end{curry}
+%
+so that the expression \ccode{aBool} has two values:
+\code{True} and \code{False}.
+
+If nondeterministic operations are used as arguments in other operations,
+a semantical ambiguity might occur. Consider the operations
+%
+\begin{curry}
+  xor True  False = True
+  xor True  True  = False
+  xor False x     = x
+
+  xorSelf x = xor x x
+\end{curry}
+%
+and the expression \ccode{xorSelf aBool}.
+If we interpret this program as a term rewriting system,
+we could have the reduction
+\begin{lstlisting}
+  xorSelf aBool  $\to~$  xor aBool aBool     $\to~$  xor True aBool 
+                 $\to~$  xor True False      $\to~$  True
+\end{lstlisting}
+leading to the unintended result \code{True}.
+Note that this result cannot be obtained if we use a strict strategy
+where arguments are evaluated before the function calls.
+In order to avoid such dependencies on the evaluation strategies
+and exclude such unintended results,
+Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed the
+the rewriting logic CRWL as a logical
+(execution- and strategy-independent) foundation for declarative
+programming with non-strict and nondeterministic operations.  This
+logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
+\label{ctc-semantics}
+where values of the arguments of an operation are determined before the
+operation is evaluated. Note that this does not necessarily require
+an eager evaluation of arguments.
+Actually, \cite{AlbertHanusHuchOliverVidal05,LopezRodriguezSanchez07}
+define lazy evaluation strategies for functional logic programs
+with call-time choice semantics where actual arguments passed to
+operations are shared. Hence, we can evaluate the expression above
+lazily provided that all occurrences of \code{aBool}
+are shared so that all of them reduce either to \code{True} or to \code{False}.
+The requirements of this call-time choice semantics is the
+reason why it is not simply possible to use list comprehensions
+or non-determinism monads for a straightforward implementation
+of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
+
+Due to these considerations, an implementation of Curry
+has to support lazy evaluation where operations can have multiple results
+and unevaluated arguments must be shared.
+Since this is a complex task, if we try to implement it
+directly on the source program,
+we perform some simplifications before we generate the target code.
+
+First of all, we assume that our programs are \emph{first-order}.
+Higher-order programs can be transformed into first-order programs
+by a technique called ``defunctionalization'' \cite{Reynolds72}
+which is often used in Prolog-based implementations of
+functional logic languages \cite{AntoyHanus00FROCOS}.
+However, we will later use the higher-order features of Haskell
+instead of defunctionalization.
+
+\label{sec:no-logic-vars}
+Furthermore, we assume that our programs \emph{do not contain logic variables}.
+This assumption can be made since it has been shown
+\cite{AntoyHanus06ICLP} that logic variables can be replaced
+by nondeterministic ``generators,''
+i.e., operations that evaluate to all possible values of the type of
+the logic variable. For instance, a Boolean logic variable
+can be replaced by the generator \code{aBool} defined above.
+
+\begin{figure}[t]
+\[
+\begin{array}{@{}rcl@{~~~~~~~~}l}
+  e & ::= & x & \mbox{$x$ is a variable}\\
+    &  |  & c(e_1,\ldots,e_n) & \mbox{$c$ is an $n$-ary constructor symbol}\\
+    &  |  & f(e_1,\ldots,e_n) & \mbox{$f$ is an $n$-ary function symbol}\\
+    &  |  & \Choice{e_1}{e_2} & \mbox{choice} \\
+    &  |  & \mbox{\code{let}}~\{x_1=e_1;\ldots;x_n = e_n\}~\code{in}~e
+                                            & \mbox{let binding}\\[1ex]
+  D & ::= & f(x_1,\ldots,x_n) = e
+                & \mbox{$n$-ary function $f$ with a single rule}\\
+    &  |  & f(c(y_1,\ldots,y_m),x_2,\ldots,x_n) = e
+                & \mbox{matching rule for $n$-ary function $f$}\\
+    &     & & \mbox{$c$ is an $m$-ary constructor symbol}\\
+  P & ::= & \ol{D_k}
+\end{array}
+\]
+\caption{Uniform programs}
+\label{fig:uniform}
+\end{figure}
+%
+Finally, we assume that the pattern matching strategy
+is explicitly encoded in individual matching functions.
+In contrast to \cite{AlbertHanusHuchOliverVidal05},
+where the pattern matching strategy is encoded in case expressions,
+we assume that each case expression is transformed into
+a new operation in order to avoid complications by translating
+nested case expressions.
+Thus, we assume that all programs are \emph{uniform}
+according to the definition in Fig.~\ref{fig:uniform}.
+There, %$\ol{o_n}$ denotes the object sequence $o_1,\ldots,o_n$,
+the variables in the left-hand sides of each rule are pairwise
+different, and
+the constructors in the left-hand sides of the matching rules of each function
+are pairwise different.
+Uniform programs have a simple form of pattern matching:
+either a function is defined by a single rule without pattern matching,
+or it is defined by rules where only one constructor occurs in the same argument
+of all rules.\footnote{For simplicity, we require in
+Fig.~\ref{fig:uniform} that the matching argument is always the
+first one, but one can also choose any other argument.}
+For instance, the operation \code{xor} defined above can be transformed
+into the following uniform program:
+%
+\begin{curry}
+  xor True   x = xor' x
+  xor False  x = x
+  xor' False = True
+  xor' True  = False
+\end{curry}
+%
+In particular, there are no overlapping rules for functions
+(except for the choice operation \ccode{?} which is considered as predefined).
+Antoy \cite{Antoy01PPDP} showed that each functional logic program,
+i.e., each constructor-based conditional term rewriting system,
+can be translated into an equivalent unconditional term rewriting system
+without overlapping rules but containing choices in the right-hand sides,
+also called LOIS (limited overlapping inductively sequential) system.
+Furthermore, Brassel \cite{Brassel11Thesis} showed the semantical
+equivalence of narrowing computations in LOIS systems
+and rewriting computations in uniform programs.
+Due to these results, uniform programs are a reasonable intermediate
+language for our translation into Haskell which will be presented
+in the following sections.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Compilation to Haskell: The Basics}
+\label{sec:Compilation}
+
+\subsection{Representing Nondeterministic Computations}
+
+As mentioned above, our implementation is based on the explicit
+representation of nondeterministic results of computation
+as values. This could be easily achieved by adding a constructor
+to each data type to represent a choice between two values.
+For instance, one can redefine the data type for Boolean values
+as follows:
+\begin{haskell}
+  data Bool = False | True | Choice Bool Bool
+\end{haskell}
+Thus, we can implement the nondeterministic operation \code{aBool}
+defined in Section~\ref{ex:aBool} as follows:
+\begin{haskell}
+  aBool = Choice True False
+\end{haskell}
+If operations can deliver nondeterministic values,
+we have to extend the rules for operation defined by
+pattern matching so that they do not fail on nondeterministic argument
+values. Instead, they move the nondeterministic choice on level above,
+i.e., a choice in some argument leads to a choice in any result
+of this operation (this is also called a ``pull-tab'' step in
+\cite{AlqaddoumiAntoyFischerReck10}). For instance,
+the rules of the uniform operation \code{xor} shown above
+are extended as follows:
+%
+\begin{curry}
+  xor True           x = xor' x
+  xor False          x = x
+  xor (Choice x1 x2) x = Choice (xor x1 x) (xor x2 x)
+
+  xor' False          = True
+  xor' True           = False
+  xor' (Choice x1 x2) = Choice (xor' x1) (xor' x2)
+\end{curry}
+%
+The operation \code{xorSelf} is not defined by a pattern matching rule
+and, thus, need not be changed.
+If we evaluate the expression \ccode{xorSelf aBool}, we get the result
+\begin{lstlisting}
+  Choice (Choice False True) (Choice True False)
+\end{lstlisting}
+How can we interpret this result?
+In principle, the choices represent different possible values.
+Thus, if we want to show the different values of an expression
+(which is usually the task of a top-level ``read-eval-print'' loop),
+we enumerate all values contained in the choices.
+These are \code{False}, \code{True}, \code{True}, and \code{False}
+in the result above.
+Unfortunately, this is not conform with the call-time choice semantics
+discussed in Section~\ref{ctc-semantics} which should not yield
+a value like \code{True}.
+The call-time choice semantics requires that the choice
+of a value made for
+the initial expression \code{aBool} should be consistent
+in the entire computation.
+For instance, if we select the value \code{False} for the
+expression \code{aBool}, this selection should be made
+at all other places where this expression might have been copied
+during the computation. However, our initial implementation
+duplicates the initially single \code{Choice} into finally three
+occurrences of \code{Choice}.
+
+We can correct this wrong behavior of our implementation
+by identifying different \code{Choice} occurrences that our duplicates
+of some single \code{Choice}. This can be easily done by attaching
+a unique identifier, e.g., a number, to each choice:
+\begin{haskell}
+  type ID = Integer
+  data Bool = False | True | Choice ID Bool Bool
+\end{haskell}
+Furthermore, we modify the \code{Choice} pattern rules so that
+the identifiers will be kept, e.g.,
+\begin{curry}
+  xor (Choice i x1 x2) x = Choice i (xor x1 x) (xor x2 x)
+\end{curry}
+If the expression \code{aBool} assigns the number \code{1}
+to its choice, we obtain the result
+\begin{lstlisting}
+  Choice 1 (Choice 1 False True) (Choice 1 True False)
+\end{lstlisting}
+when evaluating the expression \ccode{xorSelf aBool}.
+If we show the values contained in this result,
+we have to make \emph{consistent} selections in choices with
+same identifiers. This, if we select the left branch as the value
+of the outermost \code{Choice}, we also have to select the left branch
+in the selected argument \code{(Choice 1 False True)} so that only
+the value \code{False} is possible here.
+Similarly, if we select the right branch as the value of the outermost
+\code{Choice}, we also have to select the right branch in
+its selected argument \code{(Choice 1 True False)} which yields to only
+value \code{False}.
+
+Note that each \code{Choice} occurring for the first time in a computation
+has to get its own unique identifier.
+For instance, if we evaluate the expression \ccode{xor aBool aBool},
+the two occurrences of \code{aBool} assign different identifiers
+to their \code{Choice} constructor (e.g., \code{1} for the left
+and \code{2} for the right \code{aBool} argument) so that this evaluates to
+\begin{lstlisting}
+  Choice 1 (Choice 2 False True) (Choice 2 True False)
+\end{lstlisting}
+Here we can make different selections for the outermost and inner
+\code{Choice} constructors so that this nondeterministic result represent
+four values.
+
+To summarize, our implementation is based on the following principles:
+\begin{enumerate}
+\item Each nondeterministic choice is represented by a \code{Choice}
+constructor with a unique identifier.
+\item When matching a \code{Choice} constructor, the choice is
+moved to the result of this operation with the same identifier,
+i.e., a nondeterministic argument
+yields nondeterministic results for each of the argument's values.
+\item Each choice occurring in a computation gets its own unique
+identifier.
+\end{enumerate}
+The latter principle requires the creation of fresh identifiers
+during a computation---a non-trivial problem in functional languages.
+One possibility is the use of a global counter
+that is accessed by unsafe features whenever a new identifier
+is required. Unfortunately, unsafe features inhibit the use
+of optimization techniques for pure functional programming
+and makes the application of advanced evaluation and search
+strategies (e.g., parallel strategies) more complex.
+Therefore, we want to avoid unsafe features in our implementation
+so that we have to thread some sort of global information
+through our program in order to supply fresh references
+at any point of a computation.
+For this purpose, we assume a type \code{IDSupply}
+with operations
+\begin{haskell}
+  thisID      :: IDSupply -> ID
+  leftSupply  :: IDSupply -> IDSupply
+  rightSupply :: IDSupply -> IDSupply
+\end{haskell}
+and add a new argument of type \code{IDSupply} to each operation
+of the source program.
+
+\code{thisID} creates a fresh identifier from a current
+identifier supply, and
+\code{leftSupply} and \code{rightSupply} create
+new distinct identifier supplies from a given one.
+The latter are used when an operation based on two\footnote{The
+extension to more than two is straightforward.}
+other operations in the right-hand side of a rule. In this case,
+the other operations must be supplied with their individual distinct
+identifier supplies. For instance, the operation \code{main}
+defined by
+\label{sec:xor-main}
+\begin{curry}
+  main = xorSelf aBool
+\end{curry}
+is translated into
+\begin{haskell}
+  main s = xorSelf (aBool (leftSupply s)) (rightSupply s)
+\end{haskell}
+Any choice in the right-hand side of a rule gets its own identifier
+by the operation \code{thisID}, as in
+\begin{haskell}
+  aBool s = Choice (thisID s) True False
+\end{haskell}
+There are various implementations of \code{IDSupply}.
+The simplest implementation uses integers:
+\begin{haskell}
+  type IDSupply = Integer
+  leftSupply  n = 2*n
+  rightSupply n = 2*n+1
+  thisID      n = n
+\end{haskell}
+Actually, our compilation system is parameterized over different
+implementations of \code{IDSupply}
+in order to perform some experiments and choose
+he most appropiate for a given application.
+Each implementation must ensure that, if $s$ is a value of type
+\code{IDSupply}, then \code{thisID($o_1$($\ldots$($o_n$ $s$)$\ldots$))}
+and \code{thisID($o'_1$($\ldots$($o'_m$ $s$)$\ldots$))}
+are different identifiers provided that
+$o_i,o'_j \in \{\code{leftSupply},\code{rightSupply}\}$
+and $o_1\cdots o_n \neq o'_1\cdots o'_m$.
+
+\subsection{The Basic Translation Scheme}
+
+Functional logic computations can also fail, e.g.,
+due to partially defined operations.
+Computing with failures is a typical programming technique
+and provides for specific programming patterns \cite{AntoyHanus02FLOPS}.
+Hence, in contrast to functional programming,
+a failing computation should not abort the complete evaluation
+but it should be considered as some part of a computation that
+does not produce a meaningful result.
+In order to implement this behavior, we extend
+each datatype by a further constructor \code{Fail}
+and complete each function with matching rules
+by a final rule that matches everything and returns the value \code{Fail}.
+For instance, consider the definition of lists
+\begin{curry}
+  data List a = Nil | Cons a (List a)
+\end{curry}
+and an operation to extract the first element of a non-empty list:
+\begin{curry}
+  head :: List a -> a
+  head (Cons x xs) = x
+\end{curry}
+The type definition is extended as follows:\footnote{Actually,
+our compiler performs some renamings to avoid conflicts with
+predefined Haskell entities and introduces type classes
+to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
+\begin{haskell}
+  data List a = Nil | Cons a (List a) | Choice (List a) (List a) | Fail
+\end{haskell}
+The operation is extended by an identifier supply and further matching rules:
+\begin{haskell}
+  head :: List a -> IDSupply -> a
+  head (Cons x xs)      s = x
+  head (Choice i x1 x2) s = Choice i (head x1 s) (head x2 s)
+  head _                s = Fail
+\end{haskell}
+Note that the final rule returns \code{Fail} if \code{head} is
+applied to the empty list as well as if the matching argument
+is already a failed computation, i.e., it also propagates failures.
+
+As already discussed above, an occurrence of \ccode{?}
+in the right-hand side is translated into a \code{Choice} supplied
+with a fresh identifier by the operation \code{thisID}.
+In order to ensure that each occurrence of \ccode{?} in the source program
+get its own identifier, all choices and all operations in the right-hand
+side of a rule get their own identier supplies via appropriate
+applications of \code{leftSupply} and \code{rightSupply}
+to the supply of the defined operations.
+For instance, a rule like
+\begin{curry}
+  main2 = xor aBool (False ? True)
+\end{curry}
+is translated into
+\begin{haskell}
+  main2 s = let s1 = leftSupply  s
+                s2 = rightSupply s
+                s3 = leftSupply  s2
+                s4 = rightSupply s2
+             in xor (aBool s3) (Choice (thisID s4) False True) s1
+\end{haskell}
+An obvious optimization, performed by our compiler,
+is a \emph{determinism analysis}.
+If an operation does not call, directly or indirectly through
+other operations, the choice operation \ccode{?},
+then it is not necessary to pass a supply for identifiers.
+In this case, the \code{IDSupply} argument can be omitted
+so that the generated code is nearly identical to a corresponding
+functional program (apart from the additional rules to match
+the constructors \code{Choice} and \code{Fail}).
+
+As mentioned in Section~\ref{sec:no-logic-vars},
+our compiler translates occurrences of logic variables
+into generators. Since these generators are standard
+nondeterministic operations, they are translated like any other operation.
+For instance, the operation \code{aBool} is a generator for
+Boolean values and its translation into Haskell has been presented above.
+
+The correctness of this transformation from nondeterministic source programs
+into deterministic target programs has been formally shown
+in \cite{Brassel11Thesis}.
+
+
+\subsection{Extracting Values}
+
+So far, our generated operations compute all the nondeterministic
+values of an expression represented by a structure containing
+\code{Choice} constructors. In order to extract the various
+values from this structure, we have to define operations
+that compute all possible choices in some order where the choice identifiers
+are taken into account.
+To provide a common interface for such operations, we introduce
+a data type to represent the general outcome of a computation
+\begin{haskell}
+  data Try a = Val a | Choice ID a a | Fail
+\end{haskell}
+together with an auxiliary operation:\footnote{Note that the
+operation \code{try} is not really polymorphic but overloaded
+for each data type and, therefore, defined in instances of some type class.}
+\begin{haskell}
+  try :: a -> Try a
+  try (Choice i x y) = Choice i x y
+  try Fail = Fail
+  try x = Val x
+\end{haskell}
+In order to take the identity of choices into account when extracting values,
+one has to remember which choice (e.g., left or right branch)
+has been made for some particular choice.
+Therefore, we introduce the type
+\begin{haskell}
+  data Choice = NoChoice | ChooseLeft | ChooseRight
+\end{haskell}
+where \code{NoChoice} represents the fact that a choice has not yet been made.
+Furthermore, we need operations to lookup the current choice
+for a given identifier or change its choice:
+\begin{haskell}
+  lookupChoice :: ID -> IO Choice
+  setChoice :: ID -> Choice -> IO ()
+\end{haskell}
+In Haskell, there are different possibilities to implement a mapping
+from choice identifiers to some value of type \code{Choice}.
+Our implementation support various options together with various
+implementations of \code{IDSupply}.
+For instance, a simple implementation can be obtained by
+using updatable values, i.e., the Haskell type \code{IORef}.
+In this case, choice identifiers are just memory cells in Haskell:\footnote{%
+In this case, integers cannot be used for \code{IDSupply}.
+Nevertheless,
+this type can be implemented as an infinite tree containing
+all memory cells required in a computation that are created as
+needed with initial value \code{NoChoice}.}
+\begin{haskell}
+  newtype ID = ID (IORef Choice)
+\end{haskell}
+The implementation of the lookup and set operations is straightforward:
+\begin{haskell}
+  lookupChoice (ID ref) = readIORef ref
+  setChoice (ID ref) c = writeIORef ref c
+\end{haskell}
+Now we can print all values contained in a choice structure
+in a depth-first manner by the following operation:
+\begin{haskell}
+  printValsDFS :: Try a -> IO ()
+  printValsDFS (Val v)          = print v
+  printValsDFS Fail             = return ()
+  printValsDFS (Choice i x1 x2) = lookupChoice i >>= choose
+   where
+    choose ChooseLeft  = printValsDFS (try x1)
+    choose ChooseRight = printValsDFS (try x2)
+    choose NoChoice    = do newChoice ChooseLeft  x1
+                            newChoice ChooseRight x2
+  
+    newChoice ch x = do setChoice i ch
+                        printValsDFS (try x)
+                        setChoice i NoChoice
+\end{haskell}
+This operation prints a computed value and ignores failures.
+If there is some choice, it checks whether a choice for
+this identifier has already been made (note that the initial value
+for all identifiers is \code{NoChoice}).
+If a choice has been made, it follows this choice.
+Otherwise, the left choice is made and stored. After printing
+all the values w.r.t.\ this choice, the choice is undone (like in backtracking)
+and the right choice is made and stored.
+
+For instance, to print all values of the expression \code{main}
+defined in Section~\ref{sec:xor-main},
+we evaluate the Haskell expression \ccode{printValsDFS (try (main inits))}
+where \code{inits} is the initial value for \code{IDSupply}
+(where all references are initialized with \code{NoChoice})
+and obtain the output
+\begin{haskell}
+  False
+  False
+\end{haskell}
+Of course, printing all values via depth-first search
+is only one option which is not sufficient in case of infinite search
+spaces. For instance, one can easily define an operation
+that prints only the first solution. Due to the lazy evaluation
+strategy of Haskell, such an operation can be also applied to
+infinite choice structures.
+In order to abstract from these different printing options,
+our implementation contains a more general
+approach by translating choice structures into monadic structures
+w.r.t.\ various strategies (depth-first search, breadth-first search,
+iterative deepening, parallel search).
+This allows an independent processing of the resulting monadic structures,
+e.g.,
+by an interactive loop where the user can request the individual values.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Benchmarks}
+\label{sec:Benchmarks}
+
+In this section we evaluate our compiler by comparing the
+efficiency of the generated Haskell programs to various
+other systems, in particular, other implementations of Curry.
+For our comparison with other Curry implementations,
+we consider PAKCS \cite{Hanus10PAKCS} (Version 1.9.2) which is based on
+compiling Curry into Prolog \cite{AntoyHanus00FROCOS}
+(based on SICStus-Prolog 4.1.2, but a SWI-Prolog 5.10 back end is also
+available
+but much slower). PAKCS has been used for a number of practical
+applications of Curry.
+Another mature implementation which we consider is MCC \cite{Lux99FLOPS}
+(Version 0.9.10) which compiles Curry into C.
+
+The functional logic language Toy \cite{Lopez-FraguasSanchez-Hernandez99}
+has many similarities to Curry and the Toy system compiles Toy programs
+into Prolog programs. However, we have not included a comparison
+in this paper since \cite{AntoyHanus00FROCOS} contains benchmarks
+showing that the implementation of sharing used in PAKCS produces
+more efficient programs.
+
+Our compiler has been executed with the Glasgow Haskell Compiler
+(GHC 6.12.1, option -O2). All benchmarks were executed on a Linux machine
+(Ubuntu 10.10) with an Intel Core i5 (2.53GHz) processor.
+The timings were performed with the time command measuring the
+execution time (in seconds) of a compiled executable for each benchmark.
+
+\begin{figure}
+\centering
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+System  & Reverse & ReversePrim &  Tak  & TakPeano \\
+\hline
+KiCS2   &    0.13 &        0.11 &  0.24 &     0.82 \\
+ \hline
+PAKCS   &    2.07 &        1.91 & 39.19 &    60.69 \\
+\hline
+MCC     &    0.37 &        0.38 &  1.03 &     3.99 \\
+\hline
+GHC     &    0.11 &        0.10 &  0.04 &     0.50 \\
+\hline
+SICStus &    0.39 &        0.28 &  0.50 &     4.82 \\
+\hline
+SWI     &    1.33 &        1.14 &  1.87 &    12.72 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: first-order functional programs}
+ \label{fig:bench-first-order}
+\end{figure}
+%
+The first collection of benchmarks (Fig.~\ref{fig:bench-first-order})
+are purely first-order functional programs.
+The Prolog (SICStus, SWI) and Haskell (GHC) programs have been rewritten
+according to the Curry formulation.
+``Reverse'' is the naive reverse program applied to a list of 4096 elements.
+``ReversePrim'' is the same but with user-defined lists instead of
+the predefined lists. ``Tak'' is highly recursive tak function applied
+to arguments (27,16,8) and ``TakPeano'' is the same but one
+user-defined natural numbers in Peano representation.
+Note that the Prolog programs uses a strict evaluation strategy
+in contrast to all others. Thus, the difference between PAKCS and SICStus
+shows the overhead to implement lazy evaluation in Prolog.
+
+- higher-order
+
+- nondeterministic
+
+- logic variables
+
+- sharing over nondet for free!
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Further Aspects}
+\label{sec:FurtherAspects}
+
+- discuss search strategies
+
+- encapsulated search
+
+- free variables and unification
+
+- set functions??
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions and Related Work}
+\label{sec:Conclusions}
+
+
+better program analysis to approximate purely functional and
+higher-order computations
+
+\bibliographystyle{plain}
+\bibliography{mh}
+
+\end{document}
+
+% LocalWords:  Curry
+

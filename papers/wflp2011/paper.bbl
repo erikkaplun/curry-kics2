@@ -1,0 +1,202 @@
+\begin{thebibliography}{10}
+
+\bibitem{AlbertHanusHuchOliverVidal05}
+E.~Albert, M.~Hanus, F.~Huch, J.~Oliver, and G.~Vidal.
+\newblock Operational semantics for declarative multi-paradigm languages.
+\newblock {\em Journal of Symbolic Computation}, 40(1):795--829, 2005.
+
+\bibitem{AlqaddoumiAntoyFischerReck10}
+A.~Alqaddoumi, S.~Antoy, S.~Fischer, and F.~Reck.
+\newblock The pull-tab transformation.
+\newblock In {\em Proc. of the Third International Workshop on Graph
+  Computation Models}, pages 127--132. Enschede, The Netherlands, 2010.
+\newblock Available at
+  http://gcm-events.org/gcm2010/pages/gcm2010-preproceedings.pdf.
+
+\bibitem{Antoy01PPDP}
+S.~Antoy.
+\newblock Constructor-based conditional narrowing.
+\newblock In {\em Proc.\ of the 3rd International ACM SIGPLAN Conference on
+  Principles and Practice of Declarative Programming (PPDP 2001)}, pages
+  199--206. ACM Press, 2001.
+
+\bibitem{AntoyHanus00FROCOS}
+S.~Antoy and M.~Hanus.
+\newblock Compiling multi-paradigm declarative programs into {Prolog}.
+\newblock In {\em Proc. International Workshop on Frontiers of Combining
+  Systems (FroCoS'2000)}, pages 171--185. Springer LNCS 1794, 2000.
+
+\bibitem{AntoyHanus02FLOPS}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic design patterns.
+\newblock In {\em Proc.\ of the 6th International Symposium on Functional and
+  Logic Programming (FLOPS 2002)}, pages 67--87. Springer LNCS 2441, 2002.
+
+\bibitem{AntoyHanus06ICLP}
+S.~Antoy and M.~Hanus.
+\newblock Overlapping rules and logic variables in functional logic programs.
+\newblock In {\em Proceedings of the 22nd International Conference on Logic
+  Programming (ICLP 2006)}, pages 87--101. Springer LNCS 4079, 2006.
+
+\bibitem{AntoyHanus10CACM}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic programming.
+\newblock {\em Communications of the ACM}, 53(4):74--85, 2010.
+
+\bibitem{AntoyHanusLiuTolmach05}
+S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
+\newblock A virtual machine for functional logic computations.
+\newblock In {\em Proc.\ of the 16th International Workshop on Implementation
+  and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
+  LNCS 3474, 2005.
+
+\bibitem{Brassel11Thesis}
+B.~Bra{\ss}el.
+\newblock {\em Implementing Functional Logic Programs by Translation into
+  Purely Functional Programs}.
+\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
+
+\bibitem{BrasselFischerHanusReck11}
+B.~Bra{\ss}el, S.~Fischer, M.~Hanus, and F.~Reck.
+\newblock Transforming functional logic programs into monadic functional
+  programs.
+\newblock In {\em Proc. of the 19th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2010)}, pages 30--47. Springer LNCS
+  6559, 2011.
+
+\bibitem{BrasselHanusMueller08PADL}
+B.~Bra{\ss}el, M.~Hanus, and M.~M{\"u}ller.
+\newblock High-level database programming in {Curry}.
+\newblock In {\em Proc. of the Tenth International Symposium on Practical
+  Aspects of Declarative Languages (PADL'08)}, pages 316--332. Springer LNCS
+  4902, 2008.
+
+\bibitem{BrasselHuch07}
+B.~Bra{\ss}el and F.~Huch.
+\newblock On a tighter integration of functional and logic programming.
+\newblock In {\em Proc. APLAS 2007}, pages 122--138. Springer LNCS 4807, 2007.
+
+\bibitem{BrasselHuch09}
+B.~Bra{\ss}el and F.~Huch.
+\newblock The {Kiel} {Curry} {System} {KiCS}.
+\newblock In {\em Applications of Declarative Programming and Knowledge
+  Management}, pages 195--205. Springer LNAI 5437, 2009.
+
+\bibitem{CaballeroLopez99}
+R.~Caballero and F.J. L{\'o}pez-Fraguas.
+\newblock A functional-logic perspective of parsing.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 85--99. Springer LNCS 1722, 1999.
+
+\bibitem{Fischer05}
+S.~Fischer.
+\newblock A functional logic database library.
+\newblock In {\em Proc. of the ACM SIGPLAN 2005 Workshop on Curry and
+  Functional Logic Programming (WCFLP 2005)}, pages 54--59. ACM Press, 2005.
+
+\bibitem{FischerKiselyovShan09}
+S.~Fischer, O.~Kiselyov, and C.~Shan.
+\newblock Purely functional lazy non-deterministic programming.
+\newblock In {\em Proceeding of the 14th ACM SIGPLAN International Conference
+  on Functional Programming (ICFP 2009)}, pages 11--22. ACM, 2009.
+
+\bibitem{GonzalezEtAl99}
+J.C. Gonz{\'a}lez-Moreno, M.T. Hortal{\'a}-Gonz{\'a}lez, F.J.
+  L{\'o}pez-Fraguas, and M.~Rodr{\'\i}guez-Artalejo.
+\newblock An approach to declarative programming based on a rewriting logic.
+\newblock {\em Journal of Logic Programming}, 40:47--87, 1999.
+
+\bibitem{Hanus00PADL}
+M.~Hanus.
+\newblock A functional logic programming approach to graphical user interfaces.
+\newblock In {\em International Workshop on Practical Aspects of Declarative
+  Languages (PADL'00)}, pages 47--62. Springer LNCS 1753, 2000.
+
+\bibitem{Hanus01PADL}
+M.~Hanus.
+\newblock High-level server side web scripting in {Curry}.
+\newblock In {\em Proc.\ of the Third International Symposium on Practical
+  Aspects of Declarative Languages (PADL'01)}, pages 76--92. Springer LNCS
+  1990, 2001.
+
+\bibitem{Hanus06PPDP}
+M.~Hanus.
+\newblock Type-oriented construction of web user interfaces.
+\newblock In {\em Proceedings of the 8th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'06)}, pages
+  27--38. ACM Press, 2006.
+
+\bibitem{Hanus07ICLP}
+M.~Hanus.
+\newblock Multi-paradigm declarative languages.
+\newblock In {\em Proceedings of the International Conference on Logic
+  Programming (ICLP 2007)}, pages 45--75. Springer LNCS 4670, 2007.
+
+\bibitem{Hanus10PAKCS}
+M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
+  P.~Niederau, R.~Sadre, and F.~Steiner.
+\newblock {PAKCS}: The {P}ortland {A}achen {K}iel {C}urry {S}ystem.
+\newblock Available at \url{http://www.informatik.uni-kiel.de/~pakcs/}, 2010.
+
+\bibitem{HanusKoschnicke10PADL}
+M.~Hanus and S.~Koschnicke.
+\newblock An {ER-based} framework for declarative web programming.
+\newblock In {\em Proc. of the 12th International Symposium on Practical
+  Aspects of Declarative Languages (PADL 2010)}, pages 201--216. Springer LNCS
+  5937, 2010.
+
+\bibitem{HanusSadre99JFLP}
+M.~Hanus and R.~Sadre.
+\newblock An abstract machine for curry and its concurrent implementation in
+  java.
+\newblock {\em Journal of Functional and Logic Programming}, 1999(6), 1999.
+
+\bibitem{Hanus06Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
+\newblock Available at \url{http://www.curry-language.org}, 2006.
+
+\bibitem{Hussmann92}
+H.~Hussmann.
+\newblock Nondeterministic algebraic specifications and nonconfluent term
+  rewriting.
+\newblock {\em Journal of Logic Programming}, 12:237--255, 1992.
+
+\bibitem{Lopez-FraguasSanchez-Hernandez99}
+F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
+\newblock {TOY}: A multiparadigm declarative system.
+\newblock In {\em Proc. of RTA'99}, pages 244--247. Springer LNCS 1631, 1999.
+
+\bibitem{LopezRodriguezSanchez07}
+F.J. L{\'o}pez-Fraguas, J.~Rodr{\'\i}guez-Hortal{\'a}, and
+  J.~S{\'a}nchez-Hern{\'a}ndez.
+\newblock A simple rewrite notion for call-time choice semantics.
+\newblock In {\em Proceedings of the 9th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'07)}, pages
+  197--208. ACM Press, 2007.
+
+\bibitem{Lux99FLOPS}
+W.~Lux.
+\newblock Implementing encapsulated search for a lazy functional logic
+  language.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
+
+\bibitem{PeytonJones03Haskell}
+S.~Peyton~Jones, editor.
+\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
+\newblock Cambridge University Press, 2003.
+
+\bibitem{Reynolds72}
+J.C. Reynolds.
+\newblock Definitional interpreters for higher-order programming languages.
+\newblock In {\em Proceedings of the ACM Annual Conference}, pages 717--740.
+  ACM Press, 1972.
+
+\bibitem{Wadler85}
+P.~Wadler.
+\newblock How to replace failure by a list of successes.
+\newblock In {\em Functional Programming and Computer Architecture}, pages
+  113--128. Springer LNCS 201, 1985.
+
+\end{thebibliography}
