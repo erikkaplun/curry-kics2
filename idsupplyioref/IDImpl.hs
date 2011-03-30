@@ -2,53 +2,23 @@
 -- | ID implementation using IORefs
 -- ---------------------------------------------------------------------------
 module IDImpl
-  ( Choice (..), ID (..), IDSupply
-  , mkInt, initSupply, leftSupply, rightSupply, thisID
-  , lookupChoiceRaw, setChoice
+  ( Ref, mkIntRef, IDSupply, initSupply, leftSupply, rightSupply, thisRef
+  , lookupChoiceRef, setChoiceRef
   ) where
 
 import Data.IORef
-import System.IO.Unsafe
+import System.IO.Unsafe (unsafeInterleaveIO)
 
--- Type to encode the selection taken in a Choice structure
-data Choice
-  = NoChoice        -- No choice has been made so far
-  | ChooseLeft
-  | ChooseRight
-  | ChooseN Int Int -- ChooseN consIdx argCnt is the choice for the
-                    -- constructor with the index consIdx which has argCnt
-                    -- arguments
-  | BindTo ID       -- a free or narrowed variable is bound to the
-                    -- free variable with the given id; the bindings of the
-                    -- IDs for the arguments have not been propagated yet
-  | BoundTo ID Int  -- a free or narrowed variable is bound to the variable
-                    -- with the given ID; the bindings for the n arguments
-                    -- have also been propagated
-  deriving (Eq, Show)
+import {-# SOURCE #-} ID (Choice, defaultChoice, isDefaultChoice)
 
--- Type to identify different Choice structures in a non-deterministic result.
--- Here we implement it as IO references
-data ID
-  = ID Ref
-  | FreeID IDSupply
-  | Narrowed IDSupply
-    deriving Eq
+type Ref = (IORef Choice)
 
-type Ref = IORef Choice
-
-instance Show ID where
-  show (ID _)       = "ID"
-  show (FreeID _)   = "Free"
-  show (Narrowed _) = "Narrowed"
+instance Show (IORef Choice) where
+  show _ = ""
 
 -- Conversion of ID into integer not possible for this implementation
-mkInt :: ID -> Integer
-mkInt = error "IDSupplyIORef.mkInt"
-
-ref :: ID -> Ref
-ref (ID r) = r
-ref (FreeID (IDSupply r _ _)) = r
-ref (Narrowed (IDSupply r _ _)) = r
+mkIntRef :: Ref -> Integer
+mkIntRef = error "IDSupplyIORef.mkIntRef"
 
 -- ---------------------
 -- ID Supply
@@ -59,8 +29,11 @@ data IDSupply = IDSupply Ref IDSupply IDSupply
 instance Eq IDSupply where
   IDSupply i _ _ == IDSupply j _ _ = i == j
 
+instance Show IDSupply where
+  show _ = ""
+
 initSupply :: IO IDSupply
-initSupply = getPureSupply NoChoice
+initSupply = getPureSupply defaultChoice
 
 {-# NOINLINE getPureSupply #-}
 getPureSupply :: Choice -> IO IDSupply
@@ -76,15 +49,15 @@ leftSupply  (IDSupply _ s _) = s
 rightSupply :: IDSupply -> IDSupply
 rightSupply (IDSupply _ _ s) = s
 
-thisID :: IDSupply -> ID
-thisID (IDSupply r _ _) = ID r
+thisRef :: IDSupply -> Ref
+thisRef (IDSupply r _ _) = r
 
 -- ---------------------
 -- Managing choices
 -- ---------------------
 
-lookupChoiceRaw :: ID -> IO Choice
-lookupChoiceRaw i = readIORef (ref i)
+lookupChoiceRef :: Ref -> IO Choice
+lookupChoiceRef = readIORef
 
-setChoice :: ID -> Choice -> IO ()
-setChoice i c = writeIORef (ref i) c
+setChoiceRef :: Ref -> Choice -> IO ()
+setChoiceRef = writeIORef

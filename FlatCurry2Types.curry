@@ -94,33 +94,32 @@ genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
 genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
   [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)]
 
-genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
-  if null cdecls
-    then [ Type (mn, tc) acvis targs [] ]
-    else [ Type (mn, tc) acvis targs
-           (map fcy2absCDecl cdecls ++
-           [ Cons choiceConsName  3 acvis [idType, ctype, ctype]
-           , Cons choicesConsName 2 acvis [idType, clisttype]
-           , Cons failConsName    0 acvis []
-           , Cons guardConsName   2 acvis [constraintType, ctype]
-           ])
-         , showInstance
-         , readInstance
-         , nondetInstance
-         , generableInstance
-         , normalformInstance
-         , unifiableInstance
-         , curryInstance
-         ]
+genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
+  then [ Type (mn, tc) acvis targs [] ]
+  else [ Type (mn, tc) acvis targs
+          (map fcy2absCDecl cdecls ++
+          [ Cons choiceConsName  3 acvis [idType, ctype, ctype]
+          , Cons choicesConsName 2 acvis [idType, clisttype]
+          , Cons failConsName    0 acvis []
+          , Cons guardConsName   2 acvis [constraintType, ctype]
+          ])
+        , showInstance
+        , readInstance
+        , nondetInstance
+        , generableInstance
+        , normalformInstance
+        , unifiableInstance
+        , curryInstance
+        ]
  where
-  acvis = fcy2absVis vis
-  targs = map fcy2absTVar tnums
-  ctype = TCons (mn,tc) (map TVar targs)
-  clisttype = listType ctype
-  choiceConsName = mkChoiceName (mn,tc)
+  acvis           = fcy2absVis vis
+  targs           = map fcy2absTVar tnums
+  ctype           = TCons (mn,tc) (map TVar targs)
+  clisttype       = listType ctype
+  choiceConsName  = mkChoiceName (mn,tc)
   choicesConsName = mkChoicesName (mn,tc)
-  failConsName = mkFailName (mn,tc)
-  guardConsName = mkGuardName (mn,tc)
+  failConsName    = mkFailName (mn,tc)
+  guardConsName   = mkGuardName (mn,tc)
 
 
   -- Generate instance of Show class:
@@ -491,73 +490,69 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
        | otherwise         = []
 
   extConsRules name =
-    [nameRule $ simpleRule [PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]
-                     ,PVar (4,"z")]
-                     (applyF narrow [Var (1,"i")
-                                             ,applyF (pre name)[Var (2,"x"),Var (4,"z")]
-                                             ,applyF (pre name) [Var (3,"y"),Var (4, "z")]])
-
-      ,nameRule $ simpleRule [PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")]
-                     ,PVar (3,"y")]
-                     (applyF narrows [Var (1,"i")
-                                              ,applyF (pre "map")
-                                                      [Lambda [PVar (4,"x")] (applyF (pre name) [Var (4,"x"),Var (3,"y")])
-                                                      ,Var (2,"xs")]])
-
-      ,nameRule $ simpleRule [PComb guardConsName [PVar (1,"c"),PVar (2,"x")], PVar(3,"y")]
-                     (applyF (pre "guardCons")
-                                      [Var (1,"c")
-                                      ,applyF (pre name) [Var (2,"x"),Var (3,"y")]])
-
-      ,nameRule $ simpleRule [PComb failConsName [],PVar (1,"_")]
-                     (Symbol (pre "failCons"))
-      ,nameRule $ simpleRule [PVar (4,"z")
-                      ,PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]]
-                     (applyF narrow [Var (1,"i")
-                                             ,applyF (pre name)[Var (4,"z"),Var (2,"x")]
-                                             ,applyF (pre name) [Var (4,"z"),Var (3, "y")]])
-
-      ,nameRule $ simpleRule [PVar (3,"y"), PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")]]
-                     (applyF narrows [Var (1,"i")
-                                              ,applyF (pre "map")
-                                                      [Lambda [PVar (4,"x")] (applyF (pre name) [Var (3,"y"),Var (4,"x")])
-                                                      ,Var (2,"xs")]])
-
-      ,nameRule $ simpleRule [PVar(3,"y"), PComb guardConsName [PVar (1,"c"),PVar (2,"x")]]
-                     (applyF (pre "guardCons")
-                                      [Var (1,"c")
-                                      ,applyF (pre name) [Var (3,"y"),Var (2,"x")]])
-
-      ,nameRule $ simpleRule [PVar (1,"_"),PComb failConsName []]
-                     (Symbol (pre "failCons"))
-      ]
-    where
-      nameRule rule = (pre name, rule)
+    [ nameRule $ simpleRule
+      [PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")], PVar (4,"z")]
+      (applyF narrow [ Var (1,"i")
+                     , applyF (pre name) [Var (2, "x"), Var (4, "z")]
+                     , applyF (pre name) [Var (3, "y"), Var (4, "z")]
+                     ])
+    , nameRule $ simpleRule
+      [PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")], PVar (3,"y")]
+      (applyF narrows [ Var (1,"i")
+                      , applyF (pre "map")
+                               [ Lambda [PVar (4,"x")] (applyF (pre name) [Var (4,"x"),Var (3,"y")])
+                               , Var (2,"xs")
+                               ]])
+    , nameRule $ simpleRule
+      [PComb guardConsName [PVar (1,"c"),PVar (2,"x")], PVar(3,"y")]
+      (applyF (pre "guardCons") [ Var (1,"c")
+                                , applyF (pre name) [Var (2,"x"),Var (3,"y")]
+                                ])
+    , nameRule $ simpleRule [PComb failConsName [], PVar (1,"_")]
+                            (Symbol (pre "failCons"))
+    , nameRule $ simpleRule
+      [PVar (4,"z"), PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]]
+      (applyF narrow [ Var (1,"i")
+                     , applyF (pre name)[Var (4,"z"),Var (2,"x")]
+                     , applyF (pre name) [Var (4,"z"),Var (3, "y")]
+                     ])
+    , nameRule $ simpleRule
+      [PVar (3,"y"), PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")]]
+      (applyF narrows [ Var (1,"i")
+                      , applyF (pre "map")
+                               [ Lambda [PVar (4,"x")] (applyF (pre name) [Var (3,"y"),Var (4,"x")])
+                               , Var (2,"xs")
+                               ]])
+    , nameRule $ simpleRule
+      [PVar(3,"y"), PComb guardConsName [PVar (1,"c"),PVar (2,"x")]]
+      (applyF (pre "guardCons")
+        [Var (1,"c"), applyF (pre name) [Var (3,"y"),Var (2,"x")]])
+    , nameRule $ simpleRule [PVar (1,"_"), PComb failConsName []]
+                            (Symbol (pre "failCons"))
+    ]
+    where nameRule rule = (pre name, rule)
 
   -- Generate equality instance rule for a data constructor:
   eqConsRule (FC.Cons qn _ _ texps) =
-    (pre "=?=",
-     simpleRule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
-           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
-          eqBody)
-   where
-     carity = length texps
+    ( pre "=?="
+    , simpleRule [consPattern qn "x" carity, consPattern qn "y" carity] eqBody
+    )
+    where
+      carity = length texps
 
-     eqBody =
-      if carity==0 then constF (pre "C_True")
-      else foldr1 (\x xs -> applyF (pre "d_OP_ampersand_ampersand") [x,xs])
-                  (map (\i -> applyF (pre "=?=")
-                                     [Var (i,'x':show i),Var (i,'y':show i)])
-                       [1..carity])
+      eqBody = if carity == 0
+        then constF (pre "C_True")
+        else foldr1 (\x xs -> applyF (pre "d_OP_ampersand_ampersand") [x,xs])
+                    (map (\i -> applyF (pre "=?=")
+                                       [Var (i,'x':show i),Var (i,'y':show i)])
+                    [1..carity])
 
   -- Generate Unifiable instance rule for a data constructor:
   ordConsRules [] = []
   ordConsRules (FC.Cons qn _ _ texps : cds) =
     (pre "<?=",
-     simpleRule [PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity]),
-           PComb qn (map (\i -> PVar (i,'y':show i)) [1..carity])]
-          (ordBody [1..carity])) :
-    map (ordCons2Rule (qn,carity)) cds ++
+     simpleRule [consPattern qn "x" carity, consPattern qn "y" carity]
+          (ordBody [1..carity])) : map (ordCons2Rule (qn,carity)) cds ++
     ordConsRules cds
    where
      carity = length texps
@@ -573,14 +568,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
                   applyF (pre "d_OP_ampersand_ampersand") [applyF (pre "=?=") [xi,yi], ordBody is]]
 
   ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
-    (pre "<?=",
-     simpleRule [PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1]),
-           PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
-          (constF (pre "C_True")))
-
---freshID n i =
---  if n==0 then left i
---          else freshID (n-1) (right i)
+    (pre "<?=", simpleRule
+                [ PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1])
+                , PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
+                (constF (pre "C_True")))
 
 mkInstance qn ctype targs
   = Instance qn ctype $ map (\tv -> Context qn [tv]) targs
@@ -597,16 +588,16 @@ intc i = Lit $ Intc i
 
 charc c = Lit $ Charc c
 
-mkIdList n id
+mkIdList n s
   | n == 0    = []
-  | n == 1    = [left id]
-  | otherwise = mkIdList' n id
+  | n == 1    = [left s]
+  | otherwise = mkIdList' n s
   where
-    mkIdList' n id
-      | n == 1    = [id]
-      | otherwise = mkIdList' (n - half) (left id) ++ mkIdList' half (right id)
+    mkIdList' n' s'
+      | n' == 1   = [s']
+      | otherwise = mkIdList' (n' - half) (left s') ++ mkIdList' half (right s')
       where
-        half = n `div` 2
+        half = n' `div` 2
 
 left  i = applyF (idmod "leftID") [i]
 right i = applyF (idmod "rightID") [i]
@@ -619,9 +610,9 @@ idType = baseType (idmod "ID")
 constraintType = listType $ baseType (pre "Constraint")
 
 basics :: String -> QName
-basics n = ("Basics",n)
+basics n = ("Basics", n)
 
-idmod n = ("ID",n)
+idmod n = ("ID", n)
 
 
 narrow = basics "narrow"
