@@ -44,12 +44,12 @@ insert2 x (y:ys) = y:insert x ys
 perm []     = []
 perm (x:xs) = insert x (perm xs)
 
-sortedNS :: [Int] -> [Int]
-sortedNS []       = []
-sortedNS [x]      = [x]
-sortedNS (x:y:ys) = guard (x <= y) (x:sortedNS (y:ys))
+sorted :: [Int] -> [Int]
+sorted []       = []
+sorted [x]      = [x]
+sorted (x:y:ys) = guard (x <= y) (x:sorted (y:ys))
 
-sortNoShare xs = sortedNS (perm xs)
+psort xs = sorted (perm xs)
 
 guard :: Bool -> [Int] -> [Int]
 guard True e = e
@@ -60,15 +60,11 @@ myand False _ = False
 primeList = fromDown 4 0
 
 fromDown n m = if n==m then []
-                       else at primes (799+n) : fromDown (n-1) m
+                       else at primes (999+n) : fromDown (n-1) m
 
-goal1 = primeList -- [primes!!803, primes!!802, primes!!801, primes!!800]
+goal1 = primeList -- [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
 
-goal2 = sortNoShare [6173,6163,6151,6143]
+goal2 = psort [7949,7937,7933,7927]
 
-goal3 = sortNoShare primeList
-
-
-goal4 = at primes 1000
-goal5 = let x = goal4 in x ? x
+goal3 = psort primeList
 

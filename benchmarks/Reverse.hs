@@ -1,4 +1,4 @@
--- Haskell benchmark: naive reverse of a user-defined list
+-- Haskell benchmark: naive reverse on buil-in lists
 
 data Nat = O | S Nat
 
@@ -17,26 +17,22 @@ nat256 = mult nat16 nat16
 nat4096 = mult nat256 nat16
 nat16384 = mult nat4096 four
 
-data MyList a = Cons a (MyList a) | Nil
-
 data MyBool = MyTrue | MyFalse
 
 not MyTrue = MyFalse
 not MyFalse = MyTrue
 
-append Nil xs = xs
-append (Cons x xs) ys = Cons x (append xs ys)
+append [] xs = xs
+append (x:xs) ys = x : (append xs ys)
 
-rev Nil = Nil
-rev (Cons x xs) = append (rev xs) (Cons x Nil)
+rev [] = []
+rev (x:xs) = append (rev xs) [x]
 
-natList O = Nil
-natList (S x) = Cons (S x) (natList x)
+natList O = []
+natList (S x) = (S x) : (natList x)
 
-isList Nil = MyTrue
-isList (Cons _ xs) = isList xs
-
-goal0 = rev (Cons MyTrue (Cons MyFalse (Cons MyFalse Nil)))
+isList [] = MyTrue
+isList (_:xs) = isList xs
 
 goal1 = rev (natList nat16)
 goal2 = rev (natList nat256)

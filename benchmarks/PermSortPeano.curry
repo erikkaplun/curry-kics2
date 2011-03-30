@@ -33,6 +33,7 @@ two = S (S O)
 three = S two
 four = double two
 nat14 = add two (mult three four)
+nat15 = S nat14
 
 ----------------------------------------------------------------
 data List a = Nil | Cons a (List a)
@@ -59,3 +60,4 @@ descList up low =
 sortmain n = psort (Cons two (app (descList n three) (Cons (S O) Nil)))
 
 main = sortmain nat14
+--main = sortmain nat15

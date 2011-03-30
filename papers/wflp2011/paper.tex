@@ -24,7 +24,7 @@
 \lstnewenvironment{haskell}{}{}
 \newcommand{\listline}{\vrule width0pt depth1.75ex}
 
-\newcommand{\code}[1]{\mbox{\texttt{#1}}}
+\newcommand{\code}[1]{\mbox{\small\texttt{#1}}}
 \newcommand{\ccode}[1]{``\code{#1}''}
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
@@ -34,18 +34,7 @@
 % ------------------------------------------------------------------
 % SYMBOLS & FORMULAS
 
-\newcommand{\Cc}{{\cal{C}}} % constructors
-\newcommand{\Fc}{{\cal{F}}} % defined functions
-\newcommand{\Var}{{\cal V}ar} % variables in an object
-\newcommand{\Dom}{{\cal D}om} % domain of a substitution
-\newcommand{\Rc}{{\cal{R}}} % rewrite system
-\newcommand{\Tc}{{\cal{T}}} % algebra of terms
-\newcommand{\Xc}{{\cal{X}}} % set of all variables
-\renewcommand{\emptyset}{\varnothing}
-\newcommand{\suc}{\mathit{success}}  % success
-\newcommand{\Suc}{\mathtt{Success}}  % success type
 \newcommand{\funset}{\ensuremath{_{\cal S}}}
-\newcommand{\seq}{\mathrel{\code{=:=}}} % strict equality of math mode
 
 \begin{document}
 \pagestyle{plain}
@@ -70,7 +59,16 @@ Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 \maketitle
 
 \begin{abstract}
-bla bla
+In this paper we present our first results of a new system
+to compile functional logic programs of the source language Curry
+into purely functional Haskell programs.
+Our implementation is based on the idea to represent
+nondeterministic result values of an expression as a data structure.
+This enables the application of various search strategies
+to extract the different values from the search space.
+In addition to the increased functionality of our system,
+we demonstrate by a several benchmarks that our implementation
+can compete with or outperforms other existing implementations of Curry.
 \end{abstract}
 
 
@@ -146,12 +144,12 @@ i.e., it might have more than one result value.
 We solve this problem by an explicit representation of
 nondeterministic values, i.e., we extend each data type by
 another constructor to represent the choice between several values.
-This idea is also the basis of Curry implementation KiCS
+This idea is also the basis of the Curry implementation KiCS
 \cite{BrasselHuch07,BrasselHuch09}.
 However, KiCS is based on unsafe features of Haskell
 that inhibit the use of optimizations provided by Haskell compilers
 like GHC.\footnote{\url{http://www.haskell.org/ghc/}}
-In contrast, our implementation is not based on unsafe features.
+In contrast, our implementation, called KiCS2, is not based on unsafe features.
 In addition, we also support more flexible search strategies
 and new features to encapsulate nondeterministic computations.
 
@@ -175,10 +173,10 @@ and introduce a normalized form of Curry programs that is the
 basis of our translation scheme.
 Section~\ref{sec:Compilation} presents the basic ideas
 of this translation scheme.
-Further aspects related to our compiler are discussed in
-Section~\ref{sec:FurtherAspects}.
-We show benchmarks of our initial implementation in
-Section~\ref{sec:Benchmarks}
+Benchmarks of our initial implementation of this scheme
+are presented in Section~\ref{sec:Benchmarks}.
+Further features of our system are sketched in
+Section~\ref{sec:FurtherAspects}
 before we conclude in Section~\ref{sec:Conclusions}.
 
 
@@ -290,9 +288,9 @@ can be replaced by the generator \code{aBool} defined above.
   e & ::= & x & \mbox{$x$ is a variable}\\
     &  |  & c(e_1,\ldots,e_n) & \mbox{$c$ is an $n$-ary constructor symbol}\\
     &  |  & f(e_1,\ldots,e_n) & \mbox{$f$ is an $n$-ary function symbol}\\
-    &  |  & \Choice{e_1}{e_2} & \mbox{choice} \\
-    &  |  & \mbox{\code{let}}~\{x_1=e_1;\ldots;x_n = e_n\}~\code{in}~e
-                                            & \mbox{let binding}\\[1ex]
+    &  |  & \Choice{e_1}{e_2} & \mbox{choice} \\[1ex]
+%    &  |  & \mbox{\code{let}}~\{x_1=e_1;\ldots;x_n = e_n\}~\code{in}~e
+%                                            & \mbox{let binding}\\[1ex]
   D & ::= & f(x_1,\ldots,x_n) = e
                 & \mbox{$n$-ary function $f$ with a single rule}\\
     &  |  & f(c(y_1,\ldots,y_m),x_2,\ldots,x_n) = e
@@ -417,8 +415,8 @@ during the computation. However, our initial implementation
 duplicates the initially single \code{Choice} into finally three
 occurrences of \code{Choice}.
 
-We can correct this wrong behavior of our implementation
-by identifying different \code{Choice} occurrences that our duplicates
+We can correct this unintended behavior of our implementation
+by identifying different \code{Choice} occurrences that are duplicates
 of some single \code{Choice}. This can be easily done by attaching
 a unique identifier, e.g., a number, to each choice:
 \begin{haskell}
@@ -517,17 +515,19 @@ by the operation \code{thisID}, as in
   aBool s = Choice (thisID s) True False
 \end{haskell}
 There are various implementations of \code{IDSupply}.
-The simplest implementation uses integers:
+The simplest implementation uses unbounded integers:
 \begin{haskell}
   type IDSupply = Integer
   leftSupply  n = 2*n
   rightSupply n = 2*n+1
   thisID      n = n
 \end{haskell}
+There are other more sophisticated implementations available
+\cite{AugustssonRittriSynek94}.
 Actually, our compilation system is parameterized over different
 implementations of \code{IDSupply}
 in order to perform some experiments and choose
-he most appropiate for a given application.
+the most appropiate for a given application.
 Each implementation must ensure that, if $s$ is a value of type
 \code{IDSupply}, then \code{thisID($o_1$($\ldots$($o_n$ $s$)$\ldots$))}
 and \code{thisID($o'_1$($\ldots$($o'_m$ $s$)$\ldots$))}
@@ -676,6 +676,7 @@ The implementation of the lookup and set operations is straightforward:
 \end{haskell}
 Now we can print all values contained in a choice structure
 in a depth-first manner by the following operation:
+\label{sec:printValsDFS}
 \begin{haskell}
   printValsDFS :: Try a -> IO ()
   printValsDFS (Val v)          = print v
@@ -758,21 +759,15 @@ execution time (in seconds) of a compiled executable for each benchmark.
 
 \begin{figure}
 \centering
-\begin{tabular}{|l|r|r|r|r|}
+\begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
-System  & Reverse & ReversePrim &  Tak  & TakPeano \\
-\hline
-KiCS2   &    0.13 &        0.11 &  0.24 &     0.82 \\
- \hline
-PAKCS   &    2.07 &        1.91 & 39.19 &    60.69 \\
-\hline
-MCC     &    0.37 &        0.38 &  1.03 &     3.99 \\
-\hline
-GHC     &    0.11 &        0.10 &  0.04 &     0.50 \\
-\hline
-SICStus &    0.39 &        0.28 &  0.50 &     4.82 \\
-\hline
-SWI     &    1.33 &        1.14 &  1.87 &    12.72 \\
+System  & ReverseUser & Reverse &  Tak  & TakPeano \\\hline
+KiCS2   &        0.13 &    0.11 &  0.24 &     0.82 \\
+PAKCS   &        2.07 &    1.91 & 39.19 &    60.69 \\
+MCC     &        0.37 &    0.38 &  1.03 &     3.99 \\
+GHC     &        0.11 &    0.10 &  0.04 &     0.50 \\
+SICStus &        0.39 &    0.28 &  0.50 &     4.82 \\
+SWI     &        1.33 &    1.14 &  1.87 &    12.72 \\
 \hline
 \end{tabular}
 \caption{Benchmarks: first-order functional programs}
@@ -783,43 +778,282 @@ The first collection of benchmarks (Fig.~\ref{fig:bench-first-order})
 are purely first-order functional programs.
 The Prolog (SICStus, SWI) and Haskell (GHC) programs have been rewritten
 according to the Curry formulation.
-``Reverse'' is the naive reverse program applied to a list of 4096 elements.
-``ReversePrim'' is the same but with user-defined lists instead of
-the predefined lists. ``Tak'' is highly recursive tak function applied
-to arguments (27,16,8) and ``TakPeano'' is the same but one
+``ReverseUser'' is the naive reverse program applied to a list of 4096 elements,
+where all data (lists, numbers) are user-defined.
+``Reverse'' is the same but with built-in lists.
+``Tak'' is a highly recursive function on naturals applied
+to arguments (27,16,8) and ``TakPeano'' is the same but with
 user-defined natural numbers in Peano representation.
 Note that the Prolog programs uses a strict evaluation strategy
 in contrast to all others. Thus, the difference between PAKCS and SICStus
 shows the overhead to implement lazy evaluation in Prolog.
 
-- higher-order
+One can deduce from these results that one of the initial
+goals for this compiler is satisfied since functional Curry programs
+are executed almost with the same speed as their Haskell equivalents.
+An overhead is visible if one uses built-in numbers
+(due to the potential nondeterministic values, KiCS2 cannot
+directly map operations on numbers directly into the Haskell primitives)
+where the GHC can apply particular optimizations.
 
-- nondeterministic
+\begin{figure}
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{5}{@{~~}r@{~~}|}}
+\hline
+System  & ReverseHO & Primes & PrimesPeano & Queens & QueensUser \\\hline
+KiCS2   &     32.82 &   1.12 &        0.29 &   9.77 &     12.41  \\
+KiCS2HO &      0.21 &   0.09 &        0.27 &   0.63 &      0.72  \\
+PAKCS   &      7.24 &  13.55 &       22.74 &  78.52 &     81.98  \\
+MCC     &      0.22 &   0.32 &        1.26 &   2.65 &      2.93  \\
+GHC     &      0.21 &   0.06 &        0.21 &   0.05 &      0.12  \\
+\hline
+\end{tabular}
+\caption{Benchmarks: higher-order functional programs}
+ \label{fig:bench-higher-order}
+\end{figure}
+%
+The next collection of benchmarks (Fig.~\ref{fig:bench-higher-order})
+considers higher-order functional programs so that we drop
+the comparison to first-order Prolog systems.
+``Reverse'' reverses a list in linear time using higher-order functions
+like \code{foldl} and \code{flip} applied to a list with one million
+elements.
+``Primes'' computes the the 2000.\ prime number via the
+sieve of Eratosthenes using higher-order functions,
+and ``PrimesPeano'' computes the 256.\ prime number but
+with Peano numbers and user-defined lists.
+Finally, ``Queens'' (and ``QueensUser'' with user-defined lists)
+computes the number of safe positions of queens on a $11 \times 11$
+chess board.
 
-- logic variables
+As discussed above, our compiler performs an optimization
+when all operations are deterministic. However, in the case
+of higher-order functions, this optimization cannot be performed
+since any operation, i.e., also a nondeterministic operation,
+can be passed as an argument. As shown in the first line of this table,
+this considerably reduces the overall performance.
+To improve this situation, our compiler generates two versions
+of a higher-order function: a general version applicable to any
+argument and a specialized version where all higher-order arguments
+are assumed to be deterministic operations.
+Moreover, we implemented a program analysis
+to approximate those operations that call higher-order functions
+with deterministic operations so that one can use their
+specialized versions. The result of this improvement
+is shown as ``KiCS2HO'' and demonstrates its usefulness so that
+it is always used in the subsequent benchmarks.
 
-- sharing over nondet for free!
+\begin{figure}
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
+\hline
+System  & PermSort & PermSortPeano &  Last \\\hline
+KiCS2   &     3.23 &          1.26 &  0.26 \\
+PAKCS   &    26.08 &         21.75 &  2.58 \\
+MCC     &     1.23 &          1.28 &  0.08 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: nondeterministic functional logic programs}
+ \label{fig:bench-nondet}
+\end{figure}
+%
+To evaluate the efficiency of nondeterministic computations
+(Fig.~\ref{fig:bench-nondet}),
+we sorted a list containing 15 elements by enumerating all permutations
+and selecting the sorted ones (``PermSort'' and ``PermSortPeano''
+for Peano numbers and user-defined lists with 14 elements)
+and computed the last element \code{x}
+of a list \code{xs} containing 100,000 elements
+by solving the equation \ccode{ys++[x] =:= xs}
+(the implementation of unification and variable bindings
+require some additional machinery that is sketched in
+Section~\ref{sec:unification}).
+Although the results shows that our implementation cannot compete
+with MCC, it is superior to PAKCS which exploits Prolog features
+like backtracking and logic variables for these benchmarks.
+
+Since our implementation represents nondeterministic values
+as Haskell data structures, we get, in contrast to most
+other implementations of Curry, one interesting improvement for free:
+deterministic subcomputations are shared even if they occur
+in different nondeterministic computations.
+To show this effect of our implementation, consider the
+nondeterministic sort operation \code{psort} (permutation sort)
+and the infinite list of all prime numbers \code{primes},
+as used in the previous benchmarks, and the following definitions:
+\begin{curry}
+  goal1 = [primes!!803, primes!!802, primes!!801, primes!!800]
+  goal2 = psort [6173,6163,6151,6143]
+  goal3 = psort [primes!!803, primes!!802, primes!!801, primes!!800]
+\end{curry}
+In principle, one would expect that the sum of the execution times
+of \code{goal1} and \code{goal2} is equal to the time to execute
+\code{goal3}. However, implementations based on backtracking
+evaluate the primes occurring in \code{goal3} multiple times,
+as can be seen by the run times for PAKCS and MCC shown
+in Fig~\ref{fig:bench-sharing-over-nondet}.
+%
+\begin{figure}
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
+\hline
+System  &   goal1  &   goal2 & goal3 \\\hline
+KiCS2   &    0.32  &   0.00  &  0.32 \\
+PAKCS   &    8.88  &   0.02  & 91.68 \\
+MCC     &    0.20  &   0.00  &  1.94 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: sharing over nondeterminism}
+ \label{fig:bench-sharing-over-nondet}
+\end{figure}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Further Aspects}
+\section{Further Features}
 \label{sec:FurtherAspects}
 
-- discuss search strategies
+In this section we sketch some additional features of our implementation.
+Due to lack of space, we cannot discuss all details of the implementation.
 
-- encapsulated search
+\subsection{Search Strategies}
 
-- free variables and unification
+Due to the fact that we represent nondeterministic results
+in a data structure rather as a computation as in implementations
+based on backtracking, we can provide different methods to
+explore the search space containing the different result values.
+We have already seen in Section~\ref{sec:printValsDFS}
+how we can explore this search space to print all values in
+depth-first order.
+Apart from this simple approach,
+our implementation contains various strategies
+(depth-first, breadth-first, iterative deepening, parallel search)
+to transform a choice structure into a list of results
+that can be printed in different ways (e.g., all solutions, only the first
+solutions, or one after another by user requests).
+Actually, the user can set options to select the search strategy and
+the printing method.
 
-- set functions??
+\begin{figure}
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
+\hline
+Method               & PermSort & PermSortPeano &  NDNums \\\hline
+\code{printValsDFS}  &    3.24  &         1.26  & $\infty$ \\
+depth-first search   &    3.63  &         1.40  & $\infty$ \\
+breadth-first search &   18.30  &         6.85  &    11.52 \\
+iterative deepening  &    5.94  &         1.20  &     3.22 \\
+%parallel (1 proc.)   &    5.84  &         2.09  & $\infty$ \\
+%parallel (2 proc.)   &    3.46  &         1.25  & $\infty$ \\
+\hline
+\end{tabular}
+\caption{Benchmarks: comparing different search strategies}
+ \label{fig:search-strategies}
+\end{figure}
+%
+In order to compare the various search strategies,
+Fig.~\ref{fig:search-strategies} contains corresponding
+benchmarks where ``PermSort'' and ``PermSortPeano'' are the programs
+discussed in Fig.~\ref{fig:bench-nondet} and ``NDNums'' is the program
+\begin{curry}
+  f n = f (n+1) ? n
+\end{curry}
+where we look for the first solution of \ccode{f 0 == 25000}
+(obviously, depth-first search strategies do not terminate on this
+expression).
+All strategies except for the ``direct print'' method \code{printValsDFS}
+translate choice structures into monadic list structures
+in order to print them according to the user options.
+The benchmarks show that the overhead of this transformation
+is negligible so that this more flexible approach is the default one.
+
+We also made initial benchmarks with the parallel strategy
+where nondeterministic choices are explored via GHC's \code{par}
+construct. For the permutation sort we obtained a speedup of 1.7
+when executing the same program on two processors, but no essential
+speedup is obtained for more than two processors. 
+Better results require a careful analysis of the synchronization
+caused by the global structure to manage the state of choices
+which will be done in future work.
+
+\subsection{Encapsulated Search}
+
+Instead of choosing different search strategies to evaluate
+top-level expressions, our system also contains a primitive operation
+\begin{curry}
+ searchTree :: a -> SearchTree a
+\end{curry}
+to translate the search space caused by the evaluation of its argument
+into tree structure of the form
+\begin{curry}
+ data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
+\end{curry}
+so that the programmer can define its own search strategy or to
+collect all nondeterministic values into a list structure
+for further processing.
+
+% TODO: set functions??
+
+\subsection{Logic Variables and Unification}
+\label{sec:unification}
+
+Although our implementation is based on eliminating all logic
+variables from the source program by introducing generators,
+many functional logic programs contain equational constraints
+(e.g., compare the example ``Last'' of Fig.~\ref{fig:bench-nondet})
+to put conditions one computed results.
+Solving such conditions by generating all values is not always
+a reasonable approach. For instance, if \code{xs} and \code{ys}
+are free variables of type \code{[Bool]}, the equational
+constraint \ccode{xs=:=ys} has an infinite number of solutions.
+Instead of enumerating all these solutions, it is preferable to
+delay this enumeration but remember the condition that both
+\code{xs} and \code{ys} must always be evaluated to the same value.
+This demands for extending the representation of nondeterministic
+values by the possibility to add equational constraints between
+different choice identifiers.
+Due to lack of space, we have to omit the detailed description
+of this extension.
+However, it should be noted that the example
+``Last'' of Fig.~\ref{fig:bench-nondet}
+shows that unification can be supported with a reasonable efficiency.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions and Related Work}
 \label{sec:Conclusions}
 
+We have presented a new system to compile functional logic programs
+into purely functional programs.
+In order to be consistent with the call-time choice semantics
+of functional logic languages like Curry or Toy,
+we represent nondeterministic values
+in choice structures where each choice has an identification.
+Values for such choice identifiers are passed through
+nondeterministic operations so that fresh identifiers are available
+when a new choice needs to be created.
+The theoretical justification of this implementation technique
+is provided in \cite{Brassel11Thesis}.
+Apart from the parser, where we reused an existing parser
+implemented in Haskell, the compiler is completely written in Curry.
 
-better program analysis to approximate purely functional and
-higher-order computations
+Due to the representation of nondeterministic values as data,
+our system easily supports various search strategies
+in constrast to Prolog-based implementations.
+Since we compile Curry programs into Haskell,
+we can exploit the implementation efforts done
+for functional programming.
+Hence, purely functional parts of functional logic programs
+can be executed with almost the same efficiency as Haskell programs.
+Our benchmarks show that even the execution of the
+nondeterministic parts can compete with other
+implementations of Curry.
+Furthermore, we can also exploit advanced developments
+in the implementation of Haskell, like the parallel evaluation of
+programs, which is an interesting topic for future work.
+Finally, our implementation has many opportunities
+for optimization, like
+better program analyses to approximate purely deterministic computations.
 
 \bibliographystyle{plain}
 \bibliography{mh}
