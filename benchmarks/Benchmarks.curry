@@ -258,24 +258,24 @@ benchFLPCompleteSearch prog =
 
 
 allBenchmarks =
-  [ benchFPpl "Reverse"
-  , benchFPpl "ReversePrimList"
+  [ benchFPpl "ReverseUser"
+  , benchFPpl "Reverse"
   , benchFPpl "Tak"
   , benchFPpl "TakPeano"
   , benchHOFP "ReverseHO"
-  , benchHOFP "PrimReverse"
+  , benchHOFP "ReverseBuiltin"
   , benchHOFP "PrimesPeano"
   , benchHOFP "Primes"
-  , benchHOFP "PrimPrimes"
+  , benchHOFP "PrimesBuiltin"
   , benchHOFP "Queens"
-  , benchHOFP "PrimQueens"
+  , benchHOFP "QueensUser"
   , benchFLPDFS "PermSort"
   , benchFLPDFS "PermSortPeano"
   , benchFLPDFS "Half"
   , benchFLPSearch "PermSort"
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
-  , benchFLPCompleteSearch "BFSvsIDS"
+  , benchFLPCompleteSearch "NDNums"
   , benchFLPDFSWithMain "ShareNonDet" "goal1"
   , benchFLPDFSWithMain "ShareNonDet" "goal2"
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
@@ -310,6 +310,6 @@ main = run 1 allBenchmarks
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
---main = run 1 [benchFLPDFS "PermSort"]
+--main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]

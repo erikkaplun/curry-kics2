@@ -50,6 +50,11 @@ S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
   and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
   LNCS 3474, 2005.
 
+\bibitem{AugustssonRittriSynek94}
+L.~Augustsson, M.~Rittri, and D.~Synek.
+\newblock On generating unique names.
+\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
 \bibitem{Brassel11Thesis}
 B.~Bra{\ss}el.
 \newblock {\em Implementing Functional Logic Programs by Translation into

@@ -124,8 +124,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
 
 
   -- Generate instance of Show class:
-  showInstance = mkInstance (basics "Show") ctype targs
---     (if tc=="OP_List" then [showRule4List] else
+  showInstance = mkInstance (basics "Show") ctype targs $
+    if tc=="OP_List" then [showRule4List] else
     ([( pre "showsPrec"
       , simpleRule [PVar (1,"d"),
           PComb choiceConsName [PVar (2,"i"),PVar (3,"x"),PVar (4,"y")]]
@@ -143,26 +143,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) =
       simpleRule [PVar (1,"d"), PComb failConsName []]
         (applyF (pre "showChar") [charc '!']))]
       ++ map showConsRule cdecls)
--- )
 
-  -- Generate specific show for lists (only for finite determ. lists!)
+  -- Generate specific show for lists (only for finite lists!)
   showRule4List =
      (pre "showsPrec",
-      Rule [PVar (1,"d"), PVar (2,"cl")]
-           [noGuard (applyF (pre "showsPrec")
-                            [Var (1,"d"),
-                             applyF (mn,"transList") [Var (2,"cl")]])]
-           [LocalFunc
-             (ufunc (mn,"transList") 1 Private
-               [simpleRule [PComb (mn,"OP_List") []]
-                     (constF (pre "[]")),
-                simpleRule [PComb (mn,"OP_Cons") [PVar (1,"x"),PVar (2,"xs")]]
-                     (applyF (pre ":")
-                                      [Var (1,"x"),
-                                       applyF (mn,"transList") [Var (2,"xs")]]),
-                simpleRule [PVar (1,"_")]
-                       (applyF (pre "error")
-                          [string2ac "ERROR: try to show non-standard list"])]) ])
+      Rule [] [noGuard (constF (pre "showsPrec4CurryList"))] [])
 
   -- Generate Show instance rule for a data constructor:
   showConsRule (FC.Cons qn _ _ texps) =
@@ -597,10 +582,10 @@ intc i = Lit $ Intc i
 
 charc c = Lit $ Charc c
 
-mkIdList n id
-  | n == 0    = []
-  | n == 1    = [left id]
-  | otherwise = mkIdList' n id
+mkIdList num initid
+  | num == 0    = []
+  | num == 1    = [left initid]
+  | otherwise = mkIdList' num initid
   where
     mkIdList' n id
       | n == 1    = [id]

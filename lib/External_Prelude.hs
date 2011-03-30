@@ -374,7 +374,34 @@ instance ConvertCurryHaskell ct ht =>
 --fromOrdering EQ = C_EQ
 --fromOrdering GT = C_GT
 
+
 -- ---------------------------------------------------------------------------
+-- Auxiliary operations for showing lists
+-- ---------------------------------------------------------------------------
+
+showsPrec4CurryList :: Show a => Int -> OP_List a -> ShowS
+showsPrec4CurryList d cl =
+  if isStandardCurryList cl
+  then showsPrec d (clist2hlist cl)
+  else showChar '(' . showsPrecRaw d cl . showChar ')'
+ where
+  isStandardCurryList OP_List = True
+  isStandardCurryList (OP_Cons _ xs) = isStandardCurryList xs
+  isStandardCurryList _ = False
+
+  clist2hlist OP_List = []
+  clist2hlist (OP_Cons x xs) = x : clist2hlist xs
+
+  showsPrecRaw d (Choice_OP_List i x y) = showsChoice d i x y
+  showsPrecRaw d (Choices_OP_List i xs) = showsChoices d i xs
+  showsPrecRaw d (Guard_OP_List c e) = showsGuard d c e
+  showsPrecRaw d Fail_OP_List = showChar '!'
+  showsPrecRaw d OP_List = showString "[]"
+  showsPrecRaw d (OP_Cons x xs) =
+    showParen (d > 5) (showsPrec 6 x . showChar ':' . showsPrecRaw 5 xs)
+
+
+--- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
 
