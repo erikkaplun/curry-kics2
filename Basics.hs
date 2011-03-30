@@ -649,14 +649,16 @@ printValsDFS' _  _    Fail           = return ()
 printValsDFS' fb cont (Val v)        = searchNF (printValsDFS fb) cont v
 printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
   where
-  choose (LazyBind cs, _) = (printValsDFS fb cont) (guardCons cs (choicesCons i xs))
+  choose (LazyBind cs, _) = do
+    setChoice i NoChoice
+    printValsDFS fb cont (guardCons cs (choicesCons i xs))
   choose (ChooseN c _, _) = (printValsDFS fb cont) (xs !! c)
   choose (NoChoice   , j) = cont (choicesCons i xs)
 
 printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
   where
-  choose ChooseLeft  = (printValsDFS fb cont) x
-  choose ChooseRight = (printValsDFS fb cont) y
+  choose ChooseLeft  = printValsDFS fb cont x
+  choose ChooseRight = printValsDFS fb cont y
   choose NoChoice    = if fb
     then do
       newChoice True ChooseLeft  x
@@ -948,38 +950,51 @@ printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
 -- Compute all values of a non-deterministic goal in a depth-first manner:
 computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
-  initSupply >>= \s -> searchDFS (try (id $!! (mainexp s)))
+  initSupply >>= \s -> searchDFS (flip mcons mnil) (mainexp s)
 
-searchDFS :: (Show a, NormalForm a) => Try a -> IO (IOList a)
-searchDFS Fail             = mnil
-searchDFS (Val v)          = mcons v mnil
-searchDFS (Frees i xs)     = lookupChoice i >>= choose
+searchDFS :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> a -> IO (IOList b)
+searchDFS cont a = searchDFS' cont  (try a)
+
+searchDFS' :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
+searchDFS' cont Fail             = mnil
+searchDFS' cont (Val v)          = searchNF searchDFS cont v
+searchDFS' cont (Frees i xs)     = lookupChoiceID i >>= choose
   where
-    choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
-    choose NoChoice      = mcons (choicesCons i xs) mnil
+    choose (LazyBind cs, _)   = do
+      setChoice i NoChoice 
+      searchDFS cont (guardCons cs (choicesCons i xs))
+    choose (ChooseN c _, _)  = searchDFS cont (xs !! c)
+    choose (NoChoice, j)      = cont (choicesCons j xs)
 
-
-searchDFS (Choice i x1 x2) = lookupChoice i >>= choose
+searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
   where
-    choose ChooseLeft  = (searchDFS . try) $!< x1
-    choose ChooseRight = (searchDFS . try) $!< x2
+    choose ChooseLeft  = searchDFS cont x1
+    choose ChooseRight = searchDFS cont x2
     choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
 
     newChoice c x = do setChoice i c
-                       (searchDFS .try) $!< x |< setChoice i NoChoice
+                       searchDFS cont x |< setChoice i NoChoice
 
-searchDFS (Choices i xs) = lookupChoice i >>= choose
+searchDFS' cont (Choices i xs) = lookupChoice i >>= choose
   where
-    choose (ChooseN c _) = (searchDFS . try) $!< (xs !! c)
+    choose (LazyBind cs) = do
+      setChoice i NoChoice
+      searchDFS cont (guardCons cs (choicesCons i xs))
+    choose (ChooseN c _) = searchDFS cont (xs !! c)
     choose NoChoice      = foldr1 (+++) $ zipWith newChoice [0 ..] xs
     choose x             = error ("choose: " ++ show x)
 
     newChoice n x = do setChoice i (ChooseN n errChoice)
-                       (searchDFS .try) $!< x |< setChoice i NoChoice
+                       searchDFS cont x |< setChoice i NoChoice
 
     errChoice = error "propagation number used within non-free Choice"
 
-searchDFS t = error $ "searchDFS got " ++ show t
+searchDFS' cont (Guard cs e) = solves cs >>= traverse
+  where
+  traverse FailST            = mnil
+  traverse (SuccessST reset) = (searchDFS cont) e |< reset
+  traverse (ChoiceST reset l r) = 
+    ((l >>= traverse) +++ (r >>= traverse)) |< reset
 
 -- searchDFS (Guard cs e) = do
 --   mreset <- solves cs
