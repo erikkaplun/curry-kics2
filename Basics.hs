@@ -724,6 +724,9 @@ solved = return (Just (return ()))
 unsolvable :: Solved
 unsolvable = return Nothing
 
+mkSolved :: IO (IO ()) -> Solved
+mkSolved mkReset = mkReset >>= return . Just 
+
 (>>>) :: Solved -> Solved -> Solved
 a >>> b = do
   mra <- a
@@ -755,14 +758,14 @@ solve (i :=: cc) = lookupChoice i >>= choose cc
   where
     -- 1.: the Choice which should be stored for i
     -- 2.: the Choice for i in the store
-    choose (LazyBind cs) NoChoice      = setUnsetChoice i cc
-    choose _             (LazyBind cs) = setUnsetChoice i NoChoice >>> solves cs >>> solve (i :=: cc)
+    choose (LazyBind cs) NoChoice      = mkSolved (setUnsetChoice i cc)
+    choose _             (LazyBind cs) = mkSolved (setUnsetChoice i NoChoice) >>> solves cs >>> solve (i :=: cc)
     choose (LazyBind cs) _             = solves cs
 {-    choose (LazyBind cs) (LazyBind cs2) = solves cs >>> solves cs2
     choose (LazyBind cs) (ChooseN _ _)  = solves cs
     choose (ChooseN _ _) (LazyBind cs) = (setUnsetChoice i NoChoice >>> solves cs) >>> solve (i :=: cc)-}
     choose (BindTo j) ci       = lookupChoice j >>= check j ci
-    choose c          NoChoice = setUnsetChoice i c
+    choose c          NoChoice = mkSolved (setUnsetChoice i c)
     choose c          x | c==x = solved
     choose c          ci       = unsolvable
 
@@ -773,10 +776,10 @@ solve (i :=: cc) = lookupChoice i >>= choose cc
 --     check j (LazyBind cs) (ChooseN _ _)  = solves cs >>> solve (i :=: cc) -- cc = BindTo j
 --     check j c@(ChooseN _ _) (LazyBind cs) = (setUnsetChoice j NoChoice >>> solves cs) >>> solve (j :=: c)
 
-    check j NoChoice NoChoice = setUnsetChoice i (BindTo j)
+    check j NoChoice NoChoice = mkSolved (setUnsetChoice i (BindTo j))
 
-    check _ NoChoice y        = setUnsetChoice i y
-    check j x        NoChoice = setUnsetChoice j x
+    check _ NoChoice y        = mkSolved (setUnsetChoice i y)
+    check j x        NoChoice = mkSolved (setUnsetChoice j x)
 
     check _ x        y | x==y = solved
 
