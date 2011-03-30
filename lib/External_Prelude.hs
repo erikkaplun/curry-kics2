@@ -413,8 +413,6 @@ external_d_C_ensureNotFree x =
   case try x of
     Choice i a b -> choiceCons i (external_d_C_ensureNotFree a)
                                  (external_d_C_ensureNotFree b)
-    Free i a b   -> narrow i (external_d_C_ensureNotFree a)
-                             (external_d_C_ensureNotFree b)
     Choices i xs -> choicesCons i (map external_d_C_ensureNotFree xs)
     Frees i xs   -> narrows i (map external_d_C_ensureNotFree xs)
     -- TODO : reason about the case when there is a constraint

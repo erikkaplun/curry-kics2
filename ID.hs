@@ -112,9 +112,9 @@ lookupChoice i = fst `liftM` lookupChoiceID i
 
 lookupChoiceID :: ID -> IO (Choice, ID)
 lookupChoiceID i = do
-  putStrLn $ "lookupChoiceID " ++ show i
-  raw <- lookupChoiceRaw i
-  putStrLn $ "Raw result: " ++ show raw
+--   putStrLn $ "lookupChoiceID " ++ show i
+--   raw <- lookupChoiceRaw i
+--   putStrLn $ "Raw result: " ++ show raw
   lookupChoiceRaw i >>= unchain
   where
     unchain (BoundTo j _) = lookupChoiceID j
