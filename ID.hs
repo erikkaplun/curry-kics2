@@ -1,9 +1,13 @@
+-- ---------------------------------------------------------------------------
+-- ID module
+-- ---------------------------------------------------------------------------
 module ID
   ( Constraint (..), Choice (..), defaultChoice, isDefaultChoice
   , ID (..), IDSupply
   , mkInt, leftID, rightID, narrowID
   , initSupply, leftSupply, rightSupply, thisID, freeID
-  , lookupChoice, lookupChoiceID, setChoice, setUnsetChoice
+    -- * Choice management
+  , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
   ) where
 
 import Control.Monad (liftM, when)
@@ -14,8 +18,11 @@ import IDImpl
 -- ---------------------------------------------------------------------------
 
 data Constraint
+  -- binding of an 'ID' to a 'Choice'
   = ID :=: Choice
-  | Failed
+  -- Failure (unsolvable constraint)
+  | Unsolvable
+  -- non-deterministic choice between two lists of constraints
   | ConstraintChoice ID [Constraint] [Constraint]
     deriving (Eq, Show)
 
@@ -27,7 +34,9 @@ data Constraint
 data Choice
     -- No choice has been made so far
   = NoChoice
+    -- The left value of an (?) is chosen
   | ChooseLeft
+    -- The right value of an (?) is chosen
   | ChooseRight
     -- ChooseN consIdx argCnt is the choice for the constructor with the
     -- index consIdx which has argCnt arguments
@@ -110,6 +119,9 @@ mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
 lookupChoice :: ID -> IO Choice
 lookupChoice i = fst `liftM` lookupChoiceID i
 
+lookupID :: ID -> IO ID
+lookupID i = snd `liftM` lookupChoiceID i
+
 lookupChoiceID :: ID -> IO (Choice, ID)
 lookupChoiceID i = do
 --   putStrLn $ "lookupChoiceID " ++ show i
@@ -164,37 +176,48 @@ nextNIDs s n
       | otherwise = nextNIDs' (leftSupply s) (n - halfn) ++ nextNIDs' (rightSupply s) halfn
         where halfn = n `div` 2
 
-setUnsetChoice :: ID -> Choice -> IO (IO ())
-setUnsetChoice i c = do
-  j <- setChoiceGetID i c
-  case c of
-    BindTo k -> if j == k then return (return ())
-                          else return (resetFreeVar j)
-    _        -> return (setChoice j NoChoice)
 
 setChoice :: ID -> Choice -> IO ()
 setChoice i c = setChoiceRef (ref i) c
 
-setChoiceGetID :: ID -> Choice -> IO ID
-setChoiceGetID i (BindTo j) | i == j = return i -- avoid cyclic bind
-setChoiceGetID i c = lookupChoiceRaw i >>= unchain
+
+-- Set the given 'Choice' for the given 'ID' and return an action to recover
+-- the former 'Choice'
+setUnsetChoice :: ID -> Choice -> IO (IO ())
+setUnsetChoice i c = do
+  (oldChoice, changedId) <- setChoiceGetChoiceID i c -- get current Choice
+--   putStrLn $ "setUnsetChoice setting: " ++ show changedId ++ " to " ++ show c
+  return $ case c of
+    BindTo _ -> do
+      resetFreeVar changedId
+--       putStrLn $ "setUnsetChoice resetting free: " ++ show changedId ++ " to " ++ show  oldChoice
+      setChoice changedId oldChoice -- TODO: BindTo k -> if changedId == k then return (return ()) else return (resetFreeVar changedId)
+    _        -> do
+--       putStrLn $ "setUnsetChoice resetting: " ++ show changedId ++ " to " ++ show  oldChoice
+      setChoice changedId oldChoice -- was NoChoice
+
+
+-- Set the 'Choice' for the last 'ID' referenced by the given 'ID' and
+-- return the ultimately changed 'ID' and its former 'Choice'
+setChoiceGetChoiceID :: ID -> Choice -> IO (Choice, ID)
+-- setChoiceGetChoiceID i (BindTo j) | i == j = return (NoChoice, i) -- TODO: avoid cyclic bind; notice that NoChoice will not be evaluated
+setChoiceGetChoiceID i c = lookupChoiceRaw i >>= unchain
   where
-    unchain (BoundTo j _) = setChoiceGetID j c
+    unchain (BoundTo j _) = setChoiceGetChoiceID j c
 
     unchain (BindTo  j  ) = do
-      resId <- setChoiceGetID j c
+      (resC, resId) <- setChoiceGetChoiceID j c
       case c of
         ChooseN _ num -> propagateBind i j num
         _             -> return ()
-      return resId
+      return (resC, resId)
 
-    unchain _             = case c of
+    unchain oldChoice     = case c of
       BindTo j -> do
-        lastid <- snd `liftM` lookupChoiceID j
-        -- TODO: Replace c with (BindTo lastid) to shorten the chains ?
-        when (lastid /= i) $ setChoice i c
-        return i
-      _        -> setChoice i c >> return i
+        (lastChoice, lastid) <- lookupChoiceID j
+        setChoice i c -- TODO: when (lastid /= i) $ setChoice i (BindTo lastid)
+        return (oldChoice, i)
+      _        -> setChoice i c >> return (oldChoice, i)
 
 resetFreeVar :: ID -> IO ()
 resetFreeVar i = case i of

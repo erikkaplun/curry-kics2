@@ -123,7 +123,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
 
   -- Generate instance of Show class:
-  showInstance = mkInstance (basics "Show") ctype targs $
+  showInstance = mkInstance (basics "Show") [] ctype targs $
     if tc=="OP_List" then [showRule4List] else
     ([( pre "showsPrec"
       , simpleRule [PVar (1,"d"),
@@ -194,7 +194,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
        ]
 
   -- Generate instance of Read class:
-  readInstance = mkInstance (pre "Read") ctype targs
+  readInstance = mkInstance (pre "Read") [] ctype targs
      [case take 8 tc of
         "OP_List"  -> readListRule
         "OP_Tuple" -> readTupleRule (head cdecls)
@@ -283,7 +283,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
    --
 
   -- Generate instance of NonDet class:
-  nondetInstance = mkInstance (basics "NonDet") ctype []
+  nondetInstance = mkInstance (basics "NonDet") [] ctype []
      (map mkSpecialConsRule [ ("choiceCons" , choiceConsName)
                             , ("choicesCons", choicesConsName)
                             , ("failCons"   , failConsName)
@@ -309,7 +309,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   -- TODO generators for constructor arguments can use the same idsupplies
   --      for different constructors; change bind accordingly
 
-  generableInstance = mkInstance (basics "Generable") ctype targs
+  generableInstance = mkInstance (basics "Generable") [] ctype targs
     [(basics "generate", simpleRule [PVar (1,"s")] (genBody (Var (1, "s"))))]
 
   genBody idSupp =
@@ -331,7 +331,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
 
   -- Generate instance of NormalForm class:
-  normalformInstance = mkInstance (basics "NormalForm") ctype targs
+  normalformInstance = mkInstance (basics "NormalForm") [basics "Show"] ctype targs
      (map normalformConsRule cdecls
       ++ [(basics "$!!",
            simpleRule [PVar (1,"cont"),
@@ -362,7 +362,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                      (applyF (pre "nfChoicesIO")
                                       [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
       ,(basics "$!<", simpleRule [PVar (1,"cont"), PVar (2,"x")]
-                     (applyV (1,"cont") [Var (2,"x")]))])
+                     (applyV (1,"cont") [Var (2,"x")]))]
+      ++ map searchNFConsRule cdecls)
 
   -- Generate NormalForm instance rule for a data constructor:
   normalformConsRule (FC.Cons qn _ _ texps) =
@@ -396,8 +397,24 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                     [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
             [1..carity]
 
+  -- Generate searchNF instance rule for a data constructor:
+  searchNFConsRule  (FC.Cons qn _ _ texps) =
+    (basics "searchNF",
+     simpleRule [PVar (1,"search"), PVar (2,"cont"),
+           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
+          nfBody)
+   where
+     carity = length texps
+
+     nfBody =
+      foldr (\i exp -> applyV (1, "search")
+                        [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
+            (applyV (1,"cont")
+                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
+            [1..carity]
+
   -- Generate instance of Unifiable class:
-  unifiableInstance = mkInstance (basics "Unifiable") ctype targs $ concat
+  unifiableInstance = mkInstance (basics "Unifiable") [basics "Show"] ctype targs $ concat
        -- unification
      [ map (unifiableConsRule (basics "=.=") (basics "=:=")) cdecls
      , catchAllCase (basics "=.=") (basics "Fail_C_Success")
@@ -412,12 +429,18 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
           (PComb choicesConsName [PVar (2,"j"), PVar (3,"_")])]
        -- lazy bind (function patterns)
     , map (bindConsRule (basics "lazyBind") (\ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [ident, arg]]]) head) (zip [0 ..] cdecls)
-    , [bindChoiceRule (basics "lazyBind")
-          (PComb choiceConsName [PVar (2,"j"), PVar (3,"_"), PVar (4,"_")])]
+    , [((basics "lazyBind"),
+        simpleRule [PVar (1,"i"),(PComb choiceConsName [PVar (2,"j"), PVar (3,"l"), PVar (4,"r")])]
+         (applyF (pre ":")
+                 [ applyF (idmod "ConstraintChoice") [Var (2,"j")
+                                                     , applyF (basics "lazyBind") [Var (1,"i"),Var (3,"l")]
+                                                     , applyF (basics "lazyBind") [Var (1,"i"),Var (4,"r")]
+                                                     ]
+                 , constF (pre "[]")]))]
      , [bindChoiceRule (basics "lazyBind")
           (PComb choicesConsName [PVar (2,"j"), PVar (3,"_")])]
      , [(basics "lazyBind",
-          simpleRule [PVar (1, "_"), PComb failConsName []] (list2ac [constF (basics "Failed")]))]
+          simpleRule [PVar (1, "_"), PComb failConsName []] (list2ac [constF (basics "Unsolvable")]))]
      , [(basics "lazyBind",
           simpleRule [PVar (1, "i"), PComb guardConsName [PVar (2,"cs"), PVar (3,"e")]]
           (applyF (pre "++")
@@ -465,7 +488,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
          )
 
 
-  curryInstance = mkInstance (basics "Curry") ctype targs $ concat
+  curryInstance = mkInstance (basics "Curry") [] ctype targs $ concat
      [ extConsRules "=?=", map eqConsRule cdecls, catchAllPattern (pre "=?=")
      , extConsRules "<?=", ordConsRules cdecls  , catchAllPattern (pre "<?=")
      ]
@@ -558,8 +581,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                 , PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
                 (constF (pre "C_True")))
 
-mkInstance qn ctype targs
-  = Instance qn ctype $ map (\tv -> Context qn [tv]) targs
+mkInstance qn contexts ctype targs
+  = Instance qn ctype $ concatMap (\name -> map (\tv -> Context name [tv]) targs) (qn:contexts)
 
 consPattern qn varName carity
   = PComb qn $ map (\i -> PVar (i, varName ++ show i)) [1 .. carity]

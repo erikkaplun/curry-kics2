@@ -6,12 +6,14 @@ module IDImpl
   , lookupChoiceRef, setChoiceRef
   ) where
 
-import Data.IORef
-import qualified Data.Map as Map
+import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
+import qualified Data.Map as Map (Map, empty, delete, insert, findWithDefault)
 import System.IO.Unsafe (unsafePerformIO)
 
+-- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Choice, defaultChoice, isDefaultChoice)
 
+-- |References to 'Choice's are represented as 'Integer's
 type Ref = Integer
 
 mkIntRef :: Ref -> Integer
