@@ -437,7 +437,7 @@ instance NonDet (C_IO t0) where
 
 instance Generable (C_IO a) where generate _ = error "generate for C_IO"
 
-instance NormalForm t0 => NormalForm (C_IO t0) where
+instance (NormalForm t0,Show t0) => NormalForm (C_IO t0) where
   ($!!) cont io@(C_IO _) = cont io
   ($!!) cont (Choice_C_IO i x y) = nfChoice cont i x y
   ($!!) cont (Choices_C_IO i xs) = nfChoices cont i xs
@@ -447,7 +447,7 @@ instance NormalForm t0 => NormalForm (C_IO t0) where
   ($!<) cont (Choices_C_IO i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
 
-instance Unifiable t0 => Unifiable (C_IO t0) where
+instance (Unifiable t0,Show t0) => Unifiable (C_IO t0) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_IO j _ _) = [(i :=: (BindTo j))]
