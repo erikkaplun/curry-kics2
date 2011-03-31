@@ -171,7 +171,7 @@ compare x y | x == y    = EQ
 
 --- Less-than on ground data terms.
 (<)   :: a -> a -> Bool
-x < y = (x <= y) && not (x == y)
+x < y = not (y <= x)
 
 --- Greater-than on ground data terms.
 (>)   :: a -> a -> Bool
