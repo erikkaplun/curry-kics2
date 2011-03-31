@@ -101,15 +101,16 @@ instance NormalForm C_Int where
   ($!<) cont (Choice_C_Int i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Int i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
+  searchNF search cont i@(C_Int _) = cont i
 
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Int j _ _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
-  lazyBind i (Choice_C_Int j _ _) = [(i :=: (BindTo j))]
+  lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Int = [Failed]
+  lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Int where
@@ -182,15 +183,16 @@ instance NormalForm C_Float where
   ($!<) cont (Choice_C_Float i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Float i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
+  searchNF search cont x@(C_Float _) = cont x
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Float j _ _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
-  lazyBind i (Choice_C_Float j _ _) = [(i :=: (BindTo j))]
+  lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Float = [Failed]
+  lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Float where
@@ -260,15 +262,16 @@ instance NormalForm C_Char where
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
+  searchNF search cont c@(C_Char _) = cont c
 
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Char j _ _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
-  lazyBind i (Choice_C_Char j _ _) = [(i :=: (BindTo j))]
+  lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Char = [Failed]
+  lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Char where

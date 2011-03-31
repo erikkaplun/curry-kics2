@@ -1,6 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- | ID implementation using IORefs
 -- ---------------------------------------------------------------------------
+{-# LANGUAGE FlexibleInstances #-}
 module IDImpl
   ( Ref, mkIntRef, IDSupply, initSupply, leftSupply, rightSupply, thisRef
   , lookupChoiceRef, setChoiceRef
@@ -9,14 +10,17 @@ module IDImpl
 import Data.IORef
 import System.IO.Unsafe (unsafeInterleaveIO)
 
+-- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Choice, defaultChoice, isDefaultChoice)
 
-type Ref = (IORef Choice)
+-- |References to 'Choice's are represented as 'IORef's
+type Ref = IORef Choice
 
 instance Show (IORef Choice) where
   show _ = ""
 
--- Conversion of ID into integer not possible for this implementation
+-- |A conversion of a 'Ref' into an integer is not possible for this
+--  implementation
 mkIntRef :: Ref -> Integer
 mkIntRef = error "IDSupplyIORef.mkIntRef"
 
