@@ -65,9 +65,8 @@ into purely functional Haskell programs.
 Our implementation is based on the idea to represent
 nondeterministic result values of an expression as a data structure.
 This enables the application of various search strategies
-to extract the different values from the search space.
-In addition to the increased functionality of our system,
-we demonstrate by a several benchmarks that our implementation
+to extract values from the search space.
+We show by a several benchmarks that our implementation
 can compete with or outperforms other existing implementations of Curry.
 \end{abstract}
 
@@ -613,6 +612,8 @@ nondeterministic operations, they are translated like any other operation.
 For instance, the operation \code{aBool} is a generator for
 Boolean values and its translation into Haskell has been presented above.
 
+A more detailed discussion of this translation scheme can be found
+in the original proposal \cite{BrasselFischer08IFL}.
 The correctness of this transformation from nondeterministic source programs
 into deterministic target programs has been formally shown
 in \cite{Brassel11Thesis}.
@@ -793,8 +794,8 @@ goals for this compiler is satisfied since functional Curry programs
 are executed almost with the same speed as their Haskell equivalents.
 An overhead is visible if one uses built-in numbers
 (due to the potential nondeterministic values, KiCS2 cannot
-directly map operations on numbers directly into the Haskell primitives)
-where the GHC can apply particular optimizations.
+directly map operations on numbers into the Haskell primitives)
+where GHC can apply specific optimizations.
 
 \begin{figure}
 \centering
@@ -815,9 +816,9 @@ GHC     &      0.21 &   0.06 &        0.21 &   0.05 &      0.12  \\
 The next collection of benchmarks (Fig.~\ref{fig:bench-higher-order})
 considers higher-order functional programs so that we drop
 the comparison to first-order Prolog systems.
-``Reverse'' reverses a list in linear time using higher-order functions
-like \code{foldl} and \code{flip} applied to a list with one million
-elements.
+``ReverseHO'' reverses a list with one million
+elements in linear time using higher-order functions
+like \code{foldl} and \code{flip}.
 ``Primes'' computes the the 2000.\ prime number via the
 sieve of Eratosthenes using higher-order functions,
 and ``PrimesPeano'' computes the 256.\ prime number but
@@ -845,12 +846,12 @@ it is always used in the subsequent benchmarks.
 
 \begin{figure}
 \centering
-\begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
+\begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
-System  & PermSort & PermSortPeano &  Last \\\hline
-KiCS2   &     3.23 &          1.26 &  0.26 \\
-PAKCS   &    26.08 &         21.75 &  2.58 \\
-MCC     &     1.23 &          1.28 &  0.08 \\
+System  & PermSort & PermSortPeano &  Last & RegExp \\\hline
+KiCS2   &     3.34 &         3.99  &  0.26 &   0.63 \\
+PAKCS   &    26.08 &        67.51  &  2.58 &  12.46 \\
+MCC     &     1.23 &         4.00  &  0.08 &   0.46 \\
 \hline
 \end{tabular}
 \caption{Benchmarks: nondeterministic functional logic programs}
@@ -861,15 +862,19 @@ To evaluate the efficiency of nondeterministic computations
 (Fig.~\ref{fig:bench-nondet}),
 we sorted a list containing 15 elements by enumerating all permutations
 and selecting the sorted ones (``PermSort'' and ``PermSortPeano''
-for Peano numbers and user-defined lists with 14 elements)
-and computed the last element \code{x}
+for Peano numbers),
+computed the last element \code{x}
 of a list \code{xs} containing 100,000 elements
 by solving the equation \ccode{ys++[x] =:= xs}
 (the implementation of unification and variable bindings
 require some additional machinery that is sketched in
-Section~\ref{sec:unification}).
-Although the results shows that our implementation cannot compete
-with MCC, it is superior to PAKCS which exploits Prolog features
+Section~\ref{sec:unification}),
+and matched a regular expression in a string of length 200,000
+following the nondeterministic specification of \code{grep} shown
+in \cite{AntoyHanus10CACM}.
+Although the results show that our high-level implementation is not far
+from the efficiency of MCC,
+and it is superior to PAKCS which exploits Prolog features
 like backtracking and logic variables for these benchmarks.
 
 Since our implementation represents nondeterministic values
@@ -882,9 +887,9 @@ nondeterministic sort operation \code{psort} (permutation sort)
 and the infinite list of all prime numbers \code{primes},
 as used in the previous benchmarks, and the following definitions:
 \begin{curry}
-  goal1 = [primes!!803, primes!!802, primes!!801, primes!!800]
-  goal2 = psort [6173,6163,6151,6143]
-  goal3 = psort [primes!!803, primes!!802, primes!!801, primes!!800]
+goal1 = [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
+goal2 = psort [7949,7937,7933,7927]
+goal3 = psort [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
 \end{curry}
 In principle, one would expect that the sum of the execution times
 of \code{goal1} and \code{goal2} is equal to the time to execute
@@ -897,16 +902,15 @@ in Fig~\ref{fig:bench-sharing-over-nondet}.
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
-System  &   goal1  &   goal2 & goal3 \\\hline
-KiCS2   &    0.32  &   0.00  &  0.32 \\
-PAKCS   &    8.88  &   0.02  & 91.68 \\
-MCC     &    0.20  &   0.00  &  1.94 \\
+System  & \code{goal1} & \code{goal2} & \code{goal3} \\\hline
+KiCS2   &        0.46  &        0.00  &        0.46  \\
+PAKCS   &       13.70  &        0.02  &      139.55  \\
+MCC     &        0.30  &        0.00  &        3.06  \\
 \hline
 \end{tabular}
 \caption{Benchmarks: sharing over nondeterminism}
  \label{fig:bench-sharing-over-nondet}
 \end{figure}
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -939,12 +943,12 @@ the printing method.
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
 Method               & PermSort & PermSortPeano &  NDNums \\\hline
-\code{printValsDFS}  &    3.24  &         1.26  & $\infty$ \\
-depth-first search   &    3.63  &         1.40  & $\infty$ \\
-breadth-first search &   18.30  &         6.85  &    11.52 \\
-iterative deepening  &    5.94  &         1.20  &     3.22 \\
-%parallel (1 proc.)   &    5.84  &         2.09  & $\infty$ \\
-%parallel (2 proc.)   &    3.46  &         1.25  & $\infty$ \\
+\code{printValsDFS}  &    3.34  &         3.99  & $\infty$ \\
+depth-first search   &    3.61  &         4.39  & $\infty$ \\
+breadth-first search &   18.34  &        21.78  &    10.96 \\
+iterative deepening  &    6.16  &         7.60  &     3.10 \\
+%parallel (1 proc.)   &    5.84  &         6.54  & $\infty$ \\
+%parallel (2 proc.)   &    3.46  &         3.79  & $\infty$ \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different search strategies}
@@ -973,8 +977,8 @@ construct. For the permutation sort we obtained a speedup of 1.7
 when executing the same program on two processors, but no essential
 speedup is obtained for more than two processors. 
 Better results require a careful analysis of the synchronization
-caused by the global structure to manage the state of choices
-which will be done in future work.
+caused by the global structure to manage the state of choices.
+This is a topic for future work.
 
 \subsection{Encapsulated Search}
 
@@ -984,13 +988,13 @@ top-level expressions, our system also contains a primitive operation
  searchTree :: a -> SearchTree a
 \end{curry}
 to translate the search space caused by the evaluation of its argument
-into tree structure of the form
+into a tree structure of the form
 \begin{curry}
  data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
 \end{curry}
 so that the programmer can define its own search strategy or to
 collect all nondeterministic values into a list structure
-for further processing.
+for further processing \cite{BrasselHuch07}.
 
 % TODO: set functions??
 

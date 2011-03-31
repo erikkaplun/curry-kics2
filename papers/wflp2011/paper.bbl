@@ -61,6 +61,13 @@ B.~Bra{\ss}el.
   Purely Functional Programs}.
 \newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
 
+\bibitem{BrasselFischer08IFL}
+B.~Brassel and S.~Fischer.
+\newblock From functional logic programs to purely functional programs
+  preserving laziness.
+\newblock In {\em Proceedings of the 20th Workshop on Implementation and
+  Application of Functional Languages (IFL 2008, to appear)}, 2008.
+
 \bibitem{BrasselFischerHanusReck11}
 B.~Bra{\ss}el, S.~Fischer, M.~Hanus, and F.~Reck.
 \newblock Transforming functional logic programs into monadic functional
