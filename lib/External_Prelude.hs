@@ -24,7 +24,7 @@ class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curr
   (<?=) :: a -> a -> C_Bool
   (<?=) = error "(<?=) is undefined"
 
-instance Curry a => Curry (PrimData a) where
+instance Curry (PrimData a) where
   (=?=) = error "(=?=) is undefined for primitive data"
   (<?=) = error "(<?=) is undefined for primitive data"
 

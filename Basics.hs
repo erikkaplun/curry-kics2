@@ -534,7 +534,7 @@ instance NonDet (PrimData t0) where
 
 instance Generable (PrimData a) where generate _ = error "generate for PrimData"
 
-instance NormalForm t0 => NormalForm (PrimData t0) where
+instance NormalForm (PrimData a) where
   ($!!) cont p@(PrimData _) = cont p
   ($!!) cont (Choice_PrimData i x y) = nfChoice cont i x y
   ($!!) cont (Choices_PrimData i xs) = nfChoices cont i xs
@@ -544,7 +544,7 @@ instance NormalForm t0 => NormalForm (PrimData t0) where
   ($!<) cont (Choices_PrimData i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
 
-instance Unifiable t0 => Unifiable (PrimData t0) where
+instance Unifiable (PrimData a) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_PrimData j _ _) = [(i :=: (BindTo j))]

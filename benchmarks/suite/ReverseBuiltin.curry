@@ -1,4 +1,4 @@
-module PrimReverse where
+module ReverseBuiltin where
 
 
 data Nat = O | S Nat
