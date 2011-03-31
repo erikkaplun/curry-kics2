@@ -1,0 +1,62 @@
+This directory contains a collection of benchmark programs
+for the KiCS2 compiler. All benchmarks can be executed
+by the script "showbench" from the parent directory.
+
+Short explanations of the programs:
+
+ReverseUser: first-order functional programming
+naive reverse on user-defined lists
+
+Reverse: first-order functional programming
+naive reverse on built-in lists
+
+Tak: first-order functional programming
+highly recursive function on natural numbers
+
+TakPeano: first-order functional programming
+like Tak but with user-defined numbers in Peano representation
+
+ReverseHO: higher-order functional programming
+linear reverse with higher-order functions
+
+ReverseBuiltin: higher-order functional programming
+linear reverse from the Prelude
+
+Primes: higher-order functional programming
+compute prime numbers via sieve of Eratosthenes
+
+PrimesPeano: higher-order functional programming
+like Primes but with user-defined numbers in Peano representation
+and user-defined lists
+
+PrimesBuiltin: higher-order functional programming
+like Primes but with built-in higher-order functions and lists
+
+Queens: higher-order functional programming
+compute number of safe positions of queens
+
+QueensUser: higher-order functional programming
+like Queens but with user-defined lists
+
+PermSort: nondeterministic programming
+sort a list by enumerating all permutations
+
+PermSortPeano: nondeterministic operations
+like PermSort but with Peano numbers
+
+Half: nondeterministic programming with logic variables
+compute the half of a number in Peano representation by adding an
+unknown number to itself
+
+NDNums: nondeterministic operations with complete search
+operation the nondeterministically enumerates all natural numbers
+
+ShareNonDet: nondeterministic operations
+permutation sort applied to big primes to demonstrate sharing over nondet.
+
+Last: nondeterministic programming with logic variables and unification
+compute the last element of a list by solving a list equation
+
+RegExp: nondeterministic programming with logic variables and unification
+"grep" a pattern in a long string by a nondeterministic specification
+of pattern matching

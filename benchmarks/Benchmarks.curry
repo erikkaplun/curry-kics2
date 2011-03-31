@@ -12,7 +12,7 @@ import ReadShowTerm
 import Float
 
 -- home directory of IDC:
-idcHome = ".."
+idcHome = "../.."
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -216,17 +216,17 @@ benchHOFP prog =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog =
- [idcBenchmark "IDC_DFS"        prog False "integer" "prdfs nd_C_main"
- ,idcBenchmark "IDC+_DFS"       prog True  "integer" "prdfs nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
- [idcBenchmark "IDC+_PRDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef" prog True  "ioref"   "printDFS nd_C_main"
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref"   "printDFS nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
@@ -234,9 +234,9 @@ benchFLPDFSU prog =
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name =
- [idcBenchmark ("IDC_DFS:"++name)  prog False "integer" ("prdfs nd_C_"++name)
- ,idcBenchmark ("IDC+_DFS:"++name) prog True  "integer" ("prdfs nd_C_"++name)
- ,idcBenchmark ("IDC+_DFS_IORef:"++name)
+ [idcBenchmark ("IDC_PrDFS:"++name)  prog False "integer" ("prdfs nd_C_"++name)
+ ,idcBenchmark ("IDC+_PrDFS:"++name) prog True  "integer" ("prdfs nd_C_"++name)
+ ,idcBenchmark ("IDC+_PrDFS_IORef:"++name)
                prog True  "ioref" ("prdfs nd_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
@@ -264,8 +264,8 @@ allBenchmarks =
   , benchFPpl "TakPeano"
   , benchHOFP "ReverseHO"
   , benchHOFP "ReverseBuiltin"
-  , benchHOFP "PrimesPeano"
   , benchHOFP "Primes"
+  , benchHOFP "PrimesPeano"
   , benchHOFP "PrimesBuiltin"
   , benchHOFP "Queens"
   , benchHOFP "QueensUser"
@@ -280,6 +280,7 @@ allBenchmarks =
   , benchFLPDFSWithMain "ShareNonDet" "goal2"
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
   , benchFLPDFSU "Last"
+  , benchFLPDFSU "RegExp"
   ]
 
 -- Run all benchmarks and show results
@@ -301,15 +302,17 @@ run num benchmarks = do
       init (x:y:zs) = x : init (y : zs)
 
 outputFile :: String -> String -> CalendarTime -> String
-outputFile name mach (CalendarTime ye mo da ho mi se _) = "./results/" ++
+outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 2 allBenchmarks
 main = run 1 allBenchmarks
---main = run 1 [benchFLPCompleteSearch "BFSvsIDS"]
+--main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
+--main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]
+--main = run 1 [benchFLPDFSU "RegExp"]
