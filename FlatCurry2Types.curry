@@ -440,7 +440,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
      , [bindChoiceRule (basics "lazyBind")
           (PComb choicesConsName [PVar (2,"j"), PVar (3,"_")])]
      , [(basics "lazyBind",
-          simpleRule [PVar (1, "_"), PComb failConsName []] (list2ac [constF (basics "Failed")]))]
+          simpleRule [PVar (1, "_"), PComb failConsName []] (list2ac [constF (basics "Unsolvable")]))]
      , [(basics "lazyBind",
           simpleRule [PVar (1, "i"), PComb guardConsName [PVar (2,"cs"), PVar (3,"e")]]
           (applyF (pre "++")

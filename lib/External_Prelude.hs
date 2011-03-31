@@ -109,7 +109,7 @@ instance Unifiable C_Int where
   bind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_C_Int j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Int = [Failed]
+  lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Int where
@@ -190,7 +190,7 @@ instance Unifiable C_Float where
   bind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_C_Float j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Float = [Failed]
+  lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Float where
@@ -268,7 +268,7 @@ instance Unifiable C_Char where
   bind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_C_Char j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Char = [Failed]
+  lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Char where

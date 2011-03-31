@@ -2,12 +2,15 @@
 
 module Basics where
 
-import ID
 import qualified Data.Map
-import System.IO
 import Control.Monad
 import Control.Parallel.TreeSearch
 import GHC.Exts (Int#, Char#, chr#)
+import System.IO (Handle)
+
+import ID
+import MonadList
+
 
 nonAsciiChr :: Int# -> Char#
 nonAsciiChr i = chr# i
@@ -147,7 +150,6 @@ nfChoiceIO cont i@(ID _) x1 x2 = cont $ choiceCons i x1 x2
 --   x2' <- return $!< x2
 --   cont (choiceCons i x1' x2')
 nfChoiceIO cont i        x1 x2 = error "nfChoiceIO with no ID"
-
 
 
 nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
@@ -319,7 +321,7 @@ instance Unifiable C_Success where
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Success j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_Success = [Failed]
+  lazyBind _ Fail_C_Success = [Unsolvable]
   lazyBind i (Guard_C_Success cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
@@ -370,7 +372,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   bind i (Choices_Func j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_Func j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_Func j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_Func = [Failed]
+  lazyBind _ Fail_Func = [Unsolvable]
   lazyBind i (Guard_Func cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
@@ -450,7 +452,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   bind i (Choices_C_IO j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_C_IO j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_IO j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_C_IO = [Failed]
+  lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
@@ -547,7 +549,7 @@ instance Unifiable t0 => Unifiable (PrimData t0) where
   bind i (Choices_PrimData j _) = [(i :=: (BindTo j))]
   lazyBind i (Choice_PrimData j _ _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_PrimData j _) = [(i :=: (BindTo j))]
-  lazyBind _ Fail_PrimData = [Failed]
+  lazyBind _ Fail_PrimData = [Unsolvable]
   lazyBind i (Guard_PrimData cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
@@ -641,68 +643,57 @@ prdfs mainexp = initSupply >>= printValsDFS False print . mainexp
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
-  putStrLn $ "printValsDFS " ++ show fb ++ ' ' : show a
+--  putStrLn $ "printValsDFS " ++ show fb ++ " " ++ show a
+--   cont a
   printValsDFS' fb cont (try a)
 
 printValsDFS' :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> Try a -> IO ()
 printValsDFS' _  _    Fail           = return ()
 printValsDFS' fb cont (Val v)        = searchNF (printValsDFS fb) cont v
-printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
-  where
-  choose (LazyBind cs, _) = do
-    setChoice i NoChoice
-    printValsDFS fb cont (guardCons cs (choicesCons i xs))
-  choose (ChooseN c _, _) = (printValsDFS fb cont) (xs !! c)
-  choose (NoChoice   , j) = cont (choicesCons i xs)
-
 printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
   where
-  choose ChooseLeft  = printValsDFS fb cont x
-  choose ChooseRight = printValsDFS fb cont y
-  choose NoChoice    = if fb
-    then do
-      newChoice True ChooseLeft  x
-      newChoice True ChooseRight y
-      setChoice i NoChoice
-    else do
-      newChoice True ChooseLeft   x
-      newChoice False ChooseRight y
-  choose c           = error $ "choose with " ++ show c ++ " for " ++ show i
+    choose ChooseLeft  = printValsDFS fb cont x
+    choose ChooseRight = printValsDFS fb cont y
+    choose NoChoice    = if fb
+      then do
+        newChoice True ChooseLeft  x
+        newChoice True ChooseRight y
+        setChoice i NoChoice
+      else do
+        newChoice True ChooseLeft   x
+        newChoice False ChooseRight y
+    choose c           = error $ "choose with " ++ show c ++ " for " ++ show i
+    newChoice fbt c a = do
+      setChoice i c
+      printValsDFS fbt cont a
 
-  newChoice fbt j a = do
-    setChoice i j
-    (printValsDFS fbt cont) a
+printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
+  where
+    choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
+    choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
+    choose (NoChoice   , j) = cont $ choicesCons i xs
 
 printValsDFS' fb cont (Choices i xs) = lookupChoice i >>= choose
   where
-  choose (ChooseN c _) = (printValsDFS fb cont) (xs !! c)
-  choose (LazyBind cs) = do
-    setChoice i NoChoice
-    printValsDFS fb cont (guardCons cs (choicesCons i xs))
-  choose NoChoice      = if fb
-    then do
-      foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
-      setChoice i NoChoice
-    else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
-  choose c             = error $ "choose with " ++ show c ++ " for " ++ show i
+    choose (LazyBind cs) = processLazyBind fb cs i xs (printValsDFS fb cont)
+    choose (ChooseN c _) = printValsDFS fb cont (xs !! c)
+    choose NoChoice      = if fb
+      then do
+        foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
+        setChoice i NoChoice
+      else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
+    choose c             = error $ "choose with " ++ show c ++ " for " ++ show i
 
-  newChoice fbt n a = do
-    setChoice i (ChooseN n errChoice)
-    (printValsDFS fbt cont) a
-  errChoice = error "propagation number used within non-free Choice"
-
-  zipWithButLast :: (a -> b -> c) -> (a -> b -> c) -> [a] -> [b] -> [c]
-  zipWithButLast _ _     []     _      = []
-  zipWithButLast _ _      _     []     = []
-  zipWithButLast _ lastf (a:[]) (b:_ ) = lastf a b : []
-  zipWithButLast _ lastf (a:_ ) (b:[]) = lastf a b : []
-  zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
+    newChoice fbt n a = do
+      setChoice i (ChooseN n errChoice)
+      printValsDFS fbt cont a
+    errChoice = error "propagation number used within narrowed Choice"
 
 printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
   where
   traverse _     FailST            = return ()
-  traverse True  (SuccessST reset) = (printValsDFS True  cont) e >> reset
-  traverse False (SuccessST _    ) = (printValsDFS False cont) e
+  traverse True  (SuccessST reset) = printValsDFS True  cont e >> reset
+  traverse False (SuccessST _    ) = printValsDFS False cont e
   traverse True  (ChoiceST reset l r) = do
     l >>= traverse True
     r >>= traverse True
@@ -710,6 +701,25 @@ printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
   traverse False (ChoiceST _     l r) = do
     l >>= traverse True
     r >>= traverse False
+
+zipWithButLast :: (a -> b -> c) -> (a -> b -> c) -> [a] -> [b] -> [c]
+zipWithButLast _ _     []     _      = []
+zipWithButLast _ _      _     []     = []
+zipWithButLast _ lastf (a:[]) (b:_ ) = lastf a b : []
+zipWithButLast _ lastf (a:_ ) (b:[]) = lastf a b : []
+zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
+
+-- processLazyBind :: NonDet a => [Constraint] -> ID -> [a] -> IO a
+processLazyBind True cs i xs search = do
+  reset <- setUnsetChoice i NoChoice
+  search $ guardCons cs $ choicesCons i xs
+  reset
+processLazyBind False cs i xs search = do
+  setChoice i NoChoice
+  search $ guardCons cs $ choicesCons i xs
+-- processLazyBind ((j :=: c) : cs) i xs
+--   | i == j    = setChoice i c >> return (guardCons cs (choicesCons i xs))
+--   | otherwise = error "illegal LazyBind in processLazyBind"
 
 --     traverse Nothing = return ()
 --     traverse (Just reset) =  if fb then (printValsDFS fb . try) $!< e >> reset
@@ -761,9 +771,9 @@ a >>> b = do
    SuccessST ra -> do
       tmrb <- b
       case tmrb of
-        FailST -> ra >> unsolvable
-        SuccessST rb -> return (SuccessST (ra >> rb))
-        ChoiceST cr l r -> return (ChoiceST  (ra >> cr) l r)
+        FailST          -> ra >> unsolvable
+        SuccessST rb    -> return $ SuccessST (rb >> ra)
+        ChoiceST cr l r -> return $ ChoiceST  (cr >> ra) l r
    ChoiceST cr l r -> return $ ChoiceST cr (l >>> b) (r >>> b)
 
 solves :: [Constraint] -> Solved
@@ -771,7 +781,7 @@ solves [] = solved
 solves (c:cs) = solve c >>> solves cs
 
 solve :: Constraint -> Solved
-solve Failed = unsolvable
+solve Unsolvable = unsolvable
 solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= choose
   where
     choose ChooseLeft  = solves lcs
@@ -781,7 +791,7 @@ solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= choose
       (mkSolved (setUnsetChoice i ChooseLeft ) >>> solves lcs)
       (mkSolved (setUnsetChoice i ChooseRight) >>> solves rcs)
 solve (i :=: cc) = do
-  putStrLn $ "Solving: " ++ show (i :=: cc)
+--   putStrLn $ "Solving: " ++ show (i :=: cc)
   ic <- lookupChoice i
 --   putStrLn $ "lookupChoice " ++ show i ++ " returned: " ++ show ic
   choose cc ic
@@ -789,8 +799,12 @@ solve (i :=: cc) = do
   where
     -- 1.: the Choice which should be stored for i
     -- 2.: the Choice for i in the store
-    choose (LazyBind cs) NoChoice      = mkSolved (setUnsetChoice i cc)
-    choose _             (LazyBind cs) = mkSolved (setUnsetChoice i NoChoice) >>> solves cs >>> solve (i :=: cc)
+
+    -- a) store lazy binds for later use
+    choose (LazyBind  _) NoChoice      = mkSolved (setUnsetChoice i cc)
+    -- b) solve stored lazy binds as they are needed
+    choose _             (LazyBind cs) = mkSolved (setUnsetChoice i cc) >>> solves cs
+--     choose _             (LazyBind cs) = setChoice i NoChoice >> solves cs >>> solve (i :=: cc)
     choose (LazyBind cs) _             = solves cs
 {-    choose (LazyBind cs) (LazyBind cs2) = solves cs >>> solves cs2
     choose (LazyBind cs) (ChooseN _ _)  = solves cs
@@ -818,120 +832,6 @@ solve (i :=: cc) = do
 
 
 ----------------------------------------------------------------------
--- Data structures and operations to collect and show results
--- w.r.t. various search strategies
-----------------------------------------------------------------------
-
--- Monadic lists as a general representation of values obtained
--- in a mondic manner. The additional constructor Abort
--- represents an incomplete list due to reaching the depth-bound in
--- iterative deepening. The constructor (WithReset lis act) represents
--- a list lis where the monadic action act has to be performed at the
--- end of the list.
-data MList m a = MCons a (m (MList m a))
-               | MNil
-               | Abort
-               | WithReset (m (MList m a)) (m ())
-
--- Construct an empty monadic list
-mnil :: Monad m => m (MList m a)
-mnil = return MNil
-
--- Construct a non-empty monadic list
-mcons :: Monad m => a -> m (MList m a) -> m (MList m a)
-mcons x xs = return (MCons x xs)
-
--- Aborts a monadic list due to reaching the search depth (in iter. deepening)
-abort :: Monad m => m (MList m a)
-abort = return Abort
-
--- Concatenate two monadic lists
-(+++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
-get +++ getYs = withReset get (return ())
- where
-  withReset getList reset = do
-   l <- getList
-   case l of
-     WithReset getList' reset' -> withReset getList' (reset >> reset')
-     MNil -> reset >> getYs -- perform action before going to next list
-     Abort -> reset >> abortEnd getYs
-     MCons x getXs -> mcons x (withReset getXs reset) -- move action down to end
-
-  abortEnd getYs = do -- move Abort down to end of second list
-   ys <- getYs
-   case ys of
-     WithReset getYs' reset' -> abortEnd getYs' |< reset'
-     MNil -> return Abort -- replace end of second list by Abort
-     Abort  -> return Abort
-     MCons z getZs -> mcons z (abortEnd getZs)
-
--- Add a monadic action of with result type () to the end of a monadic list.
--- Used to reset a choice made via a dfs strategy.
-(|<) :: Monad m => m (MList m a) ->  m () -> m (MList m a)
-l |< r = return (WithReset l r)
-{-getXs |< reset = do
-  xs <- getXs
-  case xs of
-    MCons x getTail -> mcons x (getTail |< reset)
-    end -> reset >> return end
--}
-
--- For convencience, we define a monadic list for the IO monad:
-type IOList a = MList IO a
-
--- Count and print the number of elements of a IO monad list:
-countVals :: IOList a -> IO ()
-countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
-  where
-    count i MNil = return i
-    count i (WithReset l _) = l >>= count i
-    count i (MCons _ cont) = do
-          let !i' = i+1
-          cont >>= count i'
-
--- Print the first value of a IO monad list:
-printOneValue :: Show a => IOList a -> IO ()
-printOneValue MNil              = putStrLn "No solution"
-printOneValue (MCons x getRest) = print x
-printOneValue (WithReset l _) = l >>= printOneValue
-
--- Print all values of a IO monad list:
-printAllValues :: Show a => IOList a -> IO ()
-printAllValues MNil              = putStrLn "No more solutions"
-printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
-printAllValues (WithReset l _) = l >>= printAllValues
-
-askKey = do
-  putStr "Hit any key to terminate..."
-  hFlush stdout
-  hSetBuffering stdin NoBuffering
-  getChar
-  return ()
-
--- Print all values of a IO monad list on request by the user:
-printValsOnDemand :: Show a => IOList a -> IO ()
-printValsOnDemand = printValsInteractive True
-
-printValsInteractive st MNil = putStrLn "No more solutions" >> askKey
-printValsInteractive st (MCons x getRest) = print x >> askUser st getRest
-printValsInteractive st (WithReset l _) = l >>= printValsInteractive st
-
--- ask the user for more values
-askUser :: Show a => Bool -> IO (IOList a) -> IO ()
-askUser st getrest = if not st then getrest >>= printValsInteractive st else do
-  putStr "More solutions? [y(es)/n(o)/A(ll)] "
-  hFlush stdout
-  hSetBuffering stdin NoBuffering
-  c <- getChar
-  if c== '\n' then return () else putChar '\n'
-  case c of
-    'y'  -> getrest >>= printValsInteractive st
-    'n'  -> return ()
-    'a'  -> getrest >>= printValsInteractive False
-    '\n' -> getrest >>= printValsInteractive False
-    _    -> askUser st getrest
-
-----------------------------------------------------------------------
 -- Depth-first search into a monadic list
 ----------------------------------------------------------------------
 
@@ -950,51 +850,59 @@ printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
 -- Compute all values of a non-deterministic goal in a depth-first manner:
 computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
-  initSupply >>= \s -> searchDFS (flip mcons mnil) (mainexp s)
+  initSupply >>= \s -> searchDFS (`mcons` mnil) (mainexp s)
 
 searchDFS :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchDFS cont a = searchDFS' cont  (try a)
+searchDFS cont a = do
+--   putStrLn $ "searchDFS " ++ show a
+  searchDFS' cont  (try a)
 
 searchDFS' :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
 searchDFS' cont Fail             = mnil
 searchDFS' cont (Val v)          = searchNF searchDFS cont v
-searchDFS' cont (Frees i xs)     = lookupChoiceID i >>= choose
-  where
-    choose (LazyBind cs, _)   = do
-      setChoice i NoChoice 
-      searchDFS cont (guardCons cs (choicesCons i xs))
-    choose (ChooseN c _, _)  = searchDFS cont (xs !! c)
-    choose (NoChoice, j)      = cont (choicesCons j xs)
-
 searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
   where
     choose ChooseLeft  = searchDFS cont x1
     choose ChooseRight = searchDFS cont x2
     choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
 
-    newChoice c x = do setChoice i c
-                       searchDFS cont x |< setChoice i NoChoice
+    newChoice c x = do
+      reset <- setUnsetChoice i c
+      searchDFS cont x |< reset
+
+searchDFS' cont (Frees i xs)     = lookupChoiceID i >>= choose
+  where
+    choose (LazyBind cs, _)  = processLazyBind' cs i xs (searchDFS cont)
+    choose (ChooseN c _, _)  = searchDFS cont (xs !! c)
+    choose (NoChoice   , j)  = cont $ choicesCons i xs
 
 searchDFS' cont (Choices i xs) = lookupChoice i >>= choose
   where
-    choose (LazyBind cs) = do
-      setChoice i NoChoice
-      searchDFS cont (guardCons cs (choicesCons i xs))
+    choose (LazyBind cs) = processLazyBind' cs i xs (searchDFS cont)
     choose (ChooseN c _) = searchDFS cont (xs !! c)
     choose NoChoice      = foldr1 (+++) $ zipWith newChoice [0 ..] xs
     choose x             = error ("choose: " ++ show x)
 
-    newChoice n x = do setChoice i (ChooseN n errChoice)
-                       searchDFS cont x |< setChoice i NoChoice
+    newChoice n x = do
+      reset <- setUnsetChoice i (ChooseN n errChoice)
+      searchDFS cont x |< reset -- setChoice i NoChoice
 
     errChoice = error "propagation number used within non-free Choice"
 
 searchDFS' cont (Guard cs e) = solves cs >>= traverse
   where
   traverse FailST            = mnil
-  traverse (SuccessST reset) = (searchDFS cont) e |< reset
-  traverse (ChoiceST reset l r) = 
+  traverse (SuccessST reset) = searchDFS cont e |< reset
+  traverse (ChoiceST reset l r) =
     ((l >>= traverse) +++ (r >>= traverse)) |< reset
+
+processLazyBind' cs i xs search = do
+  reset <- setUnsetChoice i NoChoice
+  j <- lookupID i -- TODO remove
+  retVal <- search (guardCons cs $ choicesCons i xs) |< reset
+  j' <- lookupID i -- TODO remove
+  when (j /= j') $ error "BindTo has not been reset"
+  return retVal
 
 -- searchDFS (Guard cs e) = do
 --   mreset <- solves cs
@@ -1002,9 +910,9 @@ searchDFS' cont (Guard cs e) = solves cs >>= traverse
 --     Nothing    -> mnil
 --     Just reset -> (searchDFS . try) $!< e |< reset
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Breadth-first search into a monadic list
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -1072,9 +980,9 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
     next []  ((set,reset,y):ys) = (bfs ys [] set reset . try) $!< y
     next ((set,reset,x):xs) ys  = (bfs xs ys set reset . try) $!< x
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Iterative depth-first search into a monadic list
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
@@ -1106,18 +1014,6 @@ computeWithIDS initdepth goal = initSupply >>= \s -> iter s 0 initdepth
    iter s olddepth newdepth = startIDS (id $!! goal s) olddepth newdepth
                               ++++ iter s newdepth (incrDepth4IDFS newdepth)
 
--- Concatenate two monadic lists if the first ends with an Abort
-(++++) :: Monad m => m (MList m a) -> m (MList m a) -> m (MList m a)
-get ++++ getYs = withReset get (return ())
-  where
-    withReset getList reset = do
-     l <- getList
-     case l of
-       WithReset getList' reset' -> withReset getList' (reset >> reset')
-       MNil -> reset >> mnil
-       Abort -> reset >> getYs -- ignore Abort when concatenating further vals
-       MCons x getXs -> mcons x (withReset getXs reset)
-
 -- start iterative deepening for a given depth intervall
 startIDS :: (Show a,NonDet a) => a -> Int -> Int -> IO (IOList a)
 startIDS exp olddepth newdepth = idsHNF newdepth exp
@@ -1138,10 +1034,9 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
        setChoice i c
        idsHNF (n - 1) x |< setChoice i NoChoice
 
-
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Parallel search by mapping search results into monadic structure
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 -- Print all values of an expression in a parallel manner:
 printPar :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
@@ -1154,10 +1049,6 @@ printPar1 mainexp = computeWithPar mainexp >>= printOneValue
 -- Print all values on demand of an expression in a parallel manner:
 printPari :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
 printPari mainexp = computeWithPar mainexp >>= printValsOnDemand
-
-list2iolist :: [a] -> IO (IOList a)
-list2iolist [] = mnil
-list2iolist (x:xs) = mcons x (list2iolist xs)
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
@@ -1188,4 +1079,4 @@ searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
 
     pick c = setChoice' set i c
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
