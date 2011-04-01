@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE="28/03/11"
+COMPILERDATE="31/03/11"
 
 .PHONY: all
 all: idc REPL.state
@@ -53,8 +53,8 @@ installhaskell:
 .PHONY: clean
 clean:
 	bin/cleanidc -r
-	rm -f idc
-	rm -f *.hi *.o
+	rm -f idc Installation.hs Installation.curry
+	rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
 	rm -f ./examples/Curry_*.*

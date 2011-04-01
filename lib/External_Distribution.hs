@@ -1,7 +1,7 @@
 import Installation
 
 external_d_C_curryCompiler :: C_String
-external_d_C_curryCompiler = toCurry "idc"
+external_d_C_curryCompiler = toCurry "kics2"
 
 external_d_C_curryCompilerMajorVersion :: C_Int
 external_d_C_curryCompilerMajorVersion = toCurry (majorVersion :: Int)

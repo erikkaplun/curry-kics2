@@ -17,7 +17,7 @@ import Sort(mergeSort)
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
-   bannerText = "ID-based Curry->Haskell Compiler (Version "++
+   bannerText = "KiCS2 Curry->Haskell Compiler (Version "++
                 show majorVersion ++ "." ++ show minorVersion ++ " of "++
                 compilerDate ++ ")"
    bannerDate = "(installed at "++installDate++")"
