@@ -131,7 +131,7 @@ getSysLibPath = case curryCompiler of
                   then [installDir++"/lib",installDir++"/lib/meta"]
                   else splitPath pakcspath)
   "kics"  -> return [installDir++"/src/lib"]
-  "idc"   -> return [installDir++"/lib",installDir++"/lib/meta"]
+  "kics2" -> return [installDir++"/lib",installDir++"/lib/meta"]
   _ -> error "Distribution.getSysLibPath: unknown curryCompiler"
 
 
@@ -169,7 +169,7 @@ getLoadPathForFile file = do
   syslib <- getSysLibPath
   mblib <- getRcVar "Libraries"
   let fileDir = dirName file 
-  if curryCompiler `elem` ["pakcs","kics","idc"] then
+  if curryCompiler `elem` ["pakcs","kics","kics2"] then
     do currypath <- getEnviron "CURRYPATH"
        let llib = maybe [] splitPath mblib
        return (addCurrySubdirs (fileDir :
@@ -276,7 +276,7 @@ callFrontendWithParams target params progname = do
   return ()
  where
    isPakcs =
-     if curryCompiler == "pakcs" || curryCompiler == "idc" then True else
+     if curryCompiler == "pakcs" || curryCompiler == "kics2" then True else
      if curryCompiler == "kics"  then False
        else error "Distribution.callFrontend: unknown curryCompiler"
 

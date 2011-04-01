@@ -536,7 +536,7 @@ instance NonDet (PrimData t0) where
 
 instance Generable (PrimData a) where generate _ = error "generate for PrimData"
 
-instance (NormalForm t0,Show t0) => NormalForm (PrimData t0) where
+instance NormalForm (PrimData a) where
   ($!!) cont p@(PrimData _) = cont p
   ($!!) cont (Choice_PrimData i x y) = nfChoice cont i x y
   ($!!) cont (Choices_PrimData i xs) = nfChoices cont i xs
@@ -545,9 +545,10 @@ instance (NormalForm t0,Show t0) => NormalForm (PrimData t0) where
   ($!<) cont (Choice_PrimData i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_PrimData i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
-  searchNF search cont (PrimData x1) = search (\y1 -> cont (PrimData y1)) x1
+  -- no search inside argument of PrimData since it is primitive:
+  searchNF search cont (PrimData x) = cont (PrimData x)
 
-instance (Unifiable t0,Show t0) => Unifiable (PrimData t0) where
+instance Unifiable (PrimData a) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_PrimData j _ _) = [(i :=: (BindTo j))]
@@ -643,7 +644,7 @@ evalDIO goal = toIO goal >>= print
 -- Evaluate a nondeterministic expression and show all results
 -- in depth-first order
 prdfs :: (Show a, NormalForm a) => (IDSupply -> a) -> IO ()
-prdfs mainexp = initSupply >>= printValsDFS False print . mainexp
+prdfs mainexp = initSupply >>= \s -> printValsDFS False print (id $!! (mainexp s))
 -- prdfs mainexp = initSupply >>= \s -> printValsDFS False (try (id $!! (mainexp s)))
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
@@ -676,7 +677,7 @@ printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) = cont $ choicesCons i xs
+    choose (NoChoice   , j) = cont $ choicesCons j xs
 
 printValsDFS' fb cont (Choices i xs) = lookupChoice i >>= choose
   where
@@ -855,7 +856,7 @@ printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
 -- Compute all values of a non-deterministic goal in a depth-first manner:
 computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp =
-  initSupply >>= \s -> searchDFS (`mcons` mnil) (mainexp s)
+  initSupply >>= \s -> searchDFS (`mcons` mnil) (id $!! (mainexp s))
 
 searchDFS :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchDFS cont a = do
@@ -879,7 +880,7 @@ searchDFS' cont (Frees i xs)     = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _)  = processLazyBind' cs i xs (searchDFS cont)
     choose (ChooseN c _, _)  = searchDFS cont (xs !! c)
-    choose (NoChoice   , j)  = cont $ choicesCons i xs
+    choose (NoChoice   , j)  = cont $ choicesCons j xs
 
 searchDFS' cont (Choices i xs) = lookupChoice i >>= choose
   where
