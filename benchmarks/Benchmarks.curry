@@ -321,8 +321,8 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
---main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
+main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
-main = run 1 [benchFunPats "LastFunPats", benchFunPats "ExpFunPats"]
+--main = run 1 [benchFunPats "LastFunPats", benchFunPats "ExpFunPats"]

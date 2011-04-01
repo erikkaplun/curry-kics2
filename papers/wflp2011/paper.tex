@@ -40,7 +40,7 @@
 \pagestyle{plain}
 \sloppy
 
-\title{KiCS2: A New Approach to Compile Curry to Haskell}
+\title{KiCS2: A New Compiler from Curry to Haskell}
 
 \author{
 Bernd Bra{\ss}el
@@ -63,10 +63,10 @@ In this paper we present our first results of a new system
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
-nondeterministic result values of an expression as a data structure.
+nondeterministic result values of an expression in a single data structure.
 This enables the application of various search strategies
 to extract values from the search space.
-We show by a several benchmarks that our implementation
+We show by several benchmarks that our implementation
 can compete with or outperforms other existing implementations of Curry.
 \end{abstract}
 
@@ -115,7 +115,7 @@ one can reuse the implementation
 of lazy evaluation and higher-order functions, but one has
 to implement nondeterministic evaluations
 \cite{BrasselFischerHanusReck11,BrasselHuch07}.
-Although Haskell offers list comprehensions for modelling
+Although Haskell offers list comprehensions to model
 backtracking \cite{Wadler85}, this cannot be exploited
 due to the specific semantical requirements of the combination
 of non-strict and nondeterministic operations
@@ -133,12 +133,13 @@ are reasonable.
 In this paper we describe an implementation that is based
 on the latter principles. We present a method to compile
 programs written in the functional logic language Curry \cite{Hanus06Curry}
-into Haskell programs
+into Haskell programs based on the ideas shown
+in \cite{BrasselFischer08IFL}.
 The difficulty of such an implementation is the fact
 that nondeterministic results can occur in any place of a
 computation. Thus, one cannot separate logic computations
 by the use of list comprehensions \cite{Wadler85},
-but any outcome of some operation could be potentially nondeterministic,
+but the outcome of any operation could be potentially nondeterministic,
 i.e., it might have more than one result value.
 We solve this problem by an explicit representation of
 nondeterministic values, i.e., we extend each data type by
@@ -150,7 +151,8 @@ that inhibit the use of optimizations provided by Haskell compilers
 like GHC.\footnote{\url{http://www.haskell.org/ghc/}}
 In contrast, our implementation, called KiCS2, is not based on unsafe features.
 In addition, we also support more flexible search strategies
-and new features to encapsulate nondeterministic computations.
+and new features to encapsulate nondeterministic computations
+(which are not described in detail in this paper due to lack of space).
 
 The general objective of our approach is the support
 of flexible strategies to explore the search space
@@ -167,7 +169,7 @@ are implemented as purely functional programs so that
 they are executed with almost the same efficiency
 of their purely functional counterparts.
 
-In the next section, we sketch are source language Curry
+In the next section, we sketch the source language Curry
 and introduce a normalized form of Curry programs that is the
 basis of our translation scheme.
 Section~\ref{sec:Compilation} presents the basic ideas
@@ -184,12 +186,8 @@ before we conclude in Section~\ref{sec:Conclusions}.
 \section{Curry Programs}
 \label{sec:Curry}
 
-The syntax the functional logic language Curry \cite{Hanus06Curry}
-is close to Haskell \cite{PeytonJones03Haskell}, i.e.,
-variables and function names usually
-start with lowercase letters, the names of type and data constructors
-start with an uppercase letter, and the application of $f$
-to $e$ is denoted by juxtaposition (``$f~e$'').
+The syntax of the functional logic language Curry \cite{Hanus06Curry}
+is close to Haskell \cite{PeytonJones03Haskell}.
 In addition, Curry allows free (logic) 
 variables in conditions and right-hand sides of defining rules.
 In contrast to functional programming and similarly to logic programming,
@@ -237,7 +235,7 @@ Note that this result cannot be obtained if we use a strict strategy
 where arguments are evaluated before the function calls.
 In order to avoid such dependencies on the evaluation strategies
 and exclude such unintended results,
-Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed the
+Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
 the rewriting logic CRWL as a logical
 (execution- and strategy-independent) foundation for declarative
 programming with non-strict and nondeterministic operations.  This
@@ -261,8 +259,8 @@ Due to these considerations, an implementation of Curry
 has to support lazy evaluation where operations can have multiple results
 and unevaluated arguments must be shared.
 Since this is a complex task, if we try to implement it
-directly on the source program,
-we perform some simplifications before we generate the target code.
+directly on the level of source programs,
+we perform some simplifications on programs before we generate the target code.
 
 First of all, we assume that our programs are \emph{first-order}.
 Higher-order programs can be transformed into first-order programs
@@ -354,8 +352,8 @@ in the following sections.
 \subsection{Representing Nondeterministic Computations}
 
 As mentioned above, our implementation is based on the explicit
-representation of nondeterministic results of computation
-as values. This could be easily achieved by adding a constructor
+representation of nondeterministic results in a data structure.
+This could be easily achieved by adding a constructor
 to each data type to represent a choice between two values.
 For instance, one can redefine the data type for Boolean values
 as follows:
@@ -370,7 +368,7 @@ defined in Section~\ref{ex:aBool} as follows:
 If operations can deliver nondeterministic values,
 we have to extend the rules for operation defined by
 pattern matching so that they do not fail on nondeterministic argument
-values. Instead, they move the nondeterministic choice on level above,
+values. Instead, they move the nondeterministic choice one level above,
 i.e., a choice in some argument leads to a choice in any result
 of this operation (this is also called a ``pull-tab'' step in
 \cite{AlqaddoumiAntoyFischerReck10}). For instance,
@@ -493,8 +491,9 @@ of the source program.
 \code{thisID} creates a fresh identifier from a current
 identifier supply, and
 \code{leftSupply} and \code{rightSupply} create
-new distinct identifier supplies from a given one.
-The latter are used when an operation based on two\footnote{The
+new different identifier supplies (without the one obtained
+by \code{thisID}) from a given one.
+The latter are used when an operation calls two\footnote{The
 extension to more than two is straightforward.}
 other operations in the right-hand side of a rule. In this case,
 the other operations must be supplied with their individual distinct
@@ -546,7 +545,7 @@ but it should be considered as some part of a computation that
 does not produce a meaningful result.
 In order to implement this behavior, we extend
 each datatype by a further constructor \code{Fail}
-and complete each function with matching rules
+and complete each function containing matching rules
 by a final rule that matches everything and returns the value \code{Fail}.
 For instance, consider the definition of lists
 \begin{curry}
@@ -564,7 +563,8 @@ to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
 \begin{haskell}
   data List a = Nil | Cons a (List a) | Choice (List a) (List a) | Fail
 \end{haskell}
-The operation is extended by an identifier supply and further matching rules:
+The operation \code{hread} is extended by an identifier supply
+and further matching rules:
 \begin{haskell}
   head :: List a -> IDSupply -> a
   head (Cons x xs)      s = x
@@ -582,7 +582,7 @@ In order to ensure that each occurrence of \ccode{?} in the source program
 get its own identifier, all choices and all operations in the right-hand
 side of a rule get their own identier supplies via appropriate
 applications of \code{leftSupply} and \code{rightSupply}
-to the supply of the defined operations.
+to the supply of the defined operation.
 For instance, a rule like
 \begin{curry}
   main2 = xor aBool (False ? True)
@@ -628,7 +628,7 @@ values from this structure, we have to define operations
 that compute all possible choices in some order where the choice identifiers
 are taken into account.
 To provide a common interface for such operations, we introduce
-a data type to represent the general outcome of a computation
+a data type to represent the general outcome of a computation,
 \begin{haskell}
   data Try a = Val a | Choice ID a a | Fail
 \end{haskell}
@@ -638,8 +638,8 @@ for each data type and, therefore, defined in instances of some type class.}
 \begin{haskell}
   try :: a -> Try a
   try (Choice i x y) = Choice i x y
-  try Fail = Fail
-  try x = Val x
+  try Fail           = Fail
+  try x              = Val x
 \end{haskell}
 In order to take the identity of choices into account when extracting values,
 one has to remember which choice (e.g., left or right branch)
@@ -653,7 +653,7 @@ Furthermore, we need operations to lookup the current choice
 for a given identifier or change its choice:
 \begin{haskell}
   lookupChoice :: ID -> IO Choice
-  setChoice :: ID -> Choice -> IO ()
+  setChoice    :: ID -> Choice -> IO ()
 \end{haskell}
 In Haskell, there are different possibilities to implement a mapping
 from choice identifiers to some value of type \code{Choice}.
@@ -665,8 +665,8 @@ In this case, choice identifiers are just memory cells in Haskell:\footnote{%
 In this case, integers cannot be used for \code{IDSupply}.
 Nevertheless,
 this type can be implemented as an infinite tree containing
-all memory cells required in a computation that are created as
-needed with initial value \code{NoChoice}.}
+all memory cells required in a computation that are created
+on demand with initial value \code{NoChoice}.}
 \begin{haskell}
   newtype ID = ID (IORef Choice)
 \end{haskell}
@@ -706,8 +706,8 @@ For instance, to print all values of the expression \code{main}
 defined in Section~\ref{sec:xor-main},
 we evaluate the Haskell expression \ccode{printValsDFS (try (main inits))}
 where \code{inits} is the initial value for \code{IDSupply}
-(where all references are initialized with \code{NoChoice})
-and obtain the output
+(where all references are initialized with \code{NoChoice}).
+Thus, we obtain the output
 \begin{haskell}
   False
   False
@@ -716,7 +716,7 @@ Of course, printing all values via depth-first search
 is only one option which is not sufficient in case of infinite search
 spaces. For instance, one can easily define an operation
 that prints only the first solution. Due to the lazy evaluation
-strategy of Haskell, such an operation can be also applied to
+strategy of Haskell, such an operation can also be applied to
 infinite choice structures.
 In order to abstract from these different printing options,
 our implementation contains a more general
@@ -736,8 +736,8 @@ In this section we evaluate our compiler by comparing the
 efficiency of the generated Haskell programs to various
 other systems, in particular, other implementations of Curry.
 For our comparison with other Curry implementations,
-we consider PAKCS \cite{Hanus10PAKCS} (Version 1.9.2) which is based on
-compiling Curry into Prolog \cite{AntoyHanus00FROCOS}
+we consider PAKCS \cite{Hanus10PAKCS} (Version 1.9.2) which compiles
+Curry into Prolog \cite{AntoyHanus00FROCOS}
 (based on SICStus-Prolog 4.1.2, but a SWI-Prolog 5.10 back end is also
 available
 but much slower). PAKCS has been used for a number of practical
@@ -785,12 +785,12 @@ where all data (lists, numbers) are user-defined.
 ``Tak'' is a highly recursive function on naturals applied
 to arguments (27,16,8) and ``TakPeano'' is the same but with
 user-defined natural numbers in Peano representation.
-Note that the Prolog programs uses a strict evaluation strategy
+Note that the Prolog programs use a strict evaluation strategy
 in contrast to all others. Thus, the difference between PAKCS and SICStus
 shows the overhead to implement lazy evaluation in Prolog.
 
 One can deduce from these results that one of the initial
-goals for this compiler is satisfied since functional Curry programs
+goals for this compiler is satisfied, since functional Curry programs
 are executed almost with the same speed as their Haskell equivalents.
 An overhead is visible if one uses built-in numbers
 (due to the potential nondeterministic values, KiCS2 cannot
@@ -841,15 +841,15 @@ Moreover, we implemented a program analysis
 to approximate those operations that call higher-order functions
 with deterministic operations so that one can use their
 specialized versions. The result of this improvement
-is shown as ``KiCS2HO'' and demonstrates its usefulness so that
-it is always used in the subsequent benchmarks.
+is shown as ``KiCS2HO'' and demonstrates its usefulness.
+Therefore, it is always used in the subsequent benchmarks.
 
 \begin{figure}
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
 System  & PermSort & PermSortPeano &  Last & RegExp \\\hline
-KiCS2   &     3.34 &         3.99  &  0.26 &   0.63 \\
+KiCS2   &     2.61 &         3.99  &  0.18 &   0.50 \\
 PAKCS   &    26.08 &        67.51  &  2.58 &  12.46 \\
 MCC     &     1.23 &         4.00  &  0.08 &   0.46 \\
 \hline
@@ -918,7 +918,7 @@ MCC     &        0.30  &        0.00  &        3.06  \\
 \label{sec:FurtherAspects}
 
 In this section we sketch some additional features of our implementation.
-Due to lack of space, we cannot discuss all details of the implementation.
+Due to lack of space, we cannot discuss all details of them.
 
 \subsection{Search Strategies}
 
@@ -943,10 +943,10 @@ the printing method.
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
 Method               & PermSort & PermSortPeano &  NDNums \\\hline
-\code{printValsDFS}  &    3.34  &         3.99  & $\infty$ \\
-depth-first search   &    3.61  &         4.39  & $\infty$ \\
-breadth-first search &   18.34  &        21.78  &    10.96 \\
-iterative deepening  &    6.16  &         7.60  &     3.10 \\
+\code{printValsDFS}  &    2.61  &         3.99  & $\infty$ \\
+depth-first search   &    5.10  &         7.62  & $\infty$ \\
+breadth-first search &   18.54  &        20.23  &    10.96 \\
+iterative deepening  &    8.33  &        10.01  &     3.10 \\
 %parallel (1 proc.)   &    5.84  &         6.54  & $\infty$ \\
 %parallel (2 proc.)   &    3.46  &         3.79  & $\infty$ \\
 \hline
@@ -956,8 +956,9 @@ iterative deepening  &    6.16  &         7.60  &     3.10 \\
 \end{figure}
 %
 In order to compare the various search strategies,
-Fig.~\ref{fig:search-strategies} contains corresponding
-benchmarks where ``PermSort'' and ``PermSortPeano'' are the programs
+Fig.~\ref{fig:search-strategies} contains some corresponding
+benchmarks.
+``PermSort'' and ``PermSortPeano'' are the programs
 discussed in Fig.~\ref{fig:bench-nondet} and ``NDNums'' is the program
 \begin{curry}
   f n = f (n+1) ? n
@@ -969,7 +970,7 @@ All strategies except for the ``direct print'' method \code{printValsDFS}
 translate choice structures into monadic list structures
 in order to print them according to the user options.
 The benchmarks show that the overhead of this transformation
-is negligible so that this more flexible approach is the default one.
+is acceptable so that this more flexible approach is the default one.
 
 We also made initial benchmarks with the parallel strategy
 where nondeterministic choices are explored via GHC's \code{par}
@@ -992,7 +993,8 @@ into a tree structure of the form
 \begin{curry}
  data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
 \end{curry}
-so that the programmer can define its own search strategy or to
+With this primitive,
+the programmer can define its own search strategy or to
 collect all nondeterministic values into a list structure
 for further processing \cite{BrasselHuch07}.
 
@@ -1005,7 +1007,7 @@ Although our implementation is based on eliminating all logic
 variables from the source program by introducing generators,
 many functional logic programs contain equational constraints
 (e.g., compare the example ``Last'' of Fig.~\ref{fig:bench-nondet})
-to put conditions one computed results.
+to put conditions on computed results.
 Solving such conditions by generating all values is not always
 a reasonable approach. For instance, if \code{xs} and \code{ys}
 are free variables of type \code{[Bool]}, the equational
@@ -1018,8 +1020,8 @@ values by the possibility to add equational constraints between
 different choice identifiers.
 Due to lack of space, we have to omit the detailed description
 of this extension.
-However, it should be noted that the example
-``Last'' of Fig.~\ref{fig:bench-nondet}
+However, it should be noted that the examples
+``Last'' and ``RegExp'' of Fig.~\ref{fig:bench-nondet}
 shows that unification can be supported with a reasonable efficiency.
 
 
@@ -1038,7 +1040,7 @@ nondeterministic operations so that fresh identifiers are available
 when a new choice needs to be created.
 The theoretical justification of this implementation technique
 is provided in \cite{Brassel11Thesis}.
-Apart from the parser, where we reused an existing parser
+Apart from the parser, where we reused an existing one
 implemented in Haskell, the compiler is completely written in Curry.
 
 Due to the representation of nondeterministic values as data,
@@ -1054,7 +1056,7 @@ nondeterministic parts can compete with other
 implementations of Curry.
 Furthermore, we can also exploit advanced developments
 in the implementation of Haskell, like the parallel evaluation of
-programs, which is an interesting topic for future work.
+expressions, which is an interesting topic for future work.
 Finally, our implementation has many opportunities
 for optimization, like
 better program analyses to approximate purely deterministic computations.
