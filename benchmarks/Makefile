@@ -13,7 +13,7 @@ Benchmarks.state: Benchmarks.curry
 # publish all relevant benchmarks in the web:
 .PHONY: publish
 publish:
-	cd suite && tar cvzf ../benchmarks.tgz *.curry *.hs *.pl
+	cd suite && tar cvzf ../benchmarks.tgz README *.curry *.hs *.pl
 	chmod 644 benchmarks.tgz
 	mv benchmarks.tgz ${HOME}/public_html/repos/kics2
 

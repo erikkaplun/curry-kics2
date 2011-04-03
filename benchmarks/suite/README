@@ -60,3 +60,15 @@ compute the last element of a list by solving a list equation
 RegExp: nondeterministic programming with logic variables and unification
 "grep" a pattern in a long string by a nondeterministic specification
 of pattern matching
+
+LastFunPats: programming with functional patterns
+definition of the last function
+
+PaliFunPats: programming with functional patterns
+definition of the palindrome property
+
+ExpVarFunPats: programming with functional patterns
+computing variables occurring in arithmetic expressions
+
+ExpSimpFunPats: programming with functional patterns
+simplifying arithmetic expressions
