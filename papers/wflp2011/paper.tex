@@ -775,7 +775,9 @@ SWI     &        1.33 &    1.14 &  1.87 &    12.72 \\
  \label{fig:bench-first-order}
 \end{figure}
 %
-The first collection of benchmarks (Fig.~\ref{fig:bench-first-order})
+The first collection of benchmarks\footnote{All benchmarks are available
+at \url{http://www.informatik.uni-kiel.de/~mh/repos/kics2/benchmarks.tgz}.}
+(Fig.~\ref{fig:bench-first-order})
 are purely first-order functional programs.
 The Prolog (SICStus, SWI) and Haskell (GHC) programs have been rewritten
 according to the Curry formulation.
@@ -944,8 +946,8 @@ the printing method.
 \hline
 Method               & PermSort & PermSortPeano &  NDNums \\\hline
 \code{printValsDFS}  &    2.61  &         3.99  & $\infty$ \\
-depth-first search   &    5.10  &         7.62  & $\infty$ \\
-breadth-first search &   18.54  &        20.23  &    10.96 \\
+depth-first search   &    4.78  &         5.90  & $\infty$ \\
+breadth-first search &   18.35  &        20.23  &    10.96 \\
 iterative deepening  &    8.33  &        10.01  &     3.10 \\
 %parallel (1 proc.)   &    5.84  &         6.54  & $\infty$ \\
 %parallel (2 proc.)   &    3.46  &         3.79  & $\infty$ \\

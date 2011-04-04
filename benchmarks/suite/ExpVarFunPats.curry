@@ -18,12 +18,6 @@ replace (Add l r) (Rt:p) x = Add l (replace r p x)
 replace (Mul l r) (Lt:p) x = Mul (replace l p x) r
 replace (Mul l r) (Rt:p) x = Mul l (replace r p x)
 
-simplify :: Exp -> Exp
-simplify (replace c p (evalTo x)) = replace c p x
-
-test5 = (simplify (Mul (Lit (S Z)) (Var X1))) --> (Var X1)
---test6 = (transformAll simplify exp) --> (Var X1)
-
 genExpWithVar n = if n==0 then Add (Var X1) (Lit Z)
                           else Mul (Lit (S Z)) (genExpWithVar (n-1))
 
@@ -33,4 +27,6 @@ varInExp (replace _ _ (Var v)) = v
 
 test7 = varInExp (Mul (Var X2) (Var X1)) --> X2 or X1
 
+-- find a variable in an expression having 200003 nodes
 main = varInExp (genExpWithVar 100000)
+
