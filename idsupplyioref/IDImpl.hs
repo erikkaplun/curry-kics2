@@ -1,7 +1,6 @@
 -- ---------------------------------------------------------------------------
 -- | ID implementation using IORefs
 -- ---------------------------------------------------------------------------
-{-# LANGUAGE FlexibleInstances #-}
 module IDImpl
   ( Ref, mkIntRef, IDSupply, initSupply, leftSupply, rightSupply, thisRef
   , lookupChoiceRef, setChoiceRef
@@ -11,18 +10,20 @@ import Data.IORef
 import System.IO.Unsafe (unsafeInterleaveIO)
 
 -- SOURCE pragma to allow mutually recursive dependency
-import {-# SOURCE #-} ID (Choice, defaultChoice, isDefaultChoice)
+import {-# SOURCE #-} ID (Choice, defaultChoice)
 
 -- |References to 'Choice's are represented as 'IORef's
-type Ref = IORef Choice
+newtype Ref = Ref { unRef :: IORef Choice } deriving Eq
+-- type Ref = IORef Choice
+-- unRef = id
 
-instance Show (IORef Choice) where
+instance Show Ref where
   show _ = ""
 
 -- |A conversion of a 'Ref' into an integer is not possible for this
 --  implementation
 mkIntRef :: Ref -> Integer
-mkIntRef = error "IDSupplyIORef.mkIntRef"
+mkIntRef = error "IDImpl.mkIntRef"
 
 -- ---------------------
 -- ID Supply
@@ -45,7 +46,8 @@ getPureSupply def = do
   s1 <- unsafeInterleaveIO (getPureSupply def)
   s2 <- unsafeInterleaveIO (getPureSupply def)
   r  <- unsafeInterleaveIO (newIORef def)
-  return (IDSupply r s1 s2)
+  return (IDSupply (Ref r) s1 s2)
+--   return (IDSupply r s1 s2)
 
 leftSupply :: IDSupply -> IDSupply
 leftSupply  (IDSupply _ s _) = s
@@ -61,7 +63,7 @@ thisRef (IDSupply r _ _) = r
 -- ---------------------
 
 lookupChoiceRef :: Ref -> IO Choice
-lookupChoiceRef = readIORef
+lookupChoiceRef = readIORef . unRef
 
 setChoiceRef :: Ref -> Choice -> IO ()
-setChoiceRef = writeIORef
+setChoiceRef r c = writeIORef (unRef r) c

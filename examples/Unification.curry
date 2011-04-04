@@ -69,7 +69,7 @@ uni2 x y = x =:= y
 goal22 = uni2 x [y] where x,y free                         -- success
 goal23 = uni2 x [y] &> x where x,y free                    -- [y]
 goal24 = x =:= [y] &> y=:=True &> x where x,y free         -- [True]
-goal25 = x =:= (y:z) &> x=:=(False:z1:z2) &> z2 =:=[] &> x -- [False,z1] -- TODO
+goal25 = x =:= (y:z) &> x=:=(False:z1:z2) &> z2 =:=[] &> x -- [False,z1]
   where x,y,z,z1,z2 free
 
 
