@@ -67,13 +67,17 @@ build opts fn = do
         where initState = { compOptions := opts | defaultState }
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
-makeModule mods state mod@((_, (fn, fcy)), _)
-  = smake (destFile fn)
-          depFiles
-          (compileModule (length mods) state mod)
-          (loadAnalysis (length mods) state mod)
-    where depFiles = fn : map (\i -> destFile $ fst $ fromJust $ lookup i mods) imps
-          (Prog _ imps _ _ _) = fcy
+makeModule mods state mod@((_, (fn, fcy)), _) =
+  if ((state -> compOptions) -> optForce)
+  then compileModule modCnt state mod
+  else smake (destFile fn)
+               depFiles
+               (compileModule modCnt state mod)
+               (loadAnalysis modCnt state mod)
+  where
+    depFiles = fn : map (\i -> destFile $ fst $ fromJust $ lookup i mods) imps
+    (Prog _ imps _ _ _) = fcy
+    modCnt = length mods
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
@@ -478,18 +482,25 @@ transBody qn vs exp = case exp of
     -- translate branches
     mapM transBranch bs `bindM` \bs' ->
     -- create branches for non-deterministic constructors
-    let (Branch (Pattern pConsName _) _:_) = bs in
+    let pConsName = consNameFromPattern $ head bs in
     newBranches qn vs i pConsName `bindM` \ns ->
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
     returnM $ Case ct e' (bs' ++ ns)
   _ -> transCompleteExpr exp
 
--- translate case branch
+consNameFromPattern :: BranchExpr -> QName
+consNameFromPattern (Branch (Pattern p _) _) = p
+consNameFromPattern (Branch (LPattern lit) _) = case lit of
+  Intc _   -> renameQName ("Prelude", "Int")
+  Floatc _ -> renameQName ("Prelude", "Float")
+  Charc _  -> renameQName ("Prelude", "Char")
+
+-- translate case branch and return the name of the constructor
 transBranch :: BranchExpr -> M BranchExpr
-transBranch (Branch (Pattern p vs) e) =
+transBranch (Branch pat e) =
   transCompleteExpr e `bindM` \e' ->
-  returnM (Branch (Pattern p vs) e')
+  returnM (Branch pat e')
 
 -- create new case branches for added non-deterministic constructors
 -- qn'      : qualified name of the function currently processed
@@ -789,6 +800,7 @@ primTypes = map (\ (x, y) -> ( renameQName ("Prelude", x)
                              , renameQName ("Prelude", y))) $
   [ ("True", "Bool"), ("False", "Bool")
   , ("[]", "List")  , (":", "List")
+  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
   ] ++ map (\n -> (tupleType n, 'T':show n)) [2 .. maxTupleArity]
 
 -- Return Nothing if type is no tuple and Just arity otherwise
