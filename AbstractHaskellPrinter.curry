@@ -321,13 +321,18 @@ showStatement opts (SLet localdecls)
 
 showPattern :: Pattern -> String
 showPattern (PVar (_,name)) = showIdentifier name
-showPattern (PLit lit) = showLiteral lit
+showPattern (PLit lit) = showLitPattern lit
 showPattern (PComb (_,name) []) = name
 showPattern (PComb (mod,name) (p:ps))
    | mod == prelude = showPreludeCons (PComb (mod,name) (p:ps))
    | otherwise        = "(" ++ name ++ (prefixMap showPattern (p:ps) " ") ++ ")"
 showPattern (PAs (_,name) pat) = showIdentifier name ++ "@" ++ showPattern pat
 showPattern (PFuncComb qname pats) = showPattern (PComb qname pats)
+
+showLitPattern :: Literal -> String
+showLitPattern (Intc i)    = "(C_Int "   ++ show i ++ "#)"
+showLitPattern (Floatc f)  = "(C_Float " ++ show f ++ "#)"
+showLitPattern c@(Charc _) = "(C_Char '" ++ showCharc c ++ "'#)"
 
 
 showPreludeCons :: Pattern -> String
@@ -382,9 +387,9 @@ showBranchExpr opts (Branch pattern expr)
    = (showPattern pattern) ++ " -> " ++ (showExprOpt opts expr)
 
 showLiteral :: Literal -> String
-showLiteral (Intc i) = show i
+showLiteral (Intc i)   = show i
 showLiteral (Floatc f) = show f
-showLiteral (Charc c) = "'"++showCharc (Charc c)++"'"
+showLiteral (Charc c)  = "'" ++ showCharc (Charc c) ++ "'"
 
 showCharc :: Literal -> String
 showCharc (Charc c) | c=='\n' = "\\n"

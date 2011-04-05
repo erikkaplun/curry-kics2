@@ -19,6 +19,7 @@ type Options =
   { optHelp            :: Bool       -- show usage
   , optVersion         :: Bool       -- show version
   , optQuiet           :: Bool       -- quiet mode
+  , optForce           :: Bool       -- force recompilation
   , optImportPaths     :: [String]   -- directories searched for imports
   , optSearchMode      :: SearchMode -- search mode
   , optDetOptimization :: Bool       -- optimization for deterministic functions
@@ -46,6 +47,7 @@ defaultOptions =
   { optHelp            = False
   , optVersion         = False
   , optQuiet           = False
+  , optForce           = False
   , optImportPaths     = []
   , optSearchMode      = NoSearch
   , optDetOptimization = True
@@ -64,6 +66,9 @@ options =
   , Option ['q'] ["quiet"]
       (NoArg (\opts -> { optQuiet   := True | opts }))
       "run in quiet mode"
+  , Option ['f'] ["force"]
+      (NoArg (\opts -> { optForce   := True | opts }))
+      "force recompilation"
   , Option ['i'] ["import-dir"]
       (ReqArg (\arg opts -> { optImportPaths := nub (arg : opts -> optImportPaths) | opts }) "DIR")
       "search for imports in DIR"

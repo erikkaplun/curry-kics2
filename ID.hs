@@ -10,19 +10,20 @@ module ID
   , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
   ) where
 
-import Control.Monad (liftM, when)
+import Control.Monad (liftM, when, zipWithM_)
 import IDImpl
 
 -- ---------------------------------------------------------------------------
 -- Constraint
 -- ---------------------------------------------------------------------------
 
+-- |Type to encode constraints for a Choice(s) structure
 data Constraint
-  -- binding of an 'ID' to a 'Choice'
+  -- |Binding of an 'ID' to a 'Choice'
   = ID :=: Choice
-  -- Failure (unsolvable constraint)
+  -- |Unsolvable constraint
   | Unsolvable
-  -- non-deterministic choice between two lists of constraints
+  -- |Non-deterministic choice between two lists of constraints
   | ConstraintChoice ID [Constraint] [Constraint]
     deriving (Eq, Show)
 
@@ -30,24 +31,26 @@ data Constraint
 -- Choice
 -- ---------------------------------------------------------------------------
 
--- Type to encode the selection taken in a Choice(s) structure
+-- |Type to encode the selection taken in a Choice(s) structure
 data Choice
-    -- No choice has been made so far
+    -- |No choice has been made so far
   = NoChoice
-    -- The left value of an (?) is chosen
+    -- |The left value of an (?) is chosen
   | ChooseLeft
-    -- The right value of an (?) is chosen
+    -- |The right value of an (?) is chosen
   | ChooseRight
-    -- ChooseN consIdx argCnt is the choice for the constructor with the
-    -- index consIdx which has argCnt arguments
+    -- |ChooseN consIdx argCnt is the choice for the constructor with the
+    --  index consIdx which has argCnt arguments
   | ChooseN Int Int
-    -- a free or narrowed variable is bound to the free variable with the
-    -- given id; the bindings of the IDs for the arguments have not been
-    -- propagated yet
+    -- |a free or narrowed variable is bound to the free variable with the
+    --  given id; the bindings of the IDs for the arguments have not been
+    --  propagated yet
   | BindTo ID
-    -- a free or narrowed variable is bound to the variable with the given ID;
-    -- the bindings for the n arguments have also been propagated
+    -- |A free or narrowed variable is bound to the variable with the given
+    --  'ID'; the bindings for the n arguments have also been propagated
   | BoundTo ID Int
+    -- |A free variable is lazily bound to an expression by a function
+   --   pattern
   | LazyBind [Constraint]
     deriving Show
 
@@ -56,14 +59,17 @@ instance Eq Choice where
   ChooseLeft  == ChooseLeft  = True
   ChooseRight == ChooseRight = True
   ChooseN c _ == ChooseN d _ = c == d
-  BindTo  i   == BindTo  j   = error "ID.Choice.(==) on BindTo"
-  BoundTo i _ == BoundTo j _ = error "ID.Choice.(==) on BoundTo"
+  BindTo  _   == BindTo  _   = error "ID.Choice.(==) on BindTo"
+  BoundTo _ _ == BoundTo _ _ = error "ID.Choice.(==) on BoundTo"
   LazyBind _  == LazyBind _  = error "ID.Choice.(==) on LazyBind"
   _           == _           = False
 
+-- |Default 'Choice'. The default 'Choice' is provided via a function to break
+--  recursive dependencies.
 defaultChoice :: Choice
 defaultChoice = NoChoice
 
+-- |Is the given 'Choice' the 'defaultChoice'?
 isDefaultChoice :: Choice -> Bool
 isDefaultChoice NoChoice = True
 isDefaultChoice _        = False
@@ -74,8 +80,11 @@ isDefaultChoice _        = False
 
 -- Type to identify different Choice structures in a non-deterministic result
 data ID
+    -- |Identifier for a choice introduced by the use of the (?) operator
   = ID Ref
+    -- |Identifier for a choice for a free variable
   | FreeID IDSupply
+    -- |Identifier for a choice for a narrowed variable (free before)
   | Narrowed IDSupply
     deriving Eq
 
@@ -86,14 +95,16 @@ instance Show ID where
 
 leftID :: ID -> ID
 leftID  (FreeID s) = freeID (leftSupply s)
+leftID  _          = error "ID.leftID: no FreeID"
 
 rightID :: ID -> ID
 rightID (FreeID s) = freeID (rightSupply s)
+rightID  _         = error "ID.rightID: no FreeID"
 
 narrowID :: ID -> ID
+narrowID i@(ID _)       = i
 narrowID (FreeID s)     = Narrowed s
 narrowID n@(Narrowed _) = n
-narrowID i@(ID _)       = i
 
 freeID :: IDSupply -> ID
 freeID = FreeID
@@ -106,7 +117,7 @@ ref (ID       r) = r
 ref (FreeID   s) = thisRef s
 ref (Narrowed s) = thisRef s
 
--- Conversion of ID into integer (for monadic search operators).
+-- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
 mkInt (ID       i) = mkIntRef i
 mkInt (FreeID   _) = error "ID.mkInt: FreeID"
@@ -116,118 +127,153 @@ mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
 -- Choice Management
 -- ---------------------------------------------------------------------------
 
+-- ------------------
+-- Looking up choices
+-- ------------------
+
+-- |Lookup the 'Choice' an 'ID' ultimately is bound to
 lookupChoice :: ID -> IO Choice
 lookupChoice i = fst `liftM` lookupChoiceID i
 
+-- |Lookup the 'ID' an 'ID' ultimately is bound to
 lookupID :: ID -> IO ID
 lookupID i = snd `liftM` lookupChoiceID i
 
+-- |Lookup the 'Choice' and the 'ID' an 'ID' ultimately is bound to
 lookupChoiceID :: ID -> IO (Choice, ID)
-lookupChoiceID i = do
---   putStrLn $ "lookupChoiceID " ++ show i
---   raw <- lookupChoiceRaw i
---   putStrLn $ "Raw result: " ++ show raw
-  lookupChoiceRaw i >>= unchain
+lookupChoiceID i = lookupChoiceRaw i >>= unchain
   where
+    -- For BindTo, we shorten chains of multiple BindTos by directly binding
+    -- to the last ID in the chain.
+    unchain (BindTo j) = do
+      retVal@(c, lastId) <- lookupChoiceID j -- resolve last id and its choice
+      case c of
+        NoChoice      -> shortenTo lastId
+        ChooseN _ num -> propagateBind i lastId num
+        LazyBind _    -> shortenTo lastId
+        _             -> error $ "ID.lookupChoiceID returned " ++ show c
+      return retVal
+      where
+        shortenTo lastId = when (j /= lastId) $ setChoiceRaw i (BindTo lastId)
+
+    -- For BoundTo, the chains should already be shortened since the Choice
+    -- "BoundTo j" is only set if the variable j has been set to a "ChooseN"
+    -- and therefore could not have been changed in between.
     unchain (BoundTo j _) = lookupChoiceID j
 
-    unchain (BindTo  j  ) = do
-      (c, id) <- lookupChoiceID j
-      case c of
-        ChooseN _ num -> propagateBind i j num
-        NoChoice      -> return ()
-        LazyBind _    -> return ()
-        errChoice     -> error $ "ID.lookupChoice returned " ++ show errChoice
-      return (c, id)
+    -- For all other choices, there are no chains at all
+    unchain c           = return (c, i)
 
-    unchain c           = return (c, i) {-do
-      putStrLn $ "ID.lookupChoice returned " ++ show c ++ " for ID " ++ show i
-      return (c, i)-}
+-- ---------------
+-- Setting choices
+-- ---------------
 
-lookupChoiceRaw :: ID -> IO Choice
-lookupChoiceRaw = lookupChoiceRef . ref
-
--- Propagate a binding of variable x to variable y for the next cnt child ids
--- x is expected to be either a free or a narrowed variable,
--- y is expected to be a free variable
-propagateBind :: ID -> ID -> Int -> IO ()
-propagateBind x@(FreeID xs) y@(FreeID ys) cnt = do
-  setChoice x (BoundTo y cnt)
-  sequence_ $ zipWith (\x' y' -> setChoice x' (BindTo y'))
-                      (nextNIDs xs cnt) (nextNIDs ys cnt)
-propagateBind x@(Narrowed xs) y@(FreeID ys) cnt = do
-  setChoice x (BoundTo y cnt)
-  sequence_ $ zipWith (\x' y' -> setChoice x' (BindTo y'))
-                      (nextNIDs xs cnt) (nextNIDs ys cnt)
-propagateBind errx erry errcnt = error $
-  "propagateBind " ++ show errx ++ ' ' : show erry ++ ' ' : show errcnt
-
--- Compute a list of the next n free IDs for a given IDSupply s
-nextNIDs :: IDSupply -> Int -> [ID]
-nextNIDs s n
-  | n <  0    = error $ "ID.nextNIDs with negative number " ++ show n
-  | n == 0    = []
-  | n == 1    = [freeID (leftSupply s)]
-  | otherwise = nextNIDs' s n
-  where
-    nextNIDs' s n
-      | n == 0    = []
-      | n == 1    = [freeID s]
-      | otherwise = nextNIDs' (leftSupply s) (n - halfn) ++ nextNIDs' (rightSupply s) halfn
-        where halfn = n `div` 2
-
-
+-- |Set the 'Choice' for the given 'ID'
 setChoice :: ID -> Choice -> IO ()
-setChoice i c = setChoiceRef (ref i) c
-
+setChoice i c = setChoiceGetChange i c >> return ()
 
 -- Set the given 'Choice' for the given 'ID' and return an action to recover
 -- the former 'Choice'
 setUnsetChoice :: ID -> Choice -> IO (IO ())
 setUnsetChoice i c = do
-  (oldChoice, changedId) <- setChoiceGetChoiceID i c -- get current Choice
---   putStrLn $ "setUnsetChoice setting: " ++ show changedId ++ " to " ++ show c
-  return $ case c of
-    BindTo _ -> do
-      resetFreeVar changedId
---       putStrLn $ "setUnsetChoice resetting free: " ++ show changedId ++ " to " ++ show  oldChoice
-      setChoice changedId oldChoice -- TODO: BindTo k -> if changedId == k then return (return ()) else return (resetFreeVar changedId)
-    _        -> do
---       putStrLn $ "setUnsetChoice resetting: " ++ show changedId ++ " to " ++ show  oldChoice
-      setChoice changedId oldChoice -- was NoChoice
+  mChange <- setChoiceGetChange i c
+  case mChange of
+    Nothing                     -> return (return ())
+    Just (oldChoice, changedId) -> return $ case c of
+      BindTo _ -> resetFreeVar changedId oldChoice
+      _        -> setChoiceRaw changedId oldChoice
 
-
--- Set the 'Choice' for the last 'ID' referenced by the given 'ID' and
--- return the ultimately changed 'ID' and its former 'Choice'
-setChoiceGetChoiceID :: ID -> Choice -> IO (Choice, ID)
--- setChoiceGetChoiceID i (BindTo j) | i == j = return (NoChoice, i) -- TODO: avoid cyclic bind; notice that NoChoice will not be evaluated
-setChoiceGetChoiceID i c = lookupChoiceRaw i >>= unchain
+-- |Set the 'Choice' for the given 'ID', eventually following a chain and
+--  return the ultimately changed 'ID' and its former 'Choice'
+setChoiceGetChange :: ID -> Choice -> IO (Maybe (Choice, ID))
+-- We do not bind an ID to itself to avoid cycles
+setChoiceGetChange i (BindTo j) | i == j = return Nothing
+setChoiceGetChange i c = lookupChoiceRaw i >>= unchain
   where
-    unchain (BoundTo j _) = setChoiceGetChoiceID j c
-
-    unchain (BindTo  j  ) = do
-      (resC, resId) <- setChoiceGetChoiceID j c
+    -- BindTo: change the last variable in the chain and propagate the binding
+    -- TODO: At the moment the propagation is necessary, but may be removed
+    -- later (cf. examples/Unification.curry, goal25)
+    unchain (BindTo k)    = do
+      retVal <- setChoiceGetChange k c
       case c of
-        ChooseN _ num -> propagateBind i j num
+        ChooseN _ num -> propagateBind i k num
         _             -> return ()
-      return (resC, resId)
-
+      return retVal
+    -- BoundTo: change the last variable in the chain
+    unchain (BoundTo k _) = setChoiceGetChange k c
     unchain oldChoice     = case c of
       BindTo j -> do
-        (lastChoice, lastid) <- lookupChoiceID j
-        setChoice i c -- TODO: when (lastid /= i) $ setChoice i (BindTo lastid)
-        return (oldChoice, i)
-      _        -> setChoice i c >> return (oldChoice, i)
+        -- Avoid binding i to a variable which is transitively bound to i
+        lastId <- lookupID j
+        if lastId == i
+          then return Nothing
+          else setChoiceRaw i c >> return (Just (oldChoice, i))
+      _        -> setChoiceRaw i c >> return (Just (oldChoice, i))
 
-resetFreeVar :: ID -> IO ()
-resetFreeVar i = case i of
-  ID _       -> error $ "resetFreeVar " ++ show i
-  FreeID s   -> resetFreeVar' s
-  Narrowed s -> resetFreeVar' s
+-- |Reset a free variable to its former 'Choice' and reset its children if
+--  the binding has already been propagated
+resetFreeVar :: ID -> Choice -> IO ()
+resetFreeVar i oldChoice = case i of
+  ID _       -> error $ "ID.resetFreeVar: ID" ++ show i
+  FreeID s   -> reset oldChoice s
+  Narrowed s -> reset oldChoice s
   where
-    resetFreeVar' s = lookupChoiceRaw i >>= propagate s
+    reset c s = lookupChoiceRef (thisRef s) >>= propagate c s
 
-    propagate _ (BindTo _)  = setChoice i NoChoice
-    propagate s (BoundTo _ num) = do
-      setChoice i NoChoice
-      mapM_ resetFreeVar $ nextNIDs s num
+    propagate c s (BindTo _)      = setChoiceRef (thisRef s) c
+    propagate c s (BoundTo _ num) = do
+      setChoiceRef (thisRef s) c
+      mapM_ (reset NoChoice) $ nextNSupplies s num
+    propagate _ _ _ = error "ID.resetFreeVar.propagate: no binding"
+
+-- -------------------
+-- Auxiliary functions
+-- -------------------
+
+-- |Lookup the 'Choice' stored for the given 'ID' without following chains
+lookupChoiceRaw :: ID -> IO Choice
+lookupChoiceRaw = lookupChoiceRef . ref
+
+-- |Set the 'Choice' for the given 'ID' in the store without following chains
+setChoiceRaw :: ID -> Choice -> IO ()
+setChoiceRaw i c = setChoiceRef (ref i) c
+
+-- |Propagate a binding of ID x to ID y for the next cnt child IDs
+--  x is expected to be either a free or a narrowed variable,
+--  y is expected to be a free variable
+propagateBind :: ID -> ID -> Int -> IO ()
+propagateBind x y cnt = case y of
+  FreeID sy -> case x of
+    FreeID   sx -> pb x y sx sy cnt
+    Narrowed sx -> pb x y sx sy cnt
+    _           -> pbError
+  _         -> pbError
+  where
+    pb i j si sj num = do
+      -- bind i to j
+      setChoiceRaw i (BoundTo j num)
+      -- propagate the binding to the children
+      zipWithM_ (\a b -> setChoice a (BindTo b))
+        (nextNIDs si num) (nextNIDs sj num)
+
+    pbError = error $
+      "ID.propagateBind " ++ show x ++ ' ' : show y ++ ' ' : show cnt
+
+-- Compute a list of the next n free 'ID's for a given 'IDSupply' s
+nextNIDs :: IDSupply -> Int -> [ID]
+nextNIDs s n = map freeID $ nextNSupplies s n
+
+-- |Compute the next n independent 'IDSupply's for a given 'IDSupply' s
+nextNSupplies :: IDSupply -> Int -> [IDSupply]
+nextNSupplies s n
+  | n <  0    = error $ "ID.nextNSupplies: " ++ show n
+  | n == 0    = []
+  | n == 1    = [leftSupply s]
+  | otherwise = nextNSupplies' s n
+  where
+    nextNSupplies' s' n'
+      | n' == 0    = []
+      | n' == 1    = [s']
+      | otherwise = nextNSupplies' (leftSupply  s') (n' - halfn) ++
+                    nextNSupplies' (rightSupply s') halfn
+        where halfn = n' `div` 2

@@ -266,6 +266,13 @@ benchFLPDFSU prog =
  ,mccBenchmark ""   prog
  ]
 
+-- Benchmarking functional patterns with idc/pakcs
+benchFunPats prog =
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref"   "printDFS nd_C_main"
+ ,pakcsBenchmark "" prog
+ ]
+
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name =
@@ -316,6 +323,10 @@ allBenchmarks =
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
   , benchFLPDFSU "Last"
   , benchFLPDFSU "RegExp"
+  , benchFunPats "LastFunPats"
+  , benchFunPats "ExpVarFunPats"
+  , benchFunPats "ExpSimpFunPats"
+  , benchFunPats "PaliFunPats"
   ]
 
 -- Run all benchmarks and show results
@@ -340,14 +351,16 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
---main = run 2 allBenchmarks
+main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
-main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
+--main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]
+
 --main = run 1 [benchFLPDFSU "RegExp"]
+--main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"

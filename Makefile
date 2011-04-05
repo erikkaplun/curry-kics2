@@ -7,20 +7,20 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE="28/03/11"
+COMPILERDATE="31/03/11"
 
 .PHONY: all
 all: idc REPL.state
 	chmod -R go+rX .
 
-# generate saved state for Curry->FLVM compiler:
+# generate saved state for Curry->Haskell compiler:
 # idc: Compile.curry FlatCurry2AbstractHaskell.curry FlatCurry2Types.curry \
 # 	         Names.curry AbstractHaskell.curry \
 # 	         AbstractHaskellGoodies.curry AbstractHaskellPrinter.curry
 idc: *.curry
 	pakcs -s Compile && mv Compile.state idc
 
-# generate saved state for REPL:
+# generate saved state for interactive compiler system:
 REPL.state: Installation REPL.curry
 	pakcs -s REPL
 
@@ -53,8 +53,8 @@ installhaskell:
 .PHONY: clean
 clean:
 	bin/cleanidc -r
-	rm -f idc
-	rm -f *.hi *.o
+	rm -f idc Installation.hs Installation.curry REPL.state
+	rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
 	rm -f ./examples/Curry_*.*
