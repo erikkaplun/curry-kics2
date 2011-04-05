@@ -14,6 +14,10 @@ import Float
 -- home directory of IDC:
 idcHome = "../.."
 
+-- home directory of the monadic curry compiler
+monHome = "$HOME/.cabal/bin"
+monlib  = "$HOME/.cabal/share/curry2monad-0.1"
+
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
@@ -137,12 +141,37 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
   system compileCmd
 
 ----------------------------------------------------------------------
+-- Command to compile a module and execute main with monadic curry:
+-- arg1: module name
+-- arg2: compile with optimization?
+-- arg3: main (Curry!) call
+monCompile mod optim mainexp = do
+  let compileCmd = monHome++"/curry2monad -m"++mainexp++" "++mod
+  putStrLn $ "Executing: "++compileCmd
+  system compileCmd
+  createMonHaskellMainAndCompile mod optim mainexp
+
+createMonHaskellMainAndCompile mod optim mainexp = do
+  let haskellMain = "cM_" ++ mainexp
+  writeFile "Main.hs" $
+       "module Main where\n" ++
+       "import Curry_"++mod++"\n"++
+       "main = print $ "++haskellMain++"\n"
+  putStrLn $ "Main expression: " ++ haskellMain
+  let imports = [monlib]
+      compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
+                            "-fforce-recomp",
+                            "-i"++concat (intersperse ":" imports),"Main.hs"]
+  putStrLn $ "Executing: "++ compileCmd
+  system compileCmd
+----------------------------------------------------------------------
 -- Command to compile a module and execute main with MCC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
 mccCompile options mod = system $
   "/home/mcc/bin/cyc " ++
   (if null options then "-e\"main\"" else options) ++
   " " ++ mod ++".curry"
+
 
 -- Command to compile a module and execute main with GHC:
 ghcCompile mod = system $ "ghc --make -fforce-recomp " ++ mod
@@ -169,6 +198,9 @@ swiCompile mod = system $
 idcBenchmark tag mod optim idsupply mainexp =
   (mod++"@"++tag, idcCompile mod optim idsupply mainexp,
    "./Main", "rm Main* Curry_*")
+monBenchmark tag mod optim mainexp =
+  (mod++"@"++tag, monCompile mod optim mainexp,
+   "./Main", "rm Main* Curry_*") 
 pakcsBenchmark options mod =
   (mod++"@PAKCS ",pakcsCompile options mod,
    "./"++mod++".state","rm "++mod++".state")
@@ -194,6 +226,7 @@ swiBenchmark  mod =
 benchFPpl prog =
  [idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
  ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
+ ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -208,6 +241,7 @@ benchHOFP prog =
  ,idcBenchmark "IDC+"   prog True  "integer" "eval nd_C_main"
  ,idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
  ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
+ ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -219,6 +253,7 @@ benchFLPDFS prog =
  [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs nd_C_main"
  ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs nd_C_main"
  ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
@@ -306,12 +341,12 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 2 allBenchmarks
-main = run 1 allBenchmarks
+--main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
 --main = run 3 [benchHOFP "PrimesPeano"]
---main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
+main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]
