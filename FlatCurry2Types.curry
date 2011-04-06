@@ -139,7 +139,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
         [PVar (1,"d"), PComb guardConsName [PVar (2,"c"),PVar (3,"e")]]
         (applyF (pre "showsGuard") [Var (1,"d"),Var (2,"c"),Var (3,"e")])),
       (pre "showsPrec",
-      simpleRule [PVar (1,"d"), PComb failConsName []]
+      simpleRule [PVar (1, "_"), PComb failConsName []]
         (applyF (pre "showChar") [charc '!']))]
       ++ map showConsRule cdecls)
 
@@ -331,71 +331,56 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
 
   -- Generate instance of NormalForm class:
-  normalformInstance = mkInstance (basics "NormalForm") [basics "Show"] ctype targs
-     (map normalformConsRule cdecls
-      ++ [(basics "$!!",
-           simpleRule [PVar (1,"cont"),
-                 PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
-                     (applyF (pre "nfChoice")
-                                      [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
-      ,(basics "$!!",
-           simpleRule [PVar (1,"cont"),
-                 PComb choicesConsName [PVar (2,"i"), PVar (3,"xs")]]
-                     (applyF (pre "nfChoices")
-                                      [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
-      ,(basics "$!!", simpleRule [PVar (1,"cont"),
-                            PComb guardConsName [PVar (2,"c"),PVar (3,"x")]]
-                     (applyF (pre "guardCons")
-                                      [Var (2,"c")
-                                      ,applyF (basics "$!!")[Var (1,"cont"),Var (3,"x")]]))
-      ,(basics "$!!", simpleRule [PVar (1,"_"),PComb failConsName []]
-                     (Symbol (pre "failCons")))]
-      ++ map normalformIOConsRule cdecls
-      ++ [(basics "$!<",
-           simpleRule [PVar (1,"cont"),
-                 PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
-                     (applyF (pre "nfChoiceIO")
-                                      [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
-      ,(basics "$!<",
-           simpleRule [PVar (1,"cont"),
-                 PComb choicesConsName [PVar (2,"i"), PVar (3,"xs")]]
-                     (applyF (pre "nfChoicesIO")
-                                      [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
-      ,(basics "$!<", simpleRule [PVar (1,"cont"), PVar (2,"x")]
-                     (applyV (1,"cont") [Var (2,"x")]))]
-      ++ map searchNFConsRule cdecls)
+  normalformInstance = mkInstance (basics "NormalForm") [basics "Show"] ctype targs $
+    map (normalformConsRule (basics "$!!")) cdecls
+    ++ normalFormExtConsRules (basics "$!!") (basics "nfChoice") (basics "nfChoices")
+    ++ map (normalformConsRule (basics "$##")) cdecls
+    ++ normalFormExtConsRules (basics "$##") (basics "gnfChoice") (basics "gnfChoices")
+    ++ map (normalformConsRule (basics "$!<")) cdecls
+    ++ [ (basics "$!<", simpleRule [PVar (1,"cont"),
+           PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
+             (applyF (pre "nfChoiceIO")
+                     [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
+       , (basics "$!<", simpleRule [PVar (1,"cont"),
+           PComb choicesConsName [PVar (2,"i"), PVar (3,"xs")]]
+             (applyF (pre "nfChoicesIO")
+                     [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
+       , (basics "$!<", simpleRule [PVar (1,"cont"), PVar (2,"x")]
+             (applyV (1,"cont") [Var (2,"x")]))
+       ]
+    ++ map searchNFConsRule cdecls
 
   -- Generate NormalForm instance rule for a data constructor:
-  normalformConsRule (FC.Cons qn _ _ texps) =
-    (basics "$!!",
-     simpleRule [PVar (1,"cont"),
-           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
+  normalformConsRule funcName (FC.Cons qn _ _ texps) =
+    (funcName, simpleRule
+      [PVar (1,"cont"), PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
           nfBody)
    where
      carity = length texps
 
      nfBody =
-      foldr (\i exp -> applyF (basics "$!!")
+      foldr (\i exp -> applyF funcName
                         [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
             (applyV (1,"cont")
                     [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
             [1..carity]
 
-  -- Generate NormalForm instance rule for a data constructor:
-  normalformIOConsRule (FC.Cons qn _ _ texps) =
-    (basics "$!<",
-     simpleRule [PVar (1,"cont"),
-           PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-          nfBody)
-   where
-     carity = length texps
-
-     nfBody =
-      foldr (\i exp -> applyF (basics "$!<")
-                        [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
-            (applyV (1,"cont")
-                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
-            [1..carity]
+  normalFormExtConsRules funcName choiceFunc choicesFunc =
+    [ (funcName, simpleRule [PVar (1,"cont"),
+        PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
+          (applyF choiceFunc
+                  [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
+    , (funcName, simpleRule [PVar (1,"cont"),
+        PComb choicesConsName [PVar (2,"i"), PVar (3,"xs")]]
+          (applyF choicesFunc
+                  [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
+    , (funcName, simpleRule [PVar (1,"cont"),
+        PComb guardConsName [PVar (2,"c"),PVar (3,"x")]]
+          (applyF (pre "guardCons")
+                  [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x")]]))
+    , (funcName, simpleRule [PVar (1,"_"), PComb failConsName []]
+                  (Symbol (pre "failCons")))
+    ]
 
   -- Generate searchNF instance rule for a data constructor:
   searchNFConsRule  (FC.Cons qn _ _ texps) =

@@ -9,7 +9,8 @@ function replace ()
   | sed "s/\(showsPrec d (C_Int x1) = \).*$/\1shows (I# x1)/" \
   | sed "s/\(readsPrec d s = \).*C_Int.*$/\1map readInt (readsPrec d s) where readInt (I# i, s) = (C_Int i, s)/" \
   | sed 's/generate s = Choices_C_Int.*$/generate _ = error "No generator for C_Int"/' \
-  | sed "s/(\$!!) cont (C_Int x1).*$/(\$!!) cont i@(C_Int _) = cont i/" \
+  | sed "s/(\$!!) cont (C_Int x1).*$/(\$!!) cont x@(C_Int _) = cont x/" \
+  | sed "s/(\$##) cont (C_Int x1).*$/(\$##) cont x@(C_Int _) = cont x/" \
   | sed "/(\$!<) cont (C_Int x1)/d" \
   | sed "/(=\.=) (C_Int x1) (C_Int y1)/d" \
   | sed "/(=\.<=) (C_Int x1) (C_Int y1)/d" \
@@ -22,6 +23,7 @@ function replace ()
   | sed "s/\(readsPrec d s = \).*C_Float.*$/\1map readFloat (readsPrec d s) where readFloat (F# f, s) = (C_Float f, s)/" \
   | sed 's/generate s = Choices_C_Float.*$/generate _ = error "No generator for C_Float"/' \
   | sed "s/(\$!!) cont (C_Float x1).*$/(\$!!) cont x@(C_Float _) = cont x/" \
+  | sed "s/(\$##) cont (C_Float x1).*$/(\$##) cont x@(C_Float _) = cont x/" \
   | sed "/(\$!<) cont (C_Float x1)/d" \
   | sed "/(=\.=) (C_Float x1) (C_Float y1)/d" \
   | sed "/(=\.<=) (C_Float x1) (C_Float y1)/d" \
@@ -34,6 +36,7 @@ function replace ()
   | sed "s/\(readsPrec d s = \).*C_Char.*$/\1map readChar (readsPrec d s) where readChar (C# c, s) = (C_Char c, s)\n\n  readList s = map readString (readList s) where readString (cs, s) = (map (\\\(C# c) -> C_Char c) cs, s)/" \
   | sed 's/generate s = Choices_C_Char.*$/generate _ = error "No generator for C_Char"/' \
   | sed "s/(\$!!) cont (C_Char x1).*$/(\$!!) cont x@(C_Char _) = cont x/" \
+  | sed "s/(\$##) cont (C_Char x1).*$/(\$##) cont x@(C_Char _) = cont x/" \
   | sed "/(\$!<) cont (C_Char x1)/d" \
   | sed "/(=\.=) (C_Char x1) (C_Char y1)/d" \
   | sed "/(=\.<=) (C_Char x1) (C_Char y1)/d" \
@@ -49,6 +52,7 @@ function replace ()
   | sed "/generate.*C_IO/d" \
   | sed 's/instance .* Generable (C_IO t0) where.*$/instance Generable (C_IO a) where generate _ = error "generate for C_IO"/' \
   | sed "s/(\$!!) cont (C_IO x1).*$/(\$!!) cont io@(C_IO _) = cont io/" \
+  | sed "s/(\$##) cont (C_IO x1).*$/(\$##) cont io@(C_IO _) = cont io/" \
   | sed "/(\$!<) cont (C_IO x1)/d" \
   | sed "/(=\.=) (C_IO x1) (C_IO y1)/d" \
   | sed "/(=\.<=) (C_IO x1) (C_IO y1)/d" \
@@ -64,6 +68,7 @@ function replace ()
   | sed "/generate .*C_Func/d" \
   | sed 's/instance .* Generable (C_Func t0 t1) where.*$/instance Generable (C_Func a b) where generate _ = error "generate for Func"/' \
   | sed "s/(\$!!) cont (C_Func x1).*$/(\$!!) cont f@(C_Func _) = cont f/" \
+  | sed "s/(\$##) cont (C_Func x1).*$/(\$##) cont f@(C_Func _) = cont f/" \
   | sed "/(\$!<) cont (C_Func x1)/d" \
   | sed "/(=\.=) (C_Func x1) (C_Func y1)/d" \
   | sed "/(=\.<=) (C_Func x1) (C_Func y1)/d" \
@@ -79,6 +84,7 @@ function replace ()
   | sed "/generate .*C_PrimData/d" \
   | sed 's/instance .* Generable (C_PrimData t0) where.*$/instance Generable (C_PrimData a) where generate _ = error "generate for PrimData"/' \
   | sed "s/(\$!!) cont (C_PrimData x1).*$/(\$!!) cont p@(C_PrimData _) = cont p/" \
+  | sed "s/(\$##) cont (C_PrimData x1).*$/(\$##) cont p@(C_PrimData _) = cont p/" \
   | sed "/(\$!<) cont (C_PrimData x1)/d" \
   | sed "/(=\.=) (C_PrimData x1) (C_PrimData y1)/d" \
   | sed "/(=\.<=) (C_PrimData x1) (C_PrimData y1)/d" \

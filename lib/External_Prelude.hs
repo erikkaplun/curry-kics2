@@ -98,6 +98,11 @@ instance NormalForm C_Int where
   ($!!) cont (Choices_C_Int i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Int c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Int = failCons
+  ($##) cont x@(C_Int _) = cont x
+  ($##) cont (Choice_C_Int i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Int i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Int c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Int = failCons
   ($!<) cont (Choice_C_Int i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Int i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -180,6 +185,11 @@ instance NormalForm C_Float where
   ($!!) cont (Choices_C_Float i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Float c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Float = failCons
+  ($##) cont x@(C_Float _) = cont x
+  ($##) cont (Choice_C_Float i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Float i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Float c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Float = failCons
   ($!<) cont (Choice_C_Float i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Float i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -259,6 +269,11 @@ instance NormalForm C_Char where
   ($!!) cont (Choices_C_Char i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Char c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Char = failCons
+  ($##) cont x@(C_Char _) = cont x
+  ($##) cont (Choice_C_Char i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Char i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Char c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Char = failCons
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -532,6 +547,12 @@ external_d_OP_dollar_bang_bang = ($!!)
 
 external_nd_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
 external_nd_OP_dollar_bang_bang f x s = (\y -> nd_apply f y s) $!! x
+
+external_d_OP_dollar_hash_hash :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+external_d_OP_dollar_hash_hash = ($##)
+
+external_nd_OP_dollar_hash_hash :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
+external_nd_OP_dollar_hash_hash f x s = (\y -> nd_apply f y s) $## x
 
 external_d_C_apply :: (a -> b) -> a -> b
 external_d_C_apply = d_apply

@@ -1,6 +1,4 @@
-
-data Peano = O | S Peano
-data List a = Nil | Cons a (List a)
+module Unification where
 
 -- simple types
 goal0 = True =:= True                      -- success
@@ -77,12 +75,3 @@ goal26 = x =:= [y?True] &> y=:=False &> x where x,y free   -- [False]?[True]
 
 goal27 = [x,True,z]=:=[False,y,y] &> [x,y,z]               -- [False,True,True]
   where x,y,z free
-
-main =
-  ( ((0, goal0), (2, goal2), (3, goal3), (4, goal4)) -- goal1 is fail
-  , ((5, goal5), (6, goal6), (7, goal7), (8, goal8), (9, goal9))
-  , ((10, goal10), (11, goal11), (12, goal12), (13, goal13), (14, goal14))
-  , ((16, goal16), (17, goal17), (18, goal18)) -- goal15 is nd, goal19 is fail
-  , ((20, goal20), (22, goal22), (23, goal23), (24, goal24)) -- goal21 is nd
-  , ((25, goal25), (27, goal27)) -- goal26 is nd
-  )
