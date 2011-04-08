@@ -15,7 +15,7 @@ import Control.Monad (liftM, when, zipWithM_)
 import IDImpl
 
 trace :: Bool
-trace = True
+trace = False
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -29,6 +29,8 @@ data Constraint
   | Unsolvable
   -- |Non-deterministic choice between two lists of constraints
   | ConstraintChoice ID [Constraint] [Constraint]
+  -- |Non-deterministic choice between a list of lists of constraints
+  | ConstraintChoices ID [[Constraint]]
     deriving (Eq, Show)
 
 -- ---------------------------------------------------------------------------
@@ -131,6 +133,17 @@ mkInt :: ID -> Integer
 mkInt (ID       i) = mkIntRef i
 mkInt (FreeID   _) = error "ID.mkInt: FreeID"
 mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
+
+ensureNotID :: ID -> ID
+ensureNotID (ID _)         = error "ensureNotID: ID"
+ensureNotID x@(FreeID _)   = x
+ensureNotID x@(Narrowed _) = x
+
+ensureFreeID :: ID -> ID
+ensureFreeID (ID _)       = error "ensureFreeID: ID"
+ensureFreeID x@(FreeID _) = x
+ensureFreeID (Narrowed _) = error "ensureFreeID: Narrowed"
+
 
 -- ---------------------------------------------------------------------------
 -- Choice Management
@@ -273,7 +286,10 @@ propagateBind x y cnt = do
   setChoiceRaw x (BoundTo y cnt)
   -- propagate the binding to the children
   zipWithM_ (\a b -> setChoice a (BindTo b))
-    (nextNIDs (supply x) cnt) (nextNIDs (supply y) cnt)
+    (nextNIDs (supply xFreeNarrowed) cnt) (nextNIDs (supply yFree) cnt)
+  where
+    xFreeNarrowed = ensureNotID x
+    yFree = ensureFreeID y
 
 -- Compute a list of the next n free 'ID's for a given 'IDSupply' s
 nextNIDs :: IDSupply -> Int -> [ID]
@@ -288,7 +304,6 @@ nextNSupplies s n
   | otherwise = nextNSupplies' s n
   where
     nextNSupplies' s' n'
-      | n' == 0    = []
       | n' == 1    = [s']
       | otherwise = nextNSupplies' (leftSupply  s') (n' - halfn) ++
                     nextNSupplies' (rightSupply s') halfn
