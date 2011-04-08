@@ -4,6 +4,7 @@ hello = putStrLn "Hello World!"
 
 ndHello = putStrLn "Hello World!" ? putStrLn "Hi World!"
 
+-- TODO
 flipTwoChars = do
   putStr "Please enter two chars: "
   c1 <- getChar

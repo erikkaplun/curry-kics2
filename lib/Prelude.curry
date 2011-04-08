@@ -102,9 +102,9 @@ f $# x  = f $! (ensureNotFree x)
 
 --- Right-associative application with strict evaluation of its argument
 --- to ground normal form.
--- TODO: improve performance
 ($##)   :: (a -> b) -> a -> b
-f $## x | x=:=y = y==y `seq` f y  where y free
+($##) external
+-- f $## x | x=:=y = y==y `seq` f y  where y free
 
 --- Aborts the execution with an error message.
 error :: String -> _

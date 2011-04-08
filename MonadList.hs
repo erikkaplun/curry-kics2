@@ -14,8 +14,8 @@ import System.IO (hFlush, stdin, stdout, hSetBuffering, BufferMode (..))
 -- a list lis where the monadic action act has to be performed at the
 -- end of the list.
 data MList m a
-  = MCons a (m (MList m a))
-  | MNil
+  = MNil
+  | MCons a (m (MList m a))
   | Abort
   | WithReset (m (MList m a)) (m ())
 
@@ -54,8 +54,8 @@ get +++ getYs = withReset get (return ())
         Abort -> outerReset >> abortEnd getYs
         MCons x getXs -> mcons x (withReset getXs outerReset) -- move action down to end
 
-    abortEnd getYs = do -- move Abort down to end of second list
-      ys <- getYs
+    abortEnd getList = do -- move Abort down to end of second list
+      ys <- getList
       case ys of
         WithReset getYs' innerReset -> abortEnd getYs' |< innerReset
         MNil  -> return Abort -- replace end of second list by Abort
@@ -82,6 +82,8 @@ type IOList a = MList IO a
 countVals :: IOList a -> IO ()
 countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
   where
+    count :: Integer -> IOList a -> IO Integer
+    count _ Abort = error "MonadList.countVals.count: Abort" -- TODO
     count i MNil = return i
     count i (WithReset l _) = l >>= count i
     count i (MCons _ cont) = do
@@ -90,12 +92,14 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
 
 -- Print the first value of a IO monad list:
 printOneValue :: Show a => IOList a -> IO ()
-printOneValue MNil              = putStrLn "No solution"
-printOneValue (MCons x getRest) = print x
+printOneValue Abort           = error "MonadList.printOneValue: Abort" -- TODO
+printOneValue MNil            = putStrLn "No solution"
+printOneValue (MCons x _)     = print x
 printOneValue (WithReset l _) = l >>= printOneValue
 
 -- Print all values of a IO monad list:
 printAllValues :: Show a => IOList a -> IO ()
+printAllValues Abort             = error "MonadList.printAllValues: Abort" -- TODO
 printAllValues MNil              = putStrLn "No more solutions"
 printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
 printAllValues (WithReset l _) = l >>= printAllValues
@@ -105,14 +109,16 @@ askKey = do
   putStr "Hit any key to terminate..."
   hFlush stdout
   hSetBuffering stdin NoBuffering
-  getChar
+  _ <- getChar
   return ()
 
 -- Print all values of a IO monad list on request by the user:
 printValsOnDemand :: Show a => IOList a -> IO ()
 printValsOnDemand = printValsInteractive True
 
-printValsInteractive st MNil = putStrLn "No more solutions" >> askKey
+printValsInteractive :: Show a => Bool -> IOList a -> IO ()
+printValsInteractive _  Abort = error "MonadList.printValsInteractive: Abort" -- TODO
+printValsInteractive _  MNil = putStrLn "No more solutions" >> askKey
 printValsInteractive st (MCons x getRest) = print x >> askUser st getRest
 printValsInteractive st (WithReset l _) = l >>= printValsInteractive st
 

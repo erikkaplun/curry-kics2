@@ -98,6 +98,11 @@ instance NormalForm C_Int where
   ($!!) cont (Choices_C_Int i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Int c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Int = failCons
+  ($##) cont x@(C_Int _) = cont x
+  ($##) cont (Choice_C_Int i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Int i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Int c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Int = failCons
   ($!<) cont (Choice_C_Int i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Int i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -106,10 +111,14 @@ instance NormalForm C_Int where
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Int j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Int = [Unsolvable]
+  bind i (Guard_C_Int cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -180,6 +189,11 @@ instance NormalForm C_Float where
   ($!!) cont (Choices_C_Float i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Float c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Float = failCons
+  ($##) cont x@(C_Float _) = cont x
+  ($##) cont (Choice_C_Float i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Float i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Float c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Float = failCons
   ($!<) cont (Choice_C_Float i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Float i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -188,10 +202,14 @@ instance NormalForm C_Float where
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Float j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Float = [Unsolvable]
+  bind i (Guard_C_Float cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -259,6 +277,11 @@ instance NormalForm C_Char where
   ($!!) cont (Choices_C_Char i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Char c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Char = failCons
+  ($##) cont x@(C_Char _) = cont x
+  ($##) cont (Choice_C_Char i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Char i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Char c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Char = failCons
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -267,10 +290,14 @@ instance NormalForm C_Char where
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Char j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Char = [Unsolvable]
+  bind i (Guard_C_Char cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -532,6 +559,12 @@ external_d_OP_dollar_bang_bang = ($!!)
 
 external_nd_OP_dollar_bang_bang :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
 external_nd_OP_dollar_bang_bang f x s = (\y -> nd_apply f y s) $!! x
+
+external_d_OP_dollar_hash_hash :: (NormalForm a, NonDet b) => (a -> b) -> a -> b
+external_d_OP_dollar_hash_hash = ($##)
+
+external_nd_OP_dollar_hash_hash :: (NormalForm a, NonDet b) => Func a b -> a -> IDSupply -> b
+external_nd_OP_dollar_hash_hash f x s = (\y -> nd_apply f y s) $## x
 
 external_d_C_apply :: (a -> b) -> a -> b
 external_d_C_apply = d_apply
