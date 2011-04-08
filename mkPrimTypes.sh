@@ -83,9 +83,11 @@ function replace ()
   | sed 's/instance .* Read (C_PrimData t0) where.*$/instance Read (C_PrimData a) where readsPrec = error "readsPrec for PrimData"/' \
   | sed "/generate .*C_PrimData/d" \
   | sed 's/instance .* Generable (C_PrimData t0) where.*$/instance Generable (C_PrimData a) where generate _ = error "generate for PrimData"/' \
+  | sed 's/instance .* NormalForm (C_PrimData t0) where.*$/instance NormalForm (C_PrimData a) where/' \
   | sed "s/(\$!!) cont (C_PrimData x1).*$/(\$!!) cont p@(C_PrimData _) = cont p/" \
   | sed "s/(\$##) cont (C_PrimData x1).*$/(\$##) cont p@(C_PrimData _) = cont p/" \
   | sed "/(\$!<) cont (C_PrimData x1)/d" \
+  | sed 's/instance .* Unifiable (C_PrimData t0) where.*$/instance Unifiable (C_PrimData a) where/' \
   | sed "/(=\.=) (C_PrimData x1) (C_PrimData y1)/d" \
   | sed "/(=\.<=) (C_PrimData x1) (C_PrimData y1)/d" \
   | sed "/bind i (C_PrimData x2) =/d" \

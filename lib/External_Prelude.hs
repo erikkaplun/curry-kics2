@@ -111,10 +111,14 @@ instance NormalForm C_Int where
 instance Unifiable C_Int where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Int j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Int = [Unsolvable]
+  bind i (Guard_C_Int cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Int j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -198,10 +202,14 @@ instance NormalForm C_Float where
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Float j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Float = [Unsolvable]
+  bind i (Guard_C_Float cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Float j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -282,10 +290,14 @@ instance NormalForm C_Char where
 instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
-  bind i (Choice_C_Char j _ _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
+  bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Char = [Unsolvable]
+  bind i (Guard_C_Char cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Char j _) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
