@@ -755,9 +755,10 @@ printValsDFS' fb cont (Choices i xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) = doWithChoices_ fb i $ zipWith mkChoice [0 ..] xs
+    choose (NoChoice   , j) = doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
 
-    mkChoice n x = (ChooseN n (-1), printValsDFS fb cont x)
+    mkChoice n x = (ChooseN n (-1), printValsDFS True cont x)
+    mkLastChoice n x = (ChooseN n (-1), printValsDFS fb   cont x)
 
 --     if fb
 --       then do
@@ -914,13 +915,14 @@ searchDFS' cont (Guard cs e) = solves cs >>= traverse
     traverse (SuccessST reset)    = searchDFS cont e |< reset
     traverse (ChoiceST reset l r) =
       ((l >>= traverse) +++ (r >>= traverse)) |< reset
+    traverse (ChoicesST reset cs) =
+      foldr1 (+++) (map (>>= traverse) cs) |< reset
 
 -- searchDFS (Guard cs e) = do
 --   mreset <- solves cs
 --   case mreset of
 --     Nothing    -> mnil
 --     Just reset -> (searchDFS . try) $!< e |< reset
-
 
 -- ---------------------------------------------------------------------------
 -- Breadth-first search into a monadic list
