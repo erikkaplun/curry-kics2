@@ -38,4 +38,6 @@ test "goal24" = prdfs nd_C_goal24
 test "goal25" = prdfs nd_C_goal25
 test "goal26" = prdfs nd_C_goal26
 test "goal27" = prdfs nd_C_goal27
+test "goal28" = prdfs nd_C_goal28
+test "goal29" = prdfs nd_C_goal29
 test _       = error "unknown goal"

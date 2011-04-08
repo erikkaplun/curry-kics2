@@ -75,3 +75,7 @@ goal26 = x =:= [y?True] &> y=:=False &> x where x,y free   -- [False]?[True]
 
 goal27 = [x,True,z]=:=[False,y,y] &> [x,y,z]               -- [False,True,True]
   where x,y,z free
+
+goal28 = x =:= (y =:= [True] &> y) &> x where x, y free    -- [True]
+
+goal29 = x =:= (True:(y =:= [] &> y)) &> x where x, y free -- [True]
