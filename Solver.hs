@@ -7,6 +7,7 @@ module Solver
 
 import ID
 
+-- |Type for an action to reset a choice made earlier
 type Reset = IO ()
 
 type Solution = IO SolutionTree

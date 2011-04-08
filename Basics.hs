@@ -19,6 +19,9 @@ import Solver (Solution, SolutionTree (..), solves)
 nonAsciiChr :: Int# -> Char#
 nonAsciiChr i = chr# i
 
+-- TODO: Rename Frees to Free and Choices to Narrowed
+-- METATODO: Reason about pros and cons of reusing Choices for free, narrowed, (?)
+
 -- |Data type to wrap values in a generic structure
 data Try a
   = Val a                 -- ^Value in head normal form (HNF)
@@ -133,17 +136,14 @@ class (Show a, NonDet a) => NormalForm a where
   searchNF = error "searchNF not implemented"
 
 
+-- Auxiliaries for $!!
+
 -- Auxiliary function to create a binary Choice and apply a continuation to
 -- the normal forms of its two alternatives
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
 nfChoice cont i@(ID _) x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 nfChoice _ _ _ _ = error "Basics.nfChoice: no ID"
 -- nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
-
-gnfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
-gnfChoice cont i@(ID _) x1 x2 = choiceCons i (cont $## x1) (cont $## x2)
-gnfChoice _ _ _ _ = error "Basics.gnfChoice: no ID"
-
 
 -- Auxiliary function to create a n-ary Choice and apply a continuation to
 -- the normal forms of its alternatives
@@ -152,9 +152,18 @@ nfChoices _      (ID _)       _  = error "Basics.nfChoices: ID"
 nfChoices cont i@(FreeID _)   xs = cont (choicesCons i xs)
 nfChoices cont i@(Narrowed _) xs = choicesCons i (map (cont $!!) xs)
 
+
+-- Auxiliaries for $##
+
+gnfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
+gnfChoice cont i@(ID _) x1 x2 = choiceCons i (cont $## x1) (cont $## x2)
+gnfChoice _ _ _ _ = error "Basics.gnfChoice: no ID"
+
 gnfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
 gnfChoices cont i xs = narrows i (map (cont $##) xs)
 
+
+-- Auxiliaries for $!<
 
 nfChoiceIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
 nfChoiceIO cont i@(ID _) x1 x2 = cont $ choiceCons i x1 x2
@@ -174,7 +183,7 @@ nfChoicesIO cont i@(FreeID _) xs = lookupChoiceID i >>= choose
     setChoice i NoChoice
     cont (guardCons cs (choicesCons i xs))
   choose (NoChoice   , _) = cont (choicesCons i xs) -- TODO replace i with j?
-  choose c                = error $ "nfChoicesIO.choose: " ++ show c
+  choose c                = error $ "Basics.nfChoicesIO.choose: " ++ show c
 nfChoicesIO cont i@(Narrowed _) xs = cont (choicesCons i xs)
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs
@@ -232,16 +241,16 @@ x =:= y = unify (try x) (try y) -- 1. Compute the head normal forms hx, hy
   unify (Frees i _) (Frees j _) = guardCons [i :=: BindTo j] C_Success
 
   -- bind a variable to a constructor-rooted term
-  unify (Frees i _) (Val v) = (\v' -> guardCons (bind i v') C_Success) v --`d_dollar_bang` v
-  unify (Val v) (Frees j _) = (\v' -> guardCons (bind j v') C_Success) v -- `d_dollar_bang` v
---   unify (Frees i _) (Val v) = (\v' -> guardCons (bind i v') C_Success) $!! v
---   unify (Val v) (Frees j _) = (\v' -> guardCons (bind j v') C_Success) $!! v
-  -- TODO1: unify is too strict in this part, consider:
+  unify (Frees i _) (Val v) = guardCons (bind i v) C_Success
+  unify (Val v) (Frees j _) = guardCons (bind j v) C_Success
+  -- TODO2: Occurs check?
+
+  -- unify is too strict in this part, consider:
   -- x =:= [] &> x =:= repeat 1 where x free
   -- This example does not terminate because $!! requires the call
   -- repeat 1 to be evaluated to normal form first.
-  -- TODO2: Occurs check?
-
+  -- unify (Frees i _) (Val v) = (\v' -> guardCons (bind i v') C_Success) $!! v
+  -- unify (Val v) (Frees j _) = (\v' -> guardCons (bind j v') C_Success) $!! v
 
 -- Lazy unification for function patterns
 (=:<=) :: Unifiable a => a -> a -> C_Success
@@ -380,7 +389,7 @@ instance NonDet (Func t0 t1) where
 
 instance Generable (Func a b) where generate _ = error "generate for Func"
 
-instance (NormalForm t0,NormalForm t1,Show t0,Show t1) => NormalForm (Func t0 t1) where
+instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
   ($!!) cont f@(Func _) = cont f
   ($!!) cont (Choice_Func i x y) = nfChoice cont i x y
   ($!!) cont (Choices_Func i xs) = nfChoices cont i xs
@@ -472,7 +481,7 @@ instance NonDet (C_IO t0) where
 
 instance Generable (C_IO a) where generate _ = error "generate for C_IO"
 
-instance (NormalForm t0,Show t0) => NormalForm (C_IO t0) where
+instance (NormalForm t0) => NormalForm (C_IO t0) where
   ($!!) cont io@(C_IO _) = cont io
   ($!!) cont (Choice_C_IO i x y) = nfChoice cont i x y
   ($!!) cont (Choices_C_IO i xs) = nfChoices cont i xs
