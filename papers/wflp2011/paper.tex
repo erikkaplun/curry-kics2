@@ -78,7 +78,7 @@ can compete with or outperforms other existing implementations of Curry.
 Functional logic languages integrate the most important
 features of functional and logic languages
 (see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
-In particular, they combine higher-oder functions and demand-driven
+In particular, they combine higher-order functions and demand-driven
 evaluation from functional programming with logic programming features
 like nondeterministic search and computing with partial information
 (logic variables).
@@ -104,7 +104,7 @@ of some of these features by translating
 functional logic programs into logic or functional languages.
 For instance, if one compiles into Prolog, one can reuse
 the existing backtracking implementation for nondeterministic
-search and logic variables and unification for computing with partial
+search as well as logic variables and unification for computing with partial
 information. However, one has to implement demand-driven evaluation
 and higher-order functions \cite{AntoyHanus00FROCOS}.
 A disadvantage of this approach is the commitment to a fixed
@@ -126,12 +126,12 @@ nondeterministic computations \cite{FischerKiselyovShan09}.
 Nevertheless, the translation of functional logic languages
 into other high-level languages is attractive:
 it limits the implementation efforts compared to an implementation
-from scratch and one can exploit the existing implementation technologies
+from scratch and one can exploit the existing implementation technologies,
 provided that the efforts to implement the missing features
 are reasonable.
 
 In this paper we describe an implementation that is based
-on the latter principles. We present a method to compile
+on the latter principle. We present a method to compile
 programs written in the functional logic language Curry \cite{Hanus06Curry}
 into Haskell programs based on the ideas shown
 in \cite{BrasselFischer08IFL}.
@@ -188,7 +188,7 @@ before we conclude in Section~\ref{sec:Conclusions}.
 
 The syntax of the functional logic language Curry \cite{Hanus06Curry}
 is close to Haskell \cite{PeytonJones03Haskell}.
-In addition, Curry allows free (logic) 
+In addition, Curry allows free (logic)
 variables in conditions and right-hand sides of defining rules.
 In contrast to functional programming and similarly to logic programming,
 operations can be defined by overlapping rules so that
@@ -227,7 +227,7 @@ and the expression \ccode{xorSelf aBool}.
 If we interpret this program as a term rewriting system,
 we could have the reduction
 \begin{lstlisting}
-  xorSelf aBool  $\to~$  xor aBool aBool     $\to~$  xor True aBool 
+  xorSelf aBool  $\to~$  xor aBool aBool     $\to~$  xor True aBool
                  $\to~$  xor True False      $\to~$  True
 \end{lstlisting}
 leading to the unintended result \code{True}.
@@ -366,7 +366,7 @@ defined in Section~\ref{ex:aBool} as follows:
   aBool = Choice True False
 \end{haskell}
 If operations can deliver nondeterministic values,
-we have to extend the rules for operation defined by
+we have to extend the rules for operations defined by
 pattern matching so that they do not fail on nondeterministic argument
 values. Instead, they move the nondeterministic choice one level above,
 i.e., a choice in some argument leads to a choice in any result
@@ -439,7 +439,7 @@ in the selected argument \code{(Choice 1 False True)} so that only
 the value \code{False} is possible here.
 Similarly, if we select the right branch as the value of the outermost
 \code{Choice}, we also have to select the right branch in
-its selected argument \code{(Choice 1 True False)} which yields to only
+its selected argument \code{(Choice 1 True False)} which yields the only
 value \code{False}.
 
 Note that each \code{Choice} occurring for the first time in a computation
@@ -452,7 +452,7 @@ and \code{2} for the right \code{aBool} argument) so that this evaluates to
   Choice 1 (Choice 2 False True) (Choice 2 True False)
 \end{lstlisting}
 Here we can make different selections for the outermost and inner
-\code{Choice} constructors so that this nondeterministic result represent
+\code{Choice} constructors so that this nondeterministic result represents
 four values.
 
 To summarize, our implementation is based on the following principles:
@@ -488,10 +488,10 @@ with operations
 and add a new argument of type \code{IDSupply} to each operation
 of the source program.
 
-\code{thisID} creates a fresh identifier from a current
+\code{thisID} creates an identifier from a current
 identifier supply, and
 \code{leftSupply} and \code{rightSupply} create
-new different identifier supplies (without the one obtained
+new different identifier supplies (where both do not supply the ID obtained
 by \code{thisID}) from a given one.
 The latter are used when an operation calls two\footnote{The
 extension to more than two is straightforward.}
@@ -563,7 +563,7 @@ to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
 \begin{haskell}
   data List a = Nil | Cons a (List a) | Choice (List a) (List a) | Fail
 \end{haskell}
-The operation \code{hread} is extended by an identifier supply
+The operation \code{head} is extended by an identifier supply
 and further matching rules:
 \begin{haskell}
   head :: List a -> IDSupply -> a
@@ -580,7 +580,7 @@ in the right-hand side is translated into a \code{Choice} supplied
 with a fresh identifier by the operation \code{thisID}.
 In order to ensure that each occurrence of \ccode{?} in the source program
 get its own identifier, all choices and all operations in the right-hand
-side of a rule get their own identier supplies via appropriate
+side of a rule get their own identifier supplies via appropriate
 applications of \code{leftSupply} and \code{rightSupply}
 to the supply of the defined operation.
 For instance, a rule like
@@ -597,7 +597,7 @@ is translated into
 \end{haskell}
 An obvious optimization, performed by our compiler,
 is a \emph{determinism analysis}.
-If an operation does not call, directly or indirectly through
+If an operation does not call, neither directly nor indirectly through
 other operations, the choice operation \ccode{?},
 then it is not necessary to pass a supply for identifiers.
 In this case, the \code{IDSupply} argument can be omitted
@@ -661,10 +661,9 @@ Our implementation support various options together with various
 implementations of \code{IDSupply}.
 For instance, a simple implementation can be obtained by
 using updatable values, i.e., the Haskell type \code{IORef}.
-In this case, choice identifiers are just memory cells in Haskell:\footnote{%
-In this case, integers cannot be used for \code{IDSupply}.
-Nevertheless,
-this type can be implemented as an infinite tree containing
+In this case, choice identifiers are memory cells instead of integers:\footnote{%
+Consequently, integers cannot be used for \code{IDSupply}s. Nevertheless,
+\code{IDSupply}s can be implemented as an infinite tree containing
 all memory cells required in a computation that are created
 on demand with initial value \code{NoChoice}.}
 \begin{haskell}
@@ -688,7 +687,7 @@ in a depth-first manner by the following operation:
     choose ChooseRight = printValsDFS (try x2)
     choose NoChoice    = do newChoice ChooseLeft  x1
                             newChoice ChooseRight x2
-  
+
     newChoice ch x = do setChoice i ch
                         printValsDFS (try x)
                         setChoice i NoChoice
@@ -723,7 +722,7 @@ our implementation contains a more general
 approach by translating choice structures into monadic structures
 w.r.t.\ various strategies (depth-first search, breadth-first search,
 iterative deepening, parallel search).
-This allows an independent processing of the resulting monadic structures,
+This allows for an independent processing of the resulting monadic structures,
 e.g.,
 by an interactive loop where the user can request the individual values.
 
@@ -738,7 +737,7 @@ other systems, in particular, other implementations of Curry.
 For our comparison with other Curry implementations,
 we consider PAKCS \cite{Hanus10PAKCS} (Version 1.9.2) which compiles
 Curry into Prolog \cite{AntoyHanus00FROCOS}
-(based on SICStus-Prolog 4.1.2, but a SWI-Prolog 5.10 back end is also
+(based on SICStus-Prolog 4.1.2, a SWI-Prolog 5.10 back end is also
 available
 but much slower). PAKCS has been used for a number of practical
 applications of Curry.
@@ -821,12 +820,12 @@ the comparison to first-order Prolog systems.
 ``ReverseHO'' reverses a list with one million
 elements in linear time using higher-order functions
 like \code{foldl} and \code{flip}.
-``Primes'' computes the the 2000.\ prime number via the
+``Primes'' computes the the 2000th prime number via the
 sieve of Eratosthenes using higher-order functions,
-and ``PrimesPeano'' computes the 256.\ prime number but
+and ``PrimesPeano'' computes the 256th prime number but
 with Peano numbers and user-defined lists.
 Finally, ``Queens'' (and ``QueensUser'' with user-defined lists)
-computes the number of safe positions of queens on a $11 \times 11$
+computes the number of safe positions of $11$ queens on a $11 \times 11$
 chess board.
 
 As discussed above, our compiler performs an optimization
@@ -874,7 +873,7 @@ Section~\ref{sec:unification}),
 and matched a regular expression in a string of length 200,000
 following the nondeterministic specification of \code{grep} shown
 in \cite{AntoyHanus10CACM}.
-Although the results show that our high-level implementation is not far
+The results show that our high-level implementation is not far
 from the efficiency of MCC,
 and it is superior to PAKCS which exploits Prolog features
 like backtracking and logic variables for these benchmarks.
@@ -925,7 +924,7 @@ Due to lack of space, we cannot discuss all details of them.
 \subsection{Search Strategies}
 
 Due to the fact that we represent nondeterministic results
-in a data structure rather as a computation as in implementations
+in a data structure rather than as a computation as in implementations
 based on backtracking, we can provide different methods to
 explore the search space containing the different result values.
 We have already seen in Section~\ref{sec:printValsDFS}
@@ -978,7 +977,7 @@ We also made initial benchmarks with the parallel strategy
 where nondeterministic choices are explored via GHC's \code{par}
 construct. For the permutation sort we obtained a speedup of 1.7
 when executing the same program on two processors, but no essential
-speedup is obtained for more than two processors. 
+speedup is obtained for more than two processors.
 Better results require a careful analysis of the synchronization
 caused by the global structure to manage the state of choices.
 This is a topic for future work.
