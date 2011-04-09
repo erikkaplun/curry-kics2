@@ -1,0 +1,3558 @@
+Benchmarks at Linux climens 2.6.26-2-686 #1 SMP Thu Nov 25 01:53:57 UTC 2010 i686 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+ReverseUser@IDC_D |  1.48 |  0.17 |  0.17 |  0.17 
+ReverseUser@IDC+_D|  1.04 |  0.12 |  0.12 |  0.12 
+ReverseUser@PAKCS | 18.13 |  2.09 |  2.06 |  2.11 
+ReverseUser@MCC   |  3.83 |  0.44 |  0.46 |  0.42 
+ReverseUser@GHC   |  1.00 |  0.12 |  0.12 |  0.11 
+ReverseUser@GHC+  |  1.04 |  0.12 |  0.12 |  0.12 
+reverseuser@SICS  |  3.39 |  0.39 |  0.38 |  0.40 
+reverseuser@SWI   | 13.96 |  1.61 |  1.62 |  1.59 
+ReverseUser@MON+  |203.35 | 23.39 | 23.40 | 23.37 
+--------
+Reverse@IDC_D |  1.46 |  0.18 |  0.18 |  0.17 
+Reverse@IDC+_D|  1.00 |  0.12 |  0.12 |  0.12 
+Reverse@PAKCS | 15.75 |  1.89 |  1.90 |  1.88 
+Reverse@MCC   |  4.00 |  0.48 |  0.48 |  0.48 
+Reverse@GHC   |  1.00 |  0.12 |  0.12 |  0.12 
+Reverse@GHC+  |  1.00 |  0.12 |  0.12 |  0.12 
+reverse@SICS  |  2.42 |  0.29 |  0.29 |  0.29 
+reverse@SWI   | 11.58 |  1.39 |  1.39 |  1.39 
+Reverse@MON+  |182.00 | 21.84 | 22.04 | 21.64 
+--------
+Tak@IDC_D | 14.00 |  0.56 |  0.56 |  0.56 
+Tak@IDC+_D|  5.13 |  0.21 |  0.21 |  0.20 
+Tak@PAKCS |988.88 | 39.56 | 39.57 | 39.54 
+Tak@MCC   | 31.13 |  1.25 |  1.20 |  1.29 
+Tak@GHC   |  7.00 |  0.28 |  0.28 |  0.28 
+Tak@GHC+  |  1.00 |  0.04 |  0.04 |  0.04 
+tak@SICS  | 12.50 |  0.50 |  0.49 |  0.51 
+tak@SWI   | 44.00 |  1.76 |  1.76 |  1.76 
+Tak@MON+  |505.63 | 20.23 | 20.17 | 20.28 
+--------
+TakPeano@IDC_D |  2.15 |  1.06 |  1.05 |  1.06 
+TakPeano@IDC+_D|  1.56 |  0.77 |  0.76 |  0.77 
+TakPeano@PAKCS |127.52 | 62.49 | 62.70 | 62.27 
+TakPeano@MCC   | 11.40 |  5.59 |  5.62 |  5.55 
+TakPeano@GHC   |  1.31 |  0.64 |  0.64 |  0.64 
+TakPeano@GHC+  |  1.00 |  0.49 |  0.48 |  0.50 
+takpeano@SICS  | 10.68 |  5.24 |  5.22 |  5.25 
+takpeano@SWI   | 24.19 | 11.86 | 11.66 | 12.05 
+TakPeano@MON+  | 58.65 | 28.74 | 28.85 | 28.63 -- oom 
+--------
+ReverseHO@IDC   |233.25 | 55.98 | 55.64 | 56.32 
+ReverseHO@IDC+  |113.96 | 27.35 | 27.33 | 27.37 
+ReverseHO@IDC_D |  2.60 |  0.63 |  0.64 |  0.61 
+ReverseHO@IDC+_D|  1.00 |  0.24 |  0.24 |  0.24 
+ReverseHO@PAKCS | 32.73 |  7.86 |  7.69 |  8.02 
+ReverseHO@MCC   |  1.13 |  0.27 |  0.26 |  0.28 
+ReverseHO@GHC   |  1.29 |  0.31 |  0.31 |  0.31 
+ReverseHO@GHC+  |  1.00 |  0.24 |  0.24 |  0.24 
+ReverseHO@MON+  |110.35 | 26.49 | 26.44 | 26.53 -- oom
+--------
+ReverseBuiltin@IDC   |447.28 | 55.91 | 56.08 | 55.74 
+ReverseBuiltin@IDC+  |217.20 | 27.15 | 27.35 | 26.95 
+ReverseBuiltin@IDC_D |  3.40 |  0.43 |  0.42 |  0.43 
+ReverseBuiltin@IDC+_D|  1.92 |  0.24 |  0.24 |  0.24 
+ReverseBuiltin@PAKCS | 62.40 |  7.80 |  7.82 |  7.78 
+ReverseBuiltin@MCC   |  1.64 |  0.21 |  0.21 |  0.20 
+ReverseBuiltin@GHC   |  1.88 |  0.24 |  0.23 |  0.24 
+ReverseBuiltin@GHC+  |  1.00 |  0.13 |  0.12 |  0.13 
+--------
+Primes@IDC   | 35.08 |  2.11 |  2.13 |  2.08 
+Primes@IDC+  | 19.92 |  1.19 |  1.20 |  1.19 
+Primes@IDC_D |  3.17 |  0.19 |  0.20 |  0.18 
+Primes@IDC+_D|  1.50 |  0.09 |  0.09 |  0.09 
+Primes@PAKCS |248.25 | 14.90 | 15.34 | 14.45 
+Primes@MCC   |  5.83 |  0.35 |  0.34 |  0.36 
+Primes@GHC   |  2.00 |  0.12 |  0.12 |  0.12 
+Primes@GHC+  |  1.00 |  0.06 |  0.06 |  0.06 
+Primes@MON+  |284.83 | 17.09 | 17.07 | 17.11 
+--------
+PrimesPeano@IDC   |  1.57 |  0.35 |  0.34 |  0.35 
+PrimesPeano@IDC+  |  1.41 |  0.31 |  0.31 |  0.31 
+PrimesPeano@IDC_D |  1.41 |  0.31 |  0.31 |  0.31 
+PrimesPeano@IDC+_D|  1.27 |  0.28 |  0.28 |  0.28 
+PrimesPeano@PAKCS |103.61 | 22.80 | 22.97 | 22.62 
+PrimesPeano@MCC   |  8.16 |  1.80 |  1.79 |  1.80 
+PrimesPeano@GHC   |  1.14 |  0.25 |  0.25 |  0.25 
+PrimesPeano@GHC+  |  1.00 |  0.22 |  0.22 |  0.22 
+PrimesPeano@MON+  |121.80 | 26.80 | 26.84 | 26.75 -- oom
+--------
+PrimesBuiltin@IDC   | 58.06 | 14.52 | 14.32 | 14.71 
+PrimesBuiltin@IDC+  | 32.68 |  8.17 |  8.29 |  8.05 
+PrimesBuiltin@IDC_D |  3.32 |  0.83 |  0.82 |  0.84 
+PrimesBuiltin@IDC+_D|  1.42 |  0.36 |  0.36 |  0.35 
+PrimesBuiltin@PAKCS |236.28 | 59.07 | 58.69 | 59.45 
+PrimesBuiltin@MCC   |  4.60 |  1.15 |  1.16 |  1.14 
+PrimesBuiltin@GHC   |  1.88 |  0.47 |  0.47 |  0.47 
+PrimesBuiltin@GHC+  |  1.00 |  0.25 |  0.25 |  0.25 
+PrimesBuiltin@MON+  |121.62 | 30.41 | 30.35 | 30.46 -- oom 
+--------
+Queens@IDC   |322.92 | 19.38 | 19.39 | 19.36 
+Queens@IDC+  |168.25 | 10.09 | 10.09 | 10.10 
+Queens@IDC_D | 29.42 |  1.77 |  1.77 |  1.76 
+Queens@IDC+_D| 10.58 |  0.64 |  0.64 |  0.63 
+Queens@PAKCS |1395.17 | 83.71 | 83.87 | 83.55 
+Queens@MCC   | 52.58 |  3.16 |  3.12 |  3.19 
+Queens@GHC   | 14.25 |  0.86 |  0.86 |  0.85 
+Queens@GHC+  |  1.00 |  0.06 |  0.06 |  0.06 
+Queens@MON+  |738.75 | 44.33 | 44.39 | 44.26 --oom
+--------
+QueensUser@IDC   |208.55 | 22.94 | 22.88 | 23.00 
+QueensUser@IDC+  |118.73 | 13.06 | 13.08 | 13.04 
+QueensUser@IDC_D | 19.73 |  2.17 |  2.18 |  2.16 
+QueensUser@IDC+_D|  7.00 |  0.77 |  0.77 |  0.77 
+QueensUser@PAKCS |739.09 | 81.30 | 80.80 | 81.80 
+QueensUser@MCC   | 32.64 |  3.59 |  3.62 |  3.56 
+QueensUser@GHC   |  7.36 |  0.81 |  0.81 |  0.81 
+QueensUser@GHC+  |  1.00 |  0.11 |  0.11 |  0.11 
+QueensUser@MON+  |406.91 | 44.76 | 44.86 | 44.66 -- oom 
+--------
+PermSort@IDC_PrDFS       | 17.54 | 25.62 | 25.64 | 25.59 
+PermSort@IDC+_PrDFS      |  6.96 | 10.16 | 10.10 | 10.23 
+PermSort@IDC+_PrDFS_IORef|  1.92 |  2.81 |  2.79 |  2.82 
+PermSort@PAKCS           | 18.76 | 27.39 | 27.89 | 26.89 
+PermSort@MCC             |  1.00 |  1.46 |  1.46 |  1.46 
+PermSort@MON+            | 33.05 | 48.25 | 48.28 | 48.22 
+--------
+PermSortPeano@IDC_PrDFS       |  7.24 | 26.87 | 26.94 | 26.79 
+PermSortPeano@IDC+_PrDFS      |  2.93 | 10.87 | 10.88 | 10.86 
+PermSortPeano@IDC+_PrDFS_IORef|  1.00 |  3.71 |  3.71 |  3.71 
+PermSortPeano@PAKCS           | 18.88 | 70.06 | 68.08 | 72.04 
+PermSortPeano@MCC             |  1.58 |  5.85 |  5.57 |  6.12 
+PermSortPeano@MON+            |246.97 |916.26 |917.62 |914.89 
+--------
+Half@IDC_PrDFS       | 14.03 | 57.68 | 57.63 | 57.72 
+Half@IDC+_PrDFS      |  8.16 | 33.53 | 33.34 | 33.73 
+Half@IDC+_PrDFS_IORef|  5.47 | 22.48 | 22.49 | 22.47 
+Half@PAKCS           | 23.41 | 96.24 | 98.09 | 94.38 
+Half@MCC             |  1.00 |  4.11 |  4.13 |  4.09 
+--------
+PermSort@IDC+PrDFS_IOREF|  1.00 |  2.81 |  2.80 |  2.81 
+PermSort@IDC+DFS_IOREF  |  1.73 |  4.84 |  4.82 |  4.86 
+PermSort@IDC+BFS_IOREF  |  9.29 | 26.05 | 26.05 | 26.05 
+PermSort@IDC+IDS_IOREF  |  3.21 |  9.00 |  9.12 |  8.89 
+--------
+PermSortPeano@IDC+PrDFS_IOREF|  1.00 |  3.69 |  3.70 |  3.68 
+PermSortPeano@IDC+DFS_IOREF  |  1.56 |  5.76 |  5.75 |  5.77 
+PermSortPeano@IDC+BFS_IOREF  |  7.65 | 28.22 | 28.15 | 28.29 
+PermSortPeano@IDC+IDS_IOREF  |  2.87 | 10.58 | 10.62 | 10.53 
+--------
+Half@IDC+PrDFS_IOREF|225650.00 | 22.57 | 22.67 | 22.46 
+Half@IDC+DFS_IOREF  |324400.00 | 32.44 | 32.43 | 32.45 
+Half@IDC+BFS_IOREF  |394400.00 | 39.44 | 39.51 | 39.37 
+Half@IDC+IDS_IOREF  |  0.00 |  0.00 |  0.00 |  0.00 
+--------
+NDNums@IDC+BFS_IOREF| 12.47 | 34.55 | 33.61 | 35.49 
+NDNums@IDC+IDS_IOREF|  1.00 |  2.77 |  2.78 |  2.76 
+--------
+ShareNonDet@IDC_PrDFS:goal1       |  4.34 |  1.52 |  1.52 |  1.52 
+ShareNonDet@IDC+_PrDFS:goal1      |  2.27 |  0.80 |  0.79 |  0.80 
+ShareNonDet@IDC+_PrDFS_IORef:goal1|  1.49 |  0.52 |  0.52 |  0.52 
+ShareNonDet@PAKCS                 | 44.36 | 15.52 | 15.20 | 15.85 
+ShareNonDet@MCC                   |  1.00 |  0.35 |  0.36 |  0.34 
+--------
+ShareNonDet@IDC_PrDFS:goal2       |  0.00 |  0.00 |  0.00 |  0.00 
+ShareNonDet@IDC+_PrDFS:goal2      |  0.00 |  0.00 |  0.00 |  0.00 
+ShareNonDet@IDC+_PrDFS_IORef:goal2|  0.00 |  0.00 |  0.00 |  0.00 
+ShareNonDet@PAKCS                 |150.00 |  0.02 |  0.02 |  0.01 
+ShareNonDet@MCC                   |  0.00 |  0.00 |  0.00 |  0.00 
+--------
+ShareNonDet@IDC_PrDFS:goal3       |  2.87 |  1.51 |  1.52 |  1.49 
+ShareNonDet@IDC+_PrDFS:goal3      |  1.50 |  0.79 |  0.79 |  0.79 
+ShareNonDet@IDC+_PrDFS_IORef:goal3|  1.00 |  0.53 |  0.53 |  0.52 
+ShareNonDet@PAKCS                 |287.28 |150.82 |151.96 |149.68 
+ShareNonDet@MCC                   |  6.58 |  3.46 |  3.46 |  3.45 
+--------
+Last@IDC+_PrDFS_IORef|  2.21 |  0.21 |  0.21 |  0.21 
+Last@IDC+_DFS_IORef  |  3.42 |  0.33 |  0.33 |  0.32 
+Last@PAKCS           | 27.63 |  2.63 |  2.64 |  2.61 
+Last@MCC             |  1.00 |  0.10 |  0.09 |  0.10 
+--------
+RegExp@IDC+_PrDFS_IORef|  1.00 |  0.58 |  0.58 |  0.58 
+RegExp@IDC+_DFS_IORef  |  1.99 |  1.15 |  1.17 |  1.14 
+RegExp@PAKCS           | 21.84 | 12.67 | 12.72 | 12.62 
+RegExp@MCC             |  1.00 |  0.58 |  0.60 |  0.56 
+--------
+LastFunPats@IDC+_PrDFS_IORef|  1.00 |  0.20 |  0.20 |  0.20 
+LastFunPats@IDC+_DFS_IORef  |  1.68 |  0.34 |  0.33 |  0.34 
+LastFunPats@PAKCS           | 20.98 |  4.20 |  4.23 |  4.16 
+--------
+ExpVarFunPats@IDC+_PrDFS_IORef|  1.00 |  0.98 |  0.97 |  0.98 
+ExpVarFunPats@IDC+_DFS_IORef  |  1.65 |  1.61 |  1.62 |  1.59 
+ExpVarFunPats@PAKCS           |  9.06 |  8.83 |  8.63 |  9.03 
+--------
+ExpSimpFunPats@IDC+_PrDFS_IORef| 28.32 |  7.51 |  7.48 |  7.53 
+ExpSimpFunPats@IDC+_DFS_IORef  | 30.89 |  8.18 |  8.20 |  8.17 
+ExpSimpFunPats@PAKCS           |  1.00 |  0.27 |  0.27 |  0.26 
+--------
+PaliFunPats@IDC+_PrDFS_IORef|  1.00 |  0.06 |  0.06 |  0.06 
+PaliFunPats@IDC+_DFS_IORef  |  1.00 |  0.06 |  0.06 |  0.06 
+PaliFunPats@PAKCS           |2374.33 |142.46 |141.36 |143.56 
+
+cleancurry
+pakcs -s Benchmarks
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Benchmarks.curry'...
+generating Benchmarks.fcy ...
+% /home/fre/workspace/repos/idcompiler/benchmarks/Benchmarks.state created in 0 msec
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/Benchmarks.state...
+--------
+Running benchmark: ReverseUser@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseUser ( ./ReverseUser.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseUser ( Curry_ReverseUser.hs, Curry_ReverseUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.17
+MyTrue
+BENCHMARKTIME=0.17
+RUNTIMES: 0.17 | 0.17
+--------
+Running benchmark: ReverseUser@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseUser ( ./ReverseUser.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseUser ( Curry_ReverseUser.hs, Curry_ReverseUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.12
+MyTrue
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: ReverseUser@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ReverseUser.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseUser.state created in 0 msec
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseUser.state...
+BENCHMARKTIME=2.06
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseUser.state...
+BENCHMARKTIME=2.11
+RUNTIMES: 2.06 | 2.11
+--------
+Running benchmark: ReverseUser@MCC   
+--------
+MyTrue
+BENCHMARKTIME=0.46
+MyTrue
+BENCHMARKTIME=0.42
+RUNTIMES: 0.46 | 0.42
+--------
+Running benchmark: ReverseUser@GHC   
+--------
+[1 of 1] Compiling Main             ( ReverseUser.hs, ReverseUser.o )
+Linking ReverseUser ...
+True
+BENCHMARKTIME=0.12
+True
+BENCHMARKTIME=0.11
+RUNTIMES: 0.12 | 0.11
+--------
+Running benchmark: ReverseUser@GHC+  
+--------
+[1 of 1] Compiling Main             ( ReverseUser.hs, ReverseUser.o )
+Linking ReverseUser ...
+True
+BENCHMARKTIME=0.12
+True
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: reverseuser@SICS  
+--------
+SICStus 4.1.2 (x86-linux-glibc2.3): Wed Apr 28 22:43:09 CEST 2010
+Licensed to SP4informatik.uni-kiel.de
+% compiling /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.pl...
+% compiled /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.pl in module user, 0 msec 3576 bytes
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.state created in 0 msec
+yes
+true
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.state restored in 0 msec 3448 bytes
+BENCHMARKTIME=0.38
+true
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverseuser.state restored in 0 msec 3448 bytes
+BENCHMARKTIME=0.40
+RUNTIMES: 0.38 | 0.40
+--------
+Running benchmark: reverseuser@SWI   
+--------
+% library(swi_hooks) compiled into pce_swi_hooks 0.00 sec, 2,440 bytes
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+% reverseuser compiled 0.00 sec, 5,616 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/apply compiled into apply 0.00 sec, 6,812 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/date compiled into date 0.00 sec, 22,908 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/listing compiled into prolog_listing 0.00 sec, 32,368 bytes
+true.
+
+
+% halt
+true
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.62
+true
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.59
+RUNTIMES: 1.62 | 1.59
+--------
+Running benchmark: ReverseUser@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain ReverseUser
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping ReverseUser.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_ReverseUser ( Curry_ReverseUser.hs, Curry_ReverseUser.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[MyTrue]
+BENCHMARKTIME=23.40
+[MyTrue]
+BENCHMARKTIME=23.37
+RUNTIMES: 23.40 | 23.37
+--------
+Running benchmark: Reverse@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib Reverse
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Reverse ( ./Reverse.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Reverse    ( Curry_Reverse.hs, Curry_Reverse.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.18
+MyTrue
+BENCHMARKTIME=0.17
+RUNTIMES: 0.18 | 0.17
+--------
+Running benchmark: Reverse@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib Reverse
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Reverse ( ./Reverse.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Reverse    ( Curry_Reverse.hs, Curry_Reverse.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.12
+MyTrue
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: Reverse@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Reverse.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Reverse.state created in 10 msec
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Reverse.state...
+BENCHMARKTIME=1.90
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Reverse.state...
+BENCHMARKTIME=1.88
+RUNTIMES: 1.90 | 1.88
+--------
+Running benchmark: Reverse@MCC   
+--------
+MyTrue
+BENCHMARKTIME=0.48
+MyTrue
+BENCHMARKTIME=0.48
+RUNTIMES: 0.48 | 0.48
+--------
+Running benchmark: Reverse@GHC   
+--------
+[1 of 1] Compiling Main             ( Reverse.hs, Reverse.o )
+Linking Reverse ...
+True
+BENCHMARKTIME=0.12
+True
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: Reverse@GHC+  
+--------
+[1 of 1] Compiling Main             ( Reverse.hs, Reverse.o )
+Linking Reverse ...
+True
+BENCHMARKTIME=0.12
+True
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: reverse@SICS  
+--------
+SICStus 4.1.2 (x86-linux-glibc2.3): Wed Apr 28 22:43:09 CEST 2010
+Licensed to SP4informatik.uni-kiel.de
+% compiling /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.pl...
+% compiled /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.pl in module user, 0 msec 3416 bytes
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.state created in 0 msec
+yes
+true
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.state restored in 0 msec 3280 bytes
+BENCHMARKTIME=0.29
+true
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/reverse.state restored in 0 msec 3280 bytes
+BENCHMARKTIME=0.29
+RUNTIMES: 0.29 | 0.29
+--------
+Running benchmark: reverse@SWI   
+--------
+% library(swi_hooks) compiled into pce_swi_hooks 0.00 sec, 2,440 bytes
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+% reverse compiled 0.00 sec, 5,448 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/listing compiled into prolog_listing 0.01 sec, 24,176 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/apply compiled into apply 0.00 sec, 6,812 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/date compiled into date 0.00 sec, 31,100 bytes
+true.
+
+
+% halt
+true
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.39
+true
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.39
+RUNTIMES: 1.39 | 1.39
+--------
+Running benchmark: Reverse@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain Reverse
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping Reverse.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_Reverse    ( Curry_Reverse.hs, Curry_Reverse.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[MyTrue]
+BENCHMARKTIME=22.04
+[MyTrue]
+BENCHMARKTIME=21.64
+RUNTIMES: 22.04 | 21.64
+--------
+Running benchmark: Tak@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib Tak
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Tak ( ./Tak.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Tak        ( Curry_Tak.hs, Curry_Tak.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+16
+BENCHMARKTIME=0.56
+16
+BENCHMARKTIME=0.56
+RUNTIMES: 0.56 | 0.56
+--------
+Running benchmark: Tak@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib Tak
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Tak ( ./Tak.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Tak        ( Curry_Tak.hs, Curry_Tak.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+16
+BENCHMARKTIME=0.21
+16
+BENCHMARKTIME=0.20
+RUNTIMES: 0.21 | 0.20
+--------
+Running benchmark: Tak@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Tak.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Tak.state created in 10 msec
+16
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Tak.state...
+BENCHMARKTIME=39.57
+16
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Tak.state...
+BENCHMARKTIME=39.54
+RUNTIMES: 39.57 | 39.54
+--------
+Running benchmark: Tak@MCC   
+--------
+16
+BENCHMARKTIME=1.20
+16
+BENCHMARKTIME=1.29
+RUNTIMES: 1.20 | 1.29
+--------
+Running benchmark: Tak@GHC   
+--------
+[1 of 1] Compiling Main             ( Tak.hs, Tak.o )
+Linking Tak ...
+16
+BENCHMARKTIME=0.28
+16
+BENCHMARKTIME=0.28
+RUNTIMES: 0.28 | 0.28
+--------
+Running benchmark: Tak@GHC+  
+--------
+[1 of 1] Compiling Main             ( Tak.hs, Tak.o )
+Linking Tak ...
+16
+BENCHMARKTIME=0.04
+16
+BENCHMARKTIME=0.04
+RUNTIMES: 0.04 | 0.04
+--------
+Running benchmark: tak@SICS  
+--------
+SICStus 4.1.2 (x86-linux-glibc2.3): Wed Apr 28 22:43:09 CEST 2010
+Licensed to SP4informatik.uni-kiel.de
+% compiling /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.pl...
+% compiled /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.pl in module user, 0 msec 1144 bytes
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.state created in 0 msec
+yes
+16
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.state restored in 0 msec 1248 bytes
+BENCHMARKTIME=0.49
+16
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/tak.state restored in 0 msec 1248 bytes
+BENCHMARKTIME=0.51
+RUNTIMES: 0.49 | 0.51
+--------
+Running benchmark: tak@SWI   
+--------
+% library(swi_hooks) compiled into pce_swi_hooks 0.00 sec, 2,440 bytes
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+% tak compiled 0.00 sec, 2,564 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/apply compiled into apply 0.00 sec, 6,812 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/date compiled into date 0.00 sec, 22,908 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/listing compiled into prolog_listing 0.00 sec, 24,176 bytes
+true.
+
+
+% halt
+16
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.76
+16
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=1.76
+RUNTIMES: 1.76 | 1.76
+--------
+Running benchmark: Tak@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain Tak
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping Tak.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_Tak        ( Curry_Tak.hs, Curry_Tak.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[16]
+BENCHMARKTIME=20.17
+[16]
+BENCHMARKTIME=20.28
+RUNTIMES: 20.17 | 20.28
+--------
+Running benchmark: TakPeano@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib TakPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling TakPeano ( ./TakPeano.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_TakPeano   ( Curry_TakPeano.hs, Curry_TakPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+BENCHMARKTIME=1.05
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+BENCHMARKTIME=1.06
+RUNTIMES: 1.05 | 1.06
+--------
+Running benchmark: TakPeano@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib TakPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling TakPeano ( ./TakPeano.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_TakPeano   ( Curry_TakPeano.hs, Curry_TakPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+BENCHMARKTIME=0.76
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+BENCHMARKTIME=0.77
+RUNTIMES: 0.76 | 0.77
+--------
+Running benchmark: TakPeano@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'TakPeano.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/TakPeano.state created in 0 msec
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/TakPeano.state...
+BENCHMARKTIME=62.70
+(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/TakPeano.state...
+BENCHMARKTIME=62.27
+RUNTIMES: 62.70 | 62.27
+--------
+Running benchmark: TakPeano@MCC   
+--------
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=5.62
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=5.55
+RUNTIMES: 5.62 | 5.55
+--------
+Running benchmark: TakPeano@GHC   
+--------
+[1 of 1] Compiling Main             ( TakPeano.hs, TakPeano.o )
+Linking TakPeano ...
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=0.64
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=0.64
+RUNTIMES: 0.64 | 0.64
+--------
+Running benchmark: TakPeano@GHC+  
+--------
+[1 of 1] Compiling Main             ( TakPeano.hs, TakPeano.o )
+Linking TakPeano ...
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=0.48
+S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))
+BENCHMARKTIME=0.50
+RUNTIMES: 0.48 | 0.50
+--------
+Running benchmark: takpeano@SICS  
+--------
+SICStus 4.1.2 (x86-linux-glibc2.3): Wed Apr 28 22:43:09 CEST 2010
+Licensed to SP4informatik.uni-kiel.de
+% compiling /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.pl...
+% compiled /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.pl in module user, 10 msec 3768 bytes
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.state created in 0 msec
+yes
+s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(o))))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.state restored in 0 msec 3536 bytes
+BENCHMARKTIME=5.22
+s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(o))))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.state...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/takpeano.state restored in 0 msec 3536 bytes
+BENCHMARKTIME=5.25
+RUNTIMES: 5.22 | 5.25
+--------
+Running benchmark: takpeano@SWI   
+--------
+% library(swi_hooks) compiled into pce_swi_hooks 0.00 sec, 2,440 bytes
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+% takpeano compiled 0.00 sec, 5,864 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/apply compiled into apply 0.00 sec, 6,812 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/date compiled into date 0.00 sec, 22,908 bytes
+% /home/swiprolog/swi5.10.0/lib/swipl-5.10.0/library/listing compiled into prolog_listing 0.00 sec, 32,368 bytes
+true.
+
+
+% halt
+s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(o))))))))))))))))
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=11.66
+s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(o))))))))))))))))
+Welcome to SWI-Prolog (Multi-threaded, 32 bits, Version 5.10.0)
+Copyright (c) 1990-2010 University of Amsterdam, VU Amsterdam
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to redistribute it under certain conditions.
+Please visit http://www.swi-prolog.org for details.
+
+For help, use ?- help(Topic). or ?- apropos(Word).
+
+BENCHMARKTIME=12.05
+RUNTIMES: 11.66 | 12.05
+--------
+Running benchmark: TakPeano@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain TakPeano
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping TakPeano.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_TakPeano   ( Curry_TakPeano.hs, Curry_TakPeano.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=28.85
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=28.63
+RUNTIMES: 28.85 | 28.63
+--------
+Running benchmark: ReverseHO@IDC
+--------
+Executing: ../../idc -q -i ../../lib ReverseHO
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseHO ( ./ReverseHO.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseHO  ( Curry_ReverseHO.hs, Curry_ReverseHO.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=55.64
+Main: out of memory (requested 2097152 bytes)
+BENCHMARKTIME=56.32
+RUNTIMES: 55.64 | 56.32
+--------
+Running benchmark: ReverseHO@IDC+
+--------
+Executing: ../../idc -q -i ../../lib ReverseHO
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseHO ( ./ReverseHO.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseHO  ( Curry_ReverseHO.hs, Curry_ReverseHO.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=27.33
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=27.37
+RUNTIMES: 27.33 | 27.37
+--------
+Running benchmark: ReverseHO@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseHO
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseHO ( ./ReverseHO.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseHO  ( Curry_ReverseHO.hs, Curry_ReverseHO.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.64
+MyTrue
+BENCHMARKTIME=0.61
+RUNTIMES: 0.64 | 0.61
+--------
+Running benchmark: ReverseHO@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseHO
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseHO ( ./ReverseHO.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseHO  ( Curry_ReverseHO.hs, Curry_ReverseHO.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.24
+MyTrue
+BENCHMARKTIME=0.24
+RUNTIMES: 0.24 | 0.24
+--------
+Running benchmark: ReverseHO@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ReverseHO.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseHO.state created in 0 msec
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseHO.state...
+BENCHMARKTIME=7.69
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseHO.state...
+BENCHMARKTIME=8.02
+RUNTIMES: 7.69 | 8.02
+--------
+Running benchmark: ReverseHO@MCC   
+--------
+MyTrue
+BENCHMARKTIME=0.26
+MyTrue
+BENCHMARKTIME=0.28
+RUNTIMES: 0.26 | 0.28
+--------
+Running benchmark: ReverseHO@GHC   
+--------
+[1 of 1] Compiling Main             ( ReverseHO.hs, ReverseHO.o )
+Linking ReverseHO ...
+MyTrue
+BENCHMARKTIME=0.31
+MyTrue
+BENCHMARKTIME=0.31
+RUNTIMES: 0.31 | 0.31
+--------
+Running benchmark: ReverseHO@GHC+  
+--------
+[1 of 1] Compiling Main             ( ReverseHO.hs, ReverseHO.o )
+Linking ReverseHO ...
+MyTrue
+BENCHMARKTIME=0.24
+MyTrue
+BENCHMARKTIME=0.24
+RUNTIMES: 0.24 | 0.24
+--------
+Running benchmark: ReverseHO@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain ReverseHO
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping ReverseHO.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_ReverseHO  ( Curry_ReverseHO.hs, Curry_ReverseHO.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=26.44
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=26.53
+RUNTIMES: 26.44 | 26.53
+--------
+Running benchmark: ReverseBuiltin@IDC
+--------
+Executing: ../../idc -q -i ../../lib ReverseBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseBuiltin ( ./ReverseBuiltin.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseBuiltin ( Curry_ReverseBuiltin.hs, Curry_ReverseBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=56.08
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=55.74
+RUNTIMES: 56.08 | 55.74
+--------
+Running benchmark: ReverseBuiltin@IDC+
+--------
+Executing: ../../idc -q -i ../../lib ReverseBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseBuiltin ( ./ReverseBuiltin.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseBuiltin ( Curry_ReverseBuiltin.hs, Curry_ReverseBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=27.35
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=26.95
+RUNTIMES: 27.35 | 26.95
+--------
+Running benchmark: ReverseBuiltin@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseBuiltin ( ./ReverseBuiltin.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseBuiltin ( Curry_ReverseBuiltin.hs, Curry_ReverseBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=0.42
+True
+BENCHMARKTIME=0.43
+RUNTIMES: 0.42 | 0.43
+--------
+Running benchmark: ReverseBuiltin@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib ReverseBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ReverseBuiltin ( ./ReverseBuiltin.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ReverseBuiltin ( Curry_ReverseBuiltin.hs, Curry_ReverseBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=0.24
+True
+BENCHMARKTIME=0.24
+RUNTIMES: 0.24 | 0.24
+--------
+Running benchmark: ReverseBuiltin@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ReverseBuiltin.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseBuiltin.state created in 0 msec
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseBuiltin.state...
+BENCHMARKTIME=7.82
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ReverseBuiltin.state...
+BENCHMARKTIME=7.78
+RUNTIMES: 7.82 | 7.78
+--------
+Running benchmark: ReverseBuiltin@MCC   
+--------
+True
+BENCHMARKTIME=0.21
+True
+BENCHMARKTIME=0.20
+RUNTIMES: 0.21 | 0.20
+--------
+Running benchmark: ReverseBuiltin@GHC   
+--------
+[1 of 1] Compiling Main             ( ReverseBuiltin.hs, ReverseBuiltin.o )
+Linking ReverseBuiltin ...
+True
+BENCHMARKTIME=0.23
+True
+BENCHMARKTIME=0.24
+RUNTIMES: 0.23 | 0.24
+--------
+Running benchmark: ReverseBuiltin@GHC+  
+--------
+[1 of 1] Compiling Main             ( ReverseBuiltin.hs, ReverseBuiltin.o )
+Linking ReverseBuiltin ...
+True
+BENCHMARKTIME=0.12
+True
+BENCHMARKTIME=0.13
+RUNTIMES: 0.12 | 0.13
+--------
+Running benchmark: Primes@IDC
+--------
+Executing: ../../idc -q -i ../../lib Primes
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Primes ( ./Primes.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Primes     ( Curry_Primes.hs, Curry_Primes.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+17393
+BENCHMARKTIME=2.13
+17393
+BENCHMARKTIME=2.08
+RUNTIMES: 2.13 | 2.08
+--------
+Running benchmark: Primes@IDC+
+--------
+Executing: ../../idc -q -i ../../lib Primes
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Primes ( ./Primes.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Primes     ( Curry_Primes.hs, Curry_Primes.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+17393
+BENCHMARKTIME=1.20
+17393
+BENCHMARKTIME=1.19
+RUNTIMES: 1.20 | 1.19
+--------
+Running benchmark: Primes@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib Primes
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Primes ( ./Primes.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Primes     ( Curry_Primes.hs, Curry_Primes.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+17393
+BENCHMARKTIME=0.20
+17393
+BENCHMARKTIME=0.18
+RUNTIMES: 0.20 | 0.18
+--------
+Running benchmark: Primes@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib Primes
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Primes ( ./Primes.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Primes     ( Curry_Primes.hs, Curry_Primes.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+17393
+BENCHMARKTIME=0.09
+17393
+BENCHMARKTIME=0.09
+RUNTIMES: 0.09 | 0.09
+--------
+Running benchmark: Primes@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Primes.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Primes.state created in 0 msec
+17393
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Primes.state...
+BENCHMARKTIME=15.34
+17393
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Primes.state...
+BENCHMARKTIME=14.45
+RUNTIMES: 15.34 | 14.45
+--------
+Running benchmark: Primes@MCC   
+--------
+17393
+BENCHMARKTIME=0.34
+17393
+BENCHMARKTIME=0.36
+RUNTIMES: 0.34 | 0.36
+--------
+Running benchmark: Primes@GHC   
+--------
+[1 of 1] Compiling Main             ( Primes.hs, Primes.o )
+Linking Primes ...
+17393
+BENCHMARKTIME=0.12
+17393
+BENCHMARKTIME=0.12
+RUNTIMES: 0.12 | 0.12
+--------
+Running benchmark: Primes@GHC+  
+--------
+[1 of 1] Compiling Main             ( Primes.hs, Primes.o )
+Linking Primes ...
+17393
+BENCHMARKTIME=0.06
+17393
+BENCHMARKTIME=0.06
+RUNTIMES: 0.06 | 0.06
+--------
+Running benchmark: Primes@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain Primes
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping Primes.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_Primes     ( Curry_Primes.hs, Curry_Primes.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[17393]
+BENCHMARKTIME=17.07
+[17393]
+BENCHMARKTIME=17.11
+RUNTIMES: 17.07 | 17.11
+--------
+Running benchmark: PrimesPeano@IDC
+--------
+Executing: ../../idc -q -i ../../lib PrimesPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesPeano ( ./PrimesPeano.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesPeano ( Curry_PrimesPeano.hs, Curry_PrimesPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.34
+MyTrue
+BENCHMARKTIME=0.35
+RUNTIMES: 0.34 | 0.35
+--------
+Running benchmark: PrimesPeano@IDC+
+--------
+Executing: ../../idc -q -i ../../lib PrimesPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesPeano ( ./PrimesPeano.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesPeano ( Curry_PrimesPeano.hs, Curry_PrimesPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.31
+MyTrue
+BENCHMARKTIME=0.31
+RUNTIMES: 0.31 | 0.31
+--------
+Running benchmark: PrimesPeano@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib PrimesPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesPeano ( ./PrimesPeano.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesPeano ( Curry_PrimesPeano.hs, Curry_PrimesPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.31
+MyTrue
+BENCHMARKTIME=0.31
+RUNTIMES: 0.31 | 0.31
+--------
+Running benchmark: PrimesPeano@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib PrimesPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesPeano ( ./PrimesPeano.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesPeano ( Curry_PrimesPeano.hs, Curry_PrimesPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+MyTrue
+BENCHMARKTIME=0.28
+MyTrue
+BENCHMARKTIME=0.28
+RUNTIMES: 0.28 | 0.28
+--------
+Running benchmark: PrimesPeano@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'PrimesPeano.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesPeano.state created in 10 msec
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesPeano.state...
+BENCHMARKTIME=22.97
+MyTrue
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesPeano.state...
+BENCHMARKTIME=22.62
+RUNTIMES: 22.97 | 22.62
+--------
+Running benchmark: PrimesPeano@MCC   
+--------
+MyTrue
+BENCHMARKTIME=1.79
+MyTrue
+BENCHMARKTIME=1.80
+RUNTIMES: 1.79 | 1.80
+--------
+Running benchmark: PrimesPeano@GHC   
+--------
+[1 of 1] Compiling Main             ( PrimesPeano.hs, PrimesPeano.o )
+Linking PrimesPeano ...
+MyTrue
+BENCHMARKTIME=0.25
+MyTrue
+BENCHMARKTIME=0.25
+RUNTIMES: 0.25 | 0.25
+--------
+Running benchmark: PrimesPeano@GHC+  
+--------
+[1 of 1] Compiling Main             ( PrimesPeano.hs, PrimesPeano.o )
+Linking PrimesPeano ...
+MyTrue
+BENCHMARKTIME=0.22
+MyTrue
+BENCHMARKTIME=0.22
+RUNTIMES: 0.22 | 0.22
+--------
+Running benchmark: PrimesPeano@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain PrimesPeano
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping PrimesPeano.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_PrimesPeano ( Curry_PrimesPeano.hs, Curry_PrimesPeano.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=26.84
+Main: out of memory (requested 2097152 bytes)
+BENCHMARKTIME=26.75
+RUNTIMES: 26.84 | 26.75
+--------
+Running benchmark: PrimesBuiltin@IDC
+--------
+Executing: ../../idc -q -i ../../lib PrimesBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesBuiltin ( ./PrimesBuiltin.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesBuiltin ( Curry_PrimesBuiltin.hs, Curry_PrimesBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+37831
+BENCHMARKTIME=14.32
+37831
+BENCHMARKTIME=14.71
+RUNTIMES: 14.32 | 14.71
+--------
+Running benchmark: PrimesBuiltin@IDC+
+--------
+Executing: ../../idc -q -i ../../lib PrimesBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesBuiltin ( ./PrimesBuiltin.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesBuiltin ( Curry_PrimesBuiltin.hs, Curry_PrimesBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+37831
+BENCHMARKTIME=8.29
+37831
+BENCHMARKTIME=8.05
+RUNTIMES: 8.29 | 8.05
+--------
+Running benchmark: PrimesBuiltin@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib PrimesBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesBuiltin ( ./PrimesBuiltin.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesBuiltin ( Curry_PrimesBuiltin.hs, Curry_PrimesBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+37831
+BENCHMARKTIME=0.82
+37831
+BENCHMARKTIME=0.84
+RUNTIMES: 0.82 | 0.84
+--------
+Running benchmark: PrimesBuiltin@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib PrimesBuiltin
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PrimesBuiltin ( ./PrimesBuiltin.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PrimesBuiltin ( Curry_PrimesBuiltin.hs, Curry_PrimesBuiltin.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+37831
+BENCHMARKTIME=0.36
+37831
+BENCHMARKTIME=0.35
+RUNTIMES: 0.36 | 0.35
+--------
+Running benchmark: PrimesBuiltin@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'PrimesBuiltin.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesBuiltin.state created in 0 msec
+37831
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesBuiltin.state...
+BENCHMARKTIME=58.69
+37831
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PrimesBuiltin.state...
+BENCHMARKTIME=59.45
+RUNTIMES: 58.69 | 59.45
+--------
+Running benchmark: PrimesBuiltin@MCC   
+--------
+37831
+BENCHMARKTIME=1.16
+37831
+BENCHMARKTIME=1.14
+RUNTIMES: 1.16 | 1.14
+--------
+Running benchmark: PrimesBuiltin@GHC   
+--------
+[1 of 1] Compiling Main             ( PrimesBuiltin.hs, PrimesBuiltin.o )
+Linking PrimesBuiltin ...
+37831
+BENCHMARKTIME=0.47
+37831
+BENCHMARKTIME=0.47
+RUNTIMES: 0.47 | 0.47
+--------
+Running benchmark: PrimesBuiltin@GHC+  
+--------
+[1 of 1] Compiling Main             ( PrimesBuiltin.hs, PrimesBuiltin.o )
+Linking PrimesBuiltin ...
+37831
+BENCHMARKTIME=0.25
+37831
+BENCHMARKTIME=0.25
+RUNTIMES: 0.25 | 0.25
+--------
+Running benchmark: PrimesBuiltin@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain PrimesBuiltin
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping PrimesBuiltin.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_PrimesBuiltin ( Curry_PrimesBuiltin.hs, Curry_PrimesBuiltin.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 2097152 bytes)
+BENCHMARKTIME=30.35
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=30.46
+RUNTIMES: 30.35 | 30.46
+--------
+Running benchmark: Queens@IDC
+--------
+Executing: ../../idc -q -i ../../lib Queens
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Queens ( ./Queens.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Queens     ( Curry_Queens.hs, Curry_Queens.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=19.39
+2680
+BENCHMARKTIME=19.36
+RUNTIMES: 19.39 | 19.36
+--------
+Running benchmark: Queens@IDC+
+--------
+Executing: ../../idc -q -i ../../lib Queens
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Queens ( ./Queens.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Queens     ( Curry_Queens.hs, Curry_Queens.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=10.09
+2680
+BENCHMARKTIME=10.10
+RUNTIMES: 10.09 | 10.10
+--------
+Running benchmark: Queens@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib Queens
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Queens ( ./Queens.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Queens     ( Curry_Queens.hs, Curry_Queens.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=1.77
+2680
+BENCHMARKTIME=1.76
+RUNTIMES: 1.77 | 1.76
+--------
+Running benchmark: Queens@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib Queens
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Queens ( ./Queens.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Queens     ( Curry_Queens.hs, Curry_Queens.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=0.64
+2680
+BENCHMARKTIME=0.63
+RUNTIMES: 0.64 | 0.63
+--------
+Running benchmark: Queens@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Queens.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Queens.state created in 0 msec
+2680
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Queens.state...
+BENCHMARKTIME=83.87
+2680
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Queens.state...
+BENCHMARKTIME=83.55
+RUNTIMES: 83.87 | 83.55
+--------
+Running benchmark: Queens@MCC   
+--------
+2680
+BENCHMARKTIME=3.12
+2680
+BENCHMARKTIME=3.19
+RUNTIMES: 3.12 | 3.19
+--------
+Running benchmark: Queens@GHC   
+--------
+[1 of 1] Compiling Main             ( Queens.hs, Queens.o )
+Linking Queens ...
+2680
+BENCHMARKTIME=0.86
+2680
+BENCHMARKTIME=0.85
+RUNTIMES: 0.86 | 0.85
+--------
+Running benchmark: Queens@GHC+  
+--------
+[1 of 1] Compiling Main             ( Queens.hs, Queens.o )
+Linking Queens ...
+2680
+BENCHMARKTIME=0.06
+2680
+BENCHMARKTIME=0.06
+RUNTIMES: 0.06 | 0.06
+--------
+Running benchmark: Queens@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain Queens
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping Queens.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_Queens     ( Curry_Queens.hs, Curry_Queens.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=44.39
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=44.26
+RUNTIMES: 44.39 | 44.26
+--------
+Running benchmark: QueensUser@IDC
+--------
+Executing: ../../idc -q -i ../../lib QueensUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling QueensUser ( ./QueensUser.curry )
+Main expression: eval nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_QueensUser ( Curry_QueensUser.hs, Curry_QueensUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=22.88
+2680
+BENCHMARKTIME=23.00
+RUNTIMES: 22.88 | 23.00
+--------
+Running benchmark: QueensUser@IDC+
+--------
+Executing: ../../idc -q -i ../../lib QueensUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling QueensUser ( ./QueensUser.curry )
+Main expression: eval nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_QueensUser ( Curry_QueensUser.hs, Curry_QueensUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=13.08
+2680
+BENCHMARKTIME=13.04
+RUNTIMES: 13.08 | 13.04
+--------
+Running benchmark: QueensUser@IDC_D
+--------
+Executing: ../../idc -q -i ../../lib QueensUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling QueensUser ( ./QueensUser.curry )
+Main expression: evalD d_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_QueensUser ( Curry_QueensUser.hs, Curry_QueensUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=2.18
+2680
+BENCHMARKTIME=2.16
+RUNTIMES: 2.18 | 2.16
+--------
+Running benchmark: QueensUser@IDC+_D
+--------
+Executing: ../../idc -q -i ../../lib QueensUser
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling QueensUser ( ./QueensUser.curry )
+Main expression: evalD d_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_QueensUser ( Curry_QueensUser.hs, Curry_QueensUser.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+2680
+BENCHMARKTIME=0.77
+2680
+BENCHMARKTIME=0.77
+RUNTIMES: 0.77 | 0.77
+--------
+Running benchmark: QueensUser@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'QueensUser.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/QueensUser.state created in 10 msec
+2680
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/QueensUser.state...
+BENCHMARKTIME=80.80
+2680
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/QueensUser.state...
+BENCHMARKTIME=81.80
+RUNTIMES: 80.80 | 81.80
+--------
+Running benchmark: QueensUser@MCC   
+--------
+2680
+BENCHMARKTIME=3.62
+2680
+BENCHMARKTIME=3.56
+RUNTIMES: 3.62 | 3.56
+--------
+Running benchmark: QueensUser@GHC   
+--------
+[1 of 1] Compiling Main             ( QueensUser.hs, QueensUser.o )
+Linking QueensUser ...
+2680
+BENCHMARKTIME=0.81
+2680
+BENCHMARKTIME=0.81
+RUNTIMES: 0.81 | 0.81
+--------
+Running benchmark: QueensUser@GHC+  
+--------
+[1 of 1] Compiling Main             ( QueensUser.hs, QueensUser.o )
+Linking QueensUser ...
+2680
+BENCHMARKTIME=0.11
+2680
+BENCHMARKTIME=0.11
+RUNTIMES: 0.11 | 0.11
+--------
+Running benchmark: QueensUser@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain QueensUser
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping QueensUser.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_QueensUser ( Curry_QueensUser.hs, Curry_QueensUser.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=44.86
+Main: out of memory (requested 1048576 bytes)
+BENCHMARKTIME=44.66
+RUNTIMES: 44.86 | 44.66
+--------
+Running benchmark: PermSort@IDC_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=25.64
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=25.59
+RUNTIMES: 25.64 | 25.59
+--------
+Running benchmark: PermSort@IDC+_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=10.10
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=10.23
+RUNTIMES: 10.10 | 10.23
+--------
+Running benchmark: PermSort@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=2.79
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=2.82
+RUNTIMES: 2.79 | 2.82
+--------
+Running benchmark: PermSort@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'PermSort.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSort.state created in 0 msec
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSort.state...
+BENCHMARKTIME=27.89
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSort.state...
+BENCHMARKTIME=26.89
+RUNTIMES: 27.89 | 26.89
+--------
+Running benchmark: PermSort@MCC   
+--------
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=1.46
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=1.46
+RUNTIMES: 1.46 | 1.46
+--------
+Running benchmark: PermSort@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain PermSort
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping PermSort.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[: 1 (: 2 (: 3 (: 4 (: 5 (: 6 (: 7 (: 8 (: 9 (: 10 (: 11 (: 12 (: 13 (: 14 (: 15 []))))))))))))))]
+BENCHMARKTIME=48.28
+[: 1 (: 2 (: 3 (: 4 (: 5 (: 6 (: 7 (: 8 (: 9 (: 10 (: 11 (: 12 (: 13 (: 14 (: 15 []))))))))))))))]
+BENCHMARKTIME=48.22
+RUNTIMES: 48.28 | 48.22
+--------
+Running benchmark: PermSortPeano@IDC_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=26.94
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=26.79
+RUNTIMES: 26.94 | 26.79
+--------
+Running benchmark: PermSortPeano@IDC+_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=10.88
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=10.86
+RUNTIMES: 10.88 | 10.86
+--------
+Running benchmark: PermSortPeano@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=3.71
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=3.71
+RUNTIMES: 3.71 | 3.71
+--------
+Running benchmark: PermSortPeano@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'PermSortPeano.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSortPeano.state created in 0 msec
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSortPeano.state...
+BENCHMARKTIME=68.08
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PermSortPeano.state...
+BENCHMARKTIME=72.04
+RUNTIMES: 68.08 | 72.04
+--------
+Running benchmark: PermSortPeano@MCC   
+--------
+Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil))))))))))))))
+BENCHMARKTIME=5.57
+Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil))))))))))))))
+BENCHMARKTIME=6.12
+RUNTIMES: 5.57 | 6.12
+--------
+Running benchmark: PermSortPeano@MON+
+--------
+Executing: $HOME/.cabal/bin/curry2monad -mmain PermSortPeano
+This is cymake, version 0.2.9
+skipping /home/fre/.cabal/share/curry2monad-0.1/Prelude.curry ...
+skipping PermSortPeano.curry ...
+ExtMod found: False
+Main expression: cM_main
+Executing: ghc -O2 --make -fforce-recomp -i$HOME/.cabal/share/curry2monad-0.1 Main.hs
+[1 of 4] Compiling Base             ( /home/fre/.cabal/share/curry2monad-0.1/Base.hs, /home/fre/.cabal/share/curry2monad-0.1/Base.o )
+[2 of 4] Compiling Curry_Prelude    ( /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.hs, /home/fre/.cabal/share/curry2monad-0.1/Curry_Prelude.o )
+[3 of 4] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[4 of 4] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil))))))))))))))]
+BENCHMARKTIME=917.62
+[Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil))))))))))))))]
+BENCHMARKTIME=914.89
+RUNTIMES: 917.62 | 914.89
+--------
+Running benchmark: Half@IDC_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=57.63
+True
+BENCHMARKTIME=57.72
+RUNTIMES: 57.63 | 57.72
+--------
+Running benchmark: Half@IDC+_PrDFS
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=33.34
+True
+BENCHMARKTIME=33.73
+RUNTIMES: 33.34 | 33.73
+--------
+Running benchmark: Half@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=22.49
+True
+BENCHMARKTIME=22.47
+RUNTIMES: 22.49 | 22.47
+--------
+Running benchmark: Half@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Half.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Half.state created in 0 msec
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Half.state...
+BENCHMARKTIME=98.09
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Half.state...
+BENCHMARKTIME=94.38
+RUNTIMES: 98.09 | 94.38
+--------
+Running benchmark: Half@MCC   
+--------
+True
+BENCHMARKTIME=4.13
+True
+BENCHMARKTIME=4.09
+RUNTIMES: 4.13 | 4.09
+--------
+Running benchmark: PermSort@IDC+PrDFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=2.80
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+BENCHMARKTIME=2.81
+RUNTIMES: 2.80 | 2.81
+--------
+Running benchmark: PermSort@IDC+DFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=4.82
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=4.86
+RUNTIMES: 4.82 | 4.86
+--------
+Running benchmark: PermSort@IDC+BFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: printBFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=26.05
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=26.05
+RUNTIMES: 26.05 | 26.05
+--------
+Running benchmark: PermSort@IDC+IDS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSort
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSort ( ./PermSort.curry )
+Main expression: printIDS 100 nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSort   ( Curry_PermSort.hs, Curry_PermSort.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=9.12
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+No more solutions
+BENCHMARKTIME=8.89
+RUNTIMES: 9.12 | 8.89
+--------
+Running benchmark: PermSortPeano@IDC+PrDFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=3.70
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+BENCHMARKTIME=3.68
+RUNTIMES: 3.70 | 3.68
+--------
+Running benchmark: PermSortPeano@IDC+DFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=5.75
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=5.77
+RUNTIMES: 5.75 | 5.77
+--------
+Running benchmark: PermSortPeano@IDC+BFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: printBFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=28.15
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=28.29
+RUNTIMES: 28.15 | 28.29
+--------
+Running benchmark: PermSortPeano@IDC+IDS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib PermSortPeano
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PermSortPeano ( ./PermSortPeano.curry )
+Main expression: printIDS 100 nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PermSortPeano ( Curry_PermSortPeano.hs, Curry_PermSortPeano.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=10.62
+(Cons (S O) (Cons (S (S O)) (Cons (S (S (S O))) (Cons (S (S (S (S O)))) (Cons (S (S (S (S (S O))))) (Cons (S (S (S (S (S (S O)))))) (Cons (S (S (S (S (S (S (S O))))))) (Cons (S (S (S (S (S (S (S (S O)))))))) (Cons (S (S (S (S (S (S (S (S (S O))))))))) (Cons (S (S (S (S (S (S (S (S (S (S O)))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S O))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))) (Cons (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))) Nil)))))))))))))))
+No more solutions
+BENCHMARKTIME=10.53
+RUNTIMES: 10.62 | 10.53
+--------
+Running benchmark: Half@IDC+PrDFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=22.67
+True
+BENCHMARKTIME=22.46
+RUNTIMES: 22.67 | 22.46
+--------
+Running benchmark: Half@IDC+DFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+No more solutions
+BENCHMARKTIME=32.43
+True
+No more solutions
+BENCHMARKTIME=32.45
+RUNTIMES: 32.43 | 32.45
+--------
+Running benchmark: Half@IDC+BFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: printBFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+No more solutions
+BENCHMARKTIME=39.51
+True
+No more solutions
+BENCHMARKTIME=39.37
+RUNTIMES: 39.51 | 39.37
+--------
+Running benchmark: Half@IDC+IDS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib Half
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Half ( ./Half.curry )
+Main expression: printIDS 100 nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Half       ( Curry_Half.hs, Curry_Half.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Main: ../../Basics.hs:(1027,14)-(1041,46): Non-exhaustive patterns in case
+
+BENCHMARKTIME=0.00
+Main: ../../Basics.hs:(1027,14)-(1041,46): Non-exhaustive patterns in case
+
+BENCHMARKTIME=0.00
+RUNTIMES: 0.00 | 0.00
+--------
+Running benchmark: NDNums@IDC+BFS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib NDNums
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling NDNums ( ./NDNums.curry )
+Main expression: printBFS1 nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_NDNums     ( Curry_NDNums.hs, Curry_NDNums.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+BENCHMARKTIME=33.61
+Success
+BENCHMARKTIME=35.49
+RUNTIMES: 33.61 | 35.49
+--------
+Running benchmark: NDNums@IDC+IDS_IOREF
+--------
+Executing: ../../idc -q -i ../../lib NDNums
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling NDNums ( ./NDNums.curry )
+Main expression: printIDS1 100 nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_NDNums     ( Curry_NDNums.hs, Curry_NDNums.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+BENCHMARKTIME=2.78
+Success
+BENCHMARKTIME=2.76
+RUNTIMES: 2.78 | 2.76
+--------
+Running benchmark: ShareNonDet@IDC_PrDFS:goal1
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal1
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7949,7937,7933,7927]
+BENCHMARKTIME=1.52
+[7949,7937,7933,7927]
+BENCHMARKTIME=1.52
+RUNTIMES: 1.52 | 1.52
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS:goal1
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal1
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.79
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.80
+RUNTIMES: 0.79 | 0.80
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS_IORef:goal1
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal1
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.52
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.52
+RUNTIMES: 0.52 | 0.52
+--------
+Running benchmark: ShareNonDet@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ShareNonDet.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state created in 0 msec
+[7949,7937,7933,7927]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=15.20
+[7949,7937,7933,7927]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=15.85
+RUNTIMES: 15.20 | 15.85
+--------
+Running benchmark: ShareNonDet@MCC   
+--------
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.36
+[7949,7937,7933,7927]
+BENCHMARKTIME=0.34
+RUNTIMES: 0.36 | 0.34
+--------
+Running benchmark: ShareNonDet@IDC_PrDFS:goal2
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal2
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+RUNTIMES: 0.00 | 0.00
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS:goal2
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal2
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+RUNTIMES: 0.00 | 0.00
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS_IORef:goal2
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal2
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+RUNTIMES: 0.00 | 0.00
+--------
+Running benchmark: ShareNonDet@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ShareNonDet.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state created in 0 msec
+[7927,7933,7937,7949]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=0.02
+[7927,7933,7937,7949]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=0.01
+RUNTIMES: 0.02 | 0.01
+--------
+Running benchmark: ShareNonDet@MCC   
+--------
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.00
+RUNTIMES: 0.00 | 0.00
+--------
+Running benchmark: ShareNonDet@IDC_PrDFS:goal3
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal3
+Executing: ghc  --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=1.52
+[7927,7933,7937,7949]
+BENCHMARKTIME=1.49
+RUNTIMES: 1.52 | 1.49
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS:goal3
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal3
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyinteger:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyinteger/IDImpl.hs, ../../idsupplyinteger/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.79
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.79
+RUNTIMES: 0.79 | 0.79
+--------
+Running benchmark: ShareNonDet@IDC+_PrDFS_IORef:goal3
+--------
+Executing: ../../idc -q -i ../../lib ShareNonDet
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ShareNonDet ( ./ShareNonDet.curry )
+Main expression: prdfs nd_C_goal3
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ShareNonDet ( Curry_ShareNonDet.hs, Curry_ShareNonDet.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.53
+[7927,7933,7937,7949]
+BENCHMARKTIME=0.52
+RUNTIMES: 0.53 | 0.52
+--------
+Running benchmark: ShareNonDet@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ShareNonDet.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state created in 0 msec
+[7927,7933,7937,7949]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=151.96
+[7927,7933,7937,7949]
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ShareNonDet.state...
+BENCHMARKTIME=149.68
+RUNTIMES: 151.96 | 149.68
+--------
+Running benchmark: ShareNonDet@MCC   
+--------
+[7927,7933,7937,7949]
+BENCHMARKTIME=3.46
+[7927,7933,7937,7949]
+BENCHMARKTIME=3.45
+RUNTIMES: 3.46 | 3.45
+--------
+Running benchmark: Last@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib Last
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Last ( ./Last.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Last       ( Curry_Last.hs, Curry_Last.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=0.21
+True
+BENCHMARKTIME=0.21
+RUNTIMES: 0.21 | 0.21
+--------
+Running benchmark: Last@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib Last
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling Last ( ./Last.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_Last       ( Curry_Last.hs, Curry_Last.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+No more solutions
+BENCHMARKTIME=0.33
+True
+No more solutions
+BENCHMARKTIME=0.32
+RUNTIMES: 0.33 | 0.32
+--------
+Running benchmark: Last@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'Last.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/Last.state created in 10 msec
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Last.state...
+BENCHMARKTIME=2.64
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/Last.state...
+BENCHMARKTIME=2.61
+RUNTIMES: 2.64 | 2.61
+--------
+Running benchmark: Last@MCC   
+--------
+True
+BENCHMARKTIME=0.09
+True
+BENCHMARKTIME=0.10
+RUNTIMES: 0.09 | 0.10
+--------
+Running benchmark: RegExp@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib RegExp
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling RegExp ( ./RegExp.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_RegExp     ( Curry_RegExp.hs, Curry_RegExp.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+BENCHMARKTIME=0.58
+Success
+BENCHMARKTIME=0.58
+RUNTIMES: 0.58 | 0.58
+--------
+Running benchmark: RegExp@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib RegExp
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling RegExp ( ./RegExp.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_RegExp     ( Curry_RegExp.hs, Curry_RegExp.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+No more solutions
+BENCHMARKTIME=1.17
+Success
+No more solutions
+BENCHMARKTIME=1.14
+RUNTIMES: 1.17 | 1.14
+--------
+Running benchmark: RegExp@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'RegExp.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/RegExp.state created in 10 msec
+success
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/RegExp.state...
+BENCHMARKTIME=12.72
+success
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/RegExp.state...
+BENCHMARKTIME=12.62
+RUNTIMES: 12.72 | 12.62
+--------
+Running benchmark: RegExp@MCC   
+--------
+Success
+BENCHMARKTIME=0.60
+Success
+BENCHMARKTIME=0.56
+RUNTIMES: 0.60 | 0.56
+--------
+Running benchmark: LastFunPats@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib LastFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling LastFunPats ( ./LastFunPats.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_LastFunPats ( Curry_LastFunPats.hs, Curry_LastFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+BENCHMARKTIME=0.20
+True
+BENCHMARKTIME=0.20
+RUNTIMES: 0.20 | 0.20
+--------
+Running benchmark: LastFunPats@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib LastFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling LastFunPats ( ./LastFunPats.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_LastFunPats ( Curry_LastFunPats.hs, Curry_LastFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+True
+No more solutions
+BENCHMARKTIME=0.33
+True
+No more solutions
+BENCHMARKTIME=0.34
+RUNTIMES: 0.33 | 0.34
+--------
+Running benchmark: LastFunPats@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'LastFunPats.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/LastFunPats.state created in 0 msec
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/LastFunPats.state...
+BENCHMARKTIME=4.23
+True
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/LastFunPats.state...
+BENCHMARKTIME=4.16
+RUNTIMES: 4.23 | 4.16
+--------
+Running benchmark: ExpVarFunPats@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib ExpVarFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ExpVarFunPats ( ./ExpVarFunPats.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ExpVarFunPats ( Curry_ExpVarFunPats.hs, Curry_ExpVarFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+X1
+BENCHMARKTIME=0.97
+X1
+BENCHMARKTIME=0.98
+RUNTIMES: 0.97 | 0.98
+--------
+Running benchmark: ExpVarFunPats@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib ExpVarFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ExpVarFunPats ( ./ExpVarFunPats.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ExpVarFunPats ( Curry_ExpVarFunPats.hs, Curry_ExpVarFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+X1
+No more solutions
+BENCHMARKTIME=1.62
+X1
+No more solutions
+BENCHMARKTIME=1.59
+RUNTIMES: 1.62 | 1.59
+--------
+Running benchmark: ExpVarFunPats@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ExpVarFunPats.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpVarFunPats.state created in 10 msec
+X1
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpVarFunPats.state...
+BENCHMARKTIME=8.63
+X1
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpVarFunPats.state...
+BENCHMARKTIME=9.03
+RUNTIMES: 8.63 | 9.03
+--------
+Running benchmark: ExpSimpFunPats@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib ExpSimpFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ExpSimpFunPats ( ./ExpSimpFunPats.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ExpSimpFunPats ( Curry_ExpSimpFunPats.hs, Curry_ExpSimpFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+4001
+BENCHMARKTIME=7.48
+4001
+BENCHMARKTIME=7.53
+RUNTIMES: 7.48 | 7.53
+--------
+Running benchmark: ExpSimpFunPats@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib ExpSimpFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling ExpSimpFunPats ( ./ExpSimpFunPats.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_ExpSimpFunPats ( Curry_ExpSimpFunPats.hs, Curry_ExpSimpFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+4001
+No more solutions
+BENCHMARKTIME=8.20
+4001
+No more solutions
+BENCHMARKTIME=8.17
+RUNTIMES: 8.20 | 8.17
+--------
+Running benchmark: ExpSimpFunPats@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'ExpSimpFunPats.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpSimpFunPats.state created in 0 msec
+4001
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpSimpFunPats.state...
+BENCHMARKTIME=0.27
+4001
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/ExpSimpFunPats.state...
+BENCHMARKTIME=0.26
+RUNTIMES: 0.27 | 0.26
+--------
+Running benchmark: PaliFunPats@IDC+_PrDFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib PaliFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PaliFunPats ( ./PaliFunPats.curry )
+Main expression: prdfs nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PaliFunPats ( Curry_PaliFunPats.hs, Curry_PaliFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+BENCHMARKTIME=0.06
+Success
+BENCHMARKTIME=0.06
+RUNTIMES: 0.06 | 0.06
+--------
+Running benchmark: PaliFunPats@IDC+_DFS_IORef
+--------
+Executing: ../../idc -q -i ../../lib PaliFunPats
+% restoring /home/fre/workspace/repos/idcompiler/idc...
+[1 of 2] Analyzing Prelude ( ../../lib/Curry_Prelude.nda )
+[2 of 2] Compiling PaliFunPats ( ./PaliFunPats.curry )
+Main expression: printDFS nd_C_main
+Executing: ghc -O2 --make -XMultiParamTypeClasses -XFlexibleInstances -fforce-recomp -i../..:../../idsupplyioref:../../lib Main.hs
+[1 of 8] Compiling MonadList        ( ../../MonadList.hs, ../../MonadList.o )
+[2 of 8] Compiling ID[boot]         ( ../../ID.hs-boot, ../../ID.o-boot )
+[3 of 8] Compiling IDImpl           ( ../../idsupplyioref/IDImpl.hs, ../../idsupplyioref/IDImpl.o )
+[4 of 8] Compiling ID               ( ../../ID.hs, ../../ID.o )
+[5 of 8] Compiling Basics           ( ../../Basics.hs, ../../Basics.o )
+[6 of 8] Compiling Curry_Prelude    ( ../../lib/Curry_Prelude.hs, ../../lib/Curry_Prelude.o )
+[7 of 8] Compiling Curry_PaliFunPats ( Curry_PaliFunPats.hs, Curry_PaliFunPats.o )
+[8 of 8] Compiling Main             ( Main.hs, Main.o )
+Linking Main ...
+Success
+No more solutions
+BENCHMARKTIME=0.06
+Success
+No more solutions
+BENCHMARKTIME=0.06
+RUNTIMES: 0.06 | 0.06
+--------
+Running benchmark: PaliFunPats@PAKCS 
+--------
+% restoring /home/pakcs/pakcs/curry2prolog/c2p.state...
+  ______      __       _    _    ______   _______     
+ |  __  |    /  \     | |  / /  |  ____| |  _____|   Portland Aachen Kiel
+ | |  | |   / /\ \    | |_/ /   | |      | |_____    Curry System
+ | |__| |  / /__\ \   |  _  |   | |      |_____  |   
+ |  ____| / ______ \  | | \ \   | |____   _____| |   Version 1.9.2 (10)
+ |_|     /_/      \_\ |_|  \_\  |______| |_______|   January 2011
+
+Curry2Prolog(sicstus 4.1) Compiler Environment (Version of 20/01/11)
+(RWTH Aachen, CAU Kiel, Portland State University)
+
+Bug reports: mh@informatik.uni-kiel.de
+
+Type ":h" for help
+
+Parsing 'PaliFunPats.curry'...
+% /home/fre/workspace/repos/idcompiler/benchmarks/suite/PaliFunPats.state created in 10 msec
+success
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PaliFunPats.state...
+BENCHMARKTIME=141.36
+success
+% restoring /home/fre/workspace/repos/idcompiler/benchmarks/suite/PaliFunPats.state...
+BENCHMARKTIME=143.56
+RUNTIMES: 141.36 | 143.56
+
+
