@@ -1,3 +1,4 @@
+module RiddleProlog where
 
 data Country = Norway | England | Spain | Ukraine | Japan
 

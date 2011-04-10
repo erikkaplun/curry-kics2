@@ -60,6 +60,13 @@ data Choice
   | LazyBind [Constraint]
     deriving Show
 
+-- TODO: Idea: Split ChooseN Int Int into two cases
+--   - ChooseFree Int Int     for free variables and
+--   - ChooseNarrowed Int     for narrowed variables
+-- to further separate these constructs and avoid the use of irregular values
+-- like ChooseN 0 (-1)
+
+
 instance Eq Choice where
   NoChoice    == NoChoice    = True
   ChooseLeft  == ChooseLeft  = True
@@ -99,34 +106,41 @@ instance Show ID where
   show (FreeID i)   = "Free" ++ show i
   show (Narrowed i) = "Narrowed" ++ show i
 
-leftID :: ID -> ID
-leftID  (FreeID s) = freeID (leftSupply s)
-leftID  _          = error "ID.leftID: no FreeID"
-
-rightID :: ID -> ID
-rightID (FreeID s) = freeID (rightSupply s)
-rightID  _         = error "ID.rightID: no FreeID"
-
-narrowID :: ID -> ID
-narrowID i@(ID _)       = i
-narrowID (FreeID s)     = Narrowed s
-narrowID n@(Narrowed _) = n
-
+-- |Construct an 'ID' for a free variable from an 'IDSupply'
 freeID :: IDSupply -> ID
 freeID = FreeID
 
+-- |Construct an 'ID' for a binary choice from an 'IDSupply'
 thisID :: IDSupply -> ID
 thisID s = ID (thisRef s)
 
+-- |Retrieve the 'Ref' from an 'ID'
 ref :: ID -> Ref
 ref (ID       r) = r
 ref (FreeID   s) = thisRef s
 ref (Narrowed s) = thisRef s
 
+-- |Retrieve the 'IDSupply' from an free or narrowed 'ID'
 supply :: ID -> IDSupply
 supply (ID       _) = error "ID.supply: ID"
 supply (FreeID   s) = s
 supply (Narrowed s) = s
+
+-- |Retrieve the left child 'ID' from an free 'ID'
+leftID :: ID -> ID
+leftID  (FreeID s) = freeID (leftSupply s)
+leftID  _          = error "ID.leftID: no FreeID"
+
+-- |Retrieve the right child 'ID' from an free 'ID'
+rightID :: ID -> ID
+rightID (FreeID s) = freeID (rightSupply s)
+rightID  _         = error "ID.rightID: no FreeID"
+
+-- |Convert a free or narrowed 'ID' into a narrowed one
+narrowID :: ID -> ID
+narrowID (ID _)         = error "ID.narrowID: ID"
+narrowID (FreeID s)     = Narrowed s
+narrowID n@(Narrowed _) = n
 
 -- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
@@ -134,16 +148,17 @@ mkInt (ID       i) = mkIntRef i
 mkInt (FreeID   _) = error "ID.mkInt: FreeID"
 mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
 
+-- |Ensure that an 'ID' is not an 'ID' for a binary choice
 ensureNotID :: ID -> ID
 ensureNotID (ID _)         = error "ensureNotID: ID"
 ensureNotID x@(FreeID _)   = x
 ensureNotID x@(Narrowed _) = x
 
+-- |Ensure that an 'ID' is an 'ID' for a free variable
 ensureFreeID :: ID -> ID
 ensureFreeID (ID _)       = error "ensureFreeID: ID"
 ensureFreeID x@(FreeID _) = x
 ensureFreeID (Narrowed _) = error "ensureFreeID: Narrowed"
-
 
 -- ---------------------------------------------------------------------------
 -- Choice Management
@@ -172,7 +187,7 @@ lookupChoiceID i = do
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
     -- to the last ID in the chain.
     unchain (BindTo j) = do
-      retVal@(c, lastId) <- lookupChoiceID j -- resolve last id and its choice
+      retVal@(c, lastId) <- lookupChoiceID j
       case c of
         NoChoice      -> shortenTo lastId
         ChooseN _ num -> propagateBind i lastId num
@@ -245,13 +260,10 @@ setChoiceGetChange i c = do
 -- |Reset a free variable to its former 'Choice' and reset its children if
 --  the binding has already been propagated
 resetFreeVar :: ID -> Choice -> IO ()
-resetFreeVar i oldChoice = case i of
-  ID _       -> error $ "ID.resetFreeVar: ID" ++ show i
-  FreeID s   -> reset oldChoice s
-  Narrowed s -> reset oldChoice s
+resetFreeVar i oldChoice = reset oldChoice (supply i)
   where
     reset c s = do
-      when trace $ putStrLn $ "reset " ++ show s ++ " to " ++ show c
+      when trace $ putStrLn $ "reset " ++ show i ++ " to " ++ show c
       lookupChoiceRef (thisRef s) >>= propagate c s
 
     propagate c s (BindTo _)      = setChoiceRef (thisRef s) c
