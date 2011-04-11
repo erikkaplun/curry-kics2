@@ -3,8 +3,9 @@
 --- a tree and search strategies on this tree.
 ------------------------------------------------------------------
 
-module SearchTree(SearchTree(..),searchTree,showSearchTree,searchTreeSize,
-                  allValuesDFS,allValuesBFS)
+module SearchTree(SearchTree(..),searchTree, isDefined,
+                  showSearchTree, searchTreeSize,
+                  allValuesDFS, allValuesBFS)
   where
 
 --- A search tree is a value, a failure, or a choice between to search trees.
@@ -13,8 +14,19 @@ data SearchTree a = Value a
                   | Or (SearchTree a) (SearchTree a)
 
 --- Returns the search tree for some expression.
-searchTree :: a -> SearchTree a
-searchTree external
+searchTree :: a -> IO (SearchTree a)
+searchTree x = return (getSearchTree x)
+
+--- Internal operation to eturn the search tree for some expression.
+getSearchTree :: a -> SearchTree a
+getSearchTree external
+
+--- Returns True iff the argument is is defined, i.e., has a value.
+isDefined :: a -> Bool
+isDefined x = hasValue (getSearchTree x)
+ where hasValue x = case x of Value _  -> True
+                              Fail     -> False
+                              Or t1 t2 -> hasValue t1 || hasValue t2
 
 --- Shows the search tree as an intended line structure
 showSearchTree :: SearchTree _ -> String
