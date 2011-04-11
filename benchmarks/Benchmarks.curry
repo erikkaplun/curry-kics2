@@ -44,6 +44,7 @@ benchmarkCommand cmd = do
   errcnt <- hGetContents herr
   hClose hin
   putStr outcnt
+  putStr errcnt
   return (extractTimeInOutput errcnt)
 
 -- extract benchmark time from timing output:
@@ -223,40 +224,39 @@ swiBenchmark  mod =
 -- The various kinds of benchmarks:
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
-benchFPpl prog =
+benchFPpl prog withMon =
  [idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
  ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
- ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ,sicsBenchmark  (map toLower prog)
  ,swiBenchmark   (map toLower prog)
- ]
+ ] 
+ ++ (if withMon then [monBenchmark "MON+" prog True "main"] else [])
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
-benchHOFP prog =
+benchHOFP prog withMon =
  [idcBenchmark "IDC"    prog False "integer" "eval nd_C_main"
  ,idcBenchmark "IDC+"   prog True  "integer" "eval nd_C_main"
  ,idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
  ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
- ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ]
+ ++ if withMon then [monBenchmark "MON+" prog True "main"] else []
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
-benchFLPDFS prog =
+benchFLPDFS prog withMon =
  [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs nd_C_main"
  ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs nd_C_main"
  ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
- ,monBenchmark "MON+" prog True "main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
- ]
+ ]++ if withMon then [monBenchmark "MON+" prog True "main"] else []
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
@@ -300,20 +300,20 @@ benchFLPCompleteSearch prog =
 
 
 allBenchmarks =
-  [ benchFPpl "ReverseUser"
-  , benchFPpl "Reverse"
-  , benchFPpl "Tak"
-  , benchFPpl "TakPeano"
-  , benchHOFP "ReverseHO"
-  , benchHOFP "ReverseBuiltin"
-  , benchHOFP "Primes"
-  , benchHOFP "PrimesPeano"
-  , benchHOFP "PrimesBuiltin"
-  , benchHOFP "Queens"
-  , benchHOFP "QueensUser"
-  , benchFLPDFS "PermSort"
-  , benchFLPDFS "PermSortPeano"
-  , benchFLPDFS "Half"
+  [ benchFPpl "ReverseUser"     True
+  , benchFPpl "Reverse"         True
+  , benchFPpl "Tak"             True
+  , benchFPpl "TakPeano"        True
+  , benchHOFP "ReverseHO"       True
+  , benchHOFP "ReverseBuiltin"  False
+  , benchHOFP "Primes"          True
+  , benchHOFP "PrimesPeano"     True
+  , benchHOFP "PrimesBuiltin"   True
+  , benchHOFP "Queens"          True
+  , benchHOFP "QueensUser"      True
+  , benchFLPDFS "PermSort"      True
+  , benchFLPDFS "PermSortPeano" True
+  , benchFLPDFS "Half"          False
   , benchFLPSearch "PermSort"
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
@@ -351,7 +351,7 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 2 allBenchmarks
+--main = run 2 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
@@ -360,7 +360,7 @@ main = run 2 allBenchmarks
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
---main = run 1 [benchFLPDFSU "Last"]
+main = run 1 [benchFLPDFSU "Last"]
 
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
