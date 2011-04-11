@@ -724,34 +724,36 @@ printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
   where
     choose ChooseLeft  = printValsDFS fb cont x
     choose ChooseRight = printValsDFS fb cont y
-    choose NoChoice    = doWithChoices_ fb i
-                           [ (ChooseLeft , printValsDFS True cont x)
-                           , (ChooseRight, printValsDFS fb   cont y)
-                           ]
+    choose NoChoice    = -- doWithChoices_ fb i
+--                            [ (ChooseLeft , printValsDFS True cont x)
+--                            , (ChooseRight, printValsDFS fb   cont y)
+--                            ]
+--  TODO: reactivate the implementation above, when performant
+      if fb
+        then do
+          newChoiceOpt True ChooseLeft  x
+          newChoiceOpt True ChooseRight y
+          setChoice i NoChoice
+        else do
+          newChoiceOpt True ChooseLeft   x
+          newChoiceOpt False ChooseRight y
+     where
+      newChoice fbt c a = do
+        reset <- setUnsetChoice i c
+        printValsDFS fbt cont a
+        reset
+
+      newChoiceOpt fbt c a = do
+        -- Assumption 1: Binary choices can only be set to one of
+        -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
+        -- be ignored in between
+        -- Assumption 2: Furthermore, binary Choices can not be chained, so
+        -- setChoiceRaw may be used
+        setChoice i c
+        printValsDFS fbt cont a
     choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
 
---     if fb
---       then do
---         newChoiceOpt True ChooseLeft  x
---         newChoiceOpt True ChooseRight y
---         setChoice i NoChoice
---       else do
---         newChoiceOpt True ChooseLeft   x
---         newChoiceOpt False ChooseRight y
 
---     newChoice fbt c a = do
---       reset <- setUnsetChoice i c
---       printValsDFS fbt cont a
---       reset
-
-    newChoiceOpt fbt c a = do
-      -- Assumption 1: Binary choices can only be set to one of
-      -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
-      -- be ignored in between
-      -- Assumption 2: Furthermore, binary Choices can not be chained, so
-      -- setChoiceRaw may be used
-      setChoice i c
-      printValsDFS fbt cont a
 
 
 printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
@@ -764,23 +766,25 @@ printValsDFS' fb cont (Choices i xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) = doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
+    choose (NoChoice   , j) = 
+--       doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
 
-    mkChoice n x = (ChooseN n (-1), printValsDFS True cont x)
-    mkLastChoice n x = (ChooseN n (-1), printValsDFS fb   cont x)
+--     mkChoice n x = (ChooseN n (-1), printValsDFS True cont x)
+--     mkLastChoice n x = (ChooseN n (-1), printValsDFS fb   cont x)
+--  TODO: reactivate the implementation above, when performant
+     if fb
+       then do
+         foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
+         setChoice i NoChoice
+       else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
+      where
 
---     if fb
---       then do
---         foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
---         setChoice i NoChoice
---       else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
---     choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
---
---     newChoice fbt n a = do
---       setChoice i (ChooseN n (-1)) -- was errChoice
---       printValsDFS fbt cont a
---
---     errChoice = error "propagation number used within narrowed Choice"
+       newChoice fbt n a = do
+         setChoice i (ChooseN n (-1)) -- was errChoice
+         printValsDFS fbt cont a
+
+       errChoice = error "propagation number used within narrowed Choice"
+    choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
 
 printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
   where
@@ -824,34 +828,34 @@ zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
 
 -- Attempt to gain more abstraction during search
 
-doWithChoice :: Bool -> ID -> Choice -> IO a -> IO a
-doWithChoice True i c act = do
-  reset <- setUnsetChoice i c
-  retVal <- act
-  reset
-  return retVal
-doWithChoice False i c act = do
-  setChoice i c
-  act
+-- doWithChoice :: Bool -> ID -> Choice -> IO a -> IO a
+-- doWithChoice True i c act = do
+--   reset <- setUnsetChoice i c
+--   retVal <- act
+--   reset
+--   return retVal
+-- doWithChoice False i c act = do
+--   setChoice i c
+--   act
 
-doWithChoices :: Bool -> ID -> [(Choice, IO a)] -> IO [a]
-doWithChoices True _ []     = return []
-doWithChoices True i ((c, act): cacts) = do
-  reset   <- setUnsetChoice i c
-  retVal  <- act
-  retVals <- mapM (uncurry (doWithChoice False i)) cacts
-  reset
-  return (retVal:retVals)
-doWithChoices False i cacts = mapM (uncurry (doWithChoice False i)) cacts
+-- doWithChoices :: Bool -> ID -> [(Choice, IO a)] -> IO [a]
+-- doWithChoices _ _ []     = return []
+-- doWithChoices True i ((c, act): cacts) = do
+--   reset   <- setUnsetChoice i c
+--   retVal  <- act
+--   retVals <- mapM (uncurry (doWithChoice False i)) cacts
+--   reset
+--   return (retVal:retVals)
+-- doWithChoices False i cacts = mapM1 (uncurry (doWithChoice False i)) cacts
 
-doWithChoices_ :: Bool -> ID -> [(Choice, IO a)] -> IO ()
-doWithChoices_ True _ []     = return ()
-doWithChoices_ True i ((c, act): cacts) = do
-  reset <- setUnsetChoice i c
-  _     <- act
-  mapM_ (uncurry (doWithChoice False i)) cacts
-  reset
-doWithChoices_ False i cacts = mapM_ (uncurry (doWithChoice False i)) cacts
+-- doWithChoices_ :: Bool -> ID -> [(Choice, IO a)] -> IO ()
+-- doWithChoices_ _ _ []     = return ()
+-- doWithChoices_ True i ((c, act): cacts) = do
+--   reset <- setUnsetChoice i c
+--   _     <- act
+--   mapM_ (uncurry (doWithChoice False i)) cacts
+--   reset
+-- doWithChoices_ False i cacts = mapM1_ (uncurry (doWithChoice False i)) cacts
 
 -- ---------------------------------------------------------------------------
 -- Depth-first search into a monadic list
@@ -1101,3 +1105,24 @@ searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
                  `mplus` searchMPlus (pick ChooseRight) (try y)
 
     pick c = setChoice' set i c
+
+
+
+----------------------------------------------------------------------
+-- Auxillary Functions
+----------------------------------------------------------------------
+
+-- mapM1 :: Monad m => (a -> m b) -> [a] -> m [b]
+-- mapM1 f as = sequence1 (map f as)
+
+-- mapM1_ :: Monad m => (a -> m b) -> [a] -> m ()
+-- mapM1_ f as = sequence1_ (map f as)
+
+-- sequence1 :: Monad m => [m a] -> m [a]
+-- sequence1 [act] = act >>= return . (:[])
+-- sequence1 (a:as) = a >>= \a' -> sequence1 as >>= return .(a':)
+
+ 
+-- sequence1_ :: Monad m => [m a] -> m ()
+-- sequence1_ [act] = act >> return ()
+-- sequence1_ (a:as) = a >> sequence1_ as
