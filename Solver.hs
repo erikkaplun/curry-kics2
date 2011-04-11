@@ -45,7 +45,7 @@ a >>> b = do
 solves :: [Constraint] -> Solution
 solves [] = solved
 solves (c:cs) = do
---   putStrLn $ "solving " ++ show c
+  putStrLn $ "solving " ++ take 200 (show c)
   solve c >>> solves cs
 
 solve :: Constraint -> Solution
@@ -87,9 +87,13 @@ solve (i :=: cc) = lookupChoice i >>= choose cc
 
 -- Check whether i can be bound to j
 check :: ID -> ID -> Choice -> Choice -> Solution
-check i j NoChoice _        = mkSolution (setUnsetChoice i (BindTo j))
-check i j ci       NoChoice = mkSolution (setUnsetChoice j (BindTo i))
-check _ _ ci       cj       = if ci == cj then solved else unsolvable
+check i j NoChoice _                      = mkSolution (setUnsetChoice i (BindTo j))
+check i j ci       NoChoice               = mkSolution (setUnsetChoice j (BindTo i))
+check i j (ChooseN iN ip) (ChooseN jN jp) = if iN == jN && ip == jp 
+                                              then solves $ zipWith (\childi childj -> childi :=: BindTo childj) 
+                                                                    (nextNIDs i ip) (nextNIDs j ip)
+                                              else unsolvable
+check _ _ ci       cj                     = if ci == cj then solved else unsolvable
 
 -- ---------------
 -- Former approach

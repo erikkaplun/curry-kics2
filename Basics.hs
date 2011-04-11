@@ -714,7 +714,7 @@ prdfs mainexp = initSupply >>= \s -> printValsDFS False print (id $!! (mainexp s
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
---   putStrLn $ "printValsDFS " ++ take 200 (show a)
+  putStrLn $ "printValsDFS " ++ take 200 (show a)
   printValsDFS' fb cont (try a)
 
 printValsDFS' :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> Try a -> IO ()

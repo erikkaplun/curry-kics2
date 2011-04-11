@@ -8,14 +8,14 @@ module ID
   , initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Choice management
   , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
-  , setChoiceRaw
+  , setChoiceRaw, nextNIDs
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
 import IDImpl
 
 trace :: Bool
-trace = False
+trace = True
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -181,7 +181,7 @@ lookupChoiceID :: ID -> IO (Choice, ID)
 lookupChoiceID i = do
   when trace $ putStrLn $ "lookupChoiceID " ++ show i
   r <- lookupChoiceRaw i >>= unchain
-  when trace $ putStrLn $ "lookupChoiceID returned " ++ show r
+  when trace $ putStrLn $ "lookupChoiceID returned " ++ take 200 (show r)
   return r
   where
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
@@ -223,7 +223,7 @@ setUnsetChoice i c = do
     Just (oldChoice, changedId) -> return $ case c of
       BindTo _ -> resetFreeVar changedId oldChoice
       _        -> do
-        when trace $ putStrLn $ "reset " ++ show changedId ++ " to " ++ show oldChoice
+        when trace $ putStrLn $ "reset " ++ show changedId ++ " to " ++ take 200 (show oldChoice)
         setChoiceRaw changedId oldChoice
 
 -- |Set the 'Choice' for the given 'ID', eventually following a chain and
@@ -232,9 +232,9 @@ setChoiceGetChange :: ID -> Choice -> IO (Maybe (Choice, ID))
 -- We do not bind an ID to itself to avoid cycles
 setChoiceGetChange i (BindTo j) | ref i == ref j = return Nothing
 setChoiceGetChange i c = do
-  when trace $ putStrLn $ "setChoiceGetChange " ++ show i ++ ' ' : show c
+  when trace $ putStrLn $ "setChoiceGetChange " ++ show i ++ ' ' : take 200 (show c)
   r <- lookupChoiceRaw i >>= unchain
-  when trace $ putStrLn $ "setChoiceGetChange returned " ++ show r
+  when trace $ putStrLn $ "setChoiceGetChange returned " ++ take 200 (show r)
   return r
   where
     -- BindTo: change the last variable in the chain and propagate the binding
@@ -263,7 +263,7 @@ resetFreeVar :: ID -> Choice -> IO ()
 resetFreeVar i oldChoice = reset oldChoice (supply i)
   where
     reset c s = do
-      when trace $ putStrLn $ "reset " ++ show i ++ " to " ++ show c
+      when trace $ putStrLn $ "reset " ++ show i ++ " to " ++ take 200 (show c)
       lookupChoiceRef (thisRef s) >>= propagate c s
 
     propagate c s (BindTo _)      = setChoiceRef (thisRef s) c
@@ -298,14 +298,18 @@ propagateBind x y cnt = do
   setChoiceRaw x (BoundTo y cnt)
   -- propagate the binding to the children
   zipWithM_ (\a b -> setChoice a (BindTo b))
-    (nextNIDs (supply xFreeNarrowed) cnt) (nextNIDs (supply yFree) cnt)
+    (nextNIDs xFreeNarrowed cnt) (nextNIDs yFree cnt)
   where
     xFreeNarrowed = ensureNotID x
     yFree = ensureFreeID y
 
+-- Compute a list of the next n free 'ID's for a given 'ID'
+nextNIDs :: ID -> Int -> [ID]
+nextNIDs = nextNIDsFromSupply . supply
+
 -- Compute a list of the next n free 'ID's for a given 'IDSupply' s
-nextNIDs :: IDSupply -> Int -> [ID]
-nextNIDs s n = map freeID $ nextNSupplies s n
+nextNIDsFromSupply :: IDSupply -> Int -> [ID]
+nextNIDsFromSupply s n = map freeID $ nextNSupplies s n
 
 -- |Compute the next n independent 'IDSupply's for a given 'IDSupply' s
 nextNSupplies :: IDSupply -> Int -> [IDSupply]
