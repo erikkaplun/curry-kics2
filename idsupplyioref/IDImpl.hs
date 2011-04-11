@@ -7,7 +7,7 @@ module IDImpl
   ) where
 
 import Data.IORef
-import System.IO.Unsafe (unsafeInterleaveIO)
+import GHC.IO (unsafeDupableInterleaveIO)
 
 -- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Choice, defaultChoice)
@@ -43,9 +43,9 @@ initSupply = getPureSupply defaultChoice
 {-# NOINLINE getPureSupply #-}
 getPureSupply :: Choice -> IO IDSupply
 getPureSupply def = do
-  s1 <- unsafeInterleaveIO (getPureSupply def)
-  s2 <- unsafeInterleaveIO (getPureSupply def)
-  r  <- unsafeInterleaveIO (newIORef def)
+  s1 <- unsafeDupableInterleaveIO (getPureSupply def)
+  s2 <- unsafeDupableInterleaveIO (getPureSupply def)
+  r  <- unsafeDupableInterleaveIO (newIORef def)
   return (IDSupply (Ref r) s1 s2)
 --   return (IDSupply r s1 s2)
 
