@@ -46,6 +46,6 @@ void :: Success -> Success
 -- PAKCS:
 --void c = findall (\_->c) =:= []
 -- IDC:
-void c = allValuesBFS (searchTree c) =:= []
+void c = isDefined c =:= False
 
 main = queens 4

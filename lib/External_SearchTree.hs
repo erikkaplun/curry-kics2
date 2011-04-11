@@ -15,6 +15,6 @@ instance MonadPlus C_SearchTree where
   mzero = C_Fail
   mplus = C_Or
 
-external_d_C_searchTree :: (NormalForm a,NonDet a) => a -> C_SearchTree a 
-external_d_C_searchTree x = searchMPlus Data.Map.empty (try (id $!! x))
+external_d_C_getSearchTree :: (NormalForm a,NonDet a) => a -> C_SearchTree a 
+external_d_C_getSearchTree x = searchMPlus Data.Map.empty (try (id $!! x))
 

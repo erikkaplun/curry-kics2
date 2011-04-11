@@ -194,16 +194,16 @@ W.~Lux.
 \newblock In {\em Proc. 4th Fuji International Symposium on Functional and
   Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
 
+\bibitem{Partain93}
+W.~Partain.
+\newblock The nofib benchmark suite of {H}askell programs.
+\newblock In {\em Proceedings of the 1992 Glasgow Workshop on Functional
+  Programming}, pages 195--202. Springer, 1993.
+
 \bibitem{PeytonJones03Haskell}
 S.~Peyton~Jones, editor.
 \newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
 \newblock Cambridge University Press, 2003.
-
-\bibitem{Reynolds72}
-J.C. Reynolds.
-\newblock Definitional interpreters for higher-order programming languages.
-\newblock In {\em Proceedings of the ACM Annual Conference}, pages 717--740.
-  ACM Press, 1972.
 
 \bibitem{Wadler85}
 P.~Wadler.

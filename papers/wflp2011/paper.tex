@@ -1,5 +1,11 @@
 \documentclass{llncs}
 
+%\addtolength{\textheight}{0.2cm}
+%\addtolength{\topmargin}{-0.1cm}
+%\addtolength{\textwidth}{0.2cm}
+%\addtolength{\oddsidemargin}{-0.1cm}
+%\addtolength{\evensidemargin}{-0.1cm}
+
 \usepackage{times}
 \usepackage{url}
 \def\UrlFont{\tt}
@@ -28,8 +34,8 @@
 \newcommand{\ccode}[1]{``\code{#1}''}
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
+\newcommand{\dollar}{\code{\char36}} % dollar in programs
 \newcommand{\Choice}[2]{#1 \mathop{?} #2}
-\newcommand{\ol}[1]{\overline{#1}}
 
 % ------------------------------------------------------------------
 % SYMBOLS & FORMULAS
@@ -258,26 +264,25 @@ of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
 Due to these considerations, an implementation of Curry
 has to support lazy evaluation where operations can have multiple results
 and unevaluated arguments must be shared.
-Since this is a complex task, if we try to implement it
-directly on the level of source programs,
-we perform some simplifications on programs before we generate the target code.
-
-First of all, we assume that our programs are \emph{first-order}.
-Higher-order programs can be transformed into first-order programs
-by a technique called ``defunctionalization'' \cite{Reynolds72}
-which is often used in Prolog-based implementations of
-functional logic languages \cite{AntoyHanus00FROCOS}.
-However, we will later use the higher-order features of Haskell
-instead of defunctionalization.
+This is a complex task, especially if we try to implement it directly
+on the level of source programs. Therefore, we perform some
+simplifications on programs before we generate the target code.
 
 \label{sec:no-logic-vars}
-Furthermore, we assume that our programs \emph{do not contain logic variables}.
+First of fall, we assume that our programs
+\emph{do not contain logic variables}.
 This assumption can be made since it has been shown
 \cite{AntoyHanus06ICLP} that logic variables can be replaced
 by nondeterministic ``generators,''
 i.e., operations that evaluate to all possible values of the type of
 the logic variable. For instance, a Boolean logic variable
 can be replaced by the generator \code{aBool} defined above.
+
+Furthermore, we discuss our translation scheme only for \emph{first-order}
+programs for the sake of simplicity.
+However, our implementation also supports higher-order features
+(see Section~\ref{sec:Benchmarks}) by exploiting the corresponding
+features of Haskell.
 
 \begin{figure}[t]
 \[
@@ -293,10 +298,10 @@ can be replaced by the generator \code{aBool} defined above.
     &  |  & f(c(y_1,\ldots,y_m),x_2,\ldots,x_n) = e
                 & \mbox{matching rule for $n$-ary function $f$}\\
     &     & & \mbox{$c$ is an $m$-ary constructor symbol}\\
-  P & ::= & \ol{D_k}
+  P & ::= & D_1 \ldots D_k
 \end{array}
 \]
-\caption{Uniform programs}
+\caption{Uniform programs ($e$: expressions, $D$: definitions, $P$: programs)}
 \label{fig:uniform}
 \end{figure}
 %
@@ -309,8 +314,7 @@ a new operation in order to avoid complications by translating
 nested case expressions.
 Thus, we assume that all programs are \emph{uniform}
 according to the definition in Fig.~\ref{fig:uniform}.
-There, %$\ol{o_n}$ denotes the object sequence $o_1,\ldots,o_n$,
-the variables in the left-hand sides of each rule are pairwise
+There, the variables in the left-hand sides of each rule are pairwise
 different, and
 the constructors in the left-hand sides of the matching rules of each function
 are pairwise different.
@@ -711,6 +715,17 @@ Thus, we obtain the output
   False
   False
 \end{haskell}
+In general, one has to propagate all choices to the top level
+of a computation before printing the results.
+This can be obtained by computing the normal form of the main
+expression before passing it to the operation \code{try}.
+Thus, the result values of \code{main} can be
+printed by evaluating
+\ccode{printValsDFS (try (id $\dollar$!! main inits))}
+where \ccode{$f$ \$!! $x$} %$
+denotes the application of the operation $f$ to the normal form
+of its argument $x$.
+
 Of course, printing all values via depth-first search
 is only one option which is not sufficient in case of infinite search
 spaces. For instance, one can easily define an operation
@@ -783,8 +798,8 @@ according to the Curry formulation.
 ``ReverseUser'' is the naive reverse program applied to a list of 4096 elements,
 where all data (lists, numbers) are user-defined.
 ``Reverse'' is the same but with built-in lists.
-``Tak'' is a highly recursive function on naturals applied
-to arguments (27,16,8) and ``TakPeano'' is the same but with
+``Tak'' is a highly recursive function on naturals \cite{Partain93}
+applied to arguments (27,16,8) and ``TakPeano'' is the same but with
 user-defined natural numbers in Peano representation.
 Note that the Prolog programs use a strict evaluation strategy
 in contrast to all others. Thus, the difference between PAKCS and SICStus
@@ -987,7 +1002,7 @@ This is a topic for future work.
 Instead of choosing different search strategies to evaluate
 top-level expressions, our system also contains a primitive operation
 \begin{curry}
- searchTree :: a -> SearchTree a
+ searchTree :: a -> IO (SearchTree a)
 \end{curry}
 to translate the search space caused by the evaluation of its argument
 into a tree structure of the form
