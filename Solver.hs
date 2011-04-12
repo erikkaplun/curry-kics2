@@ -45,7 +45,7 @@ a >>> b = do
 solves :: [Constraint] -> Solution
 solves [] = solved
 solves (c:cs) = do
-  putStrLn $ "solving " ++ take 200 (show c)
+--   putStrLn $ "solving " ++ take 200 (show c)
   solve c >>> solves cs
 
 solve :: Constraint -> Solution
@@ -85,12 +85,13 @@ solve (i :=: cc) = lookupChoice i >>= choose cc
 --     choose (LazyBind cs) (ChooseN _ _)  = solves cs
 --     choose (ChooseN _ _) (LazyBind cs) = (setUnsetChoice i NoChoice >>> solves cs) >>> solve (i :=: cc)
 
--- Check whether i can be bound to j
+-- Check whether i can be bound to j and do so if possible
 check :: ID -> ID -> Choice -> Choice -> Solution
+check i j _        (LazyBind cs)          = mkSolution (setUnsetChoice j (BindTo i)) >>> solves cs
 check i j NoChoice _                      = mkSolution (setUnsetChoice i (BindTo j))
-check i j ci       NoChoice               = mkSolution (setUnsetChoice j (BindTo i))
-check i j (ChooseN iN ip) (ChooseN jN jp) = if iN == jN && ip == jp 
-                                              then solves $ zipWith (\childi childj -> childi :=: BindTo childj) 
+check i j _        NoChoice               = mkSolution (setUnsetChoice j (BindTo i))
+check i j (ChooseN iN ip) (ChooseN jN jp) = if iN == jN && ip == jp
+                                              then solves $ zipWith (\childi childj -> childi :=: BindTo childj)
                                                                     (nextNIDs i ip) (nextNIDs j ip)
                                               else unsolvable
 check _ _ ci       cj                     = if ci == cj then solved else unsolvable

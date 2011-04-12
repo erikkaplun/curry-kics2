@@ -1,0 +1,1 @@
+goal1 = y =:<= True & x =:= True & x =:= y where x, y free -- Success
