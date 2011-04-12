@@ -46,4 +46,5 @@ tests = TestList $
   , testCmd "" "goal27" ["[False,True,True]"]
   , testCmd "" "goal28" ["[True]"]
   , testCmd "" "goal29" ["[True]"]
+  , testCmd "" "goal30" []
   ]
