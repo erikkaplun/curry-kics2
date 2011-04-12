@@ -38,4 +38,8 @@ tests =
   , testUni "" "goal28" ["[True]"]
   , testUni "" "goal29" ["[True]"]
   , testUni "" "goal30" []
+  , testUni "" "goal31" []
+  , testUni "" "goal32" []
+  , testUni "" "goal33" []
+  , testUni "" "goal34" []
   ]

@@ -81,3 +81,8 @@ goal28 = x =:= (y =:= [True] &> y) &> x where x, y free    -- [True]
 goal29 = x =:= (True:(y =:= [] &> y)) &> x where x, y free -- [True]
 
 goal30 = x =:= [True] &> y =:= [False] &> x =:= y where x , y free -- fail
+
+goal31 = x =:= [] &> y ++ [False] =:= x where x, y free -- fail
+goal32 = x =:= [] &> y1:(y2 ++ [False]) =:= x where x, y1, y2 free -- fail
+goal33 = x =:= [] &> (y2 ++ [False]) =:= x where x, y2 free -- fail
+goal34 = x =:= [] &> y1:[False] =:= x where x, y1 free -- fail
