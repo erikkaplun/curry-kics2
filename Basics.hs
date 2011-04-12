@@ -714,7 +714,7 @@ prdfs mainexp = initSupply >>= \s -> printValsDFS False print (id $!! (mainexp s
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
-  putStrLn $ "printValsDFS " ++ take 200 (show a)
+--   putStrLn $ "\n\n\n-- \nprintValsDFS " ++ take 200 (show a)
   printValsDFS' fb cont (try a)
 
 printValsDFS' :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> Try a -> IO ()
@@ -766,7 +766,7 @@ printValsDFS' fb cont (Choices i xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) = 
+    choose (NoChoice   , j) =
 --       doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
 
 --     mkChoice n x = (ChooseN n (-1), printValsDFS True cont x)
@@ -1122,7 +1122,7 @@ searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
 -- sequence1 [act] = act >>= return . (:[])
 -- sequence1 (a:as) = a >>= \a' -> sequence1 as >>= return .(a':)
 
- 
+
 -- sequence1_ :: Monad m => [m a] -> m ()
 -- sequence1_ [act] = act >> return ()
 -- sequence1_ (a:as) = a >> sequence1_ as

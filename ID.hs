@@ -15,7 +15,7 @@ import Control.Monad (liftM, when, zipWithM_)
 import IDImpl
 
 trace :: Bool
-trace = True
+trace = False
 
 -- ---------------------------------------------------------------------------
 -- Constraint
