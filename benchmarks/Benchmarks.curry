@@ -354,8 +354,8 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
---main = run 2 allBenchmarks
-main = run 1 allBenchmarks
+main = run 3 allBenchmarks
+--main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
