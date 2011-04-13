@@ -1,10 +1,10 @@
 \documentclass{llncs}
 
-%\addtolength{\textheight}{0.2cm}
-%\addtolength{\topmargin}{-0.1cm}
-%\addtolength{\textwidth}{0.2cm}
-%\addtolength{\oddsidemargin}{-0.1cm}
-%\addtolength{\evensidemargin}{-0.1cm}
+\addtolength{\textheight}{0.2cm}
+\addtolength{\topmargin}{-0.1cm}
+\addtolength{\textwidth}{0.2cm}
+\addtolength{\oddsidemargin}{-0.1cm}
+\addtolength{\evensidemargin}{-0.1cm}
 
 \usepackage{times}
 \usepackage{url}
@@ -745,6 +745,7 @@ by an interactive loop where the user can request the individual values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:Benchmarks}
+% Benchmark from April 11 on climens
 
 In this section we evaluate our compiler by comparing the
 efficiency of the generated Haskell programs to various
@@ -758,6 +759,13 @@ but much slower). PAKCS has been used for a number of practical
 applications of Curry.
 Another mature implementation which we consider is MCC \cite{Lux99FLOPS}
 (Version 0.9.10) which compiles Curry into C.
+MonC \cite{BrasselFischerHanusReck11} is a compiler
+from Curry into Haskell. It is based on a monadic representation
+of nondeterministic computations where sharing is explicitly
+managed by the technique proposed in \cite{FischerKiselyovShan09}.
+Since this compiler
+is in an experimental state, we could not execute all benchmarks with
+MonC (these are marked by ``n/a'').
 
 The functional logic language Toy \cite{Lopez-FraguasSanchez-Hernandez99}
 has many similarities to Curry and the Toy system compiles Toy programs
@@ -768,21 +776,23 @@ more efficient programs.
 
 Our compiler has been executed with the Glasgow Haskell Compiler
 (GHC 6.12.1, option -O2). All benchmarks were executed on a Linux machine
-(Ubuntu 10.10) with an Intel Core i5 (2.53GHz) processor.
+running Debian 5.0.7 with an Intel Core 2 Duo (3.0GHz) processor.
 The timings were performed with the time command measuring the
-execution time (in seconds) of a compiled executable for each benchmark.
+execution time (in seconds) of a compiled executable for each benchmark
+as a mean of three runs. ``oom'' denotes a memory overflow in a computation.
 
 \begin{figure}
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
 System  & ReverseUser & Reverse &  Tak  & TakPeano \\\hline
-KiCS2   &        0.13 &    0.11 &  0.24 &     0.82 \\
-PAKCS   &        2.07 &    1.91 & 39.19 &    60.69 \\
-MCC     &        0.37 &    0.38 &  1.03 &     3.99 \\
-GHC     &        0.11 &    0.10 &  0.04 &     0.50 \\
-SICStus &        0.39 &    0.28 &  0.50 &     4.82 \\
-SWI     &        1.33 &    1.14 &  1.87 &    12.72 \\
+KiCS2   &      0.12   &   0.12  &  0.21 &    0.79  \\
+PAKCS   &      2.05   &   1.88  & 39.80 &   62.43  \\
+MCC     &      0.43   &   0.47  &  1.21 &    5.49  \\
+MonC    &     23.39   &  22.00  & 20.37 &     oom  \\
+GHC     &      0.12   &   0.12  &  0.04 &    0.49  \\
+SICStus &      0.39   &   0.29  &  0.49 &    5.20  \\
+SWI     &      1.63   &   1.39  &  1.84 &   11.66  \\
 \hline
 \end{tabular}
 \caption{Benchmarks: first-order functional programs}
@@ -818,11 +828,12 @@ where GHC can apply specific optimizations.
 \begin{tabular}{|@{~~}l@{~~}|*{5}{@{~~}r@{~~}|}}
 \hline
 System  & ReverseHO & Primes & PrimesPeano & Queens & QueensUser \\\hline
-KiCS2   &     32.82 &   1.12 &        0.29 &   9.77 &     12.41  \\
-KiCS2HO &      0.21 &   0.09 &        0.27 &   0.63 &      0.72  \\
-PAKCS   &      7.24 &  13.55 &       22.74 &  78.52 &     81.98  \\
-MCC     &      0.22 &   0.32 &        1.26 &   2.65 &      2.93  \\
-GHC     &      0.21 &   0.06 &        0.21 &   0.05 &      0.12  \\
+KiCS2   &      oom  &   1.22 &       0.30  &  10.02 &     13.08  \\
+KiCS2HO &     0.24  &   0.09 &       0.27  &   0.65 &      0.73  \\
+PAKCS   &     7.97  &  14.52 &      23.08  &  81.72 &     81.98  \\
+MCC     &     0.27  &   0.32 &       1.77  &   3.25 &      3.62  \\
+MonC    &      oom  &  16.74 &        oom  &    oom &       oom  \\
+GHC     &     0.24  &   0.06 &       0.22  &   0.06 &      0.11  \\
 \hline
 \end{tabular}
 \caption{Benchmarks: higher-order functional programs}
@@ -865,9 +876,10 @@ Therefore, it is always used in the subsequent benchmarks.
 \begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
 System  & PermSort & PermSortPeano &  Last & RegExp \\\hline
-KiCS2   &     2.61 &         3.99  &  0.18 &   0.50 \\
-PAKCS   &    26.08 &        67.51  &  2.58 &  12.46 \\
-MCC     &     1.23 &         4.00  &  0.08 &   0.46 \\
+KiCS2   &    2.83  &        3.68   &  0.14 &   0.49 \\
+PAKCS   &   26.96  &       67.11   &  2.61 &  12.70 \\
+MCC     &    1.46  &        5.74   &  0.09 &   0.57 \\
+MonC    &   48.15  &      916.61   &   n/a &    n/a \\
 \hline
 \end{tabular}
 \caption{Benchmarks: nondeterministic functional logic programs}
@@ -903,9 +915,9 @@ nondeterministic sort operation \code{psort} (permutation sort)
 and the infinite list of all prime numbers \code{primes},
 as used in the previous benchmarks, and the following definitions:
 \begin{curry}
-goal1 = [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
-goal2 = psort [7949,7937,7933,7927]
-goal3 = psort [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
+ goal1 = [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
+ goal2 = psort [7949,7937,7933,7927]
+ goal3 = psort [primes!!1003, primes!!1002, primes!!1001, primes!!1000]
 \end{curry}
 In principle, one would expect that the sum of the execution times
 of \code{goal1} and \code{goal2} is equal to the time to execute
@@ -919,9 +931,9 @@ in Fig~\ref{fig:bench-sharing-over-nondet}.
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
 System  & \code{goal1} & \code{goal2} & \code{goal3} \\\hline
-KiCS2   &        0.46  &        0.00  &        0.46  \\
-PAKCS   &       13.70  &        0.02  &      139.55  \\
-MCC     &        0.30  &        0.00  &        3.06  \\
+KiCS2   &        0.34  &        0.00  &        0.34  \\
+PAKCS   &       14.90  &        0.02  &      153.65  \\
+MCC     &        0.33  &        0.00  &        3.46  \\
 \hline
 \end{tabular}
 \caption{Benchmarks: sharing over nondeterminism}
@@ -959,12 +971,12 @@ the printing method.
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
 Method               & PermSort & PermSortPeano &  NDNums \\\hline
-\code{printValsDFS}  &    2.61  &         3.99  & $\infty$ \\
-depth-first search   &    4.78  &         5.90  & $\infty$ \\
-breadth-first search &   18.35  &        20.23  &    10.96 \\
-iterative deepening  &    8.33  &        10.01  &     3.10 \\
-%parallel (1 proc.)   &    5.84  &         6.54  & $\infty$ \\
-%parallel (2 proc.)   &    3.46  &         3.79  & $\infty$ \\
+\code{printValsDFS}  &    2.82  &         3.66  & $\infty$ \\
+depth-first search   &    5.33  &         6.09  & $\infty$ \\
+breadth-first search &   26.16  &        29.25  &    34.00 \\
+iterative deepening  &    9.16  &        10.91  &     0.16 \\
+%parallel (1 proc.)   &    5.46  &         6.29  & $\infty$ \\
+%parallel (2 proc.)   &    3.16  &         3.49  & $\infty$ \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different search strategies}
@@ -1010,7 +1022,7 @@ into a tree structure of the form
  data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
 \end{curry}
 With this primitive,
-the programmer can define its own search strategy or to
+the programmer can define its own search strategy or
 collect all nondeterministic values into a list structure
 for further processing \cite{BrasselHuch07}.
 

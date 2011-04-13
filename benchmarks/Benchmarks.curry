@@ -17,6 +17,7 @@ idcHome = "../.."
 -- home directory of the monadic curry compiler
 monHome = "$HOME/.cabal/bin"
 monlib  = "$HOME/.cabal/share/curry2monad-0.1"
+monInstalled = True -- is the monadic curry compiler installed?
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -199,9 +200,11 @@ swiCompile mod = system $
 idcBenchmark tag mod optim idsupply mainexp =
   (mod++"@"++tag, idcCompile mod optim idsupply mainexp,
    "./Main", "rm Main* Curry_*")
-monBenchmark tag mod optim mainexp =
-  (mod++"@"++tag, monCompile mod optim mainexp,
-   "./Main", "rm Main* Curry_*") 
+monBenchmarkIf withmon tag mod optim mainexp =
+  if monInstalled && withmon
+  then [(mod++"@"++tag, monCompile mod optim mainexp,
+         "./Main", "rm Main* Curry_*")]
+  else []
 pakcsBenchmark options mod =
   (mod++"@PAKCS ",pakcsCompile options mod,
    "./"++mod++".state","rm "++mod++".state")
@@ -234,7 +237,7 @@ benchFPpl prog withMon =
  ,sicsBenchmark  (map toLower prog)
  ,swiBenchmark   (map toLower prog)
  ] 
- ++ (if withMon then [monBenchmark "MON+" prog True "main"] else [])
+ ++ monBenchmarkIf withMon "MON+" prog True "main"
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog withMon =
@@ -247,7 +250,7 @@ benchHOFP prog withMon =
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ]
- ++ if withMon then [monBenchmark "MON+" prog True "main"] else []
+ ++ monBenchmarkIf withMon "MON+" prog True "main"
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog withMon =
@@ -256,7 +259,7 @@ benchFLPDFS prog withMon =
  ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
- ]++ if withMon then [monBenchmark "MON+" prog True "main"] else []
+ ]++ monBenchmarkIf withMon "MON+" prog True "main"
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
@@ -352,15 +355,15 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 2 allBenchmarks
---main = run 1 allBenchmarks
+main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
---main = run 3 [benchHOFP "PrimesPeano"]
+--main = run 1 [benchHOFP "PrimesPeano" True]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
-main = run 1 [benchFLPDFSU "Last"]
+--main = run 1 [benchFLPDFSU "Last"]
 
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
