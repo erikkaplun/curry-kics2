@@ -18,10 +18,12 @@ getCPUTime :: IO Int
 getCPUTime external
  
 --- Returns the current elapsed time of the process in milliseconds.
+--- This operation is not supported (always returns 0),
+--- only included for compatibility reasons.
 
 getElapsedTime :: IO Int
 getElapsedTime external
- 
+
 --- Returns the list of the program's command line arguments.
 --- The program name is not included.
 

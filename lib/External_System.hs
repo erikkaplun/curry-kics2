@@ -5,10 +5,12 @@ import System.CPUTime(getCPUTime)
 import Network.BSD(getHostName)
 
 external_d_C_getCPUTime :: C_IO C_Int
-external_d_C_getCPUTime = fromIO (getCPUTime >>= return . toCurry . (`div` 1000000000))
+external_d_C_getCPUTime =
+  fromIO (getCPUTime >>= return . toCurry . (`div` 1000000000))
 
 external_d_C_getElapsedTime :: C_IO C_Int
-external_d_C_getElapsedTime = error "System.getElapsedTime not supported"
+external_d_C_getElapsedTime =
+  fromHaskellIO0 (return (0 :: Int))
 
 external_d_C_getArgs :: C_IO (OP_List C_String)
 external_d_C_getArgs = fromHaskellIO0 getArgs
