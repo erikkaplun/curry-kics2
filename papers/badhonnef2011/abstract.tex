@@ -1,0 +1,37 @@
+\documentclass{scrartcl}
+
+\begin{document}
+
+\title{KiCS2: A New Compiler from Curry to Haskell}
+
+\author{
+Bernd Bra\ss{}el
+\kern1em
+Michael Hanus
+\kern1em
+ Bj{\"o}rn Peem{\"o}ller
+\kern1em
+Fabian Reck \\
+Institut f{\"u}r Informatik, CAU Kiel, D-24098 Kiel, Germany \\
+\texttt{\{bbr|mh|bjp|fre\}@informatik.uni-kiel.de}}
+\date{}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+We present our first steps towards a new system to compile functional logic
+programs of the source language Curry into purely functional Haskell programs.
+This system is based on a translation scheme where non-deterministic values
+are explicitly represented, i.e., by extending each type with two additional
+constructors for failed computations and for a choice between several values.
+Logic variables are replaced by generator functions which preserve a
+call-time-choice semantics. This enables the application of various search
+strategies (e.g., depth-frist, breadth-first, parallel) to extract values from
+the search space, as well as the encapsulation of non-deterministic
+computations. Furthermore, deterministic computations are translated into purely
+functional programs so that they are executed with almost the same efficiency as
+their purely functional equivalents. Several benchmarks show that our
+implementation can compete with or outperforms other existing implementations
+of Curry.
+\end{abstract}
+\end{document}
