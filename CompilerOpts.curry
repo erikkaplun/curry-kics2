@@ -2,37 +2,32 @@
 --- Compiler options for the ID-based curry compiler
 ---
 --- @author Fabian Reck, Bjoern Peemoeller
---- @version March 2011
+--- @version April 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
-  ( Options (..), SearchMode (..), Dump (..), defaultOptions, compilerOpts
+  ( Options (..), Dump (..), defaultOptions, compilerOpts
   ) where
 
+import FileGoodies (splitPath)
 import IO (hPutStrLn, stderr)
 import List (nub)
 import Maybe (fromMaybe)
 import System (exitWith, getArgs, getProgName)
 
 import GetOpt
+import Installation (compilerName, majorVersion, minorVersion, compilerDate)
 
 type Options =
-  { optHelp            :: Bool       -- show usage
-  , optVersion         :: Bool       -- show version
-  , optQuiet           :: Bool       -- quiet mode
-  , optForce           :: Bool       -- force recompilation
-  , optImportPaths     :: [String]   -- directories searched for imports
-  , optSearchMode      :: SearchMode -- search mode
-  , optDetOptimization :: Bool       -- optimization for deterministic functions
-  , optDump            :: [Dump]     -- dump intermediate results
+  { optHelp               :: Bool     -- show usage
+  , optVersion            :: Bool     -- show version
+  , optQuiet              :: Bool     -- quiet mode
+  , optForce              :: Bool     -- force recompilation
+  , optImportPaths        :: [String] -- directories searched for imports
+  , optOutputSubdir       :: String   -- subdirectory for compiled modules
+  , optDetOptimization    :: Bool     -- optimization for deterministic functions
+  , optDump               :: [Dump]   -- dump intermediate results
   , optXNoImplicitPrelude :: Bool
   }
-
-data SearchMode
-  = NoSearch -- no search
-  | DFS      -- depth first search
-  | BFS      -- bredth first search
-  | IterDFS  -- iterative depth first search
-  | PAR      -- parallel search
 
 data Dump
   = DumpFlat        -- dump flat curry
@@ -44,14 +39,14 @@ data Dump
 
 defaultOptions :: Options
 defaultOptions =
-  { optHelp            = False
-  , optVersion         = False
-  , optQuiet           = False
-  , optForce           = False
-  , optImportPaths     = []
-  , optSearchMode      = NoSearch
-  , optDetOptimization = True
-  , optDump            = []
+  { optHelp               = False
+  , optVersion            = False
+  , optQuiet              = False
+  , optForce              = False
+  , optImportPaths        = []
+  , optOutputSubdir       = "/.curry/kics2/"
+  , optDetOptimization    = True
+  , optDump               = []
   , optXNoImplicitPrelude = False
   }
 
@@ -70,52 +65,54 @@ options =
       (NoArg (\opts -> { optForce   := True | opts }))
       "force recompilation"
   , Option ['i'] ["import-dir"]
-      (ReqArg (\arg opts -> { optImportPaths := nub (arg : opts -> optImportPaths) | opts }) "DIR")
+      (ReqArg (\arg opts -> { optImportPaths :=
+        nub (splitPath arg ++ opts -> optImportPaths) | opts }) "DIR")
       "search for imports in DIR"
-  , Option ['s'] ["search-mode"]
-      (ReqArg (\arg opts -> { optSearchMode := fromMaybe
-        (opts -> optSearchMode) (lookup arg searchModes) | opts } )
-      "SEARCHMODE")
-      "set search mode, one of [DFS, BFS, IterDFS, PAR]"
+  , Option ['o'] ["output-subdir"]
+      (ReqArg (\arg opts -> { optOutputSubdir := arg | opts }) "SUBDIR")
+      "output compiled modules to SUBDIR"
   , Option [] ["no-opt"]
       (NoArg (\opts -> { optDetOptimization := False | opts } ))
       "disable optimization for deterministic functions"
   , Option [] ["dump-flat"]
-      (NoArg (\opts -> { optDump := nub (DumpFlat : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpFlat : opts -> optDump) | opts }))
       "dump flat curry representation"
   , Option [] ["dump-lifted"]
-      (NoArg (\opts -> { optDump := nub (DumpLifted : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpLifted : opts -> optDump) | opts }))
       "dump flat curry after case lifting"
   , Option [] ["dump-abstract-hs"]
-      (NoArg (\opts -> { optDump := nub (DumpAbstractHs : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpAbstractHs : opts -> optDump) | opts }))
       "dump abstract Haskell representation"
   , Option [] ["dump-fun-decls"]
-      (NoArg (\opts -> { optDump := nub (DumpFunDecls : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpFunDecls : opts -> optDump) | opts }))
       "dump transformed function declarations"
   , Option [] ["dump-type-decls"]
-      (NoArg (\opts -> { optDump := nub (DumpTypeDecls : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpTypeDecls : opts -> optDump) | opts }))
       "dump transformed type declarations"
   , Option [] ["dump-renamed"]
-      (NoArg (\opts -> { optDump := nub (DumpRenamed : opts -> optDump) | opts }))
+      (NoArg (\opts -> { optDump :=
+        nub (DumpRenamed : opts -> optDump) | opts }))
       "dump renamed abstract Haskell representation"
   , Option [] ["dump-all"]
-      (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
+      (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed
+        , DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
       "dump all intermediate results"
   , Option ['x'] ["x-no-implicit-prelude"]
       (NoArg (\opts -> { optXNoImplicitPrelude := True | opts }))
       "do not implicitly import Prelude"
   ]
 
-searchModes :: [(String, SearchMode)]
-searchModes =
-  [ ("DFS", DFS)
-  , ("BFS", BFS)
-  , ("IterDFS", IterDFS)
-  , ("PAR", PAR)
-  ]
-
 versionString :: String
-versionString = "ID-based Curry -> Haskell Compiler (Version of 23/02/2011)"
+versionString = concat
+  [ compilerName
+  , " (Version " ++ show majorVersion ++ '.' : show minorVersion
+  , " of " ++ compilerDate ++ ")"
+  ]
 
 parseOpts :: [String] -> (Options, [String], [String])
 parseOpts args = (foldl (flip ($)) defaultOptions opts, files, errs)

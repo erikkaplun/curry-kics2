@@ -8,10 +8,6 @@ Things we have to do
 - Replace the generic <= in PermSort with a specialiced lt_int
   for a benchmark
 
-- The frontend generates FlatCurry files in the curry subdir respective to the
-  directory in which a module is found. This may cause trouble with library
-  modules, especially in case of insufficient file permissions.
-
 - Literal pattern like f 'a' = 'b' are not fully tested, especially for exotic
   characters (e.g., characters above (chr 127)).
 

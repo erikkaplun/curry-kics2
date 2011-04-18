@@ -20,7 +20,7 @@ import Maybe (isJust)
 import Read  (readNat)
 
 import AbstractHaskell
-import Names (isHaskellModule, prelude)
+import Names (isHaskellModule, prelude, curryPrelude)
 
 type Options = { currentModule :: String }
 
@@ -338,7 +338,7 @@ showStatement opts (SLet localdecls) = case localdecls of
 
 showPattern :: Options -> Pattern -> String
 showPattern _    (PVar (_,name))  = showIdentifier name
-showPattern _    (PLit lit)       = showLitPattern lit
+showPattern opts (PLit lit)       = showLitPattern opts lit
 showPattern opts (PComb qname []) = showSymbol opts qname
 showPattern opts (PComb qname@(mod,_) (p:ps))
   | mod == prelude   = showPreludeCons opts (PComb qname (p:ps))
@@ -348,10 +348,13 @@ showPattern opts (PAs (_,name) pat)     = showIdentifier name ++ "@"
                                            ++ showPattern opts pat
 showPattern opts (PFuncComb qname pats) = showPattern opts (PComb qname pats)
 
-showLitPattern :: Literal -> String
-showLitPattern (Intc i)    = "(C_Int "   ++ show i ++ "#)"
-showLitPattern (Floatc f)  = "(C_Float " ++ show f ++ "#)"
-showLitPattern c@(Charc _) = "(C_Char '" ++ showCharc c ++ "'#)"
+showLitPattern :: Options -> Literal -> String
+showLitPattern opts (Intc i)
+  = '(' : showSymbol opts (curryPrelude, "C_Int") ++ " " ++ show i ++ "#)"
+showLitPattern opts (Floatc f)
+  = '(' : showSymbol opts (curryPrelude, "C_Float") ++ " " ++ show f ++ "#)"
+showLitPattern opts c@(Charc _)
+  = '(' : showSymbol opts (curryPrelude, "C_Char") ++ " '" ++ showCharc c ++ "'#)"
 
 showPreludeCons :: Options -> Pattern -> String
 showPreludeCons opts p

@@ -1,19 +1,26 @@
+--- --------------------------------------------------------------------------
 --- Read-Eval-Print loop for IDC
+---
+--- @author Michael Hanus
+--- @version April 2011
+--- --------------------------------------------------------------------------
 
-import Installation
 import System(system,getArgs,getEnviron)
 import Char(isSpace,toLower)
 import IO
 import IOExts
 import SetFunctions
 import FileGoodies
-import Directory(doesFileExist,removeFile,renameFile,getDirectoryContents)
-import Names(funcInfoFile)
-import ReadShowTerm(readQTermFile)
-import ReadNumeric(readNat)
+import Directory (doesFileExist,removeFile,renameFile,getDirectoryContents)
+import Names (funcInfoFile)
+import ReadShowTerm (readQTermFile)
+import ReadNumeric (readNat)
 import List (isPrefixOf,intersperse)
-import FlatCurry(flatCurryFileName)
-import Sort(mergeSort)
+import FlatCurry (flatCurryFileName)
+import Sort (mergeSort)
+
+import Installation
+import Files
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
@@ -27,51 +34,54 @@ mainGoalFile = "Curry_Main_Goal.curry"
 
 -- REPL state:
 type ReplState =
-  { idcHome     :: String     -- installation directory of the system
-  , idSupply    :: String     -- IDSupply implementation (ioref or integer)
-  , quiet       :: Bool       -- be quiet?
-  , importPaths :: [String]   -- additional directories to search for imports
-  , mainMod     :: String     -- name of main module
-  , addMods     :: [String]   -- names of additionally added modules
-  , optim       :: Bool       -- compile with optimization
-  , ndMode      :: NonDetMode -- mode for non-deterministic main goal
-  , firstSol    :: Bool       -- print only first solution to nd main goal?
-  , interactive :: Bool       -- interactive execution of goal?
-  , rtsOpts     :: String     -- run-time options for ghc
-  , quit        :: Bool       -- terminate the REPL?
+  { idcHome      :: String     -- installation directory of the system
+  , idSupply     :: String     -- IDSupply implementation (ioref or integer)
+  , quiet        :: Bool       -- be quiet?
+  , importPaths  :: [String]   -- additional directories to search for imports
+  , outputSubdir :: String
+  , mainMod      :: String     -- name of main module
+  , addMods      :: [String]   -- names of additionally added modules
+  , optim        :: Bool       -- compile with optimization
+  , ndMode       :: NonDetMode -- mode for non-deterministic main goal
+  , firstSol     :: Bool       -- print only first solution to nd main goal?
+  , interactive  :: Bool       -- interactive execution of goal?
+  , rtsOpts      :: String     -- run-time options for ghc
+  , quit         :: Bool       -- terminate the REPL?
   }
 
 -- Mode for non-deterministic evaluation of main goal
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 initReplState :: ReplState
-initReplState = { idcHome     = ""
-                , idSupply    = "integer"
-                , quiet       = False
-                , importPaths = []
-                , mainMod     = "Prelude"
-                , addMods     = []
-                , optim       = True
-                , ndMode      = DFS
-                , firstSol    = False
-                , interactive = False
-                , rtsOpts     = ""
-                , quit        = False
-                }
+initReplState =
+  { idcHome      = ""
+  , idSupply     = "integer"
+  , quiet        = False
+  , importPaths  = []
+  , outputSubdir = "/.curry/kics2/"
+  , mainMod      = "Prelude"
+  , addMods      = []
+  , optim        = True
+  , ndMode       = DFS
+  , firstSol     = False
+  , interactive  = False
+  , rtsOpts      = ""
+  , quit         = False
+  }
 
 -- Show an info message if not quiet
 writeInfo :: ReplState -> String -> IO ()
-writeInfo rst msg = if rst->quiet then done else putStrLn msg
+writeInfo rst msg = if rst -> quiet then done else putStrLn msg
 
 main = do
   let rst = { idcHome := installDir
-            , importPaths := [installDir++"/lib", installDir++"/lib/meta"]
+            , importPaths := [installDir </> "/lib", installDir </> "/lib/meta"]
             | initReplState }
   args <- getArgs
   processArgsAndStart rst args
 
 processArgsAndStart rst [] =
-  if rst->quit
+  if rst -> quit
   then done
   else do writeInfo rst banner
           writeInfo rst "Type \":h\" for help"
@@ -109,8 +119,8 @@ processInput rst g
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> String -> IO Int
 compileProgramWithGoal rst goal = do
-  oldmaincurryexists <- doesFileExist (funcInfoFile mainGoalFile)
-  unless (not oldmaincurryexists) $ removeFile (funcInfoFile mainGoalFile)
+  oldmaincurryexists <- doesFileExist infoFile
+  unless (not oldmaincurryexists) $ removeFile infoFile
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeFile mainGoalFile
@@ -118,8 +128,10 @@ compileProgramWithGoal rst goal = do
                        map ("import "++) (rst->addMods) ++
                        ["idcMainGoal = "++goal])
   status <- compileCurryProgram rst True mainGoalFile
-  exinfo <- doesFileExist (funcInfoFile mainGoalFile)
+  exinfo <- doesFileExist infoFile
   if status==0 && exinfo then createAndCompileMain rst else return 1
+    where
+      infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
 
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> Bool -> String -> IO Int
@@ -135,7 +147,7 @@ compileCurryProgram rst quiet curryprog = do
 -- Create and compile the main module containing the main goal
 createAndCompileMain :: ReplState -> IO Int
 createAndCompileMain rst = do
-  infos <- readQTermFile (funcInfoFile mainGoalFile)
+  infos <- readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
   --print infos
   let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
                                 infos))
@@ -148,8 +160,11 @@ createAndCompileMain rst = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst isdet isio
-  let ghcImports = [rst->idcHome,rst->idcHome++"/idsupply"++rst->idSupply]
-                   ++ rst->importPaths
+  let ghcImports = [ rst -> idcHome
+                   , rst -> idcHome ++ "/idsupply" ++ rst -> idSupply
+                   , "." </> rst -> outputSubdir
+                   ]
+                   ++ map (</> rst -> outputSubdir) (rst -> importPaths)
       ghcCompile = unwords ["ghc"
                            ,if rst->optim then "-O2" else ""
                            ,"--make"
