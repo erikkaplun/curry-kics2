@@ -8,14 +8,12 @@ module ID
   , initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Choice management
   , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
-  , setChoiceRaw, nextNIDs
+  , nextNIDs
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
 import IDImpl
-
-trace :: Bool
-trace = False
+import Debug
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -179,9 +177,9 @@ lookupID i = snd `liftM` lookupChoiceID i
 -- |Lookup the 'Choice' and the 'ID' an 'ID' ultimately is bound to
 lookupChoiceID :: ID -> IO (Choice, ID)
 lookupChoiceID i = do
-  when trace $ putStrLn $ "lookupChoiceID " ++ show i
+  trace $ "lookupChoiceID " ++ show i
   r <- lookupChoiceRaw i >>= unchain
-  when trace $ putStrLn $ "lookupChoiceID returned " ++ take 200 (show r)
+  trace $ "lookupChoiceID returned " ++ take 200 (show r)
   return r
   where
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
@@ -195,12 +193,21 @@ lookupChoiceID i = do
         _             -> error $ "ID.lookupChoiceID: " ++ show c
       return retVal
       where
-        shortenTo lastId = when (j /= lastId) $ setChoiceRaw i (BindTo lastId)
+        shortenTo lastId = when (j /= lastId) $ do
+          trace $ "shorten " ++ show i ++ " to " ++ show lastId
+          setChoiceRaw i (BindTo lastId)
 
     -- For BoundTo, the chains should already be shortened since the Choice
     -- "BoundTo j" is only set if the variable j has been set to a "ChooseN"
     -- and therefore could not have been changed in between.
-    unchain (BoundTo j _) = lookupChoiceID j
+    unchain (BoundTo j num) = do
+      retVal@(c, lastId) <- lookupChoiceID j
+      case c of
+        NoChoice       -> return ()
+        ChooseN _ num' -> checkPropagation i j num num'
+        LazyBind _     -> return ()
+        _              -> error $ "ID.lookupChoiceID: " ++ show c
+      return retVal
 
     -- For all other choices, there are no chains at all
     unchain c           = return (c, i)
@@ -223,7 +230,7 @@ setUnsetChoice i c = do
     Just (oldChoice, changedId) -> return $ case c of
       BindTo _ -> resetFreeVar changedId oldChoice
       _        -> do
-        when trace $ putStrLn $ "reset " ++ show changedId ++ " to " ++ take 200 (show oldChoice)
+        trace $ "reset " ++ show changedId ++ " to " ++ take 200 (show oldChoice)
         setChoiceRaw changedId oldChoice
 
 -- |Set the 'Choice' for the given 'ID', eventually following a chain and
@@ -232,14 +239,14 @@ setChoiceGetChange :: ID -> Choice -> IO (Maybe (Choice, ID))
 -- We do not bind an ID to itself to avoid cycles
 setChoiceGetChange i (BindTo j) | ref i == ref j = return Nothing
 setChoiceGetChange i c = do
-  when trace $ putStrLn $ "setChoiceGetChange " ++ show i ++ ' ' : take 200 (show c)
+  trace $ "setChoiceGetChange " ++ show i ++ ' ' : take 200 (show c)
   r <- lookupChoiceRaw i >>= unchain
-  when trace $ putStrLn $ "setChoiceGetChange returned " ++ take 200 (show r)
+  trace $ "setChoiceGetChange returned " ++ take 200 (show r)
   return r
   where
     -- BindTo: change the last variable in the chain and propagate the binding
     -- TODO: At the moment the propagation is necessary, but may be removed
-    -- later (cf. examples/Unification.curry, goal25)
+    -- later (cf. tests/Unification.curry, goal25)
     unchain (BindTo k)    = do
       retVal <- setChoiceGetChange k c
       case c of
@@ -247,7 +254,15 @@ setChoiceGetChange i c = do
         _             -> return ()
       return retVal
     -- BoundTo: change the last variable in the chain
-    unchain (BoundTo k _) = setChoiceGetChange k c
+    -- If the new ChooseN has a different propagation number, the old propagation
+    -- has to be reset first. Otherwise after a lookup leading to BoundTo
+    -- new propagations would be ignored, cf. tests/FunctionPattern.curry, goal2
+    unchain (BoundTo k num) = do
+      retVal <- setChoiceGetChange k c
+      case c of
+        ChooseN _ num' -> checkPropagation i k num num'
+        _              -> return ()
+      return retVal
     unchain oldChoice     = case c of
       BindTo j -> do
         -- Avoid binding i to a variable which is transitively bound to i
@@ -257,21 +272,6 @@ setChoiceGetChange i c = do
           else setChoiceRaw i c >> return (Just (oldChoice, i))
       _        -> setChoiceRaw i c >> return (Just (oldChoice, i))
 
--- |Reset a free variable to its former 'Choice' and reset its children if
---  the binding has already been propagated
-resetFreeVar :: ID -> Choice -> IO ()
-resetFreeVar i oldChoice = reset oldChoice (supply i)
-  where
-    reset c s = do
-      when trace $ putStrLn $ "reset " ++ show i ++ " to " ++ take 200 (show c)
-      lookupChoiceRef (thisRef s) >>= propagate c s
-
-    propagate c s (BindTo _)      = setChoiceRef (thisRef s) c
-    propagate c s (BoundTo _ num) = do
-      setChoiceRef (thisRef s) c
-      mapM_ (reset NoChoice) $ nextNSupplies s num
-    propagate _ _ _ = error "ID.resetFreeVar.propagate: no binding"
-
 -- -------------------
 -- Auxiliary functions
 -- -------------------
@@ -280,14 +280,19 @@ resetFreeVar i oldChoice = reset oldChoice (supply i)
 lookupChoiceRaw :: ID -> IO Choice
 lookupChoiceRaw i = do
   r <- lookupChoiceRef $ ref i
---   when trace $ putStrLn $ "lookupChoiceRaw " ++ show i ++ " -> " ++ show r
+--   trace $ "lookupChoiceRaw " ++ show i ++ " -> " ++ show r
   return r
 
 -- |Set the 'Choice' for the given 'ID' in the store without following chains
 setChoiceRaw :: ID -> Choice -> IO ()
 setChoiceRaw i c = do
---   when trace $ putStrLn $ "setChoiceRaw " ++ show i ++ ' ' : show c
+  trace $ "setChoiceRaw " ++ show i ++ ' ' : take 200 (show c)
   setChoiceRef (ref i) c
+
+checkPropagation :: ID -> ID -> Int -> Int -> IO ()
+checkPropagation i j oldNum newNum = when (oldNum /= newNum) $ do
+  resetFreeVar i (BindTo j)
+  propagateBind i j newNum
 
 -- |Propagate a binding of 'ID' x to 'ID' y for the next cnt independent child
 --  'ID's. x as well as y are both expected to be either a free or a narrowed
@@ -302,6 +307,22 @@ propagateBind x y cnt = do
   where
     xFreeNarrowed = ensureNotID x
     yFree = ensureFreeID y
+
+-- |Reset a free variable to its former 'Choice' and reset its children if
+--  the binding has already been propagated
+--  TODO: use set/lookupChoiceRef to avoid constructor wrapping
+resetFreeVar :: ID -> Choice -> IO ()
+resetFreeVar i oldChoice = reset oldChoice i -- (supply i)
+  where
+    reset c j = do
+      trace $ "reset " ++ show i ++ " to " ++ take 200 (show c)
+      lookupChoiceRaw j >>= propagate c j
+
+    propagate c j (BindTo _)      = setChoiceRaw j c
+    propagate c j (BoundTo _ num) = do
+      setChoiceRaw j c
+      mapM_ (reset NoChoice) $ nextNIDs j num
+    propagate _ _ _ = error "ID.resetFreeVar.propagate: no binding"
 
 -- Compute a list of the next n free 'ID's for a given 'ID'
 nextNIDs :: ID -> Int -> [ID]

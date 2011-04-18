@@ -14,6 +14,7 @@ import System.IO (Handle)
 import ID
 import MonadList
 import Solver (Solution, SolutionTree (..), solves)
+import Debug
 
 
 nonAsciiChr :: Int# -> Char#
@@ -714,7 +715,7 @@ prdfs mainexp = initSupply >>= \s -> printValsDFS False print (id $!! (mainexp s
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
---   putStrLn $ "\n\n\n-- \nprintValsDFS " ++ take 200 (show a)
+  trace $ "\n\n-- \n\nprintValsDFS " ++ take 200 (show a)
   printValsDFS' fb cont (try a)
 
 printValsDFS' :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> Try a -> IO ()
