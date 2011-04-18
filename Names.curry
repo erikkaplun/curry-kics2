@@ -10,6 +10,7 @@ import Maybe (fromJust, isJust)
 
 import AbstractHaskell
 import Base
+import CompilerOpts
 import Files
 
 {-
@@ -133,16 +134,22 @@ mkModName = ("Curry_" ++)
 renameFile :: String -> String
 renameFile = renameModule -- until hierarchical module names are supported
 
-destFile :: String -> String
-destFile = hsFile . withBaseName renameFile
+destFile :: String-> String -> String
+destFile subdir = withPath (</> subdir) -- apply subdir
+                . hsFile                       -- .hs extension
+                . withBaseName renameFile      -- renaming
 
-analysisFile :: String -> String
-analysisFile = withExtension (const ".nda") . withBaseName renameFile
+analysisFile :: String -> String -> String
+analysisFile subdir = withPath (</> subdir) -- apply subdir
+                    . withExtension (const ".nda")
+                    . withBaseName renameFile
 
 -- Auxiliary file containing some basic information about functions
 -- (might become unnecessary in the future)
-funcInfoFile :: String -> String
-funcInfoFile = withExtension (const ".info") . withBaseName renameFile
+funcInfoFile :: String -> String -> String
+funcInfoFile subdir = withPath (</> subdir) -- apply subdir
+                    . withExtension (const ".info")
+                    . withBaseName renameFile
 
 hsFile :: String -> String
 hsFile  f = withExtension (const ".hs")  f

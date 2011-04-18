@@ -59,40 +59,40 @@ build opts fn = do
   case mbFn of
     Nothing -> putStrLn $ "Could not find file " ++ fn
     Just f -> do
-      (mods, errs) <- deps (opts -> optQuiet) (opts -> optImportPaths) f
+      (mods, errs) <- deps opts f
       if null errs
         then foldIO (makeModule mods)
             initState (zip mods [1 .. ]) >> done
         else mapIO_ putStrLn errs
         where initState = { compOptions := opts | defaultState }
 
-makeModule :: [(ModuleIdent, Source)] -> State
-           -> ((ModuleIdent, Source), Int) -> IO State
+makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
 makeModule mods state mod@((_, (fn, fcy)), _) =
-  if ((state -> compOptions) -> optForce)
+  if (opts -> optForce)
   then compileModule modCnt state mod
-  else smake (destFile fn)
-               depFiles
-               (compileModule modCnt state mod)
-               (loadAnalysis modCnt state mod)
+  else smake (destFile (opts -> optOutputSubdir) fn)
+             depFiles
+             (compileModule modCnt state mod)
+             (loadAnalysis modCnt state mod)
   where
-    depFiles = fn : map (\i -> destFile $ fst $ fromJust $ lookup i mods) imps
+    depFiles = fn : map (\i -> destFile (opts -> optOutputSubdir)
+                               $ fst $ fromJust $ lookup i mods) imps
     (Prog _ imps _ _ _) = fcy
     modCnt = length mods
+    opts = state -> compOptions
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  putStrLn $ compMessage current total ("Analyzing " ++ mid) ndaFile
+  putStrLn $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (analysis, types) <- readQTermFile ndaFile
   return { ndResult := (state -> ndResult) `plusFM` analysis
          , typeMap  := (state ->  typeMap) `plusFM` types
          | state }
-    where ndaFile = analysisFile fn
+    where ndaFile = analysisFile ((state -> compOptions)-> optOutputSubdir) fn
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
-  let opts = state -> compOptions
-  putStrLn $ compMessage current total ("Compiling " ++ mid) fn
+  putStrLn $ compMessage current total ("Compiling " ++ mid) fn destination
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
@@ -107,7 +107,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   status opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
-  writeQTermFile (analysisFile fn) ((state' -> ndResult), (state' -> typeMap))
+  writeQTermFile (analysisFile (opts -> optOutputSubdir) fn) ((state' -> ndResult), (state' -> typeMap))
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -125,11 +125,11 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   status opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  status opts $ "Generating Haskell module " ++ destFile fn
-  writeFile (destFile fn) integrated
+  status opts $ "Generating Haskell module " ++ destination
+  writeFile destination integrated
 
-  status opts $ "Writing auxiliary info file " ++ funcInfoFile fn
-  writeQTermFile (funcInfoFile fn) (extractFuncInfos funs)
+  status opts $ "Writing auxiliary info file " ++ funcInfo
+  writeQTermFile funcInfo (extractFuncInfos funs)
 
   return state'
 
@@ -140,6 +140,9 @@ compileModule total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
     abstractHsName = ahsFile mid
+    destination    = destFile (opts -> optOutputSubdir) fn
+    funcInfo       = funcInfoFile (opts -> optOutputSubdir) fn
+    opts           = state -> compOptions
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
 
@@ -163,11 +166,11 @@ patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
  where
   curryDecl = AH.Type (curryPrelude, "Curry") AH.Public [] []
 
-compMessage :: Int -> Int -> String -> String -> String
-compMessage curNum maxNum msg fn
+compMessage :: Int -> Int -> String -> String -> String -> String
+compMessage curNum maxNum msg fn dest
   = '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
     ++ ' ' : msg
-    ++ " ( " ++ fn ++ " )"
+    ++ " ( " ++ fn ++ ", " ++ dest ++ " )"
     where
       sCurNum = show curNum
       sMaxNum = show maxNum

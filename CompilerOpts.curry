@@ -21,6 +21,7 @@ type Options =
   , optQuiet           :: Bool       -- quiet mode
   , optForce           :: Bool       -- force recompilation
   , optImportPaths     :: [String]   -- directories searched for imports
+  , optOutputSubdir    :: String     -- subdirectory for compiled modules
   , optSearchMode      :: SearchMode -- search mode
   , optDetOptimization :: Bool       -- optimization for deterministic functions
   , optDump            :: [Dump]     -- dump intermediate results
@@ -49,6 +50,7 @@ defaultOptions =
   , optQuiet           = False
   , optForce           = False
   , optImportPaths     = []
+  , optOutputSubdir    = "/.curry/kics2/"
   , optSearchMode      = NoSearch
   , optDetOptimization = True
   , optDump            = []
@@ -72,6 +74,9 @@ options =
   , Option ['i'] ["import-dir"]
       (ReqArg (\arg opts -> { optImportPaths := nub (arg : opts -> optImportPaths) | opts }) "DIR")
       "search for imports in DIR"
+  , Option ['o'] ["output-subdir"]
+      (ReqArg (\arg opts -> { optOutputSubdir := arg | opts }) "SUBDIR")
+      "output compiled modules to SUBDIR"
   , Option ['s'] ["search-mode"]
       (ReqArg (\arg opts -> { optSearchMode := fromMaybe
         (opts -> optSearchMode) (lookup arg searchModes) | opts } )

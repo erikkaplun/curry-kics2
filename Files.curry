@@ -11,6 +11,9 @@ withBaseName f fn = dirName fn
 withExtension :: (String -> String) -> String -> String
 withExtension f fn = stripSuffix fn ++ f (fileSuffix fn)
 
+withPath :: (String -> String) -> String -> String
+withPath f fn = f path ++ base where (path, base) = splitDirectoryBaseName fn
+
 (</>) :: String -> String -> String
 dir </> subdir = dropTrailingPathSeparator dir
                  ++ separatorChar : dropWhile (== separatorChar) subdir
