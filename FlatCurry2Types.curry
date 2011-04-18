@@ -7,21 +7,17 @@
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version April 2011
 -- ---------------------------------------------------------------------------
-module FlatCurry2Types where
+module FlatCurry2Types (fcyTypes2abs) where
 
 import qualified FlatCurry as FC
 import FlatCurryGoodies
 import AbstractHaskell
-import AbstractHaskellPrinter
 import AbstractHaskellGoodies
 import FlatCurry2AbstractHaskell
-import System
-import FileGoodies (stripSuffix)
-import List
-import Directory
-import Time
-import Distribution
+import List (intersperse)
 import Names
+  ( mkChoiceName, mkChoicesName, mkFailName, mkGuardName
+  , renameModule, unGenRename, unRenameModule)
 
 -- ---------------------------------------------------------------------------
 -- Generate code for user-defined types
@@ -71,16 +67,16 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
     ([( pre "showsPrec"
       , simpleRule [PVar (1,"d"),
           PComb choiceConsName [PVar (2,"i"),PVar (3,"x"),PVar (4,"y")]]
-          (applyF (pre "showsChoice")
+          (applyF (basics "showsChoice")
                   [Var (1,"d"),Var (2,"i"), Var (3,"x"),Var (4,"y")])),
       (pre "showsPrec",
       simpleRule
         [PVar (1,"d"), PComb choicesConsName [PVar (2,"i"),PVar (3,"xs")]]
-        (applyF (pre "showsChoices") [Var (1,"d"),Var (2,"i"),Var (3,"xs")])),
+        (applyF (basics "showsChoices") [Var (1,"d"),Var (2,"i"),Var (3,"xs")])),
       (pre "showsPrec",
       simpleRule
         [PVar (1,"d"), PComb guardConsName [PVar (2,"c"),PVar (3,"e")]]
-        (applyF (pre "showsGuard") [Var (1,"d"),Var (2,"c"),Var (3,"e")])),
+        (applyF (basics "showsGuard") [Var (1,"d"),Var (2,"c"),Var (3,"e")])),
       (pre "showsPrec",
       simpleRule [PVar (1, "_"), PComb failConsName []]
         (applyF (pre "showChar") [charc '!']))]
@@ -260,7 +256,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
     [(basics "generate", simpleRule [PVar (1,"s")] (genBody (Var (1, "s"))))]
 
   genBody idSupp =
-    applyF choicesConsName [(applyF (idmod "freeID") [idSupp]), list2ac $
+    applyF choicesConsName [(applyF (basics "freeID") [idSupp]), list2ac $
       map (\(FC.Cons qn _ _ texps) -> applyF qn (consArgs2gen idSupp (length texps))) cdecls]
 
   consArgs2gen idSupp n = map (applyF (basics "generate") . (:[])) $ mkSuppList n idSupp
@@ -282,11 +278,11 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
       , map (normalformConsRule (basics "$!<")) cdecls
       , [ (basics "$!<", simpleRule [PVar (1,"cont"),
             PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
-              (applyF (pre "nfChoiceIO")
+              (applyF (basics "nfChoiceIO")
                       [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
         , (basics "$!<", simpleRule [PVar (1,"cont"),
             PComb choicesConsName [PVar (2,"i"), PVar (3,"xs")]]
-              (applyF (pre "nfChoicesIO")
+              (applyF (basics "nfChoicesIO")
                       [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
         , (basics "$!<", simpleRule [PVar (1,"cont"), PVar (2,"x")]
               (applyV (1,"cont") [Var (2,"x")]))
@@ -321,10 +317,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                   [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
     , (funcName, simpleRule [PVar (1,"cont"),
         PComb guardConsName [PVar (2,"c"),PVar (3,"x")]]
-          (applyF (pre "guardCons")
+          (applyF (basics "guardCons")
                   [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x")]]))
     , (funcName, simpleRule [PVar (1,"_"), PComb failConsName []]
-                  (Symbol (pre "failCons")))
+                  (Symbol (basics "failCons")))
     ]
 
   -- Generate searchNF instance rule for a data constructor:
@@ -403,7 +399,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   -- lazyBind i (Choice_TYPENAME j l r) = [ConstraintChoice j (lazyBind i l) (lazyBind i r)]
   bindChoiceRule funcName = (funcName,
     simpleRule [PVar (1,"i"), PComb choiceConsName [PVar (2,"j"), PVar (3,"l"), PVar (4,"r")]]
-      ( list2ac [ applyF (idmod "ConstraintChoice")
+      ( list2ac [ applyF (basics "ConstraintChoice")
                   [ Var (2,"j")
                   , applyF funcName [Var (1, "i"), Var (3, "l")]
                   , applyF funcName [Var (1, "i"), Var (4, "r")]
@@ -416,12 +412,12 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   bindFreeRule funcName = (funcName,
     simpleRule
       [ PVar (1,"i")
-      , PComb choicesConsName [PAs (2,"j") (PComb (idmod "FreeID") [PVar (3,"_")])
+      , PComb choicesConsName [PAs (2,"j") (PComb (basics "FreeID") [PVar (3,"_")])
       , PVar (4,"xs")]
       ]
       ( list2ac [ applyF (basics ":=:")
                   [ Var (1,"i")
-                  , applyF (idmod "BindTo") [Var (2,"j")]
+                  , applyF (basics "BindTo") [Var (2,"j")]
                   ]
                 ]
       ))
@@ -431,7 +427,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   bindNarrowedRule funcName = (funcName,
     simpleRule
       [ PVar (1,"i")
-      , PComb choicesConsName [PAs (2,"j") (PComb (idmod "Narrowed") [PVar (3,"_")])
+      , PComb choicesConsName [PAs (2,"j") (PComb (basics "Narrowed") [PVar (3,"_")])
       , PVar (4,"xs")]
       ]
       ( list2ac [ applyF (basics "ConstraintChoices")
@@ -470,98 +466,98 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 -- Generate instance of Curry class:
 -- ---------------------------------------------------------------------------
 
-  curryInstance = mkInstance (basics "Curry") [] ctype targs $ concat
-     [ extConsRules "=?=", map eqConsRule cdecls, catchAllPattern (pre "=?=")
-     , extConsRules "<?=", ordConsRules cdecls  , catchAllPattern (pre "<?=")
+  curryInstance = mkInstance (curryPre "Curry") [] ctype targs $ concat
+     [ extConsRules (curryPre "=?="), map eqConsRule cdecls, catchAllPattern (curryPre "=?=")
+     , extConsRules (curryPre "<?="), ordConsRules cdecls  , catchAllPattern (curryPre "<?=")
      ]
     where
      catchAllPattern qn
-       | length cdecls > 1 = catchAllCase qn (pre "C_False")
+       | length cdecls > 1 = catchAllCase qn (curryPre "C_False")
        | otherwise         = []
 
   extConsRules name =
     [ nameRule $ simpleRule
       [PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")], PVar (4,"z")]
       (applyF narrow [ Var (1,"i")
-                     , applyF (pre name) [Var (2, "x"), Var (4, "z")]
-                     , applyF (pre name) [Var (3, "y"), Var (4, "z")]
+                     , applyF name [Var (2, "x"), Var (4, "z")]
+                     , applyF name [Var (3, "y"), Var (4, "z")]
                      ])
     , nameRule $ simpleRule
       [PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")], PVar (3,"y")]
       (applyF narrows [ Var (1,"i")
                       , applyF (pre "map")
-                               [ Lambda [PVar (4,"x")] (applyF (pre name) [Var (4,"x"),Var (3,"y")])
+                               [ Lambda [PVar (4,"x")] (applyF name [Var (4,"x"),Var (3,"y")])
                                , Var (2,"xs")
                                ]])
     , nameRule $ simpleRule
       [PComb guardConsName [PVar (1,"c"),PVar (2,"x")], PVar(3,"y")]
-      (applyF (pre "guardCons") [ Var (1,"c")
-                                , applyF (pre name) [Var (2,"x"),Var (3,"y")]
+      (applyF (basics "guardCons") [ Var (1,"c")
+                                , applyF name [Var (2,"x"),Var (3,"y")]
                                 ])
     , nameRule $ simpleRule [PComb failConsName [], PVar (1,"_")]
-                            (Symbol (pre "failCons"))
+                            (Symbol (basics "failCons"))
     , nameRule $ simpleRule
       [PVar (4,"z"), PComb choiceConsName [PVar (1,"i"), PVar (2,"x"), PVar (3,"y")]]
       (applyF narrow [ Var (1,"i")
-                     , applyF (pre name)[Var (4,"z"),Var (2,"x")]
-                     , applyF (pre name) [Var (4,"z"),Var (3, "y")]
+                     , applyF name [Var (4,"z"),Var (2,"x")]
+                     , applyF name [Var (4,"z"),Var (3, "y")]
                      ])
     , nameRule $ simpleRule
       [PVar (3,"y"), PComb choicesConsName [PVar (1,"i"), PVar (2,"xs")]]
       (applyF narrows [ Var (1,"i")
                       , applyF (pre "map")
-                               [ Lambda [PVar (4,"x")] (applyF (pre name) [Var (3,"y"),Var (4,"x")])
+                               [ Lambda [PVar (4,"x")] (applyF name [Var (3,"y"),Var (4,"x")])
                                , Var (2,"xs")
                                ]])
     , nameRule $ simpleRule
       [PVar(3,"y"), PComb guardConsName [PVar (1,"c"),PVar (2,"x")]]
-      (applyF (pre "guardCons")
-        [Var (1,"c"), applyF (pre name) [Var (3,"y"),Var (2,"x")]])
+      (applyF (basics "guardCons")
+        [Var (1,"c"), applyF name [Var (3,"y"),Var (2,"x")]])
     , nameRule $ simpleRule [PVar (1,"_"), PComb failConsName []]
-                            (Symbol (pre "failCons"))
+                            (Symbol (basics "failCons"))
     ]
-    where nameRule rule = (pre name, rule)
+    where nameRule rule = (name, rule)
 
   -- Generate equality instance rule for a data constructor:
   eqConsRule (FC.Cons qn _ _ texps) =
-    ( pre "=?="
+    ( curryPre "=?="
     , simpleRule [consPattern qn "x" carity, consPattern qn "y" carity] eqBody
     )
     where
       carity = length texps
 
       eqBody = if carity == 0
-        then constF (pre "C_True")
-        else foldr1 (\x xs -> applyF (pre "d_OP_ampersand_ampersand") [x,xs])
-                    (map (\i -> applyF (pre "=?=")
+        then constF (curryPre "C_True")
+        else foldr1 (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x,xs])
+                    (map (\i -> applyF (curryPre "=?=")
                                        [Var (i,'x':show i),Var (i,'y':show i)])
                     [1..carity])
 
   -- Generate Unifiable instance rule for a data constructor:
   ordConsRules [] = []
   ordConsRules (FC.Cons qn _ _ texps : cds) =
-    (pre "<?=",
+    (curryPre "<?=",
      simpleRule [consPattern qn "x" carity, consPattern qn "y" carity]
           (ordBody [1..carity])) : map (ordCons2Rule (qn,carity)) cds ++
     ordConsRules cds
    where
      carity = length texps
 
-     ordBody [] = constF (pre "C_True")
+     ordBody [] = constF (curryPre "C_True")
      ordBody (i:is) =
       let xi = Var (i,'x':show i)
           yi = Var (i,'y':show i)
        in if null is
-          then applyF (pre "<?=") [xi,yi]
-          else applyF (pre "d_OP_bar_bar")
-                 [applyF (pre "d_OP_lt")  [xi,yi],
-                  applyF (pre "d_OP_ampersand_ampersand") [applyF (pre "=?=") [xi,yi], ordBody is]]
+          then applyF (curryPre "<?=") [xi,yi]
+          else applyF (curryPre "d_OP_bar_bar")
+                 [applyF (curryPre "d_OP_lt")  [xi,yi],
+                  applyF (curryPre "d_OP_ampersand_ampersand") [applyF (curryPre "=?=") [xi,yi], ordBody is]]
 
   ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
-    (pre "<?=", simpleRule
+    (curryPre "<?=", simpleRule
                 [ PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1])
                 , PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
-                (constF (pre "C_True")))
+                (constF (curryPre "C_True")))
 
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions
@@ -604,20 +600,25 @@ mkSuppList num supp
       where
         half = n `div` 2
 
-left  i = applyF (idmod "leftID") [i]
-right i = applyF (idmod "rightID") [i]
+-- ---------------------------------------------------------------------------
+-- Frequently used symbols
+-- ---------------------------------------------------------------------------
 
-leftsupp  s = applyF (idmod "leftSupply") [s]
-rightsupp s = applyF (idmod "rightSupply") [s]
+left  i = applyF (basics "leftID" ) [i]
+right i = applyF (basics "rightID") [i]
 
-idType = baseType (idmod "ID")
+leftsupp  s = applyF (basics "leftSupply" ) [s]
+rightsupp s = applyF (basics "rightSupply") [s]
 
-constraintType = listType $ baseType (pre "Constraint")
+idType = baseType (basics "ID")
+
+constraintType = listType $ baseType (basics "Constraint")
 
 basics :: String -> QName
 basics n = ("Basics", n)
 
-idmod n = ("ID", n)
+curryPre :: String -> QName
+curryPre n = (renameModule "Prelude", n)
 
 narrow = basics "narrow"
 narrows = basics "narrows"
