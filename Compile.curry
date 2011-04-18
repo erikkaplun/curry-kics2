@@ -7,14 +7,15 @@
 module Compile where
 
 import Prelude
-import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM, plusFM)
+import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
+  , lookupFM, plusFM)
 import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
 import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
 import FlatCurryGoodies (funcName, consName, updQNamesInProg)
-import ReadShowTerm (readQTermFile, writeQTermFile)
+import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
@@ -27,23 +28,22 @@ import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
-  ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName, mkChoicesName
-  , mkGuardName, externalFunc, externalModule, destFile, analysisFile
-  , funcInfoFile  )
+  ( renameModule, renameFile, renameQName, funcPrefix
+  , mkChoiceName, mkChoicesName, mkGuardName
+  , externalFunc, externalModule, destFile, analysisFile, funcInfoFile )
 import SimpleMake (smake)
 import Splits (mkSplits)
-import Utils (foldIO, intercalate)
+import Utils (foldIO, intercalate, unless, when)
 
-
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Configurations
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 -- Chooce let-Type for IdSupply Variables
 --letIdVar = lazyLet
 letIdVar = strictLet
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 main :: IO ()
 main = do
@@ -59,7 +59,7 @@ build opts fn = do
   case mbFn of
     Nothing -> putStrLn $ "Could not find file " ++ fn
     Just f -> do
-      (mods, errs) <- deps (opts -> optQuiet) (opts -> optImportPaths) f
+      (mods, errs) <- deps opts f
       if null errs
         then foldIO (makeModule mods)
             initState (zip mods [1 .. ]) >> done
@@ -68,30 +68,31 @@ build opts fn = do
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
 makeModule mods state mod@((_, (fn, fcy)), _) =
-  if ((state -> compOptions) -> optForce)
+  if (opts -> optForce)
   then compileModule modCnt state mod
-  else smake (destFile fn)
-               depFiles
-               (compileModule modCnt state mod)
-               (loadAnalysis modCnt state mod)
+  else smake (destFile (opts -> optOutputSubdir) fn)
+             depFiles
+             (compileModule modCnt state mod)
+             (loadAnalysis modCnt state mod)
   where
-    depFiles = fn : map (\i -> destFile $ fst $ fromJust $ lookup i mods) imps
+    depFiles = fn : map (\i -> destFile (opts -> optOutputSubdir)
+                               $ fst $ fromJust $ lookup i mods) imps
     (Prog _ imps _ _ _) = fcy
     modCnt = length mods
+    opts = state -> compOptions
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  putStrLn $ compMessage current total ("Analyzing " ++ mid) ndaFile
+  putStrLn $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (analysis, types) <- readQTermFile ndaFile
   return { ndResult := (state -> ndResult) `plusFM` analysis
          , typeMap  := (state ->  typeMap) `plusFM` types
          | state }
-    where ndaFile = analysisFile fn
+    where ndaFile = analysisFile ((state -> compOptions)-> optOutputSubdir) fn
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
-  let opts = state -> compOptions
-  putStrLn $ compMessage current total ("Compiling " ++ mid) fn
+  putStrLn $ compMessage current total ("Compiling " ++ mid) fn destination
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
@@ -106,7 +107,8 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   status opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
-  writeQTermFile (analysisFile fn) ((state' -> ndResult), (state' -> typeMap))
+  writeQTermFileInDir (analysisFile (opts -> optOutputSubdir) fn)
+                      ((state' -> ndResult), (state' -> typeMap))
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -124,11 +126,11 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   status opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  status opts $ "Generating Haskell module " ++ destFile fn
-  writeFile (destFile fn) integrated
+  status opts $ "Generating Haskell module " ++ destination
+  writeFileInDir destination integrated
 
-  status opts $ "Writing auxiliary info file " ++ funcInfoFile fn
-  writeQTermFile (funcInfoFile fn) (extractFuncInfos funs)
+  status opts $ "Writing auxiliary info file " ++ funcInfo
+  writeQTermFileInDir funcInfo (extractFuncInfos funs)
 
   return state'
 
@@ -139,6 +141,9 @@ compileModule total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
     abstractHsName = ahsFile mid
+    destination    = destFile (opts -> optOutputSubdir) fn
+    funcInfo       = funcInfoFile (opts -> optOutputSubdir) fn
+    opts           = state -> compOptions
     fcyFile f = withExtension (const ".fcy") f
     ahsFile f = withExtension (const ".ahs") f
 
@@ -152,21 +157,21 @@ extractFuncInfos funs =
 
   withIOResult (AH.TVar _) = False
   withIOResult (AH.FuncType _ texp) = withIOResult texp
-  withIOResult (AH.TCons tc _) = tc == ("Curry_Prelude","C_IO")
+  withIOResult (AH.TCons tc _) = tc == (curryPrelude, "C_IO")
 
 -- Patch Prelude in order to add some exports for predefined items
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
 patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
-  | m == prelude = AH.Prog m imps (curryDecl:td) fd od
-  | otherwise    = p
+  | m == curryPrelude = AH.Prog m imps (curryDecl:td) fd od
+  | otherwise         = p
  where
-  curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
+  curryDecl = AH.Type (curryPrelude, "Curry") AH.Public [] []
 
-compMessage :: Int -> Int -> String -> String -> String
-compMessage curNum maxNum msg fn
+compMessage :: Int -> Int -> String -> String -> String -> String
+compMessage curNum maxNum msg fn dest
   = '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
     ++ ' ' : msg
-    ++ " ( " ++ fn ++ " )"
+    ++ " ( " ++ fn ++ ", " ++ dest ++ " )"
     where
       sCurNum = show curNum
       sMaxNum = show maxNum
@@ -176,7 +181,7 @@ compMessage curNum maxNum msg fn
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od) =
   if (opts -> optXNoImplicitPrelude)
-    then Prog m (filter (/= "Prelude") imps) td fd od
+    then Prog m (filter (/= prelude) imps) td fd od
     else p
 
 --
@@ -215,16 +220,16 @@ splitExternals content = se (lines content) ([], [], []) where
 
 -- Show an info message unless the quiet flag is set
 info :: Options -> String -> IO ()
-info opts msg = if opts -> optQuiet then done else putStrLn msg
+info opts msg = unless (opts -> optQuiet) $ putStrLn msg
 
 status :: Options -> String -> IO ()
 status opts msg = info opts $ msg ++ " ..."
 
 -- Dump an intermediate result to a file
 dumpLevel :: Dump -> Options -> String -> String -> IO ()
-dumpLevel level opts file src = if level `elem` opts -> optDump
-  then info opts ("Dumping " ++ file) >> writeFile file src
-  else return ()
+dumpLevel level opts file src = when (level `elem` opts -> optDump) $ do
+  info opts ("Dumping " ++ file)
+  writeFileInDir (withPath (</> opts -> optOutputSubdir) file) src
 
 rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
@@ -461,7 +466,8 @@ transTypeExpr n t
 -- Recursively translate (->) into Func
 transHOTypeExpr :: TypeExpr -> TypeExpr
 transHOTypeExpr t@(TVar _)       = t
-transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1) (transHOTypeExpr t2)
+transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1)
+                                            (transHOTypeExpr t2)
 transHOTypeExpr (TCons qn ts)    = TCons qn (map transHOTypeExpr ts)
 
 -- translate a single rule of a function
@@ -492,9 +498,9 @@ transBody qn vs exp = case exp of
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
 consNameFromPattern (Branch (LPattern lit) _) = case lit of
-  Intc _   -> renameQName ("Prelude", "Int")
-  Floatc _ -> renameQName ("Prelude", "Float")
-  Charc _  -> renameQName ("Prelude", "Char")
+  Intc _   -> curryInt
+  Floatc _ -> curryFloat
+  Charc _  -> curryChar
 
 -- translate case branch and return the name of the constructor
 transBranch :: BranchExpr -> M BranchExpr
@@ -613,8 +619,8 @@ transExpr (Free vs e) =
   takeNextIDs (length vs) `bindM` \is ->
   genIds (g++is) (Let (zipWith (\ v i -> (v,generate (Var i))) vs is) e')
 
--- case
-transExpr e@(Case _ _ _) = returnM ([], e) -- TODO give reasonable implementation
+-- case -- TODO give reasonable implementation
+transExpr e@(Case _ _ _) = returnM ([], e)
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
@@ -654,28 +660,6 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- Wrapping
 -- ---------------------------------------------------------------------------
 
--- Wrap a function call to make the argument a Func
-wrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
-wrap True  _   _  _ e = e
-wrap False opt nd a e = wrap'' (fun 1 (wrapName nd opt) []) e a
-
-wrap'' :: Expr -> Expr -> Int -> Expr
-wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
-
-wrapName :: NDClass -> Bool -> QName
-wrapName ndMode opt = case ndMode of
-  DFO -> if opt then ("", "wrapD") else ("", "wrapN")
-  _   -> ("", "wrapN")
-
-point :: [Expr] -> Expr
-point = fun 2 ("", ".")
-
-apply :: Expr -> Expr -> Expr
-apply (Comb (FuncPartCall i) qn xs) e =
-  Comb (if i == 1 then FuncCall else FuncPartCall (i - 1)) qn (xs ++ [e])
-
--- new wrapping, but also broken
-
 myWrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
 myWrap True  _   _  _ e = e
 myWrap False opt nd a e = newWrap a iw e
@@ -691,31 +675,45 @@ newWrap n innermostWrapper e
   | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [funId]), e]
   where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
 
-wrapDX exprs = fun 2 ("","wrapDX") exprs
-wrapNX exprs = fun 2 ("","wrapNX") exprs
-funId = fun 1 ("","id") []
-
+wrapDX exprs = fun 2 (basics,"wrapDX") exprs
+wrapNX exprs = fun 2 (basics,"wrapNX") exprs
+funId = fun 1 (prelude,"id") []
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
 
 prelude :: String
-prelude = renameModule "Prelude"
+prelude = "Prelude"
+
+basics :: String
+basics = "Basics"
+
+curryPrelude :: String
+curryPrelude = renameModule "Prelude"
+
+curryInt :: QName
+curryInt = renameQName (prelude, "Int")
+
+curryFloat :: QName
+curryFloat = renameQName (prelude, "Float")
+
+curryChar :: QName
+curryChar = renameQName (prelude, "Char")
 
 -- type expressions
 
 tOrRef :: TypeExpr
-tOrRef = TCons (prelude, "ID") []
+tOrRef = TCons (basics, "ID") []
 
 tConstraint :: TypeExpr
-tConstraint = TCons (prelude, "Constraint") []
+tConstraint = TCons (basics, "Constraint") []
 
 supplyType :: TypeExpr
-supplyType  = TCons (prelude, "IDSupply") []
+supplyType  = TCons (basics, "IDSupply") []
 
 funcType :: TypeExpr -> TypeExpr -> TypeExpr
-funcType t1 t2 = TCons (prelude, "Func") [t1, t2]
+funcType t1 t2 = TCons (basics, "Func") [t1, t2]
 
 -- expressions
 
@@ -738,51 +736,31 @@ fun i n xs | length xs == i = funcCall n xs
            | otherwise      = Comb (FuncPartCall (length xs - i)) n xs
 
 int :: Integer -> Expr
-int i = constant (prelude, "(C_Int " ++ show i ++ "#)")
+int i = funcCall curryInt [constant (prelude, show i ++ "#")]
 
 char :: Char -> Expr
-char c =
-  if ord c < 127
-  then                                  -- due to bug in show --
-       constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
-  else -- due to problems with non-ASCII characters in ghc
-       constant (prelude,"(C_Char (nonAsciiChr "++show (ord c)++ "#))")
+char c = funcCall curryChar charExpr
+  where
+  charExpr
+    | ord c < 127 = [constant (prelude, showLiteral (AH.Charc c) ++ "#")]
+      -- due to problems with non-ASCII characters in ghc
+    | otherwise   = [funcCall (basics, "nonAsciiChr")
+                              [constant (prelude, show (ord c) ++ "#")]]
 
 float :: Float -> Expr
-float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
+float f = funcCall curryFloat [constant (prelude, show f ++ "#")]
 
-liftOr      = funcCall (prelude, "narrow")
-liftOrs     = funcCall (prelude, "narrows")
-liftGuard   = funcCall (prelude, "guardCons")
-liftFail    = funcCall (prelude, "failCons") []
-qmark e1 e2 = funcCall (prelude, "OP_qmark") [e1, e2]
+liftOr      = funcCall (basics, "narrow")
+liftOrs     = funcCall (basics, "narrows")
+liftGuard   = funcCall (basics, "guardCons")
+liftFail    = funcCall (basics, "failCons") []
+qmark e1 e2 = funcCall (basics, "OP_qmark") [e1, e2]
 
-splitSupply = funcCall (prelude, "splitSupply")
-initSupply  = funcCall (prelude, "initIDSupply") []
-leftSupply  = funcCall (prelude, "leftSupply")
-rightSupply = funcCall (prelude, "rightSupply")
-generate i  = funcCall ("","generate") [i]
-
-{-
-funCall n = funcCall ("", n)
-bind e1 e2 = funCall ">>=" [e1, e2]
-prinT0 = Comb (FuncPartCall 1) ("","print") []
-prinT e = funCall "print" [e]
-e1 .* e2 = funCall "." [e1,e2]
-
-dfs0 = Comb (FuncPartCall 1) ("","dfs") []
-bfs0 = Comb (FuncPartCall 1) ("","bfs") []
-par0 = Comb (FuncPartCall 1) ("","par") []
-idfs0 g = Comb FuncCall  ("","idfs") [g]
--}
-
-{-
-wrap' :: NDClass -> Int -> Expr -> Expr
-wrap' nd n e = case n of
-  0 -> e
-  1 -> funcCall (wrapName nd) [e]
-  _ -> funcCall (wrapName DFO) [wrap' nd (n-1) e]
--}
+splitSupply = funcCall (basics, "splitSupply")
+initSupply  = funcCall (basics, "initIDSupply") []
+leftSupply  = funcCall (basics, "leftSupply")
+rightSupply = funcCall (basics, "rightSupply")
+generate i  = funcCall (basics, "generate") [i]
 
 -- ---------------------------------------------------------------------------
 -- Helper functions
@@ -792,12 +770,12 @@ defaultPragmas :: String
 defaultPragmas = "{-# LANGUAGE MagicHash #-}"
 
 defaultModules :: [String]
-defaultModules = ["ID", "Basics"]
+defaultModules = [basics]
 
 -- list of known primitive types
 primTypes :: [(QName, QName)]
-primTypes = map (\ (x, y) -> ( renameQName ("Prelude", x)
-                             , renameQName ("Prelude", y))) $
+primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
+                             , renameQName (prelude, y))) $
   [ ("True", "Bool"), ("False", "Bool")
   , ("[]", "List")  , (":", "List")
   , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")

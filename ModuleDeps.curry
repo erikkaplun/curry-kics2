@@ -12,6 +12,7 @@
 
 module ModuleDeps (ModuleIdent, Source, deps) where
 
+import CompilerOpts
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry (readFlatCurryWithParseOptions, Prog (..))
@@ -28,37 +29,37 @@ type FilePath = String
 type Source = (FilePath, Prog) -- file name, code
 type SourceEnv = FM ModuleIdent (Maybe Source)
 
-deps :: Bool -> [String] -> String -> IO ([(ModuleIdent, Source)], [String])
-deps quiet importPaths fn = do
-  mEnv <- sourceDeps quiet ("." : importPaths) ident fn (emptyFM (<))
+deps :: Options -> String -> IO ([(ModuleIdent, Source)], [String])
+deps opts fn = do
+  mEnv <- sourceDeps opts ident fn (emptyFM (<))
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports and sort topologically
   return (mods2, errs1 ++ errs2)
     where ident = stripSuffix $ baseName fn
 
-moduleDeps :: Bool -> [String] -> SourceEnv -> ModuleIdent -> IO SourceEnv
-moduleDeps quiet importPaths mEnv m = case lookupFM mEnv m of
+moduleDeps :: Options -> SourceEnv -> ModuleIdent -> IO SourceEnv
+moduleDeps opts mEnv m = case lookupFM mEnv m of
   Just _  -> return mEnv
   Nothing -> do
-    mbFile <- lookupModule importPaths m
+    mbFile <- lookupModule opts m
     case mbFile of
       Nothing -> return $ addToFM mEnv m Nothing
-      Just fn -> sourceDeps quiet importPaths m fn mEnv
+      Just fn -> sourceDeps opts m fn mEnv
 
-lookupModule :: [String] -> String -> IO (Maybe String)
-lookupModule importPaths mod =
-  lookupFileInPath mod [".curry", ".lcurry"]
-                   (map dropTrailingPathSeparator importPaths)
+lookupModule :: Options -> String -> IO (Maybe String)
+lookupModule opts mod = lookupFileInPath mod [".curry", ".lcurry"]
+                        (map dropTrailingPathSeparator importPaths)
+  where importPaths = "." : opts -> optImportPaths
 
-sourceDeps :: Bool -> [String] -> ModuleIdent -> String -> SourceEnv
-           -> IO SourceEnv
-sourceDeps quiet importPaths m fn mEnv = do
-  fcy@(Prog _ imps _ _ _) <-
-     readFlatCurryWithParseOptions (stripSuffix fn)
-                                   (setFullPath importPaths
-                                                (setQuiet quiet defaultParams))
-  foldIO (moduleDeps quiet importPaths)
-         (addToFM mEnv m (Just (fn, fcy))) imps
+sourceDeps ::Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
+sourceDeps opts m fn mEnv = do
+  fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (stripSuffix fn) $
+                             setFullPath importPaths $
+                             setQuiet quiet defaultParams
+  foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
+    where
+      importPaths = "." : opts -> optImportPaths
+      quiet       = opts -> optQuiet
 
 filterMissing :: SourceEnv -> ([(ModuleIdent, Source)], [String])
 filterMissing env = (map (mapSnd fromJust) present, errs) where

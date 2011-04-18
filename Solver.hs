@@ -6,6 +6,7 @@ module Solver
   ) where
 
 import ID
+import Debug
 
 -- |Type for an action to reset a choice made earlier
 type Reset = IO ()
@@ -45,7 +46,7 @@ a >>> b = do
 solves :: [Constraint] -> Solution
 solves [] = solved
 solves (c:cs) = do
---   putStrLn $ "solving " ++ take 200 (show c)
+  trace $ "solving " ++ take 200 (show c)
   solve c >>> solves cs
 
 solve :: Constraint -> Solution
