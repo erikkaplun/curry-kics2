@@ -7,7 +7,8 @@
 module Compile where
 
 import Prelude
-import FiniteMap (FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM, lookupFM, plusFM)
+import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
+  , lookupFM, plusFM)
 import Maybe (fromJust, fromMaybe, isJust)
 import List (intersperse, find)
 import Directory (doesFileExist)
@@ -27,13 +28,12 @@ import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
-  ( renameModule, renameFile, renameQName, funcPrefix, mkChoiceName, mkChoicesName
-  , mkGuardName, externalFunc, externalModule, destFile, analysisFile
-  , funcInfoFile  )
+  ( renameModule, renameFile, renameQName, funcPrefix
+  , mkChoiceName, mkChoicesName, mkGuardName
+  , externalFunc, externalModule, destFile, analysisFile, funcInfoFile  )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate)
-
 
 ----------------------------------------------------------------------
 -- Configurations
@@ -66,7 +66,8 @@ build opts fn = do
         else mapIO_ putStrLn errs
         where initState = { compOptions := opts | defaultState }
 
-makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
+makeModule :: [(ModuleIdent, Source)] -> State
+           -> ((ModuleIdent, Source), Int) -> IO State
 makeModule mods state mod@((_, (fn, fcy)), _) =
   if ((state -> compOptions) -> optForce)
   then compileModule modCnt state mod
@@ -152,15 +153,15 @@ extractFuncInfos funs =
 
   withIOResult (AH.TVar _) = False
   withIOResult (AH.FuncType _ texp) = withIOResult texp
-  withIOResult (AH.TCons tc _) = tc == ("Curry_Prelude","C_IO")
+  withIOResult (AH.TCons tc _) = tc == (curryPrelude, "C_IO")
 
 -- Patch Prelude in order to add some exports for predefined items
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
 patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
-  | m == prelude = AH.Prog m imps (curryDecl:td) fd od
-  | otherwise    = p
+  | m == curryPrelude = AH.Prog m imps (curryDecl:td) fd od
+  | otherwise         = p
  where
-  curryDecl = AH.Type (prelude, "Curry") AH.Public [] []
+  curryDecl = AH.Type (curryPrelude, "Curry") AH.Public [] []
 
 compMessage :: Int -> Int -> String -> String -> String
 compMessage curNum maxNum msg fn
@@ -176,7 +177,7 @@ compMessage curNum maxNum msg fn
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od) =
   if (opts -> optXNoImplicitPrelude)
-    then Prog m (filter (/= "Prelude") imps) td fd od
+    then Prog m (filter (/= prelude) imps) td fd od
     else p
 
 --
@@ -492,9 +493,9 @@ transBody qn vs exp = case exp of
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
 consNameFromPattern (Branch (LPattern lit) _) = case lit of
-  Intc _   -> renameQName ("Prelude", "Int")
-  Floatc _ -> renameQName ("Prelude", "Float")
-  Charc _  -> renameQName ("Prelude", "Char")
+  Intc _   -> curryInt
+  Floatc _ -> curryFloat
+  Charc _  -> curryChar
 
 -- translate case branch and return the name of the constructor
 transBranch :: BranchExpr -> M BranchExpr
@@ -654,28 +655,6 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- Wrapping
 -- ---------------------------------------------------------------------------
 
--- Wrap a function call to make the argument a Func
-wrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
-wrap True  _   _  _ e = e
-wrap False opt nd a e = wrap'' (fun 1 (wrapName nd opt) []) e a
-
-wrap'' :: Expr -> Expr -> Int -> Expr
-wrap'' f e n = if n == 0 then e else apply f (wrap'' (point [f]) e (n-1))
-
-wrapName :: NDClass -> Bool -> QName
-wrapName ndMode opt = case ndMode of
-  DFO -> if opt then ("", "wrapD") else ("", "wrapN")
-  _   -> ("", "wrapN")
-
-point :: [Expr] -> Expr
-point = fun 2 ("", ".")
-
-apply :: Expr -> Expr -> Expr
-apply (Comb (FuncPartCall i) qn xs) e =
-  Comb (if i == 1 then FuncCall else FuncPartCall (i - 1)) qn (xs ++ [e])
-
--- new wrapping, but also broken
-
 myWrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
 myWrap True  _   _  _ e = e
 myWrap False opt nd a e = newWrap a iw e
@@ -691,31 +670,45 @@ newWrap n innermostWrapper e
   | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [funId]), e]
   where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
 
-wrapDX exprs = fun 2 ("","wrapDX") exprs
-wrapNX exprs = fun 2 ("","wrapNX") exprs
-funId = fun 1 ("","id") []
-
+wrapDX exprs = fun 2 (basics,"wrapDX") exprs
+wrapNX exprs = fun 2 (basics,"wrapNX") exprs
+funId = fun 1 (prelude,"id") []
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
 
 prelude :: String
-prelude = renameModule "Prelude"
+prelude = "Prelude"
+
+basics :: String
+basics = "Basics"
+
+curryPrelude :: String
+curryPrelude = renameModule "Prelude"
+
+curryInt :: QName
+curryInt = renameQName (prelude, "Int")
+
+curryFloat :: QName
+curryFloat = renameQName (prelude, "Float")
+
+curryChar :: QName
+curryChar = renameQName (prelude, "Char")
 
 -- type expressions
 
 tOrRef :: TypeExpr
-tOrRef = TCons (prelude, "ID") []
+tOrRef = TCons (basics, "ID") []
 
 tConstraint :: TypeExpr
-tConstraint = TCons (prelude, "Constraint") []
+tConstraint = TCons (basics, "Constraint") []
 
 supplyType :: TypeExpr
-supplyType  = TCons (prelude, "IDSupply") []
+supplyType  = TCons (basics, "IDSupply") []
 
 funcType :: TypeExpr -> TypeExpr -> TypeExpr
-funcType t1 t2 = TCons (prelude, "Func") [t1, t2]
+funcType t1 t2 = TCons (basics, "Func") [t1, t2]
 
 -- expressions
 
@@ -738,51 +731,31 @@ fun i n xs | length xs == i = funcCall n xs
            | otherwise      = Comb (FuncPartCall (length xs - i)) n xs
 
 int :: Integer -> Expr
-int i = constant (prelude, "(C_Int " ++ show i ++ "#)")
+int i = funcCall curryInt [constant (prelude, show i ++ "#")]
 
 char :: Char -> Expr
-char c =
-  if ord c < 127
-  then                                  -- due to bug in show --
-       constant (prelude, "(C_Char " ++ showLiteral (AH.Charc c) ++ "#)")
-  else -- due to problems with non-ASCII characters in ghc
-       constant (prelude,"(C_Char (nonAsciiChr "++show (ord c)++ "#))")
+char c = funcCall curryChar charExpr
+  where
+  charExpr
+    | ord c < 127 = [constant (prelude, showLiteral (AH.Charc c) ++ "#")]
+      -- due to problems with non-ASCII characters in ghc
+    | otherwise   = [funcCall (basics, "nonAsciiChr")
+                              [constant (prelude, show (ord c) ++ "#")]]
 
 float :: Float -> Expr
-float f = constant (prelude, "(C_Float " ++ show f ++ "#)")
+float f = funcCall curryFloat [constant (prelude, show f ++ "#")]
 
-liftOr      = funcCall (prelude, "narrow")
-liftOrs     = funcCall (prelude, "narrows")
-liftGuard   = funcCall (prelude, "guardCons")
-liftFail    = funcCall (prelude, "failCons") []
-qmark e1 e2 = funcCall (prelude, "OP_qmark") [e1, e2]
+liftOr      = funcCall (basics, "narrow")
+liftOrs     = funcCall (basics, "narrows")
+liftGuard   = funcCall (basics, "guardCons")
+liftFail    = funcCall (basics, "failCons") []
+qmark e1 e2 = funcCall (basics, "OP_qmark") [e1, e2]
 
-splitSupply = funcCall (prelude, "splitSupply")
-initSupply  = funcCall (prelude, "initIDSupply") []
-leftSupply  = funcCall (prelude, "leftSupply")
-rightSupply = funcCall (prelude, "rightSupply")
-generate i  = funcCall ("","generate") [i]
-
-{-
-funCall n = funcCall ("", n)
-bind e1 e2 = funCall ">>=" [e1, e2]
-prinT0 = Comb (FuncPartCall 1) ("","print") []
-prinT e = funCall "print" [e]
-e1 .* e2 = funCall "." [e1,e2]
-
-dfs0 = Comb (FuncPartCall 1) ("","dfs") []
-bfs0 = Comb (FuncPartCall 1) ("","bfs") []
-par0 = Comb (FuncPartCall 1) ("","par") []
-idfs0 g = Comb FuncCall  ("","idfs") [g]
--}
-
-{-
-wrap' :: NDClass -> Int -> Expr -> Expr
-wrap' nd n e = case n of
-  0 -> e
-  1 -> funcCall (wrapName nd) [e]
-  _ -> funcCall (wrapName DFO) [wrap' nd (n-1) e]
--}
+splitSupply = funcCall (basics, "splitSupply")
+initSupply  = funcCall (basics, "initIDSupply") []
+leftSupply  = funcCall (basics, "leftSupply")
+rightSupply = funcCall (basics, "rightSupply")
+generate i  = funcCall (basics, "generate") [i]
 
 -- ---------------------------------------------------------------------------
 -- Helper functions
@@ -792,12 +765,12 @@ defaultPragmas :: String
 defaultPragmas = "{-# LANGUAGE MagicHash #-}"
 
 defaultModules :: [String]
-defaultModules = ["ID", "Basics"]
+defaultModules = [basics]
 
 -- list of known primitive types
 primTypes :: [(QName, QName)]
-primTypes = map (\ (x, y) -> ( renameQName ("Prelude", x)
-                             , renameQName ("Prelude", y))) $
+primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
+                             , renameQName (prelude, y))) $
   [ ("True", "Bool"), ("False", "Bool")
   , ("[]", "List")  , (":", "List")
   , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")

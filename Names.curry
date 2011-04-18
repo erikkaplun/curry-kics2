@@ -62,12 +62,27 @@ umkConName n | mkConName oldCon =:= n = oldCon where oldCon free
 -}
 -}
 
+prelude :: String
+prelude = "Prelude"
+
+basics :: String
+basics = "Basics"
+
+curryPrelude :: String
+curryPrelude = renameModule "Prelude"
+
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
 
 unRenameModule :: String -> String
 unRenameModule n | take 6 n == "Curry_" = drop 6 n
                  | otherwise            = n
+
+isCurryModule :: String -> Bool
+isCurryModule m = take 6 m == "Curry_"
+
+isHaskellModule :: String -> Bool
+isHaskellModule = not . isCurryModule
 
 renameQName :: QName -> QName
 renameQName (q, n) = (renameModule q, genRename n)
@@ -191,7 +206,6 @@ replaceNonIdChars pfxNonOp pfxOp str =
  where strings = separateAndReplace isIdentChar showOpChar str
        isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 
-
 separateAndReplace :: (a -> Bool) -> (a -> [a]) -> [a] -> [[a]]
 separateAndReplace pred f list =
   case rest of
@@ -202,5 +216,3 @@ separateAndReplace pred f list =
                [] -> f x : separateAndReplace pred f xs
                _  -> sep : f x : separateAndReplace pred f xs
  where (sep,rest) = break  (not . pred) list
-
-

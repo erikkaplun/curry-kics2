@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------------
 --- Library to support meta-programming in Curry.
 ---
---- This library contains a definition for representing Haskell or Curry programs
---- in Curry (type "Prog").
+--- This library contains a definition for representing Haskell or Curry
+--- programs in Curry (type "Prog").
 ---
 --- Note: this definition contains support for type classes which
 --- are currently not part of Curry but can be used to generate also
@@ -10,7 +10,7 @@
 --- which are not part of Haskell.
 ---
 --- @author Michael Hanus
---- @version February 2011
+--- @version April 2011
 ------------------------------------------------------------------------------
 
 module AbstractHaskell where
@@ -32,7 +32,6 @@ import FileGoodies(stripSuffix)
 --- where modname: name of this module,
 ---       imports: list of modules names that are imported,
 ---       typedecls, opdecls, functions: see below
-
 data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
 
 
@@ -43,11 +42,9 @@ data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
 type QName = (String,String)
 
 
--- Data type to specify the visibility of various entities.
-
+--- Data type to specify the visibility of various entities.
 data Visibility = Public    -- exported entity
                 | Private   -- private entity
-
 
 --- The data type for representing type variables.
 --- They are represented by (i,n) where i is a type variable index
@@ -74,19 +71,16 @@ type TVarIName = (Int,String)
 ---
 --- Thus, a data type declaration consists of the name of the data type,
 --- a list of type parameters and a list of constructor declarations.
----
-
-data TypeDecl = Type     QName Visibility [TVarIName] [ConsDecl]
-              | TypeSyn  QName Visibility [TVarIName] TypeExpr
-              | Instance QName TypeExpr [Context] [(QName,Rule)]
+data TypeDecl
+  = Type     QName Visibility [TVarIName] [ConsDecl]
+  | TypeSyn  QName Visibility [TVarIName] TypeExpr
+  | Instance QName TypeExpr [Context] [(QName,Rule)]
 
 --- A single type context is class name applied to type variables.
-
 data Context = Context QName [TVarIName]
 
 --- A constructor declaration consists of the name and arity of the
 --- constructor and a list of the argument types of the constructor.
-
 data ConsDecl = Cons QName Int Visibility [TypeExpr]
 
 
@@ -97,42 +91,42 @@ data ConsDecl = Cons QName Int Visibility [TypeExpr]
 --- Note: the names of the predefined type constructors are
 ---       "Int", "Float", "Bool", "Char", "IO", "Success",
 ---       "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
-
-data TypeExpr = TVar TVarIName              -- type variable
-              | FuncType TypeExpr TypeExpr  -- function type t1->t2
-              | TCons QName [TypeExpr]      -- type constructor application
-                                            -- (TCons (module,name) arguments)
+data TypeExpr
+  = TVar TVarIName              -- type variable
+  | FuncType TypeExpr TypeExpr  -- function type t1->t2
+  | TCons QName [TypeExpr]      -- type constructor application
+                                -- (TCons (module,name) arguments)
 
 --- Data type to represent the type signature of a defined function.
 --- The type can be missing, a simple type, or a type with a context.
-
-data TypeSig = Untyped
-             | FType TypeExpr
-             | CType [Context] TypeExpr
+data TypeSig
+  = Untyped
+  | FType TypeExpr
+  | CType [Context] TypeExpr
 
 --- Data type for operator declarations.
 --- An operator declaration "fix p n" in Curry corresponds to the
 --- AbstractHaskell term (Op n fix p).
-
 data OpDecl = Op QName Fixity Int
 
-data Fixity = InfixOp   -- non-associative infix operator
-            | InfixlOp  -- left-associative infix operator
-            | InfixrOp  -- right-associative infix operator
-
+data Fixity
+  = InfixOp   -- non-associative infix operator
+  | InfixlOp  -- left-associative infix operator
+  | InfixrOp  -- right-associative infix operator
 
 --- Data types for representing object variables.
 --- Object variables occurring in expressions are represented by (Var i)
 --- where i is a variable index.
-
-type VarIName = (Int,String)
+type VarIName = (Int, String)
 
 
 --- Data type for representing function declarations.
 ---
 --- A function declaration in AbstractHaskell is a term of the form
 ---
---- <code>(Func cmt name arity visibility type (Rules eval [Rule rule1,...,rulek]))</code>
+--- <code>
+--- (Func cmt name arity visibility type (Rules eval [Rule rule1,...,rulek]))
+--- </code>
 ---
 --- and represents the function <code>name</code> defined by the rules
 --- <code>rule1,...,rulek</code>.
@@ -143,21 +137,19 @@ type VarIName = (Int,String)
 --- <code>(Func cmt name arity type (External s))</code>
 --- where s is the external name associated to this function.
 ---
---- Thus, a function declaration consists of the comment, name, arity, type, and
---- a list of rules. The type is optional according to its occurrence in
+--- Thus, a function declaration consists of the comment, name, arity, type,
+--- and a list of rules. The type is optional according to its occurrence in
 --- the source text. The comment could be used
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
-
 data FuncDecl = Func String QName Int Visibility TypeSig Rules
-
 
 --- A rule is either a list of formal parameters together with an expression
 --- (i.e., a rule in flat form), a list of general program rules with
 --- an evaluation annotation, or it is externally defined
-
-data Rules = Rules  [Rule]
-           | External String
+data Rules
+  = Rules [Rule]
+  | External String
 
 --- The most general form of a rule. It consists of a list of patterns
 --- (left-hand side), a list of guards ("success" if not present in the
@@ -166,58 +158,45 @@ data Rules = Rules  [Rule]
 data Rule = Rule [Pattern] [(Expr,Expr)] [LocalDecl]
 
 --- Data type for representing local (let/where) declarations
-data LocalDecl =
-     LocalFunc FuncDecl                   -- local function declaration
-   | LocalPat  Pattern Expr [LocalDecl] -- local pattern declaration
-   | LocalVar  VarIName                   -- local free variable declaration
+data LocalDecl
+  = LocalFunc FuncDecl                   -- local function declaration
+  | LocalPat  Pattern Expr [LocalDecl] -- local pattern declaration
+  | LocalVar  VarIName                   -- local free variable declaration
 
 --- Data type for representing Haskell expressions.
-
-data Expr =
-   Var      VarIName              -- variable (unique index / name)
- | Lit      Literal               -- literal (Integer/Float/Char constant)
- | Symbol   QName                  -- a defined symbol with module and name
- | Apply    Expr Expr            -- application (e1 e2)
- | Lambda   [Pattern] Expr       -- lambda abstraction
- | Let      [LocalDecl] Expr     -- local let declarations
- | DoExpr   [Statement]           -- do expression
- | ListComp Expr [Statement]     -- list comprehension
- | Case     Expr [BranchExpr]    -- case expression
+data Expr
+  = Var      VarIName          -- variable (unique index / name)
+  | Lit      Literal           -- literal (Integer/Float/Char constant)
+  | Symbol   QName             -- a defined symbol with module and name
+  | Apply    Expr Expr         -- application (e1 e2)
+  | Lambda   [Pattern] Expr    -- lambda abstraction
+  | Let      [LocalDecl] Expr  -- local let declarations
+  | DoExpr   [Statement]       -- do expression
+  | ListComp Expr [Statement]  -- list comprehension
+  | Case     Expr [BranchExpr] -- case expression
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
-
-data Statement = SExpr Expr         -- an expression (I/O action or boolean)
-               | SPat Pattern Expr -- a pattern definition
-               | SLet [LocalDecl]   -- a local let declaration
+data Statement
+  = SExpr Expr        -- an expression (I/O action or boolean)
+  | SPat Pattern Expr -- a pattern definition
+  | SLet [LocalDecl]  -- a local let declaration
 
 --- Data type for representing pattern expressions.
-
-data Pattern =
-   PVar VarIName               -- pattern variable (unique index / name)
- | PLit Literal                -- literal (Integer/Float/Char constant)
- | PComb QName [Pattern]       -- application (m.c e1 ... en) of n-ary
-                                 -- constructor m.c (PComb (m,c) [e1,...,en])
- | PAs       VarIName Pattern -- as-pattern (extended Curry)
- | PFuncComb QName [Pattern]   -- function pattern (extended Curry)
+data Pattern
+  = PVar VarIName              -- pattern variable (unique index / name)
+  | PLit Literal               -- literal (Integer/Float/Char constant)
+  | PComb QName [Pattern]      -- application (m.c e1 ... en) of n-ary
+                               -- constructor m.c (PComb (m,c) [e1,...,en])
+  | PAs VarIName Pattern       -- as-pattern (extended Curry)
+  | PFuncComb QName [Pattern]  -- function pattern (extended Curry)
 
 --- Data type for representing branches in case expressions.
-
 data BranchExpr = Branch Pattern Expr
 
 --- Data type for representing literals occurring in an expression.
 --- It is either an integer, a float, or a character constant.
-
-data Literal = Intc   Int
-              | Floatc Float
-              | Charc  Char
-
-------------------------------------------------------------------------------
-
---- Writes an AbstractHaskell program into a file in ".acy" format.
---- The first argument must be the name of the target file
---- (with suffix ".acy").
-writeAbstractHaskellFile :: String -> Prog -> IO ()
-writeAbstractHaskellFile file prog = writeFile file (showTerm prog)
-
-------------------------------------------------------------------------------
+data Literal
+  = Intc   Int
+  | Floatc Float
+  | Charc  Char
