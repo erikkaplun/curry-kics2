@@ -133,7 +133,8 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
        "import Curry_"++mod++"\n"++
        "main = "++mainexp++"\n"
   putStrLn $ "Main expression: " ++ mainexp
-  let imports = [idcHome,idcHome++"/idsupply"++idsupply,idcHome++"/lib"]
+  let imports = [idcHome,idcHome++"/idsupply"++idsupply,
+                 ".curry/kics2",idcHome++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
                             "-XMultiParamTypeClasses","-XFlexibleInstances",
                             "-fforce-recomp",
@@ -199,7 +200,7 @@ swiCompile mod = system $
 
 idcBenchmark tag mod optim idsupply mainexp =
   (mod++"@"++tag, idcCompile mod optim idsupply mainexp,
-   "./Main", "rm Main* Curry_*")
+   "./Main", "rm Main* .curry/kics2/Curry_*")
 monBenchmarkIf withmon tag mod optim mainexp =
   if monInstalled && withmon
   then [(mod++"@"++tag, monCompile mod optim mainexp,

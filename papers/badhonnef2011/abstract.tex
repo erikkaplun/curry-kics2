@@ -23,11 +23,19 @@ We present our first steps towards a new system to compile functional logic
 programs of the source language Curry into purely functional Haskell programs.
 This system is based on a translation scheme where non-deterministic values
 are explicitly represented, i.e., by extending each type with two additional
-constructors for failed computations and for a choice between several values.
+constructors to represent failed computations and
+a choice between several values.
 This enables the application of various search
 strategies (e.g., depth-frist, breadth-first, parallel) to extract values from
 the search space, as well as the encapsulation of non-deterministic
-computations. Furthermore, deterministic computations are translated into purely
+computations.
+Logic variables are represented by non-deterministic
+operations that generate all possible values for those variables.
+To preserve the call-time semantics of functional logic languages,
+non-deterministic choices are decorated with unique identifiers
+to implement the sharing of such choices.
+Our implementation has the property that
+deterministic computations are translated into purely
 functional programs so that they are executed with almost the same efficiency as
 their purely functional equivalents. Several benchmarks show that our
 implementation can compete with or outperforms other existing implementations

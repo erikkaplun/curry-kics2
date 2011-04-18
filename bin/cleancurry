@@ -25,14 +25,8 @@ fi
 
 if [ -z "$PROG" ] ; then
   CURRYFILES="*.curry *.lcurry"
-  LCURRYFILES="*.lcurry"
 else
   CURRYFILES="$PROG.curry $PROG.lcurry"
-  if [ -f $PROG.lcurry ] ; then
-    LCURRYFILES="$PROG.lcurry"
-  else
-    LCURRYFILES=""
-  fi
 fi
 
 for F in $CURRYFILES
@@ -40,26 +34,35 @@ do
   if [ "$F" != "*.curry" -a "$F" != "*.lcurry" ] ; then
     F=`expr $F : '\(.*\)\.lcurry' \| $F`
     F=`expr $F : '\(.*\)\.curry' \| $F`
-    if [ -x $F ] ; then
-      rm -f $F  # remove executable main program
+    if [ -x "$F" ] ; then
+      rm -f "$F"  # remove executable main program
     fi
     FDIR=`dirname $F`
     FBASE=`basename $F`
-    TransF=$FDIR/Curry_$FBASE
-    rm -f $TransF.hs $TransF.hi $TransF.o $TransF.nda $TransF.info
+    CURRYDIR="$FDIR/.curry"
+    KICS2DIR="$CURRYDIR/kics2"
+    if [ -d "$KICS2DIR" ] ; then
+      # delete Haskell's main program:
+      rm -f $KICS2DIR/Main $KICS2DIR/Main.hs $KICS2DIR/Main.hi $KICS2DIR/Main.o
+      # delete translated Haskell files:
+      TransF="$KICS2DIR/Curry_$FBASE"
+      rm -f $TransF.hs $TransF.hi $TransF.o $TransF.nda $TransF.info
+      KICS2DIRFILES=`ls -A $KICS2DIR`
+      if [ -z "$KICS2DIRFILES" ] ; then # .curry/kics2 directory is empty
+        rmdir $KICS2DIR
+      fi
+    fi
     CURRYDIRF=$FDIR/.curry/$FBASE
     if [ -d $CURRYDIR ] ; then
       rm -f $CURRYDIRF.fcy $CURRYDIRF.fint $CURRYDIRF.acy $CURRYDIRF.uacy
-      FDIRFILES=`ls -A $CURRYDIR`
-      if [ -z "$FDIRFILES" ] ; then # .curry directory is empty
+      CURRYDIRFILES=`ls -A $CURRYDIR`
+      if [ -z "$CURRYDIRFILES" ] ; then # .curry directory is empty
         rmdir $CURRYDIR
       fi
     fi
     rm -f -r COOSYLOGS
   fi
 done
-rm -f Curry_Main_Goal.curry # delete file containing main goal for idci
-rm -f Main Main.hs Main.hi Main.o # delete Haskell's main program
 
 if [ $RECURSIVE = yes ]
 then

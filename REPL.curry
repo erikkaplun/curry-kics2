@@ -32,6 +32,10 @@ banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
 
 mainGoalFile = "Curry_Main_Goal.curry"
 
+-- Remove mainGoalFile and auxiliaries
+cleanMainGoalFile = do system $ installDir++"/bin/cleancurry "++mainGoalFile
+                       removeFile mainGoalFile
+
 -- REPL state:
 type ReplState =
   { idcHome      :: String     -- installation directory of the system
@@ -114,11 +118,13 @@ processInput rst g
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
                    unless (status>0) (execMain rst >> done)
+                   cleanMainGoalFile
                    repl rst
 
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> String -> IO Int
 compileProgramWithGoal rst goal = do
+  let infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
   oldmaincurryexists <- doesFileExist infoFile
   unless (not oldmaincurryexists) $ removeFile infoFile
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
@@ -130,8 +136,6 @@ compileProgramWithGoal rst goal = do
   status <- compileCurryProgram rst True mainGoalFile
   exinfo <- doesFileExist infoFile
   if status==0 && exinfo then createAndCompileMain rst else return 1
-    where
-      infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
 
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> Bool -> String -> IO Int
@@ -174,7 +178,7 @@ createAndCompileMain rst = do
                               Par _ -> "-threaded"
                               _     -> ""
                            ,"-i"++concat (intersperse ":" ghcImports)
-                           ,"Main.hs"]
+                           ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
   system ghcCompile
@@ -193,7 +197,7 @@ createHaskellMain rst isdet isio =
                               BFS   -> "BFS"++searchSuffix
                               IDS d -> "IDS"++searchSuffix++" "++show d
                               Par _ -> "Par"++searchSuffix
-   in writeFile "Main.hs" $
+   in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $
        "module Main where\n"++
        "import Basics\n"++
        "import Curry_"++stripSuffix mainGoalFile++"\n"++
@@ -212,10 +216,10 @@ execMain rst = do
       paropts = case rst->ndMode of
                   Par n -> "-N" ++ (if n==0 then "" else show n)
                   _     -> ""
-      maincmd = "./Main " ++
+      maincmd = ("." </> rst -> outputSubdir </> "Main") ++
                 (if null (rst->rtsOpts) && null paropts
-                 then ""
-                 else "+RTS "++rst->rtsOpts++" "++paropts++" -RTS")
+                 then " "
+                 else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       cmd = timecmd ++ maincmd
   writeInfo rst $ "Executing: " ++ maincmd
   system (if rst->interactive then execInteractive cmd else cmd)

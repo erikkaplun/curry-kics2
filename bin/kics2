@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Interactive read-eval-print loop for Curry compiler
+# Interactive read-eval-print loop for KiCS2
 
 # Compute the installation directory of the system
 PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`

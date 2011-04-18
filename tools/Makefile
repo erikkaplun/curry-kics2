@@ -9,4 +9,4 @@ ImportCalls: ImportCalls.curry
 
 .PHONY: clean
 clean: 
-	../bin/cleanidc
+	../bin/cleancurry
