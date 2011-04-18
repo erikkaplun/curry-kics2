@@ -15,11 +15,6 @@
 
 module AbstractHaskell where
 
-import Directory(doesFileExist)
-import ReadShowTerm
-import Distribution
-import FileGoodies(stripSuffix)
-
 ------------------------------------------------------------------------------
 -- Definition of data types for representing abstract Curry programs:
 -- ==================================================================
@@ -34,13 +29,11 @@ import FileGoodies(stripSuffix)
 ---       typedecls, opdecls, functions: see below
 data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
 
-
 --- The data type for representing qualified names.
 --- In AbstractHaskell all names are qualified to avoid name clashes.
 --- The first component is the module name and the second component the
 --- unqualified name as it occurs in the source program.
-type QName = (String,String)
-
+type QName = (String, String)
 
 --- Data type to specify the visibility of various entities.
 data Visibility = Public    -- exported entity
@@ -50,7 +43,7 @@ data Visibility = Public    -- exported entity
 --- They are represented by (i,n) where i is a type variable index
 --- which is unique inside a function and n is a name (if possible,
 --- the name written in the source program).
-type TVarIName = (Int,String)
+type TVarIName = (Int, String)
 
 --- Data type for representing definitions of algebraic data types
 --- and type synonyms.
@@ -74,7 +67,7 @@ type TVarIName = (Int,String)
 data TypeDecl
   = Type     QName Visibility [TVarIName] [ConsDecl]
   | TypeSyn  QName Visibility [TVarIName] TypeExpr
-  | Instance QName TypeExpr [Context] [(QName,Rule)]
+  | Instance QName TypeExpr [Context] [(QName, Rule)]
 
 --- A single type context is class name applied to type variables.
 data Context = Context QName [TVarIName]
@@ -118,7 +111,6 @@ data Fixity
 --- Object variables occurring in expressions are represented by (Var i)
 --- where i is a variable index.
 type VarIName = (Int, String)
-
 
 --- Data type for representing function declarations.
 ---
