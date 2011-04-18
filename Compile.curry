@@ -15,7 +15,7 @@ import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
 import FlatCurryGoodies (funcName, consName, updQNamesInProg)
-import ReadShowTerm (readQTermFile, writeQTermFile)
+import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
@@ -30,20 +30,20 @@ import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, funcPrefix
   , mkChoiceName, mkChoicesName, mkGuardName
-  , externalFunc, externalModule, destFile, analysisFile, funcInfoFile  )
+  , externalFunc, externalModule, destFile, analysisFile, funcInfoFile )
 import SimpleMake (smake)
 import Splits (mkSplits)
-import Utils (foldIO, intercalate)
+import Utils (foldIO, intercalate, unless, when)
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Configurations
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 -- Chooce let-Type for IdSupply Variables
 --letIdVar = lazyLet
 letIdVar = strictLet
 
-----------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 main :: IO ()
 main = do
@@ -107,7 +107,8 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   status opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
-  writeQTermFile (analysisFile (opts -> optOutputSubdir) fn) ((state' -> ndResult), (state' -> typeMap))
+  writeQTermFileInDir (analysisFile (opts -> optOutputSubdir) fn)
+                      ((state' -> ndResult), (state' -> typeMap))
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -126,10 +127,10 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   integrated <- integrateExternals opts ahsPatched fn
 
   status opts $ "Generating Haskell module " ++ destination
-  writeFile destination integrated
+  writeFileInDir destination integrated
 
   status opts $ "Writing auxiliary info file " ++ funcInfo
-  writeQTermFile funcInfo (extractFuncInfos funs)
+  writeQTermFileInDir funcInfo (extractFuncInfos funs)
 
   return state'
 
@@ -219,16 +220,16 @@ splitExternals content = se (lines content) ([], [], []) where
 
 -- Show an info message unless the quiet flag is set
 info :: Options -> String -> IO ()
-info opts msg = if opts -> optQuiet then done else putStrLn msg
+info opts msg = unless (opts -> optQuiet) $ putStrLn msg
 
 status :: Options -> String -> IO ()
 status opts msg = info opts $ msg ++ " ..."
 
 -- Dump an intermediate result to a file
 dumpLevel :: Dump -> Options -> String -> String -> IO ()
-dumpLevel level opts file src = if level `elem` opts -> optDump
-  then info opts ("Dumping " ++ file) >> writeFile file src
-  else return ()
+dumpLevel level opts file src = when (level `elem` opts -> optDump) $ do
+  info opts ("Dumping " ++ file)
+  writeFileInDir (withPath (</> opts -> optOutputSubdir) file) src
 
 rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
@@ -465,7 +466,8 @@ transTypeExpr n t
 -- Recursively translate (->) into Func
 transHOTypeExpr :: TypeExpr -> TypeExpr
 transHOTypeExpr t@(TVar _)       = t
-transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1) (transHOTypeExpr t2)
+transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1)
+                                            (transHOTypeExpr t2)
 transHOTypeExpr (TCons qn ts)    = TCons qn (map transHOTypeExpr ts)
 
 -- translate a single rule of a function
@@ -617,8 +619,8 @@ transExpr (Free vs e) =
   takeNextIDs (length vs) `bindM` \is ->
   genIds (g++is) (Let (zipWith (\ v i -> (v,generate (Var i))) vs is) e')
 
--- case
-transExpr e@(Case _ _ _) = returnM ([], e) -- TODO give reasonable implementation
+-- case -- TODO give reasonable implementation
+transExpr e@(Case _ _ _) = returnM ([], e)
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
