@@ -5,6 +5,7 @@
 ----------------------------------------------------------------------------
 
 module Prelude where
+
 -- Lines beginning with "--++" are part of the prelude
 -- but cannot parsed by the compiler
 
@@ -29,6 +30,8 @@ infixr 0 $, $!, $!!, $#, $##, `seq`, &, &>, ?
 data Int
 data Float
 data Char
+
+
 type String = [Char]
 
 -- Some standard combinators:
@@ -948,3 +951,173 @@ cond external
 -- failure external
 
 -- the end
+
+
+-- ---------------------------------------------------------------------------
+-- Nat
+-- ---------------------------------------------------------------------------
+data Nat = IHi | O Nat | I Nat
+
+cmpNat :: Nat -> Nat -> Ordering
+cmpNat IHi IHi   = EQ
+cmpNat IHi (O _) = LT
+cmpNat IHi (I _) = LT
+cmpNat (O _) IHi = GT
+cmpNat (I _) IHi = GT
+cmpNat (O x) (O y) = cmpNat x y
+cmpNat (I x) (I y) = cmpNat x y
+cmpNat (O x) (I y) = case cmpNat x y of
+  EQ    -> LT
+  cmpxy -> cmpxy
+cmpNat (I x) (O y) = case cmpNat x y of
+  EQ    -> GT
+  cmpxy -> cmpxy
+
+succ :: Nat -> Nat
+succ (O bs) = I bs
+succ (I bs) = O (succ bs)
+succ IHi = O IHi
+
+pred :: Nat -> Nat
+pred (O IHi)     = IHi
+pred (I x)       = O x
+pred (O x@(O _)) = I (pred x)
+pred (O (I x))   = I (O x)
+
+(*^) :: Nat -> Nat -> Nat
+IHi   *^   y = y
+(I x) *^ y = y +^ (O (x *^ y))
+(O x) *^ y = O (x *^ y)
+
+(+^) :: Nat -> Nat -> Nat
+O x +^ O y = O (x +^ y)
+O x +^ I y = I (x +^ y)
+O x +^ IHi = I x
+I x +^ O y = I (x +^ y)
+I x +^ I y = O (succ x +^ y)
+I x +^ IHi = O (succ x)
+IHi +^ y   = succ y
+
+(-^) :: Nat -> Nat -> Integer
+IHi   -^ y     = inc (Neg y)                  -- 1-n = 1+(-n)
+(O x) -^ IHi   = Pos (pred (O x))
+(O x) -^ (O y) = mult2 (x -^ y)
+(O x) -^ (I y) = dec (mult2 (x -^ y))
+(I x) -^ IHi   = Pos (O x)
+(I x) -^ (O y) = inc (mult2 (x -^ y))    -- 2*n+1 - 2*m = 1+2*(n-m)
+(I x) -^ (I y) = mult2 (x -^ y)          -- 2*n+1 - (2*m+1) = 2*(n-m)
+
+data Integer = Neg Nat | Zero | Pos Nat
+
+lteqInteger :: Integer -> Integer -> Bool
+lteqInteger x y = cmpInteger x y /= GT
+
+cmpInteger :: Integer -> Integer -> Ordering
+cmpInteger Zero    Zero    = EQ
+cmpInteger Zero    (Pos _) = LT
+cmpInteger Zero    (Neg _) = GT
+cmpInteger (Pos _) Zero    = GT
+cmpInteger (Pos x) (Pos y) = cmpNat x y
+cmpInteger (Pos _) (Neg _) = GT
+cmpInteger (Neg _) Zero    = LT
+cmpInteger (Neg _) (Pos _) = LT
+cmpInteger (Neg x) (Neg y) = cmpNat y x
+
+inc :: Integer -> Integer
+inc Zero = Pos IHi
+inc (Pos n) = Pos (succ n)
+inc (Neg IHi) = Zero
+inc (Neg (O n)) = Neg (pred (O n))
+inc (Neg (I n)) = Neg (O n)
+
+dec :: Integer -> Integer
+dec Zero = Neg IHi
+dec (Neg n) = Neg (succ n)
+dec (Pos IHi) = Zero
+dec (Pos (O n)) = Pos (pred (O n))
+dec (Pos (I n)) = Pos (O n)
+
+--- Adds two integers.
+(+#)   :: Integer -> Integer -> Integer
+Pos x +# Pos y = Pos ((+^) x y)
+Neg x +# Neg y = Neg ((+^) x y)
+Pos x +# Neg y = x -^ y
+Neg x +# Pos y = y -^ x
+Zero  +# x     = x
+x@(Pos _) +# Zero = x
+x@(Neg _) +# Zero = x
+
+--- Subtracts two integers.
+(-#)   :: Integer -> Integer -> Integer
+x -# Neg y = x +# Pos y
+x -# Pos y = x +# Neg y
+x -# Zero  = x
+
+--- Multiplies two integers.
+(*#)   :: Integer -> Integer -> Integer
+Pos x *# Pos y = Pos ((*^) x y)
+Pos x *# Neg y = Neg ((*^) x y)
+Neg x *# Neg y = Pos ((*^) x y)
+Neg x *# Pos y = Neg ((*^) x y)
+Zero  *# _     = Zero
+Pos _ *# Zero  = Zero
+Neg _ *# Zero  = Zero
+
+mult2 :: Integer -> Integer
+mult2 (Pos n) = Pos (O n)
+mult2 Zero    = Zero
+mult2 (Neg n) = Neg (O n)
+
+div2 :: Nat -> Nat
+div2 (O x) = x
+div2 (I x) = x
+
+mod2 :: Nat -> Integer
+mod2 (O _) = Zero
+mod2 (I _) = Pos IHi
+
+divmodNat :: Nat -> Nat -> (Integer,Integer)
+divmodNat x y
+  | y==IHi    = (Pos x,Zero)
+  | otherwise = case cmpNat x y of
+    EQ -> (Pos IHi,Zero)
+    LT -> (Zero, Pos x)
+    GT -> case divmodNat (div2 x) y of
+      (Zero,_)      -> (Pos IHi,x -^ y)
+      (Pos d,Zero)  -> (Pos (O d),mod2 x)
+      (Pos d,Pos m) -> case divmodNat (shift x m) y of
+        (Zero,m')   -> (Pos (O d),m')
+        (Pos d',m') -> (Pos (O d +^ d'),m')
+  where
+    shift (O _) n = O n
+    shift (I _) n = I n
+
+--- Integer division. The value is the integer quotient of its arguments
+--- and always truncated towards zero.
+--- Thus, the value of <code>13 `div` 5</code> is <code>2</code>,
+--- and the value of <code>-15 `div` 4</code> is <code>-3</code>.
+--- Integer remainder. The value is the remainder of the integer division and
+--- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
+--- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
+--- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
+
+divMod :: Integer -> Integer -> (Integer, Integer)
+divMod Zero    _       = (Zero, Zero)
+divMod (Pos _) Zero    = failed -- error "division by 0"
+divMod (Pos x) (Pos y) = divmodNat x y
+divMod (Pos x) (Neg y) = let (d,m) = divmodNat x y in (neg d,m)
+divMod (Neg _) Zero    = failed -- error "division by 0"
+divMod (Neg x) (Pos y) = let (d,m) = divmodNat x y in (neg d,neg m)
+divMod (Neg x) (Neg y) = let (d,m) = divmodNat x y in (d,neg m)
+
+divInteger :: Integer -> Integer -> Integer
+x `divInteger` y = fst (divMod x y)
+
+modInteger :: Integer -> Integer -> Integer
+x `modInteger` y = snd (divMod x y)
+
+--- Unary minus. Usually written as "- e".
+neg :: Integer -> Integer
+neg Zero    = Zero
+neg (Pos x) = Neg x
+neg (Neg x) = Pos x

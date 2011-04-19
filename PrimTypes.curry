@@ -1,6 +1,8 @@
 data Success = Success
 
-data Int = Int IntPrim
+data Int
+  = Int      IntPrim
+  | CurryInt Integer
 data IntPrim
 
 data Float = Float FloatPrim
