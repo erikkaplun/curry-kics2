@@ -20,7 +20,7 @@
         showstringspaces=false, % no special string space
         mathescape=true,
         flexiblecolumns=false,
-        basewidth=0.55em,
+        basewidth=0.52em,
         basicstyle=\small\ttfamily}
 
 \lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
@@ -69,7 +69,7 @@ In this paper we present our first results of a new system
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
-nondeterministic result values of an expression in a single data structure.
+non-deterministic result values of an expression in a single data structure.
 This enables the application of various search strategies
 to extract values from the search space.
 We show by several benchmarks that our implementation
@@ -86,7 +86,7 @@ features of functional and logic languages
 (see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
 In particular, they combine higher-order functions and demand-driven
 evaluation from functional programming with logic programming features
-like nondeterministic search and computing with partial information
+like non-deterministic search and computing with partial information
 (logic variables).
 The combination of these features
 has led to new design patterns \cite{AntoyHanus02FLOPS}
@@ -109,7 +109,7 @@ Another approach is the reuse of already existing implementations
 of some of these features by translating
 functional logic programs into logic or functional languages.
 For instance, if one compiles into Prolog, one can reuse
-the existing backtracking implementation for nondeterministic
+the existing backtracking implementation for non-deterministic
 search as well as logic variables and unification for computing with partial
 information. However, one has to implement demand-driven evaluation
 and higher-order functions \cite{AntoyHanus00FROCOS}.
@@ -119,15 +119,15 @@ search strategy (backtracking).
 If one compiles into a non-strict functional language like Haskell,
 one can reuse the implementation
 of lazy evaluation and higher-order functions, but one has
-to implement nondeterministic evaluations
+to implement non-deterministic evaluations
 \cite{BrasselFischerHanusReck11,BrasselHuch07}.
 Although Haskell offers list comprehensions to model
 backtracking \cite{Wadler85}, this cannot be exploited
 due to the specific semantical requirements of the combination
-of non-strict and nondeterministic operations
+of non-strict and non-deterministic operations
 \cite{GonzalezEtAl99}. Thus, additional implementation efforts
 are necessary like implementation of shared
-nondeterministic computations \cite{FischerKiselyovShan09}.
+non-deterministic computations \cite{FischerKiselyovShan09}.
 
 Nevertheless, the translation of functional logic languages
 into other high-level languages is attractive:
@@ -142,13 +142,13 @@ programs written in the functional logic language Curry \cite{Hanus06Curry}
 into Haskell programs based on the ideas shown
 in \cite{BrasselFischer08IFL}.
 The difficulty of such an implementation is the fact
-that nondeterministic results can occur in any place of a
+that non-deterministic results can occur in any place of a
 computation. Thus, one cannot separate logic computations
 by the use of list comprehensions \cite{Wadler85},
-but the outcome of any operation could be potentially nondeterministic,
+but the outcome of any operation could be potentially non-deterministic,
 i.e., it might have more than one result value.
 We solve this problem by an explicit representation of
-nondeterministic values, i.e., we extend each data type by
+non-deterministic values, i.e., we extend each data type by
 another constructor to represent the choice between several values.
 This idea is also the basis of the Curry implementation KiCS
 \cite{BrasselHuch07,BrasselHuch09}.
@@ -157,12 +157,12 @@ that inhibit the use of optimizations provided by Haskell compilers
 like GHC.\footnote{\url{http://www.haskell.org/ghc/}}
 In contrast, our implementation, called KiCS2, is not based on unsafe features.
 In addition, we also support more flexible search strategies
-and new features to encapsulate nondeterministic computations
+and new features to encapsulate non-deterministic computations
 (which are not described in detail in this paper due to lack of space).
 
 The general objective of our approach is the support
 of flexible strategies to explore the search space
-resulting from nondeterministic computations.
+resulting from non-deterministic computations.
 In contrast to Prolog-based implementations
 that use backtracking and, therefore, are incomplete,
 we also want to support complete strategies like breadth-first search,
@@ -199,7 +199,7 @@ variables in conditions and right-hand sides of defining rules.
 In contrast to functional programming and similarly to logic programming,
 operations can be defined by overlapping rules so that
 they might yield more than one result on the same input.
-Such operations are also called \emph{nondeterministic}.
+Such operations are also called \emph{non-deterministic}.
 For instance, Curry offers a \emph{choice} operation that is predefined by
 the following rules:
 %
@@ -208,7 +208,7 @@ the following rules:
   _ ? y = y
 \end{curry}
 %
-Thus, we can define a nondeterministic operation \code{aBool} by
+Thus, we can define a non-deterministic operation \code{aBool} by
 \label{ex:aBool}
 %
 \begin{curry}
@@ -218,7 +218,7 @@ Thus, we can define a nondeterministic operation \code{aBool} by
 so that the expression \ccode{aBool} has two values:
 \code{True} and \code{False}.
 
-If nondeterministic operations are used as arguments in other operations,
+If non-deterministic operations are used as arguments in other operations,
 a semantical ambiguity might occur. Consider the operations
 %
 \begin{curry}
@@ -239,12 +239,12 @@ we could have the reduction
 leading to the unintended result \code{True}.
 Note that this result cannot be obtained if we use a strict strategy
 where arguments are evaluated before the function calls.
-In order to avoid such dependencies on the evaluation strategies
+In order to avoid dependencies on the evaluation strategies
 and exclude such unintended results,
 Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
 the rewriting logic CRWL as a logical
 (execution- and strategy-independent) foundation for declarative
-programming with non-strict and nondeterministic operations.  This
+programming with non-strict and non-deterministic operations.  This
 logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
 \label{ctc-semantics}
 where values of the arguments of an operation are determined before the
@@ -266,14 +266,14 @@ has to support lazy evaluation where operations can have multiple results
 and unevaluated arguments must be shared.
 This is a complex task, especially if we try to implement it directly
 on the level of source programs. Therefore, we perform some
-simplifications on programs before we generate the target code.
+simplifications on programs before the target code is generated.
 
 \label{sec:no-logic-vars}
 First of fall, we assume that our programs
 \emph{do not contain logic variables}.
 This assumption can be made since it has been shown
 \cite{AntoyHanus06ICLP} that logic variables can be replaced
-by nondeterministic ``generators,''
+by non-deterministic ``generators,''
 i.e., operations that evaluate to all possible values of the type of
 the logic variable. For instance, a Boolean logic variable
 can be replaced by the generator \code{aBool} defined above.
@@ -353,10 +353,10 @@ in the following sections.
 \section{Compilation to Haskell: The Basics}
 \label{sec:Compilation}
 
-\subsection{Representing Nondeterministic Computations}
+\subsection{Representing Non-deterministic Computations}
 
 As mentioned above, our implementation is based on the explicit
-representation of nondeterministic results in a data structure.
+representation of non-deterministic results in a data structure.
 This could be easily achieved by adding a constructor
 to each data type to represent a choice between two values.
 For instance, one can redefine the data type for Boolean values
@@ -364,15 +364,15 @@ as follows:
 \begin{haskell}
   data Bool = False | True | Choice Bool Bool
 \end{haskell}
-Thus, we can implement the nondeterministic operation \code{aBool}
+Thus, we can implement the non-deterministic operation \code{aBool}
 defined in Section~\ref{ex:aBool} as follows:
 \begin{haskell}
   aBool = Choice True False
 \end{haskell}
-If operations can deliver nondeterministic values,
+If operations can deliver non-deterministic values,
 we have to extend the rules for operations defined by
-pattern matching so that they do not fail on nondeterministic argument
-values. Instead, they move the nondeterministic choice one level above,
+pattern matching so that they do not fail on non-deterministic argument
+values. Instead, they move the non-deterministic choice one level above,
 i.e., a choice in some argument leads to a choice in any result
 of this operation (this is also called a ``pull-tab'' step in
 \cite{AlqaddoumiAntoyFischerReck10}). For instance,
@@ -429,13 +429,13 @@ the identifiers will be kept, e.g.,
 \begin{curry}
   xor (Choice i x1 x2) x = Choice i (xor x1 x) (xor x2 x)
 \end{curry}
-If the expression \code{aBool} assigns the number \code{1}
-to its choice, we obtain the result
+If we evaluate the expression \ccode{xorSelf aBool} and
+assign the number \code{1}
+to the choice of \code{aBool}, we obtain the result
 \begin{lstlisting}
   Choice 1 (Choice 1 False True) (Choice 1 True False)
 \end{lstlisting}
-when evaluating the expression \ccode{xorSelf aBool}.
-If we show the values contained in this result,
+When we show the values contained in this result,
 we have to make \emph{consistent} selections in choices with
 same identifiers. This, if we select the left branch as the value
 of the outermost \code{Choice}, we also have to select the left branch
@@ -455,18 +455,18 @@ and \code{2} for the right \code{aBool} argument) so that this evaluates to
 \begin{lstlisting}
   Choice 1 (Choice 2 False True) (Choice 2 True False)
 \end{lstlisting}
-Here we can make different selections for the outermost and inner
-\code{Choice} constructors so that this nondeterministic result represents
+Here we can make different selections for the outer and inner
+\code{Choice} constructors so that this non-deterministic result represents
 four values.
 
 To summarize, our implementation is based on the following principles:
 \begin{enumerate}
-\item Each nondeterministic choice is represented by a \code{Choice}
+\item Each non-deterministic choice is represented by a \code{Choice}
 constructor with a unique identifier.
 \item When matching a \code{Choice} constructor, the choice is
 moved to the result of this operation with the same identifier,
-i.e., a nondeterministic argument
-yields nondeterministic results for each of the argument's values.
+i.e., a non-deterministic argument
+yields non-deterministic results for each of the argument's values.
 \item Each choice occurring in a computation gets its own unique
 identifier.
 \end{enumerate}
@@ -475,11 +475,11 @@ during a computation---a non-trivial problem in functional languages.
 One possibility is the use of a global counter
 that is accessed by unsafe features whenever a new identifier
 is required. Unfortunately, unsafe features inhibit the use
-of optimization techniques for pure functional programming
-and makes the application of advanced evaluation and search
+of optimization techniques developed for purely functional programs
+and make the application of advanced evaluation and search
 strategies (e.g., parallel strategies) more complex.
-Therefore, we want to avoid unsafe features in our implementation
-so that we have to thread some sort of global information
+Therefore, we avoid unsafe features in our implementation.
+Instead, we thread some global information
 through our program in order to supply fresh references
 at any point of a computation.
 For this purpose, we assume a type \code{IDSupply}
@@ -612,20 +612,20 @@ the constructors \code{Choice} and \code{Fail}).
 As mentioned in Section~\ref{sec:no-logic-vars},
 our compiler translates occurrences of logic variables
 into generators. Since these generators are standard
-nondeterministic operations, they are translated like any other operation.
+non-deterministic operations, they are translated like any other operation.
 For instance, the operation \code{aBool} is a generator for
 Boolean values and its translation into Haskell has been presented above.
 
 A more detailed discussion of this translation scheme can be found
 in the original proposal \cite{BrasselFischer08IFL}.
-The correctness of this transformation from nondeterministic source programs
-into deterministic target programs has been formally shown
+The correctness of this transformation from non-deterministic source programs
+into deterministic target programs is formally shown
 in \cite{Brassel11Thesis}.
 
 
 \subsection{Extracting Values}
 
-So far, our generated operations compute all the nondeterministic
+So far, our generated operations compute all the non-deterministic
 values of an expression represented by a structure containing
 \code{Choice} constructors. In order to extract the various
 values from this structure, we have to define operations
@@ -661,7 +661,7 @@ for a given identifier or change its choice:
 \end{haskell}
 In Haskell, there are different possibilities to implement a mapping
 from choice identifiers to some value of type \code{Choice}.
-Our implementation support various options together with various
+Our implementation support various options together with different
 implementations of \code{IDSupply}.
 For instance, a simple implementation can be obtained by
 using updatable values, i.e., the Haskell type \code{IORef}.
@@ -761,7 +761,7 @@ Another mature implementation which we consider is MCC \cite{Lux99FLOPS}
 (Version 0.9.10) which compiles Curry into C.
 MonC \cite{BrasselFischerHanusReck11} is a compiler
 from Curry into Haskell. It is based on a monadic representation
-of nondeterministic computations where sharing is explicitly
+of non-deterministic computations where sharing is explicitly
 managed by the technique proposed in \cite{FischerKiselyovShan09}.
 Since this compiler
 is in an experimental state, we could not execute all benchmarks with
@@ -819,7 +819,7 @@ One can deduce from these results that one of the initial
 goals for this compiler is satisfied, since functional Curry programs
 are executed almost with the same speed as their Haskell equivalents.
 An overhead is visible if one uses built-in numbers
-(due to the potential nondeterministic values, KiCS2 cannot
+(due to the potential non-deterministic values, KiCS2 cannot
 directly map operations on numbers into the Haskell primitives)
 where GHC can apply specific optimizations.
 
@@ -856,8 +856,8 @@ chess board.
 
 As discussed above, our compiler performs an optimization
 when all operations are deterministic. However, in the case
-of higher-order functions, this optimization cannot be performed
-since any operation, i.e., also a nondeterministic operation,
+of higher-order functions, this determinism optimization cannot be performed
+since any operation, i.e., also a non-deterministic operation,
 can be passed as an argument. As shown in the first line of this table,
 this considerably reduces the overall performance.
 To improve this situation, our compiler generates two versions
@@ -866,8 +866,8 @@ argument and a specialized version where all higher-order arguments
 are assumed to be deterministic operations.
 Moreover, we implemented a program analysis
 to approximate those operations that call higher-order functions
-with deterministic operations so that one can use their
-specialized versions. The result of this improvement
+with deterministic operations so that their specialized versions
+are used. The result of this improvement
 is shown as ``KiCS2HO'' and demonstrates its usefulness.
 Therefore, it is always used in the subsequent benchmarks.
 
@@ -882,36 +882,36 @@ MCC     &    1.46  &        5.74   &  0.09 &   0.57 \\
 MonC    &   48.15  &      916.61   &   n/a &    n/a \\
 \hline
 \end{tabular}
-\caption{Benchmarks: nondeterministic functional logic programs}
+\caption{Benchmarks: non-deterministic functional logic programs}
  \label{fig:bench-nondet}
 \end{figure}
 %
-To evaluate the efficiency of nondeterministic computations
+To evaluate the efficiency of non-deterministic computations
 (Fig.~\ref{fig:bench-nondet}),
-we sorted a list containing 15 elements by enumerating all permutations
+we sort a list containing 15 elements by enumerating all permutations
 and selecting the sorted ones (``PermSort'' and ``PermSortPeano''
 for Peano numbers),
-computed the last element \code{x}
+compute the last element \code{x}
 of a list \code{xs} containing 100,000 elements
 by solving the equation \ccode{ys++[x] =:= xs}
 (the implementation of unification and variable bindings
 require some additional machinery that is sketched in
 Section~\ref{sec:unification}),
-and matched a regular expression in a string of length 200,000
-following the nondeterministic specification of \code{grep} shown
+and match a regular expression in a string of length 200,000
+following the non-deterministic specification of \code{grep} shown
 in \cite{AntoyHanus10CACM}.
 The results show that our high-level implementation is not far
 from the efficiency of MCC,
 and it is superior to PAKCS which exploits Prolog features
-like backtracking and logic variables for these benchmarks.
+like backtracking, logic variables and unification for these benchmarks.
 
-Since our implementation represents nondeterministic values
+Since our implementation represents non-deterministic values
 as Haskell data structures, we get, in contrast to most
 other implementations of Curry, one interesting improvement for free:
 deterministic subcomputations are shared even if they occur
-in different nondeterministic computations.
+in different non-deterministic computations.
 To show this effect of our implementation, consider the
-nondeterministic sort operation \code{psort} (permutation sort)
+non-deterministic sort operation \code{psort} (permutation sort)
 and the infinite list of all prime numbers \code{primes},
 as used in the previous benchmarks, and the following definitions:
 \begin{curry}
@@ -936,7 +936,7 @@ PAKCS   &       14.90  &        0.02  &      153.65  \\
 MCC     &        0.33  &        0.00  &        3.46  \\
 \hline
 \end{tabular}
-\caption{Benchmarks: sharing over nondeterminism}
+\caption{Benchmarks: sharing over non-determinism}
  \label{fig:bench-sharing-over-nondet}
 \end{figure}
 
@@ -950,19 +950,19 @@ Due to lack of space, we cannot discuss all details of them.
 
 \subsection{Search Strategies}
 
-Due to the fact that we represent nondeterministic results
+Due to the fact that we represent non-deterministic results
 in a data structure rather than as a computation as in implementations
 based on backtracking, we can provide different methods to
 explore the search space containing the different result values.
 We have already seen in Section~\ref{sec:printValsDFS}
-how we can explore this search space to print all values in
+how this search space can be explored to print all values in
 depth-first order.
 Apart from this simple approach,
 our implementation contains various strategies
 (depth-first, breadth-first, iterative deepening, parallel search)
 to transform a choice structure into a list of results
 that can be printed in different ways (e.g., all solutions, only the first
-solutions, or one after another by user requests).
+solution, or one after another by user requests).
 Actually, the user can set options to select the search strategy and
 the printing method.
 
@@ -993,15 +993,15 @@ discussed in Fig.~\ref{fig:bench-nondet} and ``NDNums'' is the program
 \end{curry}
 where we look for the first solution of \ccode{f 0 == 25000}
 (obviously, depth-first search strategies do not terminate on this
-expression).
+equation).
 All strategies except for the ``direct print'' method \code{printValsDFS}
 translate choice structures into monadic list structures
 in order to print them according to the user options.
 The benchmarks show that the overhead of this transformation
 is acceptable so that this more flexible approach is the default one.
 
-We also made initial benchmarks with the parallel strategy
-where nondeterministic choices are explored via GHC's \code{par}
+We also made initial benchmarks with a parallel strategy
+where non-deterministic choices are explored via GHC's \code{par}
 construct. For the permutation sort we obtained a speedup of 1.7
 when executing the same program on two processors, but no essential
 speedup is obtained for more than two processors.
@@ -1023,7 +1023,7 @@ into a tree structure of the form
 \end{curry}
 With this primitive,
 the programmer can define its own search strategy or
-collect all nondeterministic values into a list structure
+collect all non-deterministic values into a list structure
 for further processing \cite{BrasselHuch07}.
 
 % TODO: set functions??
@@ -1043,35 +1043,35 @@ constraint \ccode{xs=:=ys} has an infinite number of solutions.
 Instead of enumerating all these solutions, it is preferable to
 delay this enumeration but remember the condition that both
 \code{xs} and \code{ys} must always be evaluated to the same value.
-This demands for extending the representation of nondeterministic
+This demands for extending the representation of non-deterministic
 values by the possibility to add equational constraints between
 different choice identifiers.
 Due to lack of space, we have to omit the detailed description
 of this extension.
 However, it should be noted that the examples
 ``Last'' and ``RegExp'' of Fig.~\ref{fig:bench-nondet}
-shows that unification can be supported with a reasonable efficiency.
+show that unification can be supported with a reasonable efficiency.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Conclusions and Related Work}
+\section{Conclusions}
 \label{sec:Conclusions}
 
 We have presented a new system to compile functional logic programs
 into purely functional programs.
 In order to be consistent with the call-time choice semantics
 of functional logic languages like Curry or Toy,
-we represent nondeterministic values
+we represent non-deterministic values
 in choice structures where each choice has an identification.
 Values for such choice identifiers are passed through
-nondeterministic operations so that fresh identifiers are available
+non-deterministic operations so that fresh identifiers are available
 when a new choice needs to be created.
 The theoretical justification of this implementation technique
 is provided in \cite{Brassel11Thesis}.
 Apart from the parser, where we reused an existing one
 implemented in Haskell, the compiler is completely written in Curry.
 
-Due to the representation of nondeterministic values as data,
+Due to the representation of non-deterministic values as data,
 our system easily supports various search strategies
 in constrast to Prolog-based implementations.
 Since we compile Curry programs into Haskell,
@@ -1080,7 +1080,7 @@ for functional programming.
 Hence, purely functional parts of functional logic programs
 can be executed with almost the same efficiency as Haskell programs.
 Our benchmarks show that even the execution of the
-nondeterministic parts can compete with other
+non-deterministic parts can compete with other
 implementations of Curry.
 Furthermore, we can also exploit advanced developments
 in the implementation of Haskell, like the parallel evaluation of
