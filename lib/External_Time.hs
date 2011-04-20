@@ -1,4 +1,5 @@
 import qualified System.Time as T
+import qualified Curry_Prelude as CP
 
 instance ConvertCurryHaskell C_ClockTime T.ClockTime where
   fromCurry (C_CTime i) = T.TOD (fromCurry i) 0
@@ -25,11 +26,11 @@ instance ConvertCurryHaskell C_CalendarTime T.CalendarTime where
                          (toCurry s)
                          (toCurry tz)
 
-external_d_C_getClockTime :: C_IO C_ClockTime
+external_d_C_getClockTime :: CP.C_IO C_ClockTime
 external_d_C_getClockTime =
   fromIO (T.getClockTime >>= return . toCurry)
 
-external_d_C_prim_toCalendarTime :: C_ClockTime -> C_IO C_CalendarTime
+external_d_C_prim_toCalendarTime :: C_ClockTime -> CP.C_IO C_CalendarTime
 external_d_C_prim_toCalendarTime ct =
   fromIO (T.toCalendarTime (fromCurry ct) >>= return . toCurry)
 
