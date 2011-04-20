@@ -65,7 +65,7 @@ Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 \maketitle
 
 \begin{abstract}
-In this paper we present our first results of a new system % first steps towards ?
+In this paper we present our first steps towards a new system
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
@@ -320,8 +320,8 @@ the constructors in the left-hand sides of the matching rules of each function
 are pairwise different.
 Uniform programs have a simple form of pattern matching:
 either a function is defined by a single rule without pattern matching,
-or it is defined by rules with only one constructor in each rule, and
-in the same argument for all rules.
+or it is defined by rules with only one constructor in the left-hand
+side of each rule, and in the same argument for all rules.%
 \footnote{For simplicity, we require in
 Fig.~\ref{fig:uniform} that the matching argument is always the
 first one, but one can also choose any other argument.}
