@@ -75,7 +75,7 @@ instance Show C_Int where
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
   showsPrec _ Fail_C_Int = showChar '!'
   showsPrec d (C_Int x1) = shows (I# x1)
-  showsPrec d (C_CurryInt x1) = showsPrec d (integer2int x1)
+  showsPrec d (C_CurryInt x1) = (\x -> shows (I# (curryint2primint x))) $!! x1
 
 instance Read C_Int where
   readsPrec d s = map readInt (readsPrec d s) where readInt (I# i, s) = (C_Int i, s)
@@ -115,22 +115,24 @@ instance NormalForm C_Int where
   searchNF search cont (C_CurryInt x1) = search (\y1 -> cont (C_CurryInt y1)) x1
 
 instance Unifiable C_Int where
+  (=.=) (C_Int      x1) (C_Int      y1) = if (x1 ==# y1) then C_Success else Fail_C_Success
+  (=.=) (C_Int      x1) (C_CurryInt y1) = (primint2curryint x1) =:= y1
+  (=.=) (C_CurryInt x1) (C_Int      y1) = x1 =:= (primint2curryint y1)
   (=.=) (C_CurryInt x1) (C_CurryInt y1) = x1 =:= y1
-  (=.=) (C_Int x1) x2 = (int2integer x1) =.= x2
-  (=.=) x1 (C_Int x2) = x1 =.= (int2integer x2)
   (=.=) _ _ = Fail_C_Success
+  (=.<=) (C_Int      x1) (C_Int      y1) = if (x1 ==# y1) then C_Success else Fail_C_Success
+  (=.<=) (C_Int      x1) (C_CurryInt y1) = (primint2curryint x1) =:<= y1
+  (=.<=) (C_CurryInt x1) (C_Int      y1) = x1 =:<= (primint2curryint y1)
   (=.<=) (C_CurryInt x1) (C_CurryInt y1) = x1 =:<= y1
-  (=.<=) (C_Int x1) x2 = (int2integer x1) =.<= x2
-  (=.<=) x1 (C_Int x2) = x1 =.<= (int2integer x2)
   (=.<=) _ _ = Fail_C_Success
-  bind i (C_Int x2) = bind i (int2integer x2)
+  bind i (C_Int x2) = bind i (C_CurryInt (primint2curryint x2))
   bind i (C_CurryInt x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = cs ++ (bind i e)
-  lazyBind i (C_Int x2) = bind i (int2integer x2)
+  lazyBind i (C_Int x2) = bind i (C_CurryInt (primint2curryint x2))
   lazyBind i (C_CurryInt x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
@@ -139,54 +141,57 @@ instance Unifiable C_Int where
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry_Prelude.Curry C_Int where
-  (=?=) (Choice_C_Int i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
-  (=?=) (Choices_C_Int i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
-  (=?=) (Guard_C_Int c x) y = guardCons c (x Curry_Prelude.=?= y)
+  (=?=) (Choice_C_Int i x y) z = narrow i (x =?= z) (y =?= z)
+  (=?=) (Choices_C_Int i xs) y = narrows i (map ((=?= y)) xs)
+  (=?=) (Guard_C_Int c x) y = guardCons c (x =?= y)
   (=?=) Fail_C_Int _ = failCons
-  (=?=) z (Choice_C_Int i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
-  (=?=) y (Choices_C_Int i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
-  (=?=) y (Guard_C_Int c x) = guardCons c (y Curry_Prelude.=?= x)
+  (=?=) z (Choice_C_Int i x y) = narrow i (z =?= x) (z =?= y)
+  (=?=) y (Choices_C_Int i xs) = narrows i (map ((y =?=)) xs)
+  (=?=) y (Guard_C_Int c x) = guardCons c (y =?= x)
   (=?=) _ Fail_C_Int = failCons
-  (=?=) (C_Int x1) (C_Int y1) = toCurry (x1 ==# y1)
-  (=?=) (C_CurryInt x1) (C_CurryInt y1) = x1 Curry_Prelude.=?= y1
-  (=?=) _ _ = Curry_Prelude.C_False
-  (<?=) (Choice_C_Int i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
-  (<?=) (Choices_C_Int i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
-  (<?=) (Guard_C_Int c x) y = guardCons c (x Curry_Prelude.<?= y)
+  (=?=) (C_Int      x1) (C_Int      y1) = toCurry (x1 ==# y1)
+  (=?=) (C_Int      x1) (C_CurryInt y1) = (primint2curryint x1) =?= y1
+  (=?=) (C_CurryInt x1) (C_Int      y1) = x1 =?= (primint2curryint y1)
+  (=?=) (C_CurryInt x1) (C_CurryInt y1) = x1 =?= y1
+  (<?=) (Choice_C_Int i x y) z = narrow i (x <?= z) (y <?= z)
+  (<?=) (Choices_C_Int i xs) y = narrows i (map ((<?= y)) xs)
+  (<?=) (Guard_C_Int c x) y = guardCons c (x <?= y)
   (<?=) Fail_C_Int _ = failCons
-  (<?=) z (Choice_C_Int i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
-  (<?=) y (Choices_C_Int i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
-  (<?=) y (Guard_C_Int c x) = guardCons c (y Curry_Prelude.<?= x)
+  (<?=) z (Choice_C_Int i x y) = narrow i (z <?= x) (z <?= y)
+  (<?=) y (Choices_C_Int i xs) = narrows i (map ((y <?=)) xs)
+  (<?=) y (Guard_C_Int c x) = guardCons c (y <?= x)
   (<?=) _ Fail_C_Int = failCons
-  (<?=) (C_Int x1) (C_Int y1) = toCurry (x1 <=# y1)
-  (<?=) (C_Int _) (C_CurryInt _) = Curry_Prelude.C_True
-  (<?=) (C_CurryInt x1) (C_CurryInt y1) = Curry_Prelude.d_C_lteqInteger x1 y1
-  (<?=) _ _ = Curry_Prelude.C_False
+  (<?=) (C_Int      x1) (C_Int      y1) = toCurry (x1 <=# y1)
+  (<?=) (C_Int      x1) (C_CurryInt y1) = (primint2curryint x1) `d_C_lteqInteger` y1
+  (<?=) (C_CurryInt x1) (C_Int      y1) = x1 `d_C_lteqInteger` (primint2curryint y1)
+  (<?=) (C_CurryInt x1) (C_CurryInt y1) = x1 `d_C_lteqInteger` y1
 -- END GENERATED FROM PrimTypes.curry
 
-int2integer :: Int# -> C_Int
-int2integer n
-  | n <#  0#  = C_CurryInt (C_Neg (int2nat (negateInt# n)))
-  | n ==# 0#  = C_CurryInt C_Zero
-  | otherwise = C_CurryInt (C_Pos (int2nat n))
+primint2curryint :: Int# -> C_Integer
+primint2curryint n
+  | n <#  0#  = C_Neg (primint2currynat (negateInt# n))
+  | n ==# 0#  = C_Zero
+  | otherwise = C_Pos (primint2currynat n)
 
-int2nat :: Int# -> C_Nat
-int2nat n
+primint2currynat :: Int# -> C_Nat
+primint2currynat n
   | n ==# 1#                = C_IHi
-  | (n `remInt#` 2#) ==# 0# = C_O (int2nat (n `quotInt#` 2#))
-  | otherwise               = C_I (int2nat (n `quotInt#` 2#))
+  | (n `remInt#` 2#) ==# 0# = C_O (primint2currynat (n `quotInt#` 2#))
+  | otherwise               = C_I (primint2currynat (n `quotInt#` 2#))
 
-integer2int :: C_Integer -> C_Int
-integer2int C_Zero    = C_Int 0#
-integer2int (C_Pos n) = C_Int (nat2int n)
-integer2int (C_Neg n) = C_Int (negateInt# (nat2int n))
-integer2int x         = error "Prelude.integer2int: no ground term"
+currynat2primint :: C_Nat -> Int#
+currynat2primint C_IHi   = 1#
+currynat2primint (C_O n) = 2# *# currynat2primint n
+currynat2primint (C_I n) = 2# *# currynat2primint n +# 1#
+currynat2primint _       = error "Prelude.currynat2primint: no ground term"
 
-nat2int :: C_Nat -> Int#
-nat2int C_IHi   = 1#
-nat2int (C_O n) = 2# *# nat2int n
-nat2int (C_I n) = 2# *# nat2int n +# 1#
-nat2int _       = error "Prelude.nat2int: no ground term"
+curryint2primint :: C_Integer -> Int#
+curryint2primint C_Zero    = 0#
+curryint2primint (C_Pos n) = currynat2primint n
+curryint2primint (C_Neg n) = negateInt# (currynat2primint n)
+curryint2primint x         = error "Prelude.curryint2primint: no ground term"
+
+
 
 
 --   match valF _ _ _ _ v@(C_Int _) = valF v
@@ -515,38 +520,38 @@ external_d_C_prim_chr :: C_Int -> C_Char
 external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
 
 external_d_OP_plus :: C_Int -> C_Int -> C_Int
-external_d_OP_plus (C_Int x)        (C_Int y)        = C_Int (x +# y)
-external_d_OP_plus (C_CurryInt x)   (C_CurryInt y)   = C_CurryInt (x `d_OP_plus_hash` y)
-external_d_OP_plus (C_Int x)        y@(C_CurryInt _) = (int2integer x) `external_d_OP_plus` y
-external_d_OP_plus x@(C_CurryInt _) (C_Int y)        = x `external_d_OP_plus` (int2integer y)
+external_d_OP_plus (C_Int      x) (C_Int      y) = C_Int (x +# y)
+external_d_OP_plus (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_OP_plus_hash` y)
+external_d_OP_plus (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_OP_plus_hash` (primint2curryint y))
+external_d_OP_plus (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_OP_plus_hash` y)
 external_d_OP_plus x y = (\a -> (\b -> (a `external_d_OP_plus` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_OP_minus :: C_Int -> C_Int -> C_Int
-external_d_OP_minus (C_Int x) (C_Int y)               = C_Int (x -# y)
-external_d_OP_minus (C_CurryInt x)   (C_CurryInt y)   = C_CurryInt (x `d_OP_minus_hash` y)
-external_d_OP_minus (C_Int x)        y@(C_CurryInt _) = (int2integer x) `external_d_OP_minus` y
-external_d_OP_minus x@(C_CurryInt _) (C_Int y)        = x `external_d_OP_minus` (int2integer y)
+external_d_OP_minus (C_Int      x) (C_Int      y) = C_Int (x -# y)
+external_d_OP_minus (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_OP_minus_hash` y)
+external_d_OP_minus (C_CurryInt x) (C_Int y)      = C_CurryInt (x `d_OP_minus_hash` (primint2curryint y))
+external_d_OP_minus (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_OP_minus_hash` y)
 external_d_OP_minus x y = (\a -> (\b -> (a `external_d_OP_minus` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_OP_star :: C_Int -> C_Int -> C_Int
-external_d_OP_star (C_Int x) (C_Int y)               = C_Int (x *# y)
-external_d_OP_star (C_CurryInt x)   (C_CurryInt y)   = C_CurryInt (x `d_OP_star_hash` y)
-external_d_OP_star (C_Int x)        y@(C_CurryInt _) = (int2integer x) `external_d_OP_star` y
-external_d_OP_star x@(C_CurryInt _) (C_Int y)        = x `external_d_OP_star` (int2integer y)
+external_d_OP_star (C_Int      x) (C_Int      y) = C_Int (x *# y)
+external_d_OP_star (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_OP_star_hash` y)
+external_d_OP_star (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_OP_star_hash` (primint2curryint y))
+external_d_OP_star (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_OP_star_hash` y)
 external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_div :: C_Int -> C_Int -> C_Int
-external_d_C_div (C_Int x) (C_Int y)               = C_Int (quotInt# x y)
-external_d_C_div (C_CurryInt x)   (C_CurryInt y)   = C_CurryInt (x `d_C_divInteger` y)
-external_d_C_div (C_Int x)        y@(C_CurryInt _) = (int2integer x) `external_d_C_div` y
-external_d_C_div x@(C_CurryInt _) (C_Int y)        = x `external_d_C_div` (int2integer y)
+external_d_C_div (C_Int      x) (C_Int      y) = C_Int (x `quotInt#` y)
+external_d_C_div (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_divInteger` y)
+external_d_C_div (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_divInteger` (primint2curryint y))
+external_d_C_div (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_divInteger` y)
 external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_mod :: C_Int -> C_Int -> C_Int
-external_d_C_mod (C_Int x) (C_Int y)               = C_Int (remInt# x y)
-external_d_C_mod (C_CurryInt x)   (C_CurryInt y)   = C_CurryInt (x `d_C_modInteger` y)
-external_d_C_mod (C_Int x)        y@(C_CurryInt _) = (int2integer x) `external_d_C_mod` y
-external_d_C_mod x@(C_CurryInt _) (C_Int y)        = x `external_d_C_mod` (int2integer y)
+external_d_C_mod (C_Int      x) (C_Int      y) = C_Int (x `remInt#` y)
+external_d_C_mod (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_modInteger` y)
+external_d_C_mod (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_modInteger` (primint2curryint y))
+external_d_C_mod (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_modInteger` y)
 external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_negateFloat :: C_Float -> C_Float

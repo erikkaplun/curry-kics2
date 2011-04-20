@@ -956,62 +956,113 @@ cond external
 -- ---------------------------------------------------------------------------
 -- Nat
 -- ---------------------------------------------------------------------------
+
+-- Algebraic data type to represent natural numbers
 data Nat = IHi | O Nat | I Nat
 
+-- comparison, O(min (m,n))
 cmpNat :: Nat -> Nat -> Ordering
-cmpNat IHi IHi   = EQ
-cmpNat IHi (O _) = LT
-cmpNat IHi (I _) = LT
-cmpNat (O _) IHi = GT
-cmpNat (I _) IHi = GT
+cmpNat IHi   IHi   = EQ
+cmpNat IHi   (O _) = LT
+cmpNat IHi   (I _) = LT
+cmpNat (O _) IHi   = GT
 cmpNat (O x) (O y) = cmpNat x y
-cmpNat (I x) (I y) = cmpNat x y
 cmpNat (O x) (I y) = case cmpNat x y of
   EQ    -> LT
   cmpxy -> cmpxy
+cmpNat (I _) IHi   = GT
 cmpNat (I x) (O y) = case cmpNat x y of
   EQ    -> GT
   cmpxy -> cmpxy
+cmpNat (I x) (I y) = cmpNat x y
 
+-- successor, O(n)
 succ :: Nat -> Nat
+succ IHi    = O IHi
 succ (O bs) = I bs
 succ (I bs) = O (succ bs)
-succ IHi = O IHi
 
+-- predecessor, O(n)
 pred :: Nat -> Nat
+pred IHi         = failed
 pred (O IHi)     = IHi
-pred (I x)       = O x
 pred (O x@(O _)) = I (pred x)
 pred (O (I x))   = I (O x)
+pred (I x)       = O x
 
-(*^) :: Nat -> Nat -> Nat
-IHi   *^   y = y
-(I x) *^ y = y +^ (O (x *^ y))
-(O x) *^ y = O (x *^ y)
-
+-- addition, O(max (m, n))
 (+^) :: Nat -> Nat -> Nat
+IHi +^ y   = succ y
+O x +^ IHi = I x
 O x +^ O y = O (x +^ y)
 O x +^ I y = I (x +^ y)
-O x +^ IHi = I x
+I x +^ IHi = O (succ x)
 I x +^ O y = I (x +^ y)
 I x +^ I y = O (succ x +^ y)
-I x +^ IHi = O (succ x)
-IHi +^ y   = succ y
 
+-- subtraction
 (-^) :: Nat -> Nat -> Integer
-IHi   -^ y     = inc (Neg y)                  -- 1-n = 1+(-n)
-(O x) -^ IHi   = Pos (pred (O x))
-(O x) -^ (O y) = mult2 (x -^ y)
-(O x) -^ (I y) = dec (mult2 (x -^ y))
-(I x) -^ IHi   = Pos (O x)
-(I x) -^ (O y) = inc (mult2 (x -^ y))    -- 2*n+1 - 2*m = 1+2*(n-m)
-(I x) -^ (I y) = mult2 (x -^ y)          -- 2*n+1 - (2*m+1) = 2*(n-m)
+IHi     -^ y     = inc (Neg y)           -- 1-n = 1+(-n)
+x@(O _) -^ IHi   = Pos (pred x)
+(O x)   -^ (O y) = mult2 (x -^ y)
+(O x)   -^ (I y) = dec (mult2 (x -^ y))
+(I x)   -^ IHi   = Pos (O x)
+(I x)   -^ (O y) = inc (mult2 (x -^ y))  -- 2*n+1 - 2*m = 1+2*(n-m)
+(I x)   -^ (I y) = mult2 (x -^ y)        -- 2*n+1 - (2*m+1) = 2*(n-m)
 
+mult2 :: Integer -> Integer
+mult2 (Pos n) = Pos (O n)
+mult2 Zero    = Zero
+mult2 (Neg n) = Neg (O n)
+
+-- multiplication, O(m*n)
+(*^) :: Nat -> Nat -> Nat
+IHi   *^ y = y
+(O x) *^ y = O (x *^ y)
+(I x) *^ y = y +^ (O (x *^ y))
+-- (I x) *^ IHi = I x
+-- (I x) *^ (O y) = (O y) +^ (O (x *^ (O y))) = O (y +^ (x *^ (O y)))
+-- (I x) *^ (I y) = (I y) +^ (O (x *^ (I y))) = I (y +^ (x *^ (I y)))
+
+div2 :: Nat -> Nat
+div2 IHi   = failed
+div2 (O x) = x
+div2 (I x) = x
+
+mod2 :: Nat -> Integer
+mod2 IHi   = Pos IHi
+mod2 (O _) = Zero
+mod2 (I _) = Pos IHi
+
+-- div and mod
+divmodNat :: Nat -> Nat -> (Integer, Integer)
+divmodNat x y
+  | y == IHi  = (Pos x, Zero)
+  | otherwise = case cmpNat x y of
+      EQ -> (Pos IHi, Zero )
+      LT -> (Zero   , Pos x)
+      GT -> case divmodNat (div2 x) y of
+        (Zero , _    ) -> (Pos IHi  , x -^ y)
+        (Pos d, Zero ) -> (Pos (O d), mod2 x)
+        (Pos d, Pos m) -> case divmodNat (shift x m) y of
+          (Zero, m'  ) -> (Pos (O d)      , m')
+          (Pos d' ,m') -> (Pos (O d +^ d'), m')
+  where
+    shift (O _) n = O n
+    shift (I _) n = I n
+
+-- ---------------------------------------------------------------------------
+-- Integer
+-- ---------------------------------------------------------------------------
+
+-- Algebraic data type to represent integers
 data Integer = Neg Nat | Zero | Pos Nat
 
+-- less-than-or-equal on Integers
 lteqInteger :: Integer -> Integer -> Bool
 lteqInteger x y = cmpInteger x y /= GT
 
+-- comparison on Integers, O(min (m, n))
 cmpInteger :: Integer -> Integer -> Ordering
 cmpInteger Zero    Zero    = EQ
 cmpInteger Zero    (Pos _) = LT
@@ -1023,74 +1074,53 @@ cmpInteger (Neg _) Zero    = LT
 cmpInteger (Neg _) (Pos _) = LT
 cmpInteger (Neg x) (Neg y) = cmpNat y x
 
+--- Unary minus. Usually written as "- e".
+neg :: Integer -> Integer
+neg Zero    = Zero
+neg (Pos x) = Neg x
+neg (Neg x) = Pos x
+
+-- increment
 inc :: Integer -> Integer
-inc Zero = Pos IHi
-inc (Pos n) = Pos (succ n)
-inc (Neg IHi) = Zero
+inc Zero        = Pos IHi
+inc (Pos n)     = Pos (succ n)
+inc (Neg IHi)   = Zero
 inc (Neg (O n)) = Neg (pred (O n))
 inc (Neg (I n)) = Neg (O n)
 
+-- decrement
 dec :: Integer -> Integer
-dec Zero = Neg IHi
-dec (Neg n) = Neg (succ n)
-dec (Pos IHi) = Zero
+dec Zero        = Neg IHi
+dec (Pos IHi)   = Zero
 dec (Pos (O n)) = Pos (pred (O n))
 dec (Pos (I n)) = Pos (O n)
+dec (Neg n)     = Neg (succ n)
 
 --- Adds two integers.
 (+#)   :: Integer -> Integer -> Integer
-Pos x +# Pos y = Pos ((+^) x y)
-Neg x +# Neg y = Neg ((+^) x y)
-Pos x +# Neg y = x -^ y
-Neg x +# Pos y = y -^ x
-Zero  +# x     = x
-x@(Pos _) +# Zero = x
-x@(Neg _) +# Zero = x
+Zero      +# x     = x
+x@(Pos _) +# Zero  = x
+Pos x     +# Pos y = Pos (x +^ y)
+Pos x     +# Neg y = x -^ y
+x@(Neg _) +# Zero  = x
+Neg x     +# Pos y = y -^ x
+Neg x     +# Neg y = Neg (x +^ y)
 
 --- Subtracts two integers.
 (-#)   :: Integer -> Integer -> Integer
-x -# Neg y = x +# Pos y
-x -# Pos y = x +# Neg y
 x -# Zero  = x
+x -# Pos y = x +# Neg y
+x -# Neg y = x +# Pos y
 
 --- Multiplies two integers.
 (*#)   :: Integer -> Integer -> Integer
-Pos x *# Pos y = Pos ((*^) x y)
-Pos x *# Neg y = Neg ((*^) x y)
-Neg x *# Neg y = Pos ((*^) x y)
-Neg x *# Pos y = Neg ((*^) x y)
 Zero  *# _     = Zero
 Pos _ *# Zero  = Zero
+Pos x *# Pos y = Pos (x *^ y)
+Pos x *# Neg y = Neg (x *^ y)
 Neg _ *# Zero  = Zero
-
-mult2 :: Integer -> Integer
-mult2 (Pos n) = Pos (O n)
-mult2 Zero    = Zero
-mult2 (Neg n) = Neg (O n)
-
-div2 :: Nat -> Nat
-div2 (O x) = x
-div2 (I x) = x
-
-mod2 :: Nat -> Integer
-mod2 (O _) = Zero
-mod2 (I _) = Pos IHi
-
-divmodNat :: Nat -> Nat -> (Integer,Integer)
-divmodNat x y
-  | y==IHi    = (Pos x,Zero)
-  | otherwise = case cmpNat x y of
-    EQ -> (Pos IHi,Zero)
-    LT -> (Zero, Pos x)
-    GT -> case divmodNat (div2 x) y of
-      (Zero,_)      -> (Pos IHi,x -^ y)
-      (Pos d,Zero)  -> (Pos (O d),mod2 x)
-      (Pos d,Pos m) -> case divmodNat (shift x m) y of
-        (Zero,m')   -> (Pos (O d),m')
-        (Pos d',m') -> (Pos (O d +^ d'),m')
-  where
-    shift (O _) n = O n
-    shift (I _) n = I n
+Neg x *# Pos y = Neg (x *^ y)
+Neg x *# Neg y = Pos (x *^ y)
 
 --- Integer division. The value is the integer quotient of its arguments
 --- and always truncated towards zero.
@@ -1100,24 +1130,17 @@ divmodNat x y
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
 --- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
-
 divMod :: Integer -> Integer -> (Integer, Integer)
 divMod Zero    _       = (Zero, Zero)
-divMod (Pos _) Zero    = failed -- error "division by 0"
+divMod (Pos _) Zero    = failed
 divMod (Pos x) (Pos y) = divmodNat x y
-divMod (Pos x) (Neg y) = let (d,m) = divmodNat x y in (neg d,m)
-divMod (Neg _) Zero    = failed -- error "division by 0"
-divMod (Neg x) (Pos y) = let (d,m) = divmodNat x y in (neg d,neg m)
-divMod (Neg x) (Neg y) = let (d,m) = divmodNat x y in (d,neg m)
+divMod (Pos x) (Neg y) = let (d, m) = divmodNat x y in (neg d,m)
+divMod (Neg _) Zero    = failed
+divMod (Neg x) (Pos y) = let (d, m) = divmodNat x y in (neg d, neg m)
+divMod (Neg x) (Neg y) = let (d, m) = divmodNat x y in (d, neg m)
 
 divInteger :: Integer -> Integer -> Integer
-x `divInteger` y = fst (divMod x y)
+x `divInteger` y = fst (x `divMod` y)
 
 modInteger :: Integer -> Integer -> Integer
-x `modInteger` y = snd (divMod x y)
-
---- Unary minus. Usually written as "- e".
-neg :: Integer -> Integer
-neg Zero    = Zero
-neg (Pos x) = Neg x
-neg (Neg x) = Pos x
+x `modInteger` y = snd (x `divMod` y)
