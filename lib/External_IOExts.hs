@@ -3,14 +3,15 @@ import System.IO.Unsafe(unsafePerformIO) -- for global associations
 import System.Process(runInteractiveCommand)
 import Control.Concurrent(forkIO)
 import System.IO
+import qualified Curry_Prelude as CP
 
-external_d_C_prim_execCmd :: C_String
-                          -> C_IO (OP_Tuple3 C_Handle C_Handle C_Handle)
+external_d_C_prim_execCmd :: CP.C_String
+ -> CP.C_IO (CP.OP_Tuple3 Curry_IO.C_Handle Curry_IO.C_Handle Curry_IO.C_Handle)
 external_d_C_prim_execCmd = fromHaskellIO1
   (\s -> do (h1,h2,h3,_) <- runInteractiveCommand s
             return (OneHandle h1, OneHandle h2, OneHandle h3))
 
-external_d_C_prim_connectToCmd :: C_String -> C_IO C_Handle
+external_d_C_prim_connectToCmd :: CP.C_String -> CP.C_IO Curry_IO.C_Handle
 external_d_C_prim_connectToCmd = fromHaskellIO1
   (\s -> do (hin,hout,herr,_) <- runInteractiveCommand s
             forkIO (forwardError herr)
@@ -32,12 +33,12 @@ type Assocs = [(String,String)]
 assocs :: IORef Assocs
 assocs = unsafePerformIO (newIORef [])
 
-external_d_C_prim_setAssoc :: C_String -> C_String -> C_IO OP_Unit
+external_d_C_prim_setAssoc :: CP.C_String -> CP.C_String -> CP.C_IO CP.OP_Unit
 external_d_C_prim_setAssoc = fromHaskellIO2 
   (\key val -> do as <- readIORef assocs
                   writeIORef assocs ((key,val):as))
 
-external_d_C_prim_getAssoc :: C_String -> C_IO (C_Maybe (C_String))
+external_d_C_prim_getAssoc :: CP.C_String -> CP.C_IO (CP.C_Maybe (CP.C_String))
 external_d_C_prim_getAssoc = fromHaskellIO1
   (\key -> do as <- readIORef assocs
               return (lookup key as))
@@ -79,7 +80,7 @@ instance Unifiable (C_IORef a) where
   (=.=) _ _ = error "(=.=) for C_IORef"
   bind i (Choice_C_IORef j@(FreeID _) _ _) = [i :=: (BindTo j)]
 
-instance Curry a => Curry (C_IORef a) where
+instance CP.Curry a => CP.Curry (C_IORef a) where
   (=?=) = error "(=?=) is undefined for IORefs"
   (<?=) = error "(<?=) is undefined for IORefs"
 
@@ -89,13 +90,14 @@ instance ConvertCurryHaskell (C_IORef a) (IORef a) where
 
   toCurry r = C_IORef r
 
-external_d_C_newIORef :: Curry a => a -> C_IO (C_IORef a)
+external_d_C_newIORef :: CP.Curry a => a -> CP.C_IO (C_IORef a)
 external_d_C_newIORef cv = fromIO (newIORef cv >>= return . toCurry)
 
-external_d_C_prim_readIORef :: Curry a => C_IORef a -> C_IO a
+external_d_C_prim_readIORef :: CP.Curry a => C_IORef a -> CP.C_IO a
 external_d_C_prim_readIORef ref = fromIO (readIORef (fromCurry ref))
 
-external_d_C_prim_writeIORef :: Curry a => C_IORef a -> a -> C_IO OP_Unit
+external_d_C_prim_writeIORef :: CP.Curry a => C_IORef a -> a
+                                           -> CP.C_IO CP.OP_Unit
 external_d_C_prim_writeIORef ref cv =
  fromIO (writeIORef (fromCurry ref) cv >>= return . toCurry)
 

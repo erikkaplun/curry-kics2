@@ -296,8 +296,9 @@ processThisCommand rst cmd args
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
        unless (status>0) $ do
-          renameFile "Main" (rst->mainMod)
+          renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
           putStrLn ("Executable saved in '"++rst->mainMod++"'")
+       cleanMainGoalFile
        return (Just rst)
   | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >>
                 return Nothing

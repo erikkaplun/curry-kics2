@@ -5,7 +5,7 @@ all:    ImportCalls
 
 # generate saved state for interface generator:
 ImportCalls: ImportCalls.curry
-	../bin/idci :l ImportCalls :save :q
+	../bin/kics2 :l ImportCalls :save :q
 
 .PHONY: clean
 clean: 
