@@ -65,11 +65,11 @@ Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 \maketitle
 
 \begin{abstract}
-In this paper we present our first results of a new system
+In this paper we present our first results of a new system % first steps towards ?
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
-non-deterministic result values of an expression in a single data structure.
+non-deterministic values in the respective data structure.
 This enables the application of various search strategies
 to extract values from the search space.
 We show by several benchmarks that our implementation
@@ -145,7 +145,7 @@ The difficulty of such an implementation is the fact
 that non-deterministic results can occur in any place of a
 computation. Thus, one cannot separate logic computations
 by the use of list comprehensions \cite{Wadler85},
-but the outcome of any operation could be potentially non-deterministic,
+as the outcome of any operation could be potentially non-deterministic,
 i.e., it might have more than one result value.
 We solve this problem by an explicit representation of
 non-deterministic values, i.e., we extend each data type by
@@ -155,7 +155,7 @@ This idea is also the basis of the Curry implementation KiCS
 However, KiCS is based on unsafe features of Haskell
 that inhibit the use of optimizations provided by Haskell compilers
 like GHC.\footnote{\url{http://www.haskell.org/ghc/}}
-In contrast, our implementation, called KiCS2, is not based on unsafe features.
+In contrast, our implementation, called KiCS2, avoids such unsafe features.
 In addition, we also support more flexible search strategies
 and new features to encapsulate non-deterministic computations
 (which are not described in detail in this paper due to lack of space).
@@ -254,9 +254,9 @@ Actually, \cite{AlbertHanusHuchOliverVidal05,LopezRodriguezSanchez07}
 define lazy evaluation strategies for functional logic programs
 with call-time choice semantics where actual arguments passed to
 operations are shared. Hence, we can evaluate the expression above
-lazily provided that all occurrences of \code{aBool}
+lazily, provided that all occurrences of \code{aBool}
 are shared so that all of them reduce either to \code{True} or to \code{False}.
-The requirements of this call-time choice semantics is the
+The requirements of this call-time choice semantics are the
 reason why it is not simply possible to use list comprehensions
 or non-determinism monads for a straightforward implementation
 of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
@@ -269,7 +269,7 @@ on the level of source programs. Therefore, we perform some
 simplifications on programs before the target code is generated.
 
 \label{sec:no-logic-vars}
-First of fall, we assume that our programs
+First of all, we assume that our programs
 \emph{do not contain logic variables}.
 This assumption can be made since it has been shown
 \cite{AntoyHanus06ICLP} that logic variables can be replaced
@@ -320,8 +320,9 @@ the constructors in the left-hand sides of the matching rules of each function
 are pairwise different.
 Uniform programs have a simple form of pattern matching:
 either a function is defined by a single rule without pattern matching,
-or it is defined by rules where only one constructor occurs in the same argument
-of all rules.\footnote{For simplicity, we require in
+or it is defined by rules with only one constructor in each rule, and
+in the same argument for all rules.
+\footnote{For simplicity, we require in
 Fig.~\ref{fig:uniform} that the matching argument is always the
 first one, but one can also choose any other argument.}
 For instance, the operation \code{xor} defined above can be transformed
@@ -357,7 +358,7 @@ in the following sections.
 
 As mentioned above, our implementation is based on the explicit
 representation of non-deterministic results in a data structure.
-This could be easily achieved by adding a constructor
+This can easily be achieved by adding a constructor
 to each data type to represent a choice between two values.
 For instance, one can redefine the data type for Boolean values
 as follows:
@@ -365,7 +366,7 @@ as follows:
   data Bool = False | True | Choice Bool Bool
 \end{haskell}
 Thus, we can implement the non-deterministic operation \code{aBool}
-defined in Section~\ref{ex:aBool} as follows:
+defined in Section~\ref{ex:aBool} as:
 \begin{haskell}
   aBool = Choice True False
 \end{haskell}
@@ -666,7 +667,7 @@ implementations of \code{IDSupply}.
 For instance, a simple implementation can be obtained by
 using updatable values, i.e., the Haskell type \code{IORef}.
 In this case, choice identifiers are memory cells instead of integers:\footnote{%
-Consequently, integers cannot be used for \code{IDSupply}s. Nevertheless,
+Consequently, integers cannot be used for \code{IDSupply}s. Instead,
 \code{IDSupply}s can be implemented as an infinite tree containing
 all memory cells required in a computation that are created
 on demand with initial value \code{NoChoice}.}
@@ -876,7 +877,7 @@ Therefore, it is always used in the subsequent benchmarks.
 \begin{tabular}{|@{~~}l@{~~}|*{4}{@{~~}r@{~~}|}}
 \hline
 System  & PermSort & PermSortPeano &  Last & RegExp \\\hline
-KiCS2   &    2.83  &        3.68   &  0.14 &   0.49 \\
+KiCS2HO &    2.83  &        3.68   &  0.14 &   0.49 \\
 PAKCS   &   26.96  &       67.11   &  2.61 &  12.70 \\
 MCC     &    1.46  &        5.74   &  0.09 &   0.57 \\
 MonC    &   48.15  &      916.61   &   n/a &    n/a \\
@@ -931,7 +932,7 @@ in Fig~\ref{fig:bench-sharing-over-nondet}.
 \begin{tabular}{|@{~~}l@{~~}|*{3}{@{~~}r@{~~}|}}
 \hline
 System  & \code{goal1} & \code{goal2} & \code{goal3} \\\hline
-KiCS2   &        0.34  &        0.00  &        0.34  \\
+KiCS2HO &        0.34  &        0.00  &        0.34  \\
 PAKCS   &       14.90  &        0.02  &      153.65  \\
 MCC     &        0.33  &        0.00  &        3.46  \\
 \hline
