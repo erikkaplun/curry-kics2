@@ -755,7 +755,7 @@ liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
 liftGuard   = funcCall (basics, "guardCons")
 liftFail    = funcCall (basics, "failCons") []
-qmark e1 e2 = funcCall (basics, "OP_qmark") [e1, e2]
+qmark e1 e2 = funcCall (renameQName (prelude, "?")) [e1, e2]
 
 splitSupply = funcCall (basics, "splitSupply")
 initSupply  = funcCall (basics, "initIDSupply") []
