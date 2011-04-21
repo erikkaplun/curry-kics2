@@ -519,9 +519,9 @@ prim_chr external
 -- prim_Int_times external
 
 --- Integer division. The value is the integer quotient of its arguments
---- and always truncated towards zero.
+--- and always truncated towards negative infinity.
 --- Thus, the value of <code>13 `div` 5</code> is <code>2</code>,
---- and the value of <code>-15 `div` 4</code> is <code>-3</code>.
+--- and the value of <code>-15 `div` 4</code> is <code>-4</code>.
 div   :: Int -> Int -> Int
 div external
 
@@ -531,12 +531,24 @@ div external
 --- Integer remainder. The value is the remainder of the integer division and
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
---- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
+--- and the value of <code>-15 `mod` 4</code> is <code>1</code>.
 mod   :: Int -> Int -> Int
 mod external
 
 -- prim_Int_mod :: Int -> Int -> Int
 -- prim_Int_mod external
+
+divMod :: Int -> Int -> (Int, Int)
+divMod external
+
+quot :: Int -> Int -> Int
+quot external
+
+rem :: Int -> Int -> Int
+rem external
+
+quotRem :: Int -> Int -> (Int, Int)
+quotRem external
 
 --- Unary minus. Usually written as "- e".
 negate :: Int -> Int
@@ -978,23 +990,23 @@ cmpNat (I x) (I y) = cmpNat x y
 
 -- successor, O(n)
 succ :: Nat -> Nat
-succ IHi    = O IHi
-succ (O bs) = I bs
-succ (I bs) = O (succ bs)
+succ IHi    = O IHi        -- 1       + 1 = 2
+succ (O bs) = I bs         -- 2*n     + 1 = 2*n + 1
+succ (I bs) = O (succ bs)  -- 2*n + 1 + 1 = 2*(n+1)
 
 -- predecessor, O(n)
 pred :: Nat -> Nat
-pred IHi         = failed
-pred (O IHi)     = IHi
-pred (O x@(O _)) = I (pred x)
-pred (O (I x))   = I (O x)
-pred (I x)       = O x
+pred IHi         = failed     -- 1 has no predecessor
+pred (O IHi)     = IHi        -- 2           - 1 = 1
+pred (O x@(O _)) = I (pred x) -- 2*2*n       - 1 = 2*(2*n-1) + 1
+pred (O (I x))   = I (O x)    -- 2*(2*n + 1) - 1 = 2*2*n + 1
+pred (I x)       = O x        -- 2*n + 1      -1 = 2*n
 
 -- addition, O(max (m, n))
 (+^) :: Nat -> Nat -> Nat
-IHi +^ y   = succ y
-O x +^ IHi = I x
-O x +^ O y = O (x +^ y)
+IHi +^ y   = succ y           -- 1  +  n   = n + 1
+O x +^ IHi = I x              -- 2*n + 1   = 2*n + 1
+O x +^ O y = O (x +^ y)       -- 2*m + 2*n = 2*(m+n)
 O x +^ I y = I (x +^ y)
 I x +^ IHi = O (succ x)
 I x +^ O y = I (x +^ y)
@@ -1003,7 +1015,7 @@ I x +^ I y = O (succ x +^ y)
 -- subtraction
 (-^) :: Nat -> Nat -> Integer
 IHi     -^ y     = inc (Neg y)           -- 1-n = 1+(-n)
-x@(O _) -^ IHi   = Pos (pred x)
+x@(O _) -^ IHi   = Pos (pred x)          --
 (O x)   -^ (O y) = mult2 (x -^ y)
 (O x)   -^ (I y) = dec (mult2 (x -^ y))
 (I x)   -^ IHi   = Pos (O x)
@@ -1025,7 +1037,7 @@ IHi   *^ y = y
 -- (I x) *^ (I y) = (I y) +^ (O (x *^ (I y))) = I (y +^ (x *^ (I y)))
 
 div2 :: Nat -> Nat
-div2 IHi   = failed
+div2 IHi   = failed -- 1 div 2 is not defined for Nat
 div2 (O x) = x
 div2 (I x) = x
 
@@ -1035,18 +1047,19 @@ mod2 (O _) = Zero
 mod2 (I _) = Pos IHi
 
 -- div and mod
-divmodNat :: Nat -> Nat -> (Integer, Integer)
-divmodNat x y
-  | y == IHi  = (Pos x, Zero)
+quotRemNat :: Nat -> Nat -> (Integer, Integer)
+quotRemNat x y
+  | y == IHi  = (Pos x, Zero ) -- quotRemNat x 1 = (x, 0)
+  | x == IHi  = (Zero , Pos y) -- quotRemNat 1 y = (0, y)
   | otherwise = case cmpNat x y of
-      EQ -> (Pos IHi, Zero )
-      LT -> (Zero   , Pos x)
-      GT -> case divmodNat (div2 x) y of
-        (Zero , _    ) -> (Pos IHi  , x -^ y)
+      EQ -> (Pos IHi, Zero )   -- x = y : quotRemNat x y = (1, 0)
+      LT -> (Zero   , Pos x)   -- x < y : quotRemNat x y = (0, x)
+      GT -> case quotRemNat (div2 x) y of
+        (Zero , _    ) -> (Pos IHi  , x -^ y) -- x > y, x/2 < y  : quotRemNat x y = (1, x - y)
         (Pos d, Zero ) -> (Pos (O d), mod2 x)
-        (Pos d, Pos m) -> case divmodNat (shift x m) y of
-          (Zero, m'  ) -> (Pos (O d)      , m')
-          (Pos d' ,m') -> (Pos (O d +^ d'), m')
+        (Pos d, Pos m) -> case quotRemNat (shift x m) y of
+          (Zero   , m') -> (Pos (O d)      , m')
+          (Pos d' , m') -> (Pos (O d +^ d'), m')
   where
     shift (O _) n = O n
     shift (I _) n = I n
@@ -1122,25 +1135,44 @@ Neg _ *# Zero  = Zero
 Neg x *# Pos y = Neg (x *^ y)
 Neg x *# Neg y = Pos (x *^ y)
 
+quotRemInteger :: Integer -> Integer -> (Integer, Integer)
+quotRemInteger _       Zero    = failed -- division by zero is not defined
+quotRemInteger Zero    (Pos _) = (Zero, Zero)
+quotRemInteger Zero    (Neg _) = (Zero, Zero)
+quotRemInteger (Pos x) (Pos y) = quotRemNat x y
+quotRemInteger (Neg x) (Pos y) = let (d, m) = quotRemNat x y in (neg d, neg m)
+quotRemInteger (Pos x) (Neg y) = let (d, m) = quotRemNat x y in (neg d,     m)
+quotRemInteger (Neg x) (Neg y) = let (d, m) = quotRemNat x y in (d    , neg m)
+
+divModInteger :: Integer -> Integer -> (Integer, Integer)
+divModInteger _       Zero    = failed -- division by zero is not defined
+divModInteger Zero    (Pos _) = (Zero, Zero)
+divModInteger Zero    (Neg _) = (Zero, Zero)
+divModInteger (Pos x) (Pos y) = quotRemNat x y
+divModInteger (Neg x) (Pos y) = let (d, m) = quotRemNat x y in case m of
+  Zero -> (neg d, m)
+  _    -> (neg (inc d), (Pos y) -# m)
+divModInteger (Pos x) (Neg y) = let (d, m) = quotRemNat x y in case m of
+  Zero -> (neg d, m)
+  _    -> (neg (inc d), m -# (Pos y))
+divModInteger (Neg x) (Neg y) = let (d, m) = quotRemNat x y in (d, neg m)
+
 --- Integer division. The value is the integer quotient of its arguments
---- and always truncated towards zero.
+--- and always truncated towards negative infinity.
 --- Thus, the value of <code>13 `div` 5</code> is <code>2</code>,
---- and the value of <code>-15 `div` 4</code> is <code>-3</code>.
+--- and the value of <code>-15 `div` 4</code> is <code>-4</code>.
+divInteger :: Integer -> Integer -> Integer
+x `divInteger` y = fst (x `divModInteger` y)
+
 --- Integer remainder. The value is the remainder of the integer division and
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
---- and the value of <code>-15 `mod` 4</code> is <code>-3</code>.
-divMod :: Integer -> Integer -> (Integer, Integer)
-divMod Zero    _       = (Zero, Zero)
-divMod (Pos _) Zero    = failed
-divMod (Pos x) (Pos y) = divmodNat x y
-divMod (Pos x) (Neg y) = let (d, m) = divmodNat x y in (neg d,m)
-divMod (Neg _) Zero    = failed
-divMod (Neg x) (Pos y) = let (d, m) = divmodNat x y in (neg d, neg m)
-divMod (Neg x) (Neg y) = let (d, m) = divmodNat x y in (d, neg m)
-
-divInteger :: Integer -> Integer -> Integer
-x `divInteger` y = fst (x `divMod` y)
-
+--- and the value of <code>-15 `mod` 4</code> is <code>1</code>.
 modInteger :: Integer -> Integer -> Integer
-x `modInteger` y = snd (x `divMod` y)
+x `modInteger` y = snd (x `divModInteger` y)
+
+quotInteger :: Integer -> Integer -> Integer
+x `quotInteger` y = fst (x `quotRemInteger` y)
+
+remInteger :: Integer -> Integer -> Integer
+x `remInteger` y = snd (x `quotRemInteger` y)

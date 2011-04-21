@@ -4,7 +4,7 @@ import GHC.IO.Exception (IOException (..))
 
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
-import GHC.Exts (Int (I#), Int#, (==#), (<#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
+import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
 import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
 import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 
@@ -540,19 +540,85 @@ external_d_OP_star (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_OP_star_hash
 external_d_OP_star (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_OP_star_hash` y)
 external_d_OP_star x y = (\a -> (\b -> (a `external_d_OP_star` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
+external_d_C_quot :: C_Int -> C_Int -> C_Int
+external_d_C_quot (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_C_Int
+  | otherwise = C_Int (x `quotInt#` y)
+external_d_C_quot (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_quotInteger` y)
+external_d_C_quot (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_quotInteger` (primint2curryint y))
+external_d_C_quot (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_quotInteger` y)
+external_d_C_quot x y = (\a -> (\b -> (a `external_d_C_quot` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
+
+external_d_C_rem :: C_Int -> C_Int -> C_Int
+external_d_C_rem (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_C_Int
+  | otherwise = C_Int (x `remInt#` y)
+external_d_C_rem (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_remInteger` y)
+external_d_C_rem (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_remInteger` (primint2curryint y))
+external_d_C_rem (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_remInteger` y)
+external_d_C_rem x y = (\a -> (\b -> (a `external_d_C_rem` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
+
+external_d_C_quotRem :: C_Int -> C_Int -> OP_Tuple2 C_Int C_Int
+external_d_C_quotRem (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_OP_Tuple2
+  | otherwise = OP_Tuple2 (C_Int (x `quotInt#` y)) (C_Int (x `remInt#` y))
+external_d_C_quotRem (C_Int      x) (C_CurryInt y) = mkIntTuple `d_dollar_bang` ((primint2curryint x) `d_C_quotRemInteger` y)
+external_d_C_quotRem (C_CurryInt x) (C_Int      y) = mkIntTuple `d_dollar_bang` (x `d_C_quotRemInteger` (primint2curryint y))
+external_d_C_quotRem (C_CurryInt x) (C_CurryInt y) = mkIntTuple `d_dollar_bang` (x `d_C_quotRemInteger` y)
+external_d_C_quotRem x y = (\a -> (\b -> (a `external_d_C_quotRem` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
+
+-- ---------------------------------------------------------------------------
+-- PrimOps taken from GHC.Base
+-- ---------------------------------------------------------------------------
+divInt# :: Int# -> Int# -> Int#
+x# `divInt#` y#
+        -- Be careful NOT to overflow if we do any additional arithmetic
+        -- on the arguments...  the following  previous version of this
+        -- code has problems with overflow:
+--    | (x# ># 0#) && (y# <# 0#) = ((x# -# y#) -# 1#) `quotInt#` y#
+--    | (x# <# 0#) && (y# ># 0#) = ((x# -# y#) +# 1#) `quotInt#` y#
+    | (x# ># 0#) && (y# <# 0#) = ((x# -# 1#) `quotInt#` y#) -# 1#
+    | (x# <# 0#) && (y# ># 0#) = ((x# +# 1#) `quotInt#` y#) -# 1#
+    | otherwise                = x# `quotInt#` y#
+
+modInt# :: Int# -> Int# -> Int#
+x# `modInt#` y#
+    | (x# ># 0#) && (y# <# 0#) ||
+      (x# <# 0#) && (y# ># 0#)    = if r# /=# 0# then r# +# y# else 0#
+    | otherwise                   = r#
+    where
+    !r# = x# `remInt#` y#
+
 external_d_C_div :: C_Int -> C_Int -> C_Int
-external_d_C_div (C_Int      x) (C_Int      y) = C_Int (x `quotInt#` y)
+external_d_C_div (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_C_Int
+  | otherwise = C_Int (x `divInt#` y)
 external_d_C_div (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_divInteger` y)
 external_d_C_div (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_divInteger` (primint2curryint y))
 external_d_C_div (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_divInteger` y)
 external_d_C_div x y = (\a -> (\b -> (a `external_d_C_div` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
 external_d_C_mod :: C_Int -> C_Int -> C_Int
-external_d_C_mod (C_Int      x) (C_Int      y) = C_Int (x `remInt#` y)
+external_d_C_mod (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_C_Int
+  | otherwise = C_Int (x `modInt#` y)
 external_d_C_mod (C_Int      x) (C_CurryInt y) = C_CurryInt ((primint2curryint x) `d_C_modInteger` y)
 external_d_C_mod (C_CurryInt x) (C_Int      y) = C_CurryInt (x `d_C_modInteger` (primint2curryint y))
 external_d_C_mod (C_CurryInt x) (C_CurryInt y) = C_CurryInt (x `d_C_modInteger` y)
 external_d_C_mod x y = (\a -> (\b -> (a `external_d_C_mod` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
+
+-- TODO: $! instead of $#?
+external_d_C_divMod :: C_Int -> C_Int -> OP_Tuple2 C_Int C_Int
+external_d_C_divMod (C_Int      x) (C_Int      y)
+  | y ==# 0#  = Fail_OP_Tuple2
+  | otherwise = OP_Tuple2 (C_Int (x `divInt#` y)) (C_Int (x `modInt#` y))
+external_d_C_divMod (C_Int      x) (C_CurryInt y) = mkIntTuple `d_OP_dollar_hash` ((primint2curryint x) `d_C_divModInteger` y)
+external_d_C_divMod (C_CurryInt x) (C_Int      y) = mkIntTuple `d_OP_dollar_hash` (x `d_C_divModInteger` (primint2curryint y))
+external_d_C_divMod (C_CurryInt x) (C_CurryInt y) = mkIntTuple `d_OP_dollar_hash` (x `d_C_divModInteger` y)
+external_d_C_divMod x y = (\a -> (\b -> (a `external_d_C_divMod` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
+
+mkIntTuple :: OP_Tuple2 C_Integer C_Integer -> OP_Tuple2 C_Int C_Int
+mkIntTuple (OP_Tuple2 d m) = OP_Tuple2 (C_CurryInt d) (C_CurryInt m)
 
 external_d_C_negateFloat :: C_Float -> C_Float
 external_d_C_negateFloat (C_Float x) = C_Float (negateFloat# x)
