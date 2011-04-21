@@ -92,7 +92,8 @@ instance NonDet C_Int where
   try x = Val x
 
 instance Generable C_Int where
-  generate s = C_CurryInt (generate s)
+--   generate s = C_CurryInt (generate s)
+  generate s = Choices_C_Int (freeID s) [C_CurryInt (generate (leftSupply s))]
 
 instance NormalForm C_Int where
   ($!!) cont x@(C_Int _) = cont x
@@ -125,15 +126,17 @@ instance Unifiable C_Int where
   (=.<=) (C_CurryInt x1) (C_Int      y1) = x1 =:<= (primint2curryint y1)
   (=.<=) (C_CurryInt x1) (C_CurryInt y1) = x1 =:<= y1
   (=.<=) _ _ = Fail_C_Success
-  bind i (C_Int x2) = bind i (C_CurryInt (primint2curryint x2))
-  bind i (C_CurryInt x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
+--   bind i (C_Int x2) = bind i (primint2curryint x2)
+--   bind i (C_CurryInt x2) = bind i x2
+  bind i (C_Int      x2) = (i :=: ChooseN 0 1) : bind (leftID i) (primint2curryint x2)
+  bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = cs ++ (bind i e)
-  lazyBind i (C_Int x2) = bind i (C_CurryInt (primint2curryint x2))
-  lazyBind i (C_CurryInt x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
+  lazyBind i (C_Int      x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primint2curryint x2))]
+  lazyBind i (C_CurryInt x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x2)]
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
