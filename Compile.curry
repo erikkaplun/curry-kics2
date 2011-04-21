@@ -83,16 +83,17 @@ makeModule mods state mod@((_, (fn, fcy)), _) =
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  putStrLn $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
+  info opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (analysis, types) <- readQTermFile ndaFile
   return { ndResult := (state -> ndResult) `plusFM` analysis
          , typeMap  := (state ->  typeMap) `plusFM` types
          | state }
     where ndaFile = analysisFile ((state -> compOptions)-> optOutputSubdir) fn
+          opts = state -> compOptions
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
-  putStrLn $ compMessage current total ("Compiling " ++ mid) fn destination
+  info opts $ compMessage current total ("Compiling " ++ mid) fn destination
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')

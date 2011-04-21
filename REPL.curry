@@ -19,23 +19,24 @@ import List (isPrefixOf,intersperse)
 import FlatCurry (flatCurryFileName)
 import Sort (mergeSort)
 import AbstractCurry
-
-import Installation
+import Distribution
+import qualified Installation as Inst
 import Files
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
    bannerText = "KiCS2 Curry->Haskell Compiler (Version "++
-                show majorVersion ++ "." ++ show minorVersion ++ " of "++
-                compilerDate ++ ")"
-   bannerDate = "(installed at "++installDate++")"
+                show Inst.majorVersion ++ "." ++ show Inst.minorVersion ++
+                " of "++ Inst.compilerDate ++ ")"
+   bannerDate = "(installed at "++Inst.installDate++")"
    bannerLine = take (length bannerText) (repeat '=')
 
 mainGoalFile = "Curry_Main_Goal.curry"
 
 -- Remove mainGoalFile and auxiliaries
-cleanMainGoalFile = do system $ installDir++"/bin/cleancurry "++mainGoalFile
-                       removeFile mainGoalFile
+cleanMainGoalFile = do
+  system $ Inst.installDir++"/bin/cleancurry "++mainGoalFile
+  removeFile mainGoalFile
 
 -- REPL state:
 type ReplState =
@@ -51,6 +52,7 @@ type ReplState =
   , firstSol     :: Bool       -- print only first solution to nd main goal?
   , interactive  :: Bool       -- interactive execution of goal?
   , showBindings :: Bool       -- show free variables in main goal in output?
+  , showTime     :: Bool       -- show execution of main goal?
   , rtsOpts      :: String     -- run-time options for ghc
   , quit         :: Bool       -- terminate the REPL?
   }
@@ -72,6 +74,7 @@ initReplState =
   , firstSol     = False
   , interactive  = False
   , showBindings = True
+  , showTime     = True
   , rtsOpts      = ""
   , quit         = False
   }
@@ -81,8 +84,8 @@ writeInfo :: ReplState -> String -> IO ()
 writeInfo rst msg = if rst -> quiet then done else putStrLn msg
 
 main = do
-  let rst = { idcHome := installDir
-            , importPaths := [installDir </> "/lib", installDir </> "/lib/meta"]
+  let rst = { idcHome := Inst.installDir
+            , importPaths := map (Inst.installDir </>) ["/lib","/lib/meta"]
             | initReplState }
   args <- getArgs
   processArgsAndStart rst args
@@ -133,10 +136,11 @@ compileProgramWithGoal rst goal = do
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst goal
-  insertFreeVarsInMainGoal rst goal
-  status <- compileCurryProgram rst True mainGoalFile
-  exinfo <- doesFileExist infoFile
-  if status==0 && exinfo then createAndCompileMain rst else return 1
+  acyok <- insertFreeVarsInMainGoal rst goal
+  if not acyok then return 1 else do
+    status <- compileCurryProgram rst True mainGoalFile
+    exinfo <- doesFileExist infoFile
+    if status==0 && exinfo then createAndCompileMain rst else return 1
 
 -- write the file with the main goal:
 writeMainGoalFile :: ReplState -> String -> IO ()
@@ -146,17 +150,24 @@ writeMainGoalFile rst goal =
                        map ("import "++) (rst->addMods) ++
                        ["idcMainGoal = "++goal])
 
--- insert free variables occurring in the main goal as components
+-- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
-insertFreeVarsInMainGoal :: ReplState -> String -> IO ()
+-- The result is True if the acy file is correct.
+insertFreeVarsInMainGoal :: ReplState -> String -> IO Bool
 insertFreeVarsInMainGoal rst goal = do
-  (CurryProg _ _ _ [mfunc] _) <- readCurry (stripSuffix mainGoalFile)
-  let freevars = freeVarsInFuncRule mfunc
-  if null freevars || not (rst -> showBindings)
-   then done
-   else let (exp,whereclause) = break (=="where") (words goal)
-         in unless (null whereclause) $
-              writeMainGoalFile
+  let mainGoalProg = stripSuffix mainGoalFile
+      acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
+  callFrontendWithParams ACY (setQuiet True defaultParams) mainGoalProg
+  acyexists <- doesFileExist acyMainGoalFile
+  if not acyexists then return False else do
+    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
+    removeFile acyMainGoalFile
+    let freevars = freeVarsInFuncRule mfunc
+    if null freevars || not (rst -> showBindings)
+     then return True
+     else let (exp,whereclause) = break (=="where") (words goal)
+           in if null whereclause then return True else do
+               writeMainGoalFile
                 { addMods := "ShowBindings" : (rst->addMods) | rst}
                 (unwords (["ShowBindings.show"++show (length freevars)++" ("]++
                           exp ++ [",["] ++
@@ -164,6 +175,7 @@ insertFreeVarsInMainGoal rst goal = do
                           ["]"] ++
                           map (\v->',':v) freevars ++
                           ")":whereclause))
+               return True
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
@@ -175,8 +187,7 @@ insertFreeVarsInMainGoal rst goal = do
 compileCurryProgram :: ReplState -> Bool -> String -> IO Int
 compileCurryProgram rst quiet curryprog = do
   let compileProg = (rst->idcHome)++"/idc"
-      idcoptions  = --"-q " ++
-                    (if quiet then "-q " else "") ++
+      idcoptions  = (if quiet then "-q " else "") ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
   writeInfo rst $ "Executing: "++compileCmd
@@ -206,6 +217,7 @@ createAndCompileMain rst = do
       ghcCompile = unwords ["ghc"
                            ,if rst->optim then "-O2" else ""
                            ,"--make"
+                           ,if rst->quiet then "-v0" else ""
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
                            ,case rst->ndMode of
@@ -254,7 +266,7 @@ execMain rst = do
                 (if null (rst->rtsOpts) && null paropts
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
-      cmd = timecmd ++ maincmd
+      cmd = (if rst->showTime then timecmd else "") ++ maincmd
   writeInfo rst $ "Executing: " ++ maincmd
   system (if rst->interactive then execInteractive cmd else cmd)
  where
@@ -353,7 +365,8 @@ processSetOption rst option
 
 allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts"] ++
              concatMap (\f->['+':f,'-':f])
-                       ["interactive","first","optimize","quiet","bindings"]
+                       ["interactive","first","optimize","quiet","bindings",
+                        "time"]
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
@@ -379,15 +392,17 @@ processThisOption rst option args
   | option=="supply"       = return (Just { idSupply := args | rst })
   | option=="+interactive" = return (Just { interactive := True  | rst })
   | option=="-interactive" = return (Just { interactive := False | rst })
-  | option=="+first" = return (Just { firstSol := True  | rst })
-  | option=="-first" = return (Just { firstSol := False | rst })
-  | option=="+optimize" = return (Just { optim := True  | rst })
-  | option=="-optimize" = return (Just { optim := False | rst })
-  | option=="+quiet" = return (Just { quiet := True  | rst })
-  | option=="-quiet" = return (Just { quiet := False | rst })
-  | option=="+bindings" = return (Just { showBindings := True  | rst })
-  | option=="-bindings" = return (Just { showBindings := False | rst })
-  | option=="rts"    = return (Just { rtsOpts := args | rst })
+  | option=="+first"       = return (Just { firstSol := True  | rst })
+  | option=="-first"       = return (Just { firstSol := False | rst })
+  | option=="+optimize"    = return (Just { optim := True  | rst })
+  | option=="-optimize"    = return (Just { optim := False | rst })
+  | option=="+quiet"       = return (Just { quiet := True  | rst })
+  | option=="-quiet"       = return (Just { quiet := False | rst })
+  | option=="+bindings"    = return (Just { showBindings := True  | rst })
+  | option=="-bindings"    = return (Just { showBindings := False | rst })
+  | option=="+time"        = return (Just { showTime := True  | rst })
+  | option=="-time"        = return (Just { showTime := False | rst })
+  | option=="rts"          = return (Just { rtsOpts := args | rst })
   | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >>
                 return Nothing
 
@@ -404,6 +419,7 @@ printOptions rst = putStrLn $
   "+/-optimize    - turn on/off optimization\n"++
   "+/-quiet       - set quiet mode\n"++
   "+/-bindings    - show bindings of free variables in initial goal\n"++
+  "+/-time        - show execution time\n"++
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
 
@@ -422,7 +438,8 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst->firstSol) ++ "first " ++
   showOnOff (rst->optim) ++ "optimize " ++
   showOnOff (rst->quiet) ++ "quiet " ++
-  showOnOff (rst->showBindings) ++ "bindings "
+  showOnOff (rst->showBindings) ++ "bindings " ++
+  showOnOff (rst->showTime) ++ "time "
  where
    showOnOff b = if b then "+" else "-"
 
