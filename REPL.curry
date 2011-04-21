@@ -18,6 +18,7 @@ import ReadNumeric (readNat)
 import List (isPrefixOf,intersperse)
 import FlatCurry (flatCurryFileName)
 import Sort (mergeSort)
+import AbstractCurry
 
 import Installation
 import Files
@@ -49,6 +50,7 @@ type ReplState =
   , ndMode       :: NonDetMode -- mode for non-deterministic main goal
   , firstSol     :: Bool       -- print only first solution to nd main goal?
   , interactive  :: Bool       -- interactive execution of goal?
+  , showBindings :: Bool       -- show free variables in main goal in output?
   , rtsOpts      :: String     -- run-time options for ghc
   , quit         :: Bool       -- terminate the REPL?
   }
@@ -69,6 +71,7 @@ initReplState =
   , ndMode       = DFS
   , firstSol     = False
   , interactive  = False
+  , showBindings = True
   , rtsOpts      = ""
   , quit         = False
   }
@@ -129,13 +132,44 @@ compileProgramWithGoal rst goal = do
   unless (not oldmaincurryexists) $ removeFile infoFile
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
+  writeMainGoalFile rst goal
+  insertFreeVarsInMainGoal rst goal
+  status <- compileCurryProgram rst True mainGoalFile
+  exinfo <- doesFileExist infoFile
+  if status==0 && exinfo then createAndCompileMain rst else return 1
+
+-- write the file with the main goal:
+writeMainGoalFile :: ReplState -> String -> IO ()
+writeMainGoalFile rst goal =
   writeFile mainGoalFile
             (unlines $ ["import "++(rst -> mainMod)] ++
                        map ("import "++) (rst->addMods) ++
                        ["idcMainGoal = "++goal])
-  status <- compileCurryProgram rst True mainGoalFile
-  exinfo <- doesFileExist infoFile
-  if status==0 && exinfo then createAndCompileMain rst else return 1
+
+-- insert free variables occurring in the main goal as components
+-- of the main goal so that their bindings are shown
+insertFreeVarsInMainGoal :: ReplState -> String -> IO ()
+insertFreeVarsInMainGoal rst goal = do
+  (CurryProg _ _ _ [mfunc] _) <- readCurry (stripSuffix mainGoalFile)
+  let freevars = freeVarsInFuncRule mfunc
+  if null freevars || not (rst -> showBindings)
+   then done
+   else let (exp,whereclause) = break (=="where") (words goal)
+         in unless (null whereclause) $
+              writeMainGoalFile
+                { addMods := "ShowBindings" : (rst->addMods) | rst}
+                (unwords (["ShowBindings.show"++show (length freevars)++" ("]++
+                          exp ++ [",["] ++
+                          intersperse "," (map (\v->"\""++v++"\"") freevars) ++
+                          ["]"] ++
+                          map (\v->',':v) freevars ++
+                          ")":whereclause))
+ where
+  freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
+    concatMap lvarName ldecls
+
+  lvarName ldecl = case ldecl of CLocalVar (_,v) -> [v]
+                                 _               -> []
 
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> Bool -> String -> IO Int
@@ -319,7 +353,7 @@ processSetOption rst option
 
 allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts"] ++
              concatMap (\f->['+':f,'-':f])
-                       ["interactive","first","optimize","quiet"]
+                       ["interactive","first","optimize","quiet","bindings"]
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
@@ -351,6 +385,8 @@ processThisOption rst option args
   | option=="-optimize" = return (Just { optim := False | rst })
   | option=="+quiet" = return (Just { quiet := True  | rst })
   | option=="-quiet" = return (Just { quiet := False | rst })
+  | option=="+bindings" = return (Just { showBindings := True  | rst })
+  | option=="-bindings" = return (Just { showBindings := False | rst })
   | option=="rts"    = return (Just { rtsOpts := args | rst })
   | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >>
                 return Nothing
@@ -367,6 +403,7 @@ printOptions rst = putStrLn $
   "+/-first       - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
   "+/-quiet       - set quiet mode\n"++
+  "+/-bindings    - show bindings of free variables in initial goal\n"++
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
 
@@ -384,7 +421,8 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst->interactive) ++ "interactive " ++
   showOnOff (rst->firstSol) ++ "first " ++
   showOnOff (rst->optim) ++ "optimize " ++
-  showOnOff (rst->quiet) ++ "quiet "
+  showOnOff (rst->quiet) ++ "quiet " ++
+  showOnOff (rst->showBindings) ++ "bindings "
  where
    showOnOff b = if b then "+" else "-"
 
