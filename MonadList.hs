@@ -91,18 +91,18 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
       cont >>= count i'
 
 -- Print the first value of a IO monad list:
-printOneValue :: Show a => IOList a -> IO ()
-printOneValue Abort           = error "MonadList.printOneValue: Abort" -- TODO
-printOneValue MNil            = putStrLn "No solution"
-printOneValue (MCons x _)     = print x
-printOneValue (WithReset l _) = l >>= printOneValue
+printOneValue :: Show a => (a -> IO ()) -> IOList a -> IO ()
+printOneValue _   Abort           = error "MonadList.printOneValue: Abort" -- TODO
+printOneValue _   MNil            = putStrLn "No solution"
+printOneValue prt (MCons x _)     = prt x
+printOneValue prt (WithReset l _) = l >>= printOneValue prt
 
 -- Print all values of a IO monad list:
-printAllValues :: Show a => IOList a -> IO ()
-printAllValues Abort             = error "MonadList.printAllValues: Abort" -- TODO
-printAllValues MNil              = putStrLn "No more solutions"
-printAllValues (MCons x getRest) = print x >> getRest >>= printAllValues
-printAllValues (WithReset l _) = l >>= printAllValues
+printAllValues :: Show a => (a -> IO ()) -> IOList a -> IO ()
+printAllValues _   Abort             = error "MonadList.printAllValues: Abort" -- TODO
+printAllValues _   MNil              = putStrLn "No more solutions"
+printAllValues prt (MCons x getRest) = prt x >> getRest >>= printAllValues prt
+printAllValues prt (WithReset l _)   = l >>= printAllValues prt
 
 askKey :: IO ()
 askKey = do
@@ -113,29 +113,30 @@ askKey = do
   return ()
 
 -- Print all values of a IO monad list on request by the user:
-printValsOnDemand :: Show a => IOList a -> IO ()
+printValsOnDemand :: Show a => (a -> IO ()) -> IOList a -> IO ()
 printValsOnDemand = printValsInteractive True
 
-printValsInteractive :: Show a => Bool -> IOList a -> IO ()
-printValsInteractive _  Abort = error "MonadList.printValsInteractive: Abort" -- TODO
-printValsInteractive _  MNil = putStrLn "No more solutions" >> askKey
-printValsInteractive st (MCons x getRest) = print x >> askUser st getRest
-printValsInteractive st (WithReset l _) = l >>= printValsInteractive st
+printValsInteractive :: Show a => Bool -> (a -> IO ()) -> IOList a -> IO ()
+printValsInteractive _ _ Abort = error "MonadList.printValsInteractive: Abort" -- TODO
+printValsInteractive _ _ MNil = putStrLn "No more solutions" >> askKey
+printValsInteractive st prt (MCons x getRest) = prt x >> askUser st prt getRest
+printValsInteractive st prt (WithReset l _) = l >>= printValsInteractive st prt
 
 -- ask the user for more values
-askUser :: Show a => Bool -> IO (IOList a) -> IO ()
-askUser st getrest = if not st then getrest >>= printValsInteractive st else do
+askUser :: Show a => Bool -> (a -> IO ()) -> IO (IOList a) -> IO ()
+askUser st prt getrest =
+    if not st then getrest >>= printValsInteractive st prt else do
   putStr "More solutions? [y(es)/n(o)/A(ll)] "
   hFlush stdout
   hSetBuffering stdin NoBuffering
   c <- getChar
   if c == '\n' then return () else putChar '\n'
   case (toLower c) of
-    'y'  -> getrest >>= printValsInteractive st
+    'y'  -> getrest >>= printValsInteractive st prt
     'n'  -> return ()
-    'a'  -> getrest >>= printValsInteractive False
-    '\n' -> getrest >>= printValsInteractive False
-    _    -> askUser st getrest
+    'a'  -> getrest >>= printValsInteractive False prt
+    '\n' -> getrest >>= printValsInteractive False prt
+    _    -> askUser st prt getrest
 
 list2iolist :: [a] -> IO (IOList a)
 list2iolist [] = mnil

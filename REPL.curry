@@ -60,6 +60,9 @@ type ReplState =
 -- Mode for non-deterministic evaluation of main goal
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
+-- Result of compiling main goal
+data MainGoalCompile = GoalError | GoalWithoutBindings | GoalWithBindings
+
 initReplState :: ReplState
 initReplState =
   { idcHome      = ""
@@ -136,11 +139,12 @@ compileProgramWithGoal rst goal = do
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst goal
-  acyok <- insertFreeVarsInMainGoal rst goal
-  if not acyok then return 1 else do
+  goalstate <- insertFreeVarsInMainGoal rst goal
+  if goalstate==GoalError then return 1 else do
     status <- compileCurryProgram rst True mainGoalFile
     exinfo <- doesFileExist infoFile
-    if status==0 && exinfo then createAndCompileMain rst else return 1
+    if status==0 && exinfo then createAndCompileMain rst goalstate
+                           else return 1
 
 -- write the file with the main goal:
 writeMainGoalFile :: ReplState -> String -> IO ()
@@ -153,20 +157,20 @@ writeMainGoalFile rst goal =
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
 -- The result is True if the acy file is correct.
-insertFreeVarsInMainGoal :: ReplState -> String -> IO Bool
+insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = do
   let mainGoalProg = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
   callFrontendWithParams ACY (setQuiet True defaultParams) mainGoalProg
   acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then return False else do
+  if not acyexists then return GoalError else do
     (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
     removeFile acyMainGoalFile
     let freevars = freeVarsInFuncRule mfunc
-    if null freevars || not (rst -> showBindings)
-     then return True
+    if null freevars || not (rst -> showBindings) || length freevars > 5
+     then return GoalWithoutBindings
      else let (exp,whereclause) = break (=="where") (words goal)
-           in if null whereclause then return True else do
+           in if null whereclause then return GoalWithoutBindings else do
                writeMainGoalFile
                 { addMods := "ShowBindings" : (rst->addMods) | rst}
                 (unwords (["ShowBindings.show"++show (length freevars)++" ("]++
@@ -175,7 +179,7 @@ insertFreeVarsInMainGoal rst goal = do
                           ["]"] ++
                           map (\v->',':v) freevars ++
                           ")":whereclause))
-               return True
+               return GoalWithBindings
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
@@ -194,8 +198,8 @@ compileCurryProgram rst quiet curryprog = do
   system compileCmd
 
 -- Create and compile the main module containing the main goal
-createAndCompileMain :: ReplState -> IO Int
-createAndCompileMain rst = do
+createAndCompileMain :: ReplState -> MainGoalCompile -> IO Int
+createAndCompileMain rst goalstate = do
   infos <- readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
   --print infos
   let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
@@ -208,7 +212,7 @@ createAndCompileMain rst = do
   writeInfo rst $ "Initial goal is " ++
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
-  createHaskellMain rst isdet isio
+  createHaskellMain rst goalstate isdet isio
   let ghcImports = [ rst -> idcHome
                    , rst -> idcHome ++ "/idsupply" ++ rst -> idSupply
                    , "." </> rst -> outputSubdir
@@ -230,19 +234,21 @@ createAndCompileMain rst = do
   system ghcCompile
 
 -- Create the Main.hs program containing the call to the initial expression:
-createHaskellMain rst isdet isio =
-  let mainPrefix = if isdet then "d_C_" else "nd_C_"
+createHaskellMain rst goalstate isdet isio =
+  let printOperation = if goalstate==GoalWithBindings then "printWithBindings"
+                                                      else "print"
+      mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
         if isdet then "evalD" else
-        if rst->ndMode == PrDFS then "prdfs"
+        if rst->ndMode == PrDFS then "prdfs "++printOperation
         else let searchSuffix = if rst->interactive then "i" else
                                 if rst->firstSol    then "1" else ""
-              in "print" ++ case (rst->ndMode) of
+              in ("print" ++ case (rst->ndMode) of
                               DFS   -> "DFS"++searchSuffix
                               BFS   -> "BFS"++searchSuffix
                               IDS d -> "IDS"++searchSuffix++" "++show d
-                              Par _ -> "Par"++searchSuffix
+                              Par _ -> "Par"++searchSuffix )++' ':printOperation
    in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $
        "module Main where\n"++
        "import Basics\n"++

@@ -255,51 +255,53 @@ benchHOFP prog withMon =
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog withMon =
- [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs nd_C_main"
- ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
+ [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]++ monBenchmarkIf withMon "MON+" prog True "main"
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog =
- [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref"   "printDFS nd_C_main"
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
 
 -- Benchmarking functional patterns with idc/pakcs
 benchFunPats prog =
- [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref"   "printDFS nd_C_main"
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name =
- [idcBenchmark ("IDC_PrDFS:"++name)  prog False "integer" ("prdfs nd_C_"++name)
- ,idcBenchmark ("IDC+_PrDFS:"++name) prog True  "integer" ("prdfs nd_C_"++name)
+ [idcBenchmark ("IDC_PrDFS:"++name)
+               prog False "integer" ("prdfs print nd_C_"++name)
+ ,idcBenchmark ("IDC+_PrDFS:"++name)
+               prog True  "integer" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True  "ioref" ("prdfs nd_C_"++name)
+               prog True  "ioref" ("prdfs print nd_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
  ]
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog =
- [idcBenchmark "IDC+PrDFS_IOREF" prog True "ioref" "prdfs nd_C_main"
- ,idcBenchmark "IDC+DFS_IOREF"   prog True "ioref" "printDFS nd_C_main"
- ,idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS 100 nd_C_main"
+ [idcBenchmark "IDC+PrDFS_IOREF" prog True "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+DFS_IOREF"   prog True "ioref" "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS 100 print nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog =
- [idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS1 nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS1 100 nd_C_main"
+ [idcBenchmark "IDC+BFS_IOREF" prog True "ioref" "printBFS1 print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF" prog True "ioref" "printIDS1 100 print nd_C_main"
  ]
 
 

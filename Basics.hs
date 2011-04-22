@@ -708,10 +708,13 @@ execIOList (WithReset l _)      = l >>= execIOList
 -- Printing all results of a computation in a depth-first manner
 -- ---------------------------------------------------------------------------
 
--- Evaluate a nondeterministic expression and show all results
--- in depth-first order
-prdfs :: (Show a, NormalForm a) => (IDSupply -> a) -> IO ()
-prdfs mainexp = initSupply >>= \s -> printValsDFS False print (id $!! (mainexp s))
+-- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
+-- and print all results in depth-first order.
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+prdfs :: (Show a, NormalForm a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+prdfs prt mainexp = do
+  s <- initSupply
+  printValsDFS False prt (id $!! (mainexp s))
 
 printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
@@ -862,17 +865,18 @@ zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
 -- Depth-first search into a monadic list
 -- ---------------------------------------------------------------------------
 
--- Print all values of an expression in a depth-first manner:
-printDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printDFS mainexp = computeWithDFS mainexp >>= printAllValues
+-- Print all values of an expression in a depth-first manner.
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+printDFS :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFS prt mainexp = computeWithDFS mainexp >>= printAllValues prt
 
 -- Print one value of an expression in a depth-first manner:
-printDFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printDFS1 mainexp = computeWithDFS mainexp >>= printOneValue
+printDFS1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFS1 prt mainexp = computeWithDFS mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression in a depth-first manner:
-printDFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printDFSi mainexp = computeWithDFS mainexp >>= printValsOnDemand
+printDFSi :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFSi prt mainexp = computeWithDFS mainexp >>= printValsOnDemand prt
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
 computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
@@ -943,16 +947,19 @@ searchDFS' cont (Guard cs e) = solves cs >>= traverse
 -- ---------------------------------------------------------------------------
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
-printBFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printBFS mainexp = computeWithBFS mainexp >>= printAllValues
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+printBFS :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFS prt mainexp = computeWithBFS mainexp >>= printAllValues prt
 
 -- Print first value of a non-deterministic goal in a breadth-first manner:
-printBFS1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printBFS1 mainexp = computeWithBFS mainexp >>= printOneValue
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+printBFS1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFS1 prt mainexp = computeWithBFS mainexp >>= printOneValue prt
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
-printBFSi :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printBFSi mainexp = computeWithBFS mainexp >>= printValsOnDemand
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+printBFSi :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFSi prt mainexp = computeWithBFS mainexp >>= printValsOnDemand prt
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
@@ -1019,19 +1026,23 @@ incrDepth4IDFS n = n*2
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased
 -- by function incrDepth4IDFS in each iteration:
-printIDS :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
-printIDS initdepth mainexp =
-  computeWithIDS initdepth mainexp >>= printAllValues
+-- The second argument is the operation to print a result (e.g., Prelude.print).
+printIDS :: (NormalForm a, Show a) => Int -> (a -> IO ())
+         -> (IDSupply -> a) -> IO ()
+printIDS initdepth prt mainexp =
+  computeWithIDS initdepth mainexp >>= printAllValues prt
 
 -- Print one value of an expression with iterative deepening:
-printIDS1 :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
-printIDS1 initdepth mainexp =
-  computeWithIDS initdepth mainexp >>= printOneValue
+printIDS1 :: (NormalForm a, Show a) => Int -> (a -> IO ())
+          -> (IDSupply -> a) -> IO ()
+printIDS1 initdepth prt mainexp =
+  computeWithIDS initdepth mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression with iterative deepening:
-printIDSi :: (NormalForm a, Show a) => Int -> (IDSupply -> a) -> IO ()
-printIDSi initdepth mainexp =
-  computeWithIDS initdepth mainexp >>= printValsOnDemand
+printIDSi :: (NormalForm a, Show a) => Int -> (a -> IO ())
+          -> (IDSupply -> a) -> IO ()
+printIDSi initdepth prt mainexp =
+  computeWithIDS initdepth mainexp >>= printValsOnDemand prt
 
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
@@ -1067,16 +1078,17 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
 -- ---------------------------------------------------------------------------
 
 -- Print all values of an expression in a parallel manner:
-printPar :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printPar mainexp = computeWithPar mainexp >>= printAllValues
+-- The first argument is the operation to print a result (e.g., Prelude.print).
+printPar :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printPar prt mainexp = computeWithPar mainexp >>= printAllValues prt
 
 -- Print one value of an expression in a parallel manner:
-printPar1 :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printPar1 mainexp = computeWithPar mainexp >>= printOneValue
+printPar1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printPar1 prt mainexp = computeWithPar mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression in a parallel manner:
-printPari :: (NormalForm a, Show a) => (IDSupply -> a) -> IO ()
-printPari mainexp = computeWithPar mainexp >>= printValsOnDemand
+printPari :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printPari prt mainexp = computeWithPar mainexp >>= printValsOnDemand prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
@@ -1112,6 +1124,15 @@ searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
 ----------------------------------------------------------------------
 -- Auxillary Functions
 ----------------------------------------------------------------------
+
+-- Operation to print the result of the main goal with bindings of free
+-- variables in the goal. Since the formatting is defined in the Curry
+-- module lib/ShowBindings, we strip here only the surrounding quotes.
+printWithBindings :: Show a => a -> IO ()
+printWithBindings x = printWithoutLastChar (tail (show x))
+ where printWithoutLastChar [] = putChar '\n'
+       printWithoutLastChar [_] = putChar '\n'
+       printWithoutLastChar (c:cs) = putChar c >> printWithoutLastChar cs
 
 -- mapM1 :: Monad m => (a -> m b) -> [a] -> m [b]
 -- mapM1 f as = sequence1 (map f as)
