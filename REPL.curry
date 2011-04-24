@@ -61,7 +61,7 @@ type ReplState =
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 -- Result of compiling main goal
-data MainGoalCompile = GoalError | GoalWithoutBindings | GoalWithBindings
+data MainGoalCompile = GoalError | GoalWithoutBindings | GoalWithBindings Int
 
 initReplState :: ReplState
 initReplState =
@@ -171,15 +171,14 @@ insertFreeVarsInMainGoal rst goal = do
      then return GoalWithoutBindings
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return GoalWithoutBindings else do
-               writeMainGoalFile
-                { addMods := "ShowBindings" : (rst->addMods) | rst}
-                (unwords (["ShowBindings.show"++show (length freevars)++" ("]++
+               writeMainGoalFile rst
+                (unwords (["("]++
                           exp ++ [",["] ++
                           intersperse "," (map (\v->"\""++v++"\"") freevars) ++
                           ["]"] ++
                           map (\v->',':v) freevars ++
                           ")":whereclause))
-               return GoalWithBindings
+               return (GoalWithBindings (length freevars))
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
@@ -235,8 +234,9 @@ createAndCompileMain rst goalstate = do
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
-  let printOperation = if goalstate==GoalWithBindings then "printWithBindings"
-                                                      else "print"
+  let printOperation = case goalstate of
+                         GoalWithBindings n -> "printWithBindings"++show n
+                         _                  -> "print"
       mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
@@ -252,6 +252,7 @@ createHaskellMain rst goalstate isdet isio =
    in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $
        "module Main where\n"++
        "import Basics\n"++
+       (if printOperation=="print" then "" else "import PrintBindings\n") ++
        "import Curry_"++stripSuffix mainGoalFile++"\n"++
        "main = "++mainOperation++" "++mainPrefix++"idcMainGoal\n"
 
