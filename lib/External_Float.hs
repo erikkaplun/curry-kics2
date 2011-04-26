@@ -1,20 +1,20 @@
 import qualified Curry_Prelude as CP
 
 external_d_C_prim_Float_plus :: CP.C_Float -> CP.C_Float -> CP.C_Float
-external_d_C_prim_Float_plus x1 x2 =
-  toCurry ((fromCurry x1 + fromCurry x1) :: Float)
+external_d_C_prim_Float_plus y x =
+  toCurry ((fromCurry x + fromCurry y) :: Float)
 
 external_d_C_prim_Float_minus :: CP.C_Float -> CP.C_Float -> CP.C_Float
-external_d_C_prim_Float_minus x1 x2 =
-  toCurry ((fromCurry x1 - fromCurry x1) :: Float)
+external_d_C_prim_Float_minus y x =
+  toCurry ((fromCurry x - fromCurry y) :: Float)
 
 external_d_C_prim_Float_times :: CP.C_Float -> CP.C_Float -> CP.C_Float
-external_d_C_prim_Float_times x1 x2 =
-  toCurry ((fromCurry x1 * fromCurry x1) :: Float)
+external_d_C_prim_Float_times y x =
+  toCurry ((fromCurry x * fromCurry y) :: Float)
 
 external_d_C_prim_Float_div :: CP.C_Float -> CP.C_Float -> CP.C_Float
-external_d_C_prim_Float_div x1 x2 =
-  toCurry ((fromCurry x1 / fromCurry x1) :: Float)
+external_d_C_prim_Float_div y x =
+  toCurry ((fromCurry x / fromCurry y) :: Float)
 
 external_d_C_prim_i2f :: CP.C_Int -> CP.C_Float
 external_d_C_prim_i2f x = toCurry (fromInteger (fromCurry x) :: Float)

@@ -2,13 +2,14 @@
 --- Library with some useful operations on lists.
 ---
 --- @author Michael Hanus
---- @version March 2009
+--- @version April 2011
 ------------------------------------------------------------------------------
 
 module List(elemIndex,elemIndices,find,findIndex,findIndices,
             nub,nubBy,delete,deleteBy,(\\),union,intersect,
             intersperse,transpose,partition,
-            group,groupBy,replace,isPrefixOf,isSuffixOf,sortBy,insertBy,last)  where
+            group,groupBy,inits,tails,replace,
+            isPrefixOf,isSuffixOf,isInfixOf,sortBy,insertBy,last)  where
 
 import Maybe(listToMaybe)
 
@@ -121,6 +122,20 @@ groupBy _  []     = []
 groupBy eq (x:xs) = (x:ys) : groupBy eq zs
                     where (ys,zs) = span (eq x) xs
 
+--- Returns all initial segments of a list, starting with the shortest.
+--- Example: inits [1,2,3] == [[],[1],[1,2],[1,2,3]]
+--- @param xs - the list of elements
+--- @return the list of initial segments of the argument list
+inits :: [a] -> [[a]]
+inits []     =  [[]]
+inits (x:xs) =  [[]] ++ map (x:) (inits xs)
+
+--- Returns all final segments of a list, starting with the longest.
+--- Example: tails [1,2,3] == [[1,2,3],[2,3],[3],[]]
+tails :: [a] -> [[a]]
+tails []         =  [[]]
+tails xxs@(_:xs) =  xxs : tails xs
+
 --- Replaces an element in a list.
 --- @param x - the new element
 --- @param p - the position of the new element (head = 0)
@@ -144,8 +159,15 @@ isPrefixOf (x:xs) (y:ys) = x==y && (isPrefixOf xs ys)
 --- @param xs - a list 
 --- @param ys - a list 
 --- @return True if xs is a suffix of ys 
-isSuffixOf              :: [a] -> [a] -> Bool 
-isSuffixOf x y           = isPrefixOf (reverse x) (reverse y)
+isSuffixOf :: [a] -> [a] -> Bool 
+isSuffixOf xs ys = isPrefixOf (reverse xs) (reverse ys)
+
+--- Checks whether a list is contained in another. 
+--- @param xs - a list 
+--- @param ys - a list 
+--- @return True if xs is contained in ys 
+isInfixOf :: [a] -> [a] -> Bool 
+isInfixOf xs ys = any (isPrefixOf xs) (tails ys)
 
 --- Sorts a list w.r.t. an ordering relation by the insertion method.
 sortBy :: (a -> a -> Bool) -> [a] -> [a]

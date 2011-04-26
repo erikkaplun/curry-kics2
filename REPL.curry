@@ -1,5 +1,5 @@
 --- --------------------------------------------------------------------------
---- Read-Eval-Print loop for IDC
+--- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
 --- @version April 2011
@@ -9,13 +9,12 @@ import System(system,getArgs,getEnviron)
 import Char(isSpace,toLower)
 import IO
 import IOExts
-import SetFunctions
 import FileGoodies
 import Directory (doesFileExist,removeFile,renameFile,getDirectoryContents)
 import Names (funcInfoFile)
 import ReadShowTerm (readQTermFile)
 import ReadNumeric (readNat)
-import List (isPrefixOf,intersperse)
+import List (isPrefixOf,isInfixOf,intersperse)
 import FlatCurry (flatCurryFileName)
 import Sort (mergeSort)
 import AbstractCurry
@@ -36,13 +35,18 @@ mainGoalFile = "Curry_Main_Goal.curry"
 -- Remove mainGoalFile and auxiliaries
 cleanMainGoalFile = do
   system $ Inst.installDir++"/bin/cleancurry "++mainGoalFile
-  removeFile mainGoalFile
+  goalfileexists <- doesFileExist mainGoalFile
+  unless (not goalfileexists) $ removeFile mainGoalFile
 
 -- REPL state:
 type ReplState =
   { idcHome      :: String     -- installation directory of the system
   , idSupply     :: String     -- IDSupply implementation (ioref or integer)
-  , quiet        :: Bool       -- be quiet?
+  , verbose      :: Int        -- verbosity level: 0 = quiet,
+                               -- 1 = show frontend (module) compile/load
+                               -- 2 = show backend (Haskell) compile/load
+                               -- 3 = show intermediate messages, commands
+                               -- 4 = show intermediate results
   , importPaths  :: [String]   -- additional directories to search for imports
   , outputSubdir :: String
   , mainMod      :: String     -- name of main module
@@ -67,7 +71,7 @@ initReplState :: ReplState
 initReplState =
   { idcHome      = ""
   , idSupply     = "integer"
-  , quiet        = False
+  , verbose      = 1
   , importPaths  = []
   , outputSubdir = "/.curry/kics2/"
   , mainMod      = "Prelude"
@@ -82,9 +86,10 @@ initReplState =
   , quit         = False
   }
 
--- Show an info message if not quiet
-writeInfo :: ReplState -> String -> IO ()
-writeInfo rst msg = if rst -> quiet then done else putStrLn msg
+-- Show an info message for a given verbosity level
+writeVerboseInfo :: ReplState -> Int -> String -> IO ()
+writeVerboseInfo rst level msg =
+  if rst -> verbose < level then done else putStrLn msg
 
 main = do
   let rst = { idcHome := Inst.installDir
@@ -96,8 +101,8 @@ main = do
 processArgsAndStart rst [] =
   if rst -> quit
   then done
-  else do writeInfo rst banner
-          writeInfo rst "Type \":h\" for help"
+  else do writeVerboseInfo rst 1 banner
+          writeVerboseInfo rst 1 "Type \":h\" for help"
           repl rst
 processArgsAndStart rst (arg:args) =
   if head arg /= ':'
@@ -106,7 +111,7 @@ processArgsAndStart rst (arg:args) =
           mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
           maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
  where
-  printHelp = putStrLn "Usage: idci <list of commands>\n" >> printHelpOnCommands
+  printHelp = putStrLn "Usage: kics2 <list of commands>\n" >> printHelpOnCommands
 
 -- The main read-eval-print loop:
 repl :: ReplState -> IO ()
@@ -141,7 +146,7 @@ compileProgramWithGoal rst goal = do
   writeMainGoalFile rst goal
   goalstate <- insertFreeVarsInMainGoal rst goal
   if goalstate==GoalError then return 1 else do
-    status <- compileCurryProgram rst True mainGoalFile
+    status <- compileCurryProgram rst mainGoalFile
     exinfo <- doesFileExist infoFile
     if status==0 && exinfo then createAndCompileMain rst goalstate
                            else return 1
@@ -187,13 +192,13 @@ insertFreeVarsInMainGoal rst goal = do
                                  _               -> []
 
 -- Compile a Curry program with IDC compiler:
-compileCurryProgram :: ReplState -> Bool -> String -> IO Int
-compileCurryProgram rst quiet curryprog = do
+compileCurryProgram :: ReplState -> String -> IO Int
+compileCurryProgram rst curryprog = do
   let compileProg = (rst->idcHome)++"/idc"
-      idcoptions  = (if quiet then "-q " else "") ++
+      idcoptions  = (if rst->verbose < 2 then "-q " else "") ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
-  writeInfo rst $ "Executing: "++compileCmd
+  writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
 
 -- Create and compile the main module containing the main goal
@@ -208,7 +213,7 @@ createAndCompileMain rst goalstate = do
                 (filter (\i -> snd (fst i) ==
                            (if isdet then "d" else "nd") ++ "_C_idcMainGoal")
                         infos))
-  writeInfo rst $ "Initial goal is " ++
+  writeVerboseInfo rst 3 $ "Initial goal is " ++
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst goalstate isdet isio
@@ -220,7 +225,7 @@ createAndCompileMain rst goalstate = do
       ghcCompile = unwords ["ghc"
                            ,if rst->optim then "-O2" else ""
                            ,"--make"
-                           ,if rst->quiet then "-v0" else ""
+                           ,if rst->verbose < 2 then "-v0" else "-v1"
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
                            ,case rst->ndMode of
@@ -229,7 +234,7 @@ createAndCompileMain rst goalstate = do
                            ,"-i"++concat (intersperse ":" ghcImports)
                            ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
-  writeInfo rst $ "Compiling Main.hs with: "++ghcCompile
+  writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
   system ghcCompile
 
 -- Create the Main.hs program containing the call to the initial expression:
@@ -274,14 +279,12 @@ execMain rst = do
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       cmd = (if rst->showTime then timecmd else "") ++ maincmd
-  writeInfo rst $ "Executing: " ++ maincmd
+  writeVerboseInfo rst 2 $ "Executing: " ++ maincmd
   system (if rst->interactive then execInteractive cmd else cmd)
  where
   isUbuntu = do
     bsid <- connectToCommand "lsb_release -i" >>= hGetContents
-    return (not (isEmpty (set1 findUbuntu bsid)))
-   where
-    findUbuntu (_++"Ubuntu"++_) = ()
+    return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
 allCommands = ["quit","help","?","load","reload","add",
@@ -311,12 +314,12 @@ processThisCommand rst cmd args
         return (Just rst)
   | cmd == "load"
    = do let modname = stripSuffix args
-        compileCurryProgram rst (rst->quiet) modname
+        compileCurryProgram rst modname
         return (Just { mainMod := modname, addMods := [] | rst })
   | cmd == "reload"
    = if rst->mainMod == "Prelude"
      then putStrLn "No program loaded!" >> return Nothing
-     else do compileCurryProgram rst (rst->quiet) (rst->mainMod)
+     else do compileCurryProgram rst (rst->mainMod)
              return (Just rst)
   | cmd=="add"
    = do let modname = stripSuffix args
@@ -370,9 +373,10 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts"] ++
+allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts",
+              "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
-                       ["interactive","first","optimize","quiet","bindings",
+                       ["interactive","first","optimize","bindings",
                         "time"]
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
@@ -397,14 +401,17 @@ processThisOption rst option args
                             else putStrLn "Illegal number" >> return Nothing)
                 (readNat args)
   | option=="supply"       = return (Just { idSupply := args | rst })
+  | option=="v0"           = return (Just { verbose := 0 | rst })
+  | option=="v1"           = return (Just { verbose := 1 | rst })
+  | option=="v2"           = return (Just { verbose := 2 | rst })
+  | option=="v3"           = return (Just { verbose := 3 | rst })
+  | option=="v4"           = return (Just { verbose := 4 | rst })
   | option=="+interactive" = return (Just { interactive := True  | rst })
   | option=="-interactive" = return (Just { interactive := False | rst })
   | option=="+first"       = return (Just { firstSol := True  | rst })
   | option=="-first"       = return (Just { firstSol := False | rst })
   | option=="+optimize"    = return (Just { optim := True  | rst })
   | option=="-optimize"    = return (Just { optim := False | rst })
-  | option=="+quiet"       = return (Just { quiet := True  | rst })
-  | option=="-quiet"       = return (Just { quiet := False | rst })
   | option=="+bindings"    = return (Just { showBindings := True  | rst })
   | option=="-bindings"    = return (Just { showBindings := False | rst })
   | option=="+time"        = return (Just { showTime := True  | rst })
@@ -421,10 +428,10 @@ printOptions rst = putStrLn $
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "supply <I>     - set idsupply implementation (integer or ioref)\n"++
+  "v<n>           - verbosity level (0 = quiet,..., 4 = all intermediate)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
   "+/-first       - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
-  "+/-quiet       - set quiet mode\n"++
   "+/-bindings    - show bindings of free variables in initial goal\n"++
   "+/-time        - show execution time\n"++
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
@@ -441,12 +448,12 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
       ) ++ "\n" ++
   "idsupply         : " ++ rst->idSupply ++ "\n" ++
   "run-time options : " ++ rst->rtsOpts ++ "\n" ++
-  showOnOff (rst->interactive) ++ "interactive " ++
-  showOnOff (rst->firstSol) ++ "first " ++
-  showOnOff (rst->optim) ++ "optimize " ++
-  showOnOff (rst->quiet) ++ "quiet " ++
+  "verbosity        : " ++ show (rst->verbose) ++ "\n" ++
+  showOnOff (rst->interactive)  ++ "interactive " ++
+  showOnOff (rst->firstSol)     ++ "first " ++
+  showOnOff (rst->optim)        ++ "optimize " ++
   showOnOff (rst->showBindings) ++ "bindings " ++
-  showOnOff (rst->showTime) ++ "time "
+  showOnOff (rst->showTime)     ++ "time "
  where
    showOnOff b = if b then "+" else "-"
 

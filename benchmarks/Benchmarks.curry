@@ -1,12 +1,11 @@
 -- This program defines the execution of all benchmarks and summarizes
 -- their results.
 
-import List(isPrefixOf,intersperse)
+import List(isPrefixOf,isInfixOf,intersperse)
 import IO
 import IOExts
 import System
 import Time
-import SetFunctions
 import Char
 import ReadShowTerm
 import Float
@@ -25,13 +24,10 @@ unless p act = if p then done else act
 evalCmd :: String -> IO String
 evalCmd cmd = connectToCommand cmd >>= hGetContents
 
---isUbuntu :: IO Bool
+isUbuntu :: IO Bool
 isUbuntu = do
   bsid <- evalCmd "lsb_release -i"
-  return (not (isEmpty (set1 findUbuntu bsid)))
- where
-  findUbuntu (_++"Ubuntu"++_) = ()
-  -- isInfixOf ? =)
+  return ("Ubuntu" `isInfixOf` bsid)
 
 -- Execute shell command and return time of its execution:
 benchmarkCommand cmd = do
@@ -367,6 +363,5 @@ main = run 3 allBenchmarks
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
 --main = run 1 [benchFLPDFSU "Last"]
-
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"

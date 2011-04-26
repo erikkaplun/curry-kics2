@@ -52,6 +52,15 @@ do
         rmdir $KICS2DIR
       fi
     fi
+    # delete also auxiliary files of PAKCS to be upward compatible:
+    PAKCSDIR="$CURRYDIR/pakcs"
+    if [ -d $PAKCSDIR ] ; then
+      rm -f $PAKCSDIR/$FBASE.pl $PAKCSDIR/$FBASE.po
+      PAKCSDIRFILES=`ls -A $PAKCSDIR`
+      if [ -z "$PAKCSDIRFILES" ] ; then # .curry/pakcs directory is empty
+        rmdir "$PAKCSDIR"
+      fi
+    fi
     CURRYDIRF=$FDIR/.curry/$FBASE
     if [ -d $CURRYDIR ] ; then
       rm -f $CURRYDIRF.fcy $CURRYDIRF.fint $CURRYDIRF.acy $CURRYDIRF.uacy
