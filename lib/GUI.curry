@@ -35,7 +35,8 @@ import IOExts(connectToCommand)
 import Char(isSpace,toUpper)
 
 trace :: String -> a -> a -- TODO: use Unsafe.trace
-trace _ = id
+--trace _ = id
+trace _ x = x
 
 -- If showTclTkErrors is true, all synchronization errors occuring in the
 -- Tcl/Tk communication are shown (such errors should only occur on

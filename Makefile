@@ -21,6 +21,13 @@ idc: Installation Compile.curry
 REPL.state: Installation REPL.curry
 	pakcs -s REPL
 
+# install the complete system if the kics2 compiler is present
+.PHONY: install
+install: idc REPL.state
+	cd cpns  && ${MAKE} # Curry Port Name Server demon
+	cd tools && ${MAKE} # various tools
+	chmod -R go+rX .
+
 # generate module with basic installation information:
 .PHONY: Installation
 Installation:
@@ -63,4 +70,5 @@ clean:
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
 	rm -f ./examples/Curry_*.*
+	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
