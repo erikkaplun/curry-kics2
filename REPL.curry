@@ -5,12 +5,12 @@
 --- @version April 2011
 --- --------------------------------------------------------------------------
 
-import System(system,getArgs,getEnviron)
+import System(system,getArgs,getEnviron,getPID)
 import Char(isSpace,toLower)
 import IO
 import IOExts
 import FileGoodies
-import Directory (doesFileExist,removeFile,renameFile,getDirectoryContents)
+import Directory
 import Names (funcInfoFile)
 import ReadShowTerm (readQTermFile)
 import ReadNumeric (readNat)
@@ -287,10 +287,11 @@ execMain rst = do
     return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add",
-               "programs","edit","show","set","save"]
+allCommands = ["quit","help","?","load","reload","add","cd",
+               "programs","edit","show","set","save","fork"]
 
--- Process a command of the REPL
+-- Process a command of the REPL.
+-- The result is either just a new ReplState or Nothing if an error occurred.
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
 processCommand rst cmds
   | null cmds = putStrLn "Error: unknown command" >> return Nothing
@@ -328,6 +329,11 @@ processThisCommand rst cmd args
         maybe (putStrLn "Source file of module not found!" >> return Nothing)
               (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
+  | cmd=="cd"
+   = do exdir <- doesDirectoryExist args
+        if exdir
+         then (setCurrentDirectory args >> return (Just rst))
+         else (putStrLn "Directory does not exist!" >> return Nothing)
   | cmd=="programs" = printAllLoadPathPrograms rst >> return (Just rst)
   | cmd=="edit"
    = do let modname = if null args then rst->mainMod else stripSuffix args
@@ -353,7 +359,21 @@ processThisCommand rst cmd args
        status <- compileProgramWithGoal rst (if null args then "main" else args)
        unless (status>0) $ do
           renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
-          putStrLn ("Executable saved in '"++rst->mainMod++"'")
+          writeVerboseInfo rst 1 ("Executable saved in '"++rst->mainMod++"'")
+       cleanMainGoalFile
+       return (Just rst)
+  | cmd=="fork"
+   = if rst->mainMod == "Prelude"
+     then putStrLn "No program loaded!" >> return Nothing
+     else do
+       status <- compileProgramWithGoal rst (if null args then "main" else args)
+       unless (status>0) $ do
+          pid <- getPID
+          let execname = "/tmp/kics2fork" ++ show pid
+          system ("mv ." </> rst -> outputSubdir </> "Main " ++ execname)
+          writeVerboseInfo rst 3 ("Starting executable '"++execname++"'...")
+          system ("( "++execname++" && rm -f "++execname++ ") "++
+                  "> /dev/null 2> /dev/null &") >> done
        cleanMainGoalFile
        return (Just rst)
   | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >>
@@ -463,6 +483,7 @@ printHelpOnCommands = putStrLn $
   ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++
   ":reload       - recompile currently loaded modules\n"++
   ":programs     - show names of all Curry programs available in load path\n"++
+  ":cd <dir>     - change current directory to <dir>\n"++
   ":edit         - load source of currently loaded module into editor\n"++
   ":edit <mod>   - load source of module <m> into editor\n"++
   ":show         - show currently loaded source program\n"++
@@ -471,6 +492,7 @@ printHelpOnCommands = putStrLn $
   ":set          - see help on options and current options\n"++
   ":save         - save executable with main expression 'main'\n"++
   ":save <exp>   - save executable with main expression <exp>\n"++
+  ":fork <expr>  - fork new process evaluating <expr>\n"++
   ":help         - show this message\n"++
   ":!<command>   - execute <command> in shell\n"++
   ":quit         - leave the system\n"
