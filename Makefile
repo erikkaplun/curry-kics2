@@ -21,6 +21,9 @@ idc: Installation Compile.curry
 REPL.state: Installation REPL.curry
 	pakcs -s REPL
 
+REPL: Installation REPL.curry
+	bin/kics2 :l REPL :save :q
+
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: idc REPL.state
@@ -65,7 +68,7 @@ installhaskell:
 .PHONY: clean
 clean:
 	bin/cleancurry -r
-	rm -f idc Installation.hs Installation.curry REPL.state
+	rm -f idc Installation.hs Installation.curry REPL.state REPL
 	rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o

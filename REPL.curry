@@ -11,7 +11,6 @@ import IO
 import IOExts
 import FileGoodies
 import Directory
-import Names (funcInfoFile)
 import ReadShowTerm (readQTermFile)
 import ReadNumeric (readNat)
 import List (isPrefixOf,isInfixOf,intersperse)
@@ -21,6 +20,10 @@ import AbstractCurry
 import Distribution
 import qualified Installation as Inst
 import Files
+--import Names (funcInfoFile)
+funcInfoFile subdir file =
+  let (dir,base) = splitDirectoryBaseName file
+   in dir ++ subdir ++ "Curry_" ++ stripSuffix base ++ ".info"
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
@@ -166,7 +169,9 @@ insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = do
   let mainGoalProg = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
-  callFrontendWithParams ACY (setQuiet True defaultParams) mainGoalProg
+      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
+                         (setFullPath ("." : rst->importPaths) defaultParams)
+  callFrontendWithParams ACY frontendParams mainGoalProg
   acyexists <- doesFileExist acyMainGoalFile
   if not acyexists then return GoalError else do
     (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
@@ -201,10 +206,14 @@ compileCurryProgram rst curryprog = do
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
 
+readInfoFile :: ReplState -> IO [((String,String),Bool)]
+readInfoFile rst = do
+  readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
+
 -- Create and compile the main module containing the main goal
 createAndCompileMain :: ReplState -> MainGoalCompile -> IO Int
 createAndCompileMain rst goalstate = do
-  infos <- readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
+  infos <- readInfoFile rst
   --print infos
   let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
                                 infos))

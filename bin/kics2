@@ -1,11 +1,19 @@
 #!/bin/sh
 
-# Interactive read-eval-print loop for KiCS2
+# Start interactive read-eval-print loop for KiCS2
 
 # Compute the installation directory of the system
 PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
-IDCHOME=`expr "$PATHNAME" : '\(.*\)/bin'`
-export IDCHOME
+KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
+
+if [ -x "$KICS2HOME/REPL" ] ; then
+  REPL="$KICS2HOME/REPL"
+elif [ -x "$KICS2HOME/REPL.state" ] ; then
+  REPL="$KICS2HOME/REPL.state"
+else
+  echo "ERROR: executable for REPL not found!" >&2
+  exit 1
+fi
 
 # use readline wrapper rlwrap if it is installed and we have tty as stdin:
 USERLWRAP=no
@@ -22,7 +30,7 @@ if [ "$1" = "--noreadline" ] ; then
 fi
 
 if [ $USERLWRAP = yes ] ; then
-  exec rlwrap -a -c "$IDCHOME/REPL.state" ${1+"$@"}
+  exec rlwrap -a -c "$REPL" ${1+"$@"}
 else
-  exec "$IDCHOME/REPL.state" ${1+"$@"}
+  exec "$REPL" ${1+"$@"}
 fi
