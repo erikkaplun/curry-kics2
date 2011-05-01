@@ -1,0 +1,434 @@
+\documentclass[utf8,handout]{beamer}
+
+
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{listings}
+\usetheme{Boadilla}
+
+\setbeamertemplate{footline}%{infolines theme}
+{
+\leavevmode%
+\hbox{%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+\usebeamerfont{author in head/foot}\insertshortauthor%~~(\insertshortinstitute)
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+\usebeamerfont{title in head/foot}\insertshorttitle
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+\usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+\end{beamercolorbox}}%
+\vskip0pt%
+}
+
+\begin{document}
+
+
+\title[KiCS2]{KiCS2: A New Compiler from Curry to Haskell}
+
+\date{May 04, 2011}
+
+\author[B. Braßel, M. Hanus, B. Peemöller, F. Reck]
+ {Bernd Braßel \and Michael Hanus \\
+   Björn Peemöller \and Fabian Reck\\
+  \texttt{\{bbr, mh, bjp, fre\}@informatik.uni-kiel.de}}
+
+\institute{Kiel University}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}[fragile]
+\frametitle{Curry}
+\begin{columns}
+\column{.45\textwidth}
+\begin{itemize}
+\item Lazy functional logic programing language.
+\item Haskell-like syntax.
+\item Extended by non-determinism and free variables. %TODO: failure?
+\end{itemize}
+\column{.45\textwidth}
+\begin{block}{Running example}
+\begin{semiverbatim}
+data Bool = True | False
+
+aBool :: Bool
+aBool = True ? False
+
+not True  = False
+not False = True
+
+xor True  x = not x
+xor False x = x
+
+xorSelf x = xor x x
+\end{semiverbatim}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example Call}
+\begin{semiverbatim}
+> xorSelf aBool
+False
+False
+No more solutions.
+\end{semiverbatim}
+\begin{itemize}
+\item The call of \verb!aBool! yields two solutions
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{KiCS2}
+% Compilation strategies
+%   - compile to logic language (Pakcs compiles to Prolog)
+%   - compile to functional language (KiCS compiles to Haskell)
+%   - compile to abstract machine (MCC compiles to C)
+\begin{block}{Approach}
+\begin{itemize}
+\item Compile Curry programs into Haskell
+\item Reuse expresiveness of Haskell (lazy evaluation, higher-order functions)
+\item Benefit from mature Haskell compiler (GHC)
+\end{itemize}
+\end{block}
+
+\begin{block}{Goals}
+\begin{itemize}
+\item Efficient execution of purely functional programs
+\item Avoid unsafe features to enable optimization (in contrast to KiCS)
+\item Support for different search strategies (including parallel strategies)
+\end{itemize}
+\end{block}
+\end{frame}
+
+\section{Compilation scheme}
+
+\begin{frame}[fragile]
+\frametitle{Representation of Non-Determinism}
+\begin{itemize}
+  \item No built-in non-determinism in Haskell.
+  \item Idea: Explicit representation in data types as constructors.
+\end{itemize}
+
+\begin{block}{Curry}
+\begin{semiverbatim}
+data Bool = True | False
+
+aBool :: Bool
+aBool = True ? False
+\end{semiverbatim}
+\end{block}
+
+\begin{block}{Haskell}
+\begin{semiverbatim}
+data Bool = True | False | Choice_Bool Bool Bool
+
+aBool :: Bool
+aBool = Choice_Bool True False
+\end{semiverbatim}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Extension of the Operations}
+\begin{itemize}
+  \item Operations have to deal with non-deterministic values.
+  \item Non-determinism in arguments is propagated.
+%   \item Purely functional Curry programs are Haskell programs (no runtime overhead) (first-order)
+\end{itemize}
+
+\begin{block}{Haskell}
+\begin{semiverbatim}
+not True                = False
+not False               = True
+not (Choice_Bool x1 x2) = Choice_Bool (not x1) (not x2)
+
+xor True                x = not x
+xor False               x = x
+xor (Choice_Bool x1 x2) x = Choice_Bool (xor x1 x)
+                                        (xor x2 x)
+
+xorSelf x = xor x x
+\end{semiverbatim}
+\end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Example calls}
+\begin{example}
+\verb!not aBool!
+$\leadsto$ \verb!not (Choice_Bool True False)!
+$\leadsto$ \verb!Choice_Bool (not True) (not False)!
+$\leadsto$ \verb!Choice_Bool False True!
+\end{example}
+
+\begin{example}
+\verb!xorSelf aBool!
+$\leadsto$ \verb!xor aBool aBool!
+$\leadsto$ \verb!xor (Choice_Bool True False) aBool!
+$\leadsto$ \verb!Choice_Bool (xor True aBool) (xor False aBool)!
+$\leadsto$ \verb!Choice_Bool (not aBool) aBool!
+$\leadsto$ \verb!Choice_Bool (Choice_Bool False True) (Choice_Bool True False)!
+\end{example}
+
+\begin{itemize}
+  \item Yiels four results: \verb!False, True, True, False!
+  \item Only \verb!False, False! are reasonable.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Run-Time Choice vs. Call-Time Choice}
+\begin{block}{Curry}
+\begin{lstlisting}
+xorSelf x = xor x x
+\end{lstlisting}
+\end{block}
+\pause
+\begin{block}{Run-Time Choice}
+\begin{itemize}
+\item Variables denote non-deterministic computations
+\item {\tt x}'s may evaluate to different values in the same non-deterministic branch
+\end{itemize}
+\end{block}
+\pause
+\begin{block}{Call-Time Choice}
+\begin{itemize}
+\item Variables denote values
+\item Both {\tt x} evaluate to the same value in each non-deterministic branch
+\end{itemize}
+\end{block}
+\pause
+\begin{itemize}
+\item Call-Time Choice is often more intuitive
+\item Curry has Call-Time Choice semantics 
+\item Unrestricted propagation violates Call-Time Choice
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Identifying Choices}
+\begin{itemize}
+\item Choices are annotated with unique identifiers
+\item Functions that may introduce non-determinism are supplied with an additional parameter to obtain fresh \verb!ID!s
+\item Decisions made for different occurrences of the same Choice have to be consistent
+\end{itemize}
+
+\begin{block}{Choice Identifier}
+\begin{semiverbatim}
+type ID = Integer
+
+data Bool = False | True | Choice_Bool ID Bool Bool
+
+aBool :: ID -> Bool
+aBool i = Choice_Bool i True False
+
+xor (Choice_Bool i x1 x2) x = Choice_Bool i (xor x1 x) 
+                                            (xor x2 x)
+\end{semiverbatim}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example call}
+% Mention that (aBool 1) is computed only once due to sharing
+% Mention the origin of the initial ID 1
+\begin{example}
+\verb!xorSelf (aBool 1)!
+$\leadsto$ \verb!xor (aBool 1) (aBool 1)!
+$\leadsto$ \verb!xor (Choice_Bool 1 True False) (Choice_Bool 1 True False)!
+$\leadsto$ $\dots$
+$\leadsto$ \verb!Choice_Bool 1 (Choice_Bool 1 False True) (Choice_Bool 1 True False)!
+\end{example}
+
+\begin{itemize}
+\item The results \verb!True, True! are identified as invalid
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Representing Failure}
+\begin{itemize}
+ \item Computations with failures is a common programming pattern in FLP
+ \item Failures do not abort the computation, but are ignored
+ \item Thus, failures have to be represented as well.
+\end{itemize}
+
+\begin{block}{Curry}
+\begin{semiverbatim}
+data Bool = True | False
+
+ensureTrue True = True
+\end{semiverbatim}
+\end{block}
+
+\begin{block}{Haskell}
+\begin{semiverbatim}
+data Bool = True | False | Choice_Bool Bool Bool | Fail_Bool
+
+ensureTrue True                  = True
+ensureTrue (Choice_Bool i x1 x2) = ...
+ensureTrue _                     = Fail_Bool
+\end{semiverbatim}
+\end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Higher Order Functions}
+\begin{itemize}
+\item Up to now only first-order programs were considered
+\item Deterministic higher-order functions can remain unchanged
+\end{itemize}
+\begin{columns}
+\column{.45\textwidth}
+\begin{block}{Curry}
+\begin{semiverbatim}
+apply :: (a -> b) -> a -> b
+apply f x = f x
+
+> apply not True
+False
+\end{semiverbatim}
+\end{block}
+\column{.45\textwidth}
+\begin{block}{Haskell}
+\begin{semiverbatim}
+apply :: (a -> b) -> a -> b
+apply f x = f x
+
+> apply not True
+False
+\end{semiverbatim}
+\end{block}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Higher Order Functions}
+\begin{itemize}
+\item Non-deterministic functions need an additional parameter
+\item An identifier is passed to functional argument when applied
+\end{itemize}
+\begin{columns}
+\column{.45\textwidth}
+\begin{block}{Curry}
+\begin{semiverbatim}
+apply :: (a -> b) -> a -> b
+apply f x = f x
+
+ndNot x = x ? not x
+
+> apply ndNot True
+True
+False
+\end{semiverbatim}
+\end{block}
+\column{.45\textwidth}
+\begin{block}{Haskell}
+\begin{semiverbatim}
+apply :: (a -> ID -> b) 
+      -> a -> ID -> b
+apply f x i = f x i
+
+ndNot x i = 
+  Choice_Bool i x (not x)
+
+> apply ndNot True 1
+Choice_Bool 1 True False
+\end{semiverbatim}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Higher-order optimization}
+Deterministic functions have to be wrapped
+\begin{block}{Curry}
+\begin{semiverbatim}
+> apply not True
+False
+\end{semiverbatim}
+\end{block}
+\begin{block}{Haskell}
+\begin{semiverbatim}
+> apply (\\x _ -> not x) True 1
+False
+\end{semiverbatim}
+\end{block}
+\begin{block}{Optimization}
+\begin{itemize}
+\item Higher-order functions are translated into
+  \begin{itemize}
+   \item a deterministic variant
+   \item a non-deterministic variant
+  \end{itemize}
+\item Benchmarks show enormously improved performance
+\end{itemize}
+\end{block}
+Non-deterministic choice between functions is also possible.
+\end{frame}
+
+
+
+
+
+\section{Benchmarks}
+
+\begin{frame}
+\frametitle{Benchmarks}
+\end{frame}
+
+
+
+
+\section{Conclusion}
+
+\begin{frame}
+\frametitle{Additional Features}
+\begin{itemize}
+
+\item Free Variables
+\item Unification
+\item Function Patterns
+\item Encapsulated Search
+
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Conclusion}
+\begin{itemize}
+\item A transformation of a functional logic program into a functional program.
+\item The resulting program can be optimized by the Haskell compiler
+\item A formal description of our approach can be found in our paper.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+
+ {\huge Thank You!}\\[3ex]
+ \pause
+ {\huge Questions?}
+ 
+\end{center}
+\end{frame}
+
+
+
+\end{document}
