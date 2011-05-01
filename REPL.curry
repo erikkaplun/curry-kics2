@@ -6,14 +6,14 @@
 --- --------------------------------------------------------------------------
 
 import System(system,getArgs,getEnviron,getPID)
-import Char(isSpace,toLower)
+import Char(isDigit,isSpace,toLower)
 import IO
 import IOExts
 import FileGoodies
 import Directory
 import ReadShowTerm (readQTermFile)
 import ReadNumeric (readNat)
-import List (isPrefixOf,isInfixOf,intersperse)
+import List (isPrefixOf,isInfixOf,intersperse,nub,union)
 import FlatCurry (flatCurryFileName)
 import Sort (mergeSort)
 import AbstractCurry
@@ -146,7 +146,8 @@ compileProgramWithGoal rst goal = do
   unless (not oldmaincurryexists) $ removeFile infoFile
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
-  writeMainGoalFile rst goal
+  writeMainGoalFile rst [] Nothing goal
+  makeMainGoalMonomorphic rst goal
   goalstate <- insertFreeVarsInMainGoal rst goal
   if goalstate==GoalError then return 1 else do
     status <- compileCurryProgram rst mainGoalFile
@@ -154,17 +155,40 @@ compileProgramWithGoal rst goal = do
     if status==0 && exinfo then createAndCompileMain rst goalstate
                            else return 1
 
--- write the file with the main goal:
-writeMainGoalFile :: ReplState -> String -> IO ()
-writeMainGoalFile rst goal =
+-- write the file with the main goal where necessary imports
+-- and possibly a type string is provided:
+writeMainGoalFile :: ReplState -> [String] -> Maybe String -> String -> IO ()
+writeMainGoalFile rst imports mtype goal =
   writeFile mainGoalFile
-            (unlines $ ["import "++(rst -> mainMod)] ++
-                       map ("import "++) (rst->addMods) ++
+            (unlines $ map ("import "++)
+                           (nub (rst->mainMod : rst->addMods ++ imports)) ++
+                       (maybe [] (\ts -> ["idcMainGoal :: "++ts]) mtype) ++
                        ["idcMainGoal = "++goal])
+
+--- If the main goal is polymorphic, make it monomorphic by adding a type
+--- declaration where type variables are replaced by type "()".
+makeMainGoalMonomorphic :: ReplState -> String -> IO ()
+makeMainGoalMonomorphic rst goal = do
+  let mainGoalProg = stripSuffix mainGoalFile
+      acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
+      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
+                         (setFullPath ("." : rst->importPaths) defaultParams)
+  callFrontendWithParams ACY frontendParams mainGoalProg
+  acyexists <- doesFileExist acyMainGoalFile
+  if not acyexists then done else do
+    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
+    removeFile acyMainGoalFile
+    let maintype = typeOfFunc mfunc
+    if isPolyType maintype
+     then writeMainGoalFile rst (modsOfType maintype)
+                            (Just (showMonoTypeExpr False maintype)) goal
+     else done
+ where
+  typeOfFunc (CFunc _ _ _ texp _) = texp
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
--- The result is True if the acy file is correct.
+-- The status of the main goal is returned.
 insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = do
   let mainGoalProg = stripSuffix mainGoalFile
@@ -181,7 +205,7 @@ insertFreeVarsInMainGoal rst goal = do
      then return GoalWithoutBindings
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return GoalWithoutBindings else do
-               writeMainGoalFile rst
+               writeMainGoalFile rst [] Nothing -- todo: add real type
                 (unwords (["("]++
                           exp ++ [",["] ++
                           intersperse "," (map (\v->"\""++v++"\"") freevars) ++
@@ -531,5 +555,76 @@ strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 -- Interactive execution of a main search command: current, a new
 -- terminal is opened due to problematic interaction with readline
 execInteractive cmd = "xterm -e " ++ cmd
+
+-----------------------------------------------------------------------
+--- Returns true if the type expression contains type variables.
+isPolyType :: CTypeExpr -> Bool
+isPolyType (CTVar _) = True
+isPolyType (CFuncType domain range) = isPolyType domain || isPolyType range
+isPolyType (CTCons _ typelist) = any isPolyType typelist
+
+--- Returns all modules used in the given type.
+modsOfType :: CTypeExpr -> [String]
+modsOfType (CTVar _) = []
+modsOfType (CFuncType t1 t2) = union (modsOfType t1) (modsOfType t2)
+modsOfType (CTCons (mod,_) typelist) =
+  foldr union [mod] (map modsOfType typelist)
+
+--- Shows an AbstractCurry type expression in standard Curry syntax
+--- but replaces all occurrences of type variables by "()".
+--- If the first argument is True, the type expression is enclosed
+--- in brackets.
+showMonoTypeExpr :: Bool -> CTypeExpr -> String
+showMonoTypeExpr _ (CTVar _) = "()" --showTypeVar (showIdentifier name)
+showMonoTypeExpr nested (CFuncType domain range) =
+   maybeShowBrackets nested (showMonoTypeExpr (isCFuncType domain) domain ++
+                             " -> " ++ showMonoTypeExpr False range)
+showMonoTypeExpr nested (CTCons (mod,name) typelist)
+   | mod==prelude && name == "untyped" = "-"
+   | otherwise  = maybeShowBrackets (nested && not (null typelist))
+                                    (showTypeCons mod name typelist)
+
+showTypeCons :: String -> String -> [CTypeExpr] -> String
+showTypeCons _ name [] = name
+showTypeCons mod name (t:ts)
+   | mod == prelude = showPreludeTypeCons name (t:ts)
+   | otherwise        = name ++ (prefixMap (showMonoTypeExpr True) (t:ts) " ")
+
+showPreludeTypeCons :: String -> [CTypeExpr] -> String
+showPreludeTypeCons name typelist
+  | name == "[]" && head typelist == CTCons (prelude,"Char") [] = "String"
+  | name == "[]" = "[" ++ (showMonoTypeExpr False (head typelist)) ++ "]"
+  | isTuple name = "(" ++ (combineMap (showMonoTypeExpr False) typelist ",") ++ ")"
+  | otherwise    = name ++ (prefixMap (showMonoTypeExpr True) typelist " ")
+
+-- Remove characters '<' and '>' from identifiers sind these characters
+-- are sometimes introduced in new identifiers generated by the front end (for sections)
+showIdentifier :: String -> String
+showIdentifier = filter (not . flip elem "<>")
+
+isCFuncType t = case t of
+                  CFuncType _ _ -> True
+                  _ -> False
+
+prelude = "Prelude"
+
+-- enclose string with brackets, if required by first argument:
+maybeShowBrackets nested s =
+   (if nested then "(" else "") ++ s ++ (if nested then ")" else "")
+
+prefixMap :: (a -> String) -> [a] ->  String -> String
+prefixMap f xs s = concatMap ((++)s) (map f xs)
+
+combineMap :: (a -> String) -> [a] ->  String -> String
+combineMap _ [] _ = ""
+combineMap f (x:xs) s = (f x) ++ (prefixMap f xs s)
+
+isTuple :: String -> Bool
+isTuple [] = False
+isTuple (x:xs) = (x == '(') && (p1_isTuple xs)
+   where
+   p1_isTuple [] = False
+   p1_isTuple (z:[]) = z == ')'
+   p1_isTuple (z1:z2:zs) = (z1 == ',') && (p1_isTuple (z2:zs))
 
 -----------------------------------------------------------------------
