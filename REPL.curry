@@ -68,7 +68,9 @@ type ReplState =
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 -- Result of compiling main goal
-data MainGoalCompile = GoalError | GoalWithoutBindings | GoalWithBindings Int
+data MainGoalCompile = GoalError -- error occurred
+                     | GoalWithoutBindings -- goal does not contain free vars
+                     | GoalWithBindings Int String -- number of vars / new goal
 
 initReplState :: ReplState
 initReplState =
@@ -147,9 +149,12 @@ compileProgramWithGoal rst goal = do
   oldmainfcyexists <- doesFileExist (flatCurryFileName mainGoalFile)
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst [] Nothing goal
-  makeMainGoalMonomorphic rst goal
   goalstate <- insertFreeVarsInMainGoal rst goal
   if goalstate==GoalError then return 1 else do
+    let newgoal = case goalstate of
+                    GoalWithBindings _ g -> g
+                    _                    -> goal
+    makeMainGoalMonomorphic rst newgoal
     status <- compileCurryProgram rst mainGoalFile
     exinfo <- doesFileExist infoFile
     if status==0 && exinfo then createAndCompileMain rst goalstate
@@ -205,14 +210,15 @@ insertFreeVarsInMainGoal rst goal = do
      then return GoalWithoutBindings
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return GoalWithoutBindings else do
-               writeMainGoalFile rst [] Nothing -- todo: add real type
-                (unwords (["("]++
-                          exp ++ [",["] ++
-                          intersperse "," (map (\v->"\""++v++"\"") freevars) ++
-                          ["]"] ++
-                          map (\v->',':v) freevars ++
-                          ")":whereclause))
-               return (GoalWithBindings (length freevars))
+              let newgoal = unwords $
+                        ["("] ++
+                        exp ++ [",["] ++
+                        intersperse "," (map (\v->"\""++v++"\"") freevars) ++
+                        ["]"] ++
+                        map (\v->',':v) freevars ++
+                        ")":whereclause
+              writeMainGoalFile rst [] Nothing newgoal
+              return (GoalWithBindings (length freevars) newgoal)
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
@@ -273,8 +279,8 @@ createAndCompileMain rst goalstate = do
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
   let printOperation = case goalstate of
-                         GoalWithBindings n -> "printWithBindings"++show n
-                         _                  -> "print"
+                         GoalWithBindings n _ -> "printWithBindings"++show n
+                         _                    -> "print"
       mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else

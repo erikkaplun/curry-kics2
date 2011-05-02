@@ -3,10 +3,12 @@
 --- Curry module tester "currytest".
 ---
 --- @author Michael Hanus
---- @version May 2006
+--- @version May 2011
 ------------------------------------------------------------------------------
 
-module Assertion(Assertion(..), -- for writing test cases
+module Assertion(-- for writing test cases:
+                 Assertion,assertTrue,assertEqual,
+                 assertValues,assertSolutions,assertIO,assertEqualIO,
                  -- the remaining entities are only used by the test tool:
                  checkAssertion,
                  seqStrActions,writeAssertResult,
@@ -18,7 +20,6 @@ import AllSolutions
 import List((\\))
 import Socket -- for sending results to test GUI
 import IO(hPutStrLn,hClose)
-import ReadShowTerm(showQTerm)
 
 infixl 1 `seqStrActions`
 
@@ -39,10 +40,28 @@ infixl 1 `seqStrActions`
 data Assertion a = AssertTrue      String Bool
                  | AssertEqual     String a a
                  | AssertValues    String a [a]
-                 --| AssertSolutions String (a->Success) [a]
+                 | AssertSolutions String (a->Success) [a]
                  | AssertIO        String (IO a) a
                  | AssertEqualIO   String (IO a) (IO a)
 
+
+assertTrue :: String -> Bool -> Assertion ()
+assertTrue s b = AssertTrue s b
+
+assertEqual :: String -> a -> a -> Assertion a
+assertEqual s x y = AssertEqual s x y
+
+assertValues :: String -> a -> [a] -> Assertion a
+assertValues s x y = AssertValues s x y
+
+assertSolutions :: String -> (a->Success) -> [a] -> Assertion a
+assertSolutions s x y = AssertSolutions s x y
+
+assertIO :: String -> IO a -> a -> Assertion a
+assertIO s x y = AssertIO s x y
+
+assertEqualIO :: String -> IO a -> IO a -> Assertion a
+assertEqualIO s x y = AssertEqualIO s x y
 
 --- Combines two actions and combines their results.
 --- Used by the currytest tool.
@@ -72,12 +91,10 @@ checkAssertion prot (AssertValues name expr results) =
   catchFail (checkAssertValues name expr results)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-{-
 checkAssertion prot (AssertSolutions name constr results) =
   catchFail (checkAssertSolutions name constr results)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
--}
 checkAssertion prot (AssertIO name action result) =
   catchFail (checkAssertIO name action result)
             (return ("FAILURE of "++name++": no solution or error\n",False))
@@ -113,9 +130,12 @@ checkAssertValues name call results = do
    else return ("FAILURE of "++name++": values assertion not satisfied:\n"++
                 "Computed values: "++show rs++"\n"++
                 "Expected values: "++show results++"\n",False)
-{-
+
 -- Checks all solutions of a constraint abstraction.
 checkAssertSolutions :: String -> (a->Success) -> [a] -> IO (String,Bool)
+checkAssertSolutions name _ _ =
+  return ("FAILURE of "++name++": assertSolution not yet implemented!\n",False)
+{-
 checkAssertSolutions name constr results = do
   rs <- getAllSolutions constr
   if null (rs \\ results) && null (results \\ rs)

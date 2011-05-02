@@ -1,0 +1,19 @@
+#!/bin/sh
+# script to execute unit test for KiCS2
+KiCS2HOME=..
+
+$KiCS2HOME/bin/cleancurry
+
+# test for basic language features
+#TESTLANG="testNarr testNonStrictUnif testFuncPattern"
+TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec"
+
+# test for standard libraries
+#TESTLIBS="testCombinatorial testDatabase testDirectory testDynamic testFlatCurryGoodies testFlatCurryXML testGlobalVariable testSetFunctions testSort testTraversal testArray testDequeue testFiniteMap testRedBlackTree"
+TESTLIBS="testPrelude testGlobal testInteger testIO testIOExts testList testSystem"
+
+ALLTESTS="$TESTLANG $TESTLIBS"
+
+# execute all unit tests:
+echo "Executing unit tests for back end $BACKEND..."
+$KiCS2HOME/bin/currytestkics --window $ALLTESTS
