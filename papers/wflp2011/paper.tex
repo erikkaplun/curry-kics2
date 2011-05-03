@@ -1,11 +1,5 @@
 \documentclass{llncs}
 
-\addtolength{\textheight}{0.2cm}
-\addtolength{\topmargin}{-0.1cm}
-\addtolength{\textwidth}{0.2cm}
-\addtolength{\oddsidemargin}{-0.1cm}
-\addtolength{\evensidemargin}{-0.1cm}
-
 \usepackage{times}
 \usepackage{url}
 \def\UrlFont{\tt}
@@ -36,14 +30,10 @@
 \newcommand{\us}{\char95\xspace} % underscore
 \newcommand{\dollar}{\code{\char36}} % dollar in programs
 \newcommand{\Choice}[2]{#1 \mathop{?} #2}
-
-% ------------------------------------------------------------------
-% SYMBOLS & FORMULAS
-
 \newcommand{\funset}{\ensuremath{_{\cal S}}}
 
 \begin{document}
-\pagestyle{plain}
+%\pagestyle{plain}
 \sloppy
 
 \title{KiCS2: A New Compiler from Curry to Haskell}
@@ -69,7 +59,8 @@ In this paper we present our first steps towards a new system
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
-non-deterministic values in the respective data structure.
+non-deterministic results as values in the data types corresponding
+to the results.
 This enables the application of various search strategies
 to extract values from the search space.
 We show by several benchmarks that our implementation
@@ -291,8 +282,6 @@ features of Haskell.
     &  |  & c(e_1,\ldots,e_n) & \mbox{$c$ is an $n$-ary constructor symbol}\\
     &  |  & f(e_1,\ldots,e_n) & \mbox{$f$ is an $n$-ary function symbol}\\
     &  |  & \Choice{e_1}{e_2} & \mbox{choice} \\[1ex]
-%    &  |  & \mbox{\code{let}}~\{x_1=e_1;\ldots;x_n = e_n\}~\code{in}~e
-%                                            & \mbox{let binding}\\[1ex]
   D & ::= & f(x_1,\ldots,x_n) = e
                 & \mbox{$n$-ary function $f$ with a single rule}\\
     &  |  & f(c(y_1,\ldots,y_m),x_2,\ldots,x_n) = e
@@ -313,7 +302,13 @@ we assume that each case expression is transformed into
 a new operation in order to avoid complications by translating
 nested case expressions.
 Thus, we assume that all programs are \emph{uniform}
-according to the definition in Fig.~\ref{fig:uniform}.
+according to the definition in Fig.~\ref{fig:uniform}.\footnote{%
+Uniform programs have been also considered in
+\cite{MorenoEtAl90ALP} to define lazy narrowing strategies
+for functional logic programs. Although the motivations are similar,
+our notion of uniform program is more restrictive since we
+allow only a single non-variable argument in each left-hand side
+of a rule.}
 There, the variables in the left-hand sides of each rule are pairwise
 different, and
 the constructors in the left-hand sides of the matching rules of each function
@@ -403,7 +398,7 @@ Thus, if we want to show the different values of an expression
 we enumerate all values contained in the choices.
 These are \code{False}, \code{True}, \code{True}, and \code{False}
 in the result above.
-Unfortunately, this is not conform with the call-time choice semantics
+Unfortunately, this does not conform to the call-time choice semantics
 discussed in Section~\ref{ctc-semantics} which should not yield
 a value like \code{True}.
 The call-time choice semantics requires that the choice
@@ -468,7 +463,7 @@ constructor with a unique identifier.
 moved to the result of this operation with the same identifier,
 i.e., a non-deterministic argument
 yields non-deterministic results for each of the argument's values.
-\item Each choice occurring in a computation gets its own unique
+\item Each choice introduced in a computation gets its own unique
 identifier.
 \end{enumerate}
 The latter principle requires the creation of fresh identifiers
@@ -486,30 +481,43 @@ at any point of a computation.
 For this purpose, we assume a type \code{IDSupply}
 with operations
 \begin{haskell}
+  initSupply  :: IO IDSupply
   thisID      :: IDSupply -> ID
   leftSupply  :: IDSupply -> IDSupply
   rightSupply :: IDSupply -> IDSupply
 \end{haskell}
 and add a new argument of type \code{IDSupply} to each operation
-of the source program.
-
-\code{thisID} creates an identifier from a current
-identifier supply, and
-\code{leftSupply} and \code{rightSupply} create
-new different identifier supplies (where both do not supply the ID obtained
-by \code{thisID}) from a given one.
-The latter are used when an operation calls two\footnote{The
+of the source program, i.e., a Curry operation of type
+\begin{curry}
+  f :: $\tau_1$ ->$~\cdots~$->$~\tau_n~$->$~\tau$
+\end{curry}
+is translated into a Haskell function of type
+\begin{haskell}
+  f :: $\tau_1$ ->$~\cdots~$->$~\tau_n~$-> IDSupply ->$~\tau$
+\end{haskell}
+%
+Conceptually, one can consider \code{IDSupply}
+as an infinite set of identifiers that is created at the beginning
+of an evaluation by the operation \code{initSupply}.
+The operation \code{thisID} takes some identifier from this set, and
+\code{leftSupply} and \code{rightSupply} splits this set
+into two disjoint subsets without the identifier
+obtained by \code{thisID}.
+The split operations \code{leftSupply} and \code{rightSupply}
+are used when an operation calls two\footnote{The
 extension to more than two is straightforward.}
 other operations in the right-hand side of a rule. In this case,
-the other operations must be supplied with their individual distinct
+the other operations must be supplied with their individual disjoint
 identifier supplies. For instance, the operation \code{main}
 defined by
 \label{sec:xor-main}
 \begin{curry}
+  main :: Bool
   main = xorSelf aBool
 \end{curry}
 is translated into
 \begin{haskell}
+  main :: IDSupply -> Bool
   main s = xorSelf (aBool (leftSupply s)) (rightSupply s)
 \end{haskell}
 Any choice in the right-hand side of a rule gets its own identifier
@@ -521,9 +529,10 @@ There are various implementations of \code{IDSupply}.
 The simplest implementation uses unbounded integers:
 \begin{haskell}
   type IDSupply = Integer
+  initSupply    = return 1
+  thisID      n = n
   leftSupply  n = 2*n
   rightSupply n = 2*n+1
-  thisID      n = n
 \end{haskell}
 There are other more sophisticated implementations available
 \cite{AugustssonRittriSynek94}.
@@ -662,19 +671,35 @@ for a given identifier or change its choice:
 \end{haskell}
 In Haskell, there are different possibilities to implement a mapping
 from choice identifiers to some value of type \code{Choice}.
-Our implementation support various options together with different
+Our implementation supports various options together with different
 implementations of \code{IDSupply}.
-For instance, a simple implementation can be obtained by
+For instance, a simple but efficient implementation can be obtained by
 using updatable values, i.e., the Haskell type \code{IORef}.
-In this case, choice identifiers are memory cells instead of integers:\footnote{%
-Consequently, integers cannot be used for \code{IDSupply}s. Instead,
-\code{IDSupply}s can be implemented as an infinite tree containing
-all memory cells required in a computation that are created
-on demand with initial value \code{NoChoice}.}
+In this case, choice identifiers are memory cells instead of integers:
 \begin{haskell}
   newtype ID = ID (IORef Choice)
 \end{haskell}
-The implementation of the lookup and set operations is straightforward:
+Consequently, an implementation of \code{IDSupply} requires
+an infinite set of memory cells which can represented as a tree structure:
+\begin{haskell}
+  data IDSupply = IDSupply ID IDSupply IDSupply
+  thisID      (IDSupply r _ _) = r
+  leftSupply  (IDSupply _ s _) = s
+  rightSupply (IDSupply _ _ s) = s
+  \end{haskell}
+The infinite tree of memory cells (with initial value \code{NoChoice})
+can be constructed as follows,
+where the operation \code{unsafeInterleaveIO} is used to construct
+the tree on demand:
+\begin{haskell}
+  initSupply = getIDTree
+  getIDTree = do s1 <- unsafeInterleaveIO getIDTree
+                 s2 <- unsafeInterleaveIO getIDTree
+                 r  <- unsafeInterleaveIO (newIORef NoChoice)
+                 return (IDSupply (ID r) s1 s2)
+  \end{haskell}
+Using memory cells,
+the implementation of the lookup and set operations is straightforward:
 \begin{haskell}
   lookupChoice (ID ref) = readIORef ref
   setChoice (ID ref) c = writeIORef ref c
@@ -708,24 +733,38 @@ and the right choice is made and stored.
 
 For instance, to print all values of the expression \code{main}
 defined in Section~\ref{sec:xor-main},
-we evaluate the Haskell expression \ccode{printValsDFS (try (main inits))}
-where \code{inits} is the initial value for \code{IDSupply}
-(where all references are initialized with \code{NoChoice}).
+we evaluate the Haskell expression
+\begin{haskell}
+  initSupply >>= \s -> printValsDFS (try (main s))
+\end{haskell}
 Thus, we obtain the output
 \begin{haskell}
   False
   False
 \end{haskell}
-In general, one has to propagate all choices to the top level
+In general, one has to propagate all choices and failures to the top level
 of a computation before printing the results.
-This can be obtained by computing the normal form of the main
+Otherwise, the operation \code{try} applied to an expression
+like \ccode{Just aBool} would return a \code{Val}-structure
+instead of a \code{Choice}
+so that the main operation \code{printValsDFS} would miss
+the non-determinism of the result value.
+Therefore, we have to compute the normal form of the main
 expression before passing it to the operation \code{try}.
-Thus, the result values of \code{main} can be
-printed by evaluating
-\ccode{printValsDFS (try (id $\dollar$!! main inits))}
+Hence, the result values of \code{main} are printed by evaluating
+\begin{haskell}
+  initSupply >>= \s -> printValsDFS (try (id $\dollar$!! main s))
+\end{haskell}
 where \ccode{$f$ \$!! $x$} %$
 denotes the application of the operation $f$ to the normal form
 of its argument $x$.
+This has the effect that a choice or failure occurring somewhere in
+a computation will be moved (by the operation \ccode{\$!!})
+to the root of the main expression
+so that the corresponding search strategy can process it.
+This ensures that, after the computation to a normal form,
+an expression without a \code{Choice} or \code{Fail} at the root
+is a value, i.e., it does not contain a \code{Choice} or \code{Fail}.
 
 Of course, printing all values via depth-first search
 is only one option which is not sufficient in case of infinite search
@@ -746,7 +785,6 @@ by an interactive loop where the user can request the individual values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:Benchmarks}
-% Benchmarks from April 11 on climens
 
 In this section we evaluate our compiler by comparing the
 efficiency of the generated Haskell programs to various
@@ -847,7 +885,7 @@ the comparison to first-order Prolog systems.
 ``ReverseHO'' reverses a list with one million
 elements in linear time using higher-order functions
 like \code{foldl} and \code{flip}.
-``Primes'' computes the the 2000th prime number via the
+``Primes'' computes the 2000th prime number via the
 sieve of Eratosthenes using higher-order functions,
 and ``PrimesPeano'' computes the 256th prime number but
 with Peano numbers and user-defined lists.
@@ -947,7 +985,7 @@ MCC     &        0.33  &        0.00  &        3.46  \\
 \label{sec:FurtherAspects}
 
 In this section we sketch some additional features of our implementation.
-Due to lack of space, we cannot discuss all details of them.
+Due to lack of space, we cannot discuss them in detail.
 
 \subsection{Search Strategies}
 
@@ -976,8 +1014,6 @@ Method               & PermSort & PermSortPeano &  NDNums \\\hline
 depth-first search   &    5.33  &         6.09  & $\infty$ \\
 breadth-first search &   26.16  &        29.25  &    34.00 \\
 iterative deepening  &    9.16  &        10.91  &     0.16 \\
-%parallel (1 proc.)   &    5.46  &         6.29  & $\infty$ \\
-%parallel (2 proc.)   &    3.16  &         3.49  & $\infty$ \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different search strategies}
@@ -1027,7 +1063,6 @@ the programmer can define its own search strategy or
 collect all non-deterministic values into a list structure
 for further processing \cite{BrasselHuch07}.
 
-% TODO: set functions??
 
 \subsection{Logic Variables and Unification}
 \label{sec:unification}
@@ -1055,7 +1090,7 @@ show that unification can be supported with a reasonable efficiency.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Conclusions}
+\section{Conclusions and Related Work}
 \label{sec:Conclusions}
 
 We have presented a new system to compile functional logic programs
@@ -1083,15 +1118,272 @@ can be executed with almost the same efficiency as Haskell programs.
 Our benchmarks show that even the execution of the
 non-deterministic parts can compete with other
 implementations of Curry.
-Furthermore, we can also exploit advanced developments
-in the implementation of Haskell, like the parallel evaluation of
-expressions, which is an interesting topic for future work.
-Finally, our implementation has many opportunities
-for optimization, like
-better program analyses to approximate purely deterministic computations.
 
-\bibliographystyle{plain}
-\bibliography{mh}
+We have already discussed in the introduction the various
+efforts to implement functional logic languages,
+like the construction of abstract machines
+\cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP,Lux99FLOPS} and
+the compilation into Prolog \cite{AntoyHanus00FROCOS}
+or Haskell \cite{BrasselFischerHanusReck11,BrasselHuch07,BrasselHuch09}.
+Our benchmarks show that an efficient implementation
+by compiling into
+a functional language depends on carefully handling
+the sharing of non-deterministic choices. For instance, our previous
+implementation \cite{BrasselFischerHanusReck11}, where sharing
+is explicitly managed by the monadic techniques proposed
+in \cite{FischerKiselyovShan09}, has not satisfied the expectations
+that came from the benchmarks reported in \cite{FischerKiselyovShan09}.
+Due to these experiences, we used in our new compiler the
+compilation scheme initially proposed in \cite{BrasselFischer08IFL}
+which produces much faster code, as shown in our benchmarks.
+
+If non-deterministic results are collected in data structures,
+one has more fine-grained control over non-deterministic steps.
+For instance, \cite{AlqaddoumiAntoyFischerReck10} proposes
+pull-tab steps to move non-determinism from arguments to
+the result position of a function. Antoy \cite{Antoy11ICLP}
+shows that single pull-tab steps are semantics-preserving.
+Thus, it is not necessary to move each choice to the root
+of an expression, as done in our implementation,
+but one could also perform further local computations in the arguments
+of a choice before moving it up. This might be a reasonable strategy
+if all non-deterministic values are required but many computations fail.
+However, the general effects of such refinements need further
+investigations.
+
+Our implementation has many opportunities for optimization, like
+better program analyses to approximate purely deterministic computations.
+We can also exploit advanced developments
+in the implementation of Haskell, like the parallel evaluation of
+expressions. These are interesting topics for future work.
+
+
+\begin{thebibliography}{10}
+
+\bibitem{AlbertHanusHuchOliverVidal05}
+E.~Albert, M.~Hanus, F.~Huch, J.~Oliver, and G.~Vidal.
+\newblock Operational semantics for declarative multi-paradigm languages.
+\newblock {\em Journal of Symbolic Computation}, 40(1):795--829, 2005.
+
+\bibitem{AlqaddoumiAntoyFischerReck10}
+A.~Alqaddoumi, S.~Antoy, S.~Fischer, and F.~Reck.
+\newblock The pull-tab transformation.
+\newblock In {\em Proc. of the Third International Workshop on Graph
+  Computation Models}, pages 127--132. Enschede, The Netherlands, 2010.
+\newblock Available at
+  http://gcm-events.org/gcm2010/pages/gcm2010-preproceedings.pdf.
+
+\bibitem{Antoy01PPDP}
+S.~Antoy.
+\newblock Constructor-based conditional narrowing.
+\newblock In {\em Proc.\ of the 3rd International ACM SIGPLAN Conference on
+  Principles and Practice of Declarative Programming (PPDP 2001)}, pages
+  199--206. ACM Press, 2001.
+
+\bibitem{Antoy11ICLP}
+S.~Antoy.
+\newblock On the correctness of the pull-tab transformation.
+\newblock In {\em To appear in Proceedings of the 27th International Conference
+  on Logic Programming (ICLP 2011)}, 2011.
+
+\bibitem{AntoyHanus00FROCOS}
+S.~Antoy and M.~Hanus.
+\newblock Compiling multi-paradigm declarative programs into {Prolog}.
+\newblock In {\em Proc. International Workshop on Frontiers of Combining
+  Systems (FroCoS'2000)}, pages 171--185. Springer LNCS 1794, 2000.
+
+\bibitem{AntoyHanus02FLOPS}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic design patterns.
+\newblock In {\em Proc.\ of the 6th International Symposium on Functional and
+  Logic Programming (FLOPS 2002)}, pages 67--87. Springer LNCS 2441, 2002.
+
+\bibitem{AntoyHanus06ICLP}
+S.~Antoy and M.~Hanus.
+\newblock Overlapping rules and logic variables in functional logic programs.
+\newblock In {\em Proceedings of the 22nd International Conference on Logic
+  Programming (ICLP 2006)}, pages 87--101. Springer LNCS 4079, 2006.
+
+\bibitem{AntoyHanus10CACM}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic programming.
+\newblock {\em Communications of the ACM}, 53(4):74--85, 2010.
+
+\bibitem{AntoyHanusLiuTolmach05}
+S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
+\newblock A virtual machine for functional logic computations.
+\newblock In {\em Proc.\ of the 16th International Workshop on Implementation
+  and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
+  LNCS 3474, 2005.
+
+\bibitem{AugustssonRittriSynek94}
+L.~Augustsson, M.~Rittri, and D.~Synek.
+\newblock On generating unique names.
+\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
+\bibitem{Brassel11Thesis}
+B.~Bra{\ss}el.
+\newblock {\em Implementing Functional Logic Programs by Translation into
+  Purely Functional Programs}.
+\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
+
+\bibitem{BrasselFischer08IFL}
+B.~Bra{\ss}el and S.~Fischer.
+\newblock From functional logic programs to purely functional programs
+  preserving laziness.
+\newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
+  Application of Functional Languages (IFL 2008)}, 2008.
+
+\bibitem{BrasselFischerHanusReck11}
+B.~Bra{\ss}el, S.~Fischer, M.~Hanus, and F.~Reck.
+\newblock Transforming functional logic programs into monadic functional
+  programs.
+\newblock In {\em Proc. of the 19th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2010)}, pages 30--47. Springer LNCS
+  6559, 2011.
+
+\bibitem{BrasselHanusMueller08PADL}
+B.~Bra{\ss}el, M.~Hanus, and M.~M{\"u}ller.
+\newblock High-level database programming in {Curry}.
+\newblock In {\em Proc. of the Tenth International Symposium on Practical
+  Aspects of Declarative Languages (PADL'08)}, pages 316--332. Springer LNCS
+  4902, 2008.
+
+\bibitem{BrasselHuch07}
+B.~Bra{\ss}el and F.~Huch.
+\newblock On a tighter integration of functional and logic programming.
+\newblock In {\em Proc. APLAS 2007}, pages 122--138. Springer LNCS 4807, 2007.
+
+\bibitem{BrasselHuch09}
+B.~Bra{\ss}el and F.~Huch.
+\newblock The {Kiel} {Curry} {System} {KiCS}.
+\newblock In {\em Applications of Declarative Programming and Knowledge
+  Management}, pages 195--205. Springer LNAI 5437, 2009.
+
+\bibitem{CaballeroLopez99}
+R.~Caballero and F.J. L{\'o}pez-Fraguas.
+\newblock A functional-logic perspective of parsing.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 85--99. Springer LNCS 1722, 1999.
+
+\bibitem{Fischer05}
+S.~Fischer.
+\newblock A functional logic database library.
+\newblock In {\em Proc. of the ACM SIGPLAN 2005 Workshop on Curry and
+  Functional Logic Programming (WCFLP 2005)}, pages 54--59. ACM Press, 2005.
+
+\bibitem{FischerKiselyovShan09}
+S.~Fischer, O.~Kiselyov, and C.~Shan.
+\newblock Purely functional lazy non-deterministic programming.
+\newblock In {\em Proceeding of the 14th ACM SIGPLAN International Conference
+  on Functional Programming (ICFP 2009)}, pages 11--22. ACM, 2009.
+
+\bibitem{GonzalezEtAl99}
+J.C. Gonz{\'a}lez-Moreno, M.T. Hortal{\'a}-Gonz{\'a}lez, F.J.
+  L{\'o}pez-Fraguas, and M.~Rodr{\'\i}guez-Artalejo.
+\newblock An approach to declarative programming based on a rewriting logic.
+\newblock {\em Journal of Logic Programming}, 40:47--87, 1999.
+
+\bibitem{Hanus00PADL}
+M.~Hanus.
+\newblock A functional logic programming approach to graphical user interfaces.
+\newblock In {\em International Workshop on Practical Aspects of Declarative
+  Languages (PADL'00)}, pages 47--62. Springer LNCS 1753, 2000.
+
+\bibitem{Hanus01PADL}
+M.~Hanus.
+\newblock High-level server side web scripting in {Curry}.
+\newblock In {\em Proc.\ of the Third International Symposium on Practical
+  Aspects of Declarative Languages (PADL'01)}, pages 76--92. Springer LNCS
+  1990, 2001.
+
+\bibitem{Hanus06PPDP}
+M.~Hanus.
+\newblock Type-oriented construction of web user interfaces.
+\newblock In {\em Proceedings of the 8th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'06)}, pages
+  27--38. ACM Press, 2006.
+
+\bibitem{Hanus07ICLP}
+M.~Hanus.
+\newblock Multi-paradigm declarative languages.
+\newblock In {\em Proceedings of the International Conference on Logic
+  Programming (ICLP 2007)}, pages 45--75. Springer LNCS 4670, 2007.
+
+\bibitem{Hanus10PAKCS}
+M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
+  P.~Niederau, R.~Sadre, and F.~Steiner.
+\newblock {PAKCS}: The {P}ortland {A}achen {K}iel {C}urry {S}ystem.
+\newblock Available at \url{http://www.informatik.uni-kiel.de/~pakcs/}, 2010.
+
+\bibitem{HanusKoschnicke10PADL}
+M.~Hanus and S.~Koschnicke.
+\newblock An {ER-based} framework for declarative web programming.
+\newblock In {\em Proc. of the 12th International Symposium on Practical
+  Aspects of Declarative Languages (PADL 2010)}, pages 201--216. Springer LNCS
+  5937, 2010.
+
+\bibitem{HanusSadre99JFLP}
+M.~Hanus and R.~Sadre.
+\newblock An abstract machine for curry and its concurrent implementation in
+  java.
+\newblock {\em Journal of Functional and Logic Programming}, 1999(6), 1999.
+
+\bibitem{Hanus06Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
+\newblock Available at \url{http://www.curry-language.org}, 2006.
+
+\bibitem{Hussmann92}
+H.~Hussmann.
+\newblock Nondeterministic algebraic specifications and nonconfluent term
+  rewriting.
+\newblock {\em Journal of Logic Programming}, 12:237--255, 1992.
+
+\bibitem{Lopez-FraguasSanchez-Hernandez99}
+F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
+\newblock {TOY}: A multiparadigm declarative system.
+\newblock In {\em Proc. of RTA'99}, pages 244--247. Springer LNCS 1631, 1999.
+
+\bibitem{LopezRodriguezSanchez07}
+F.J. L{\'o}pez-Fraguas, J.~Rodr{\'\i}guez-Hortal{\'a}, and
+  J.~S{\'a}nchez-Hern{\'a}ndez.
+\newblock A simple rewrite notion for call-time choice semantics.
+\newblock In {\em Proceedings of the 9th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'07)}, pages
+  197--208. ACM Press, 2007.
+
+\bibitem{Lux99FLOPS}
+W.~Lux.
+\newblock Implementing encapsulated search for a lazy functional logic
+  language.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
+
+\bibitem{MorenoEtAl90ALP}
+J.J. M{oreno-Navarro}, H.~Kuchen, R.~Loogen, and M.~R{odr{\'\i}guez-Artalejo}.
+\newblock Lazy narrowing in a graph machine.
+\newblock In {\em Proc. Second International Conference on Algebraic and Logic
+  Programming}, pages 298--317. Springer LNCS 463, 1990.
+
+\bibitem{Partain93}
+W.~Partain.
+\newblock The nofib benchmark suite of {H}askell programs.
+\newblock In {\em Proceedings of the 1992 Glasgow Workshop on Functional
+  Programming}, pages 195--202. Springer, 1993.
+
+\bibitem{PeytonJones03Haskell}
+S.~Peyton~Jones, editor.
+\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
+\newblock Cambridge University Press, 2003.
+
+\bibitem{Wadler85}
+P.~Wadler.
+\newblock How to replace failure by a list of successes.
+\newblock In {\em Functional Programming and Computer Architecture}, pages
+  113--128. Springer LNCS 201, 1985.
+
+\end{thebibliography}
 
 \end{document}
 
