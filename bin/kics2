@@ -8,6 +8,9 @@ KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
 
 if [ -x "$KICS2HOME/REPL" ] ; then
   REPL="$KICS2HOME/REPL"
+  if [ -x "$KICS2HOME/REPL.state" ] ; then
+    echo "Warning: ignoring executable $KICS2HOME/REPL.state"
+  fi
 elif [ -x "$KICS2HOME/REPL.state" ] ; then
   REPL="$KICS2HOME/REPL.state"
 else

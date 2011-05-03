@@ -5,7 +5,7 @@
 --- @version April 2011
 --- --------------------------------------------------------------------------
 
-import System(system,getArgs,getEnviron,getPID)
+import System(system,getArgs,getEnviron,setEnviron,getPID)
 import Char(isDigit,isSpace,toLower)
 import IO
 import IOExts
@@ -96,6 +96,10 @@ writeVerboseInfo :: ReplState -> Int -> String -> IO ()
 writeVerboseInfo rst level msg =
   if rst -> verbose < level then done else putStrLn msg
 
+-- Show an error message
+writeErrorMsg :: String -> IO ()
+writeErrorMsg msg = putStrLn ("ERROR: "++msg)
+
 main = do
   let rst = { idcHome := Inst.installDir
             , importPaths := map (Inst.installDir </>) ["/lib","/lib/meta"]
@@ -111,7 +115,7 @@ processArgsAndStart rst [] =
           repl rst
 processArgsAndStart rst (arg:args) =
   if head arg /= ':'
-  then putStrLn ("Unknown command: " ++ unwords (arg:args)) >> printHelp
+  then writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
   else do let (cmdargs,more) = break (\a -> head a == ':') args
           mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
           maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
@@ -154,11 +158,14 @@ compileProgramWithGoal rst goal = do
     let newgoal = case goalstate of
                     GoalWithBindings _ g -> g
                     _                    -> goal
-    makeMainGoalMonomorphic rst newgoal
-    status <- compileCurryProgram rst mainGoalFile
-    exinfo <- doesFileExist infoFile
-    if status==0 && exinfo then createAndCompileMain rst goalstate
-                           else return 1
+    typeok <- makeMainGoalMonomorphic rst newgoal
+    if typeok
+     then do
+      status <- compileCurryProgram rst mainGoalFile
+      exinfo <- doesFileExist infoFile
+      if status==0 && exinfo then createAndCompileMain rst goalstate
+                             else return 1
+     else return 1
 
 -- write the file with the main goal where necessary imports
 -- and possibly a type string is provided:
@@ -172,7 +179,10 @@ writeMainGoalFile rst imports mtype goal =
 
 --- If the main goal is polymorphic, make it monomorphic by adding a type
 --- declaration where type variables are replaced by type "()".
-makeMainGoalMonomorphic :: ReplState -> String -> IO ()
+--- If the main goal has type "IO t" where t is monomorphic, t/=(),
+--- and t is not a function, then ">>= print" is added to the goal.
+--- The result is False if the main goal contains some error.
+makeMainGoalMonomorphic :: ReplState -> String -> IO Bool
 makeMainGoalMonomorphic rst goal = do
   let mainGoalProg = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
@@ -180,16 +190,29 @@ makeMainGoalMonomorphic rst goal = do
                          (setFullPath ("." : rst->importPaths) defaultParams)
   callFrontendWithParams ACY frontendParams mainGoalProg
   acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then done else do
+  if not acyexists then return False else do
     (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
     removeFile acyMainGoalFile
-    let maintype = typeOfFunc mfunc
-    if isPolyType maintype
-     then writeMainGoalFile rst (modsOfType maintype)
-                            (Just (showMonoTypeExpr False maintype)) goal
-     else done
- where
-  typeOfFunc (CFunc _ _ _ texp _) = texp
+    let (CFunc _ _ _ maintype _) = mfunc
+        newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
+    if isFunctionalType maintype
+     then writeErrorMsg "expression is of functional type" >> return False
+     else
+      if isPolyType maintype
+       then do writeMainGoalFile rst (modsOfType maintype)
+                                 (Just (showMonoTypeExpr True False maintype))
+                                 goal
+               writeVerboseInfo rst 2
+                 ("Type of main expression \"" ++
+                  showMonoTypeExpr False False maintype ++ 
+                  "\" made monomorphic")
+               writeVerboseInfo rst 1
+                  "Type variables of main expression replaced by \"()\""
+               return True
+       else
+        if newgoal==goal
+         then return True
+         else writeMainGoalFile rst [] Nothing newgoal >> return True
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
@@ -218,6 +241,9 @@ insertFreeVarsInMainGoal rst goal = do
                         map (\v->',':v) freevars ++
                         ")":whereclause
               writeMainGoalFile rst [] Nothing newgoal
+              writeVerboseInfo rst 2
+                ("Adding printing of bindings for free variables: "++
+                 concat (intersperse "," freevars))
               return (GoalWithBindings (length freevars) newgoal)
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
@@ -318,7 +344,7 @@ execMain rst = do
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       cmd = (if rst->showTime then timecmd else "") ++ maincmd
-  writeVerboseInfo rst 2 $ "Executing: " ++ maincmd
+  writeVerboseInfo rst 3 $ "Executing: " ++ maincmd
   system (if rst->interactive then execInteractive cmd else cmd)
  where
   isUbuntu = do
@@ -327,21 +353,21 @@ execMain rst = do
 
 -- all the available commands:
 allCommands = ["quit","help","?","load","reload","add","cd",
-               "programs","edit","show","set","save","fork"]
+               "programs","edit","interface","show","set","save","fork"]
 
 -- Process a command of the REPL.
 -- The result is either just a new ReplState or Nothing if an error occurred.
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
 processCommand rst cmds
-  | null cmds = putStrLn "Error: unknown command" >> return Nothing
+  | null cmds = writeErrorMsg "unknown command" >> return Nothing
   | head cmds == '!' = system (tail cmds) >> return (Just rst)
   | otherwise = let (cmd,args) = break (==' ') cmds
                     allcmds = filter (isPrefixOf (map toLower cmd)) allCommands
                  in
       if null allcmds
-      then putStrLn ("Error: unknown command: ':"++cmds++"'") >> return Nothing
+      then writeErrorMsg ("unknown command: ':"++cmds++"'") >> return Nothing
       else if length allcmds > 1
-           then putStrLn ("Error: ambiguous command: ':"++cmds++"'") >>
+           then writeErrorMsg ("ambiguous command: ':"++cmds++"'") >>
                 return Nothing
            else processThisCommand rst (head allcmds) (strip args)
 
@@ -358,21 +384,21 @@ processThisCommand rst cmd args
         return (Just { mainMod := modname, addMods := [] | rst })
   | cmd == "reload"
    = if rst->mainMod == "Prelude"
-     then putStrLn "No program loaded!" >> return Nothing
+     then writeErrorMsg "no program loaded!" >> return Nothing
      else do compileCurryProgram rst (rst->mainMod)
              return (Just rst)
   | cmd=="add"
    = do let modname = stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
-        maybe (putStrLn "Source file of module not found!" >> return Nothing)
+        maybe (writeErrorMsg "source file of module not found" >>return Nothing)
               (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
   | cmd=="cd"
    = do exdir <- doesDirectoryExist args
         if exdir
          then (setCurrentDirectory args >> return (Just rst))
-         else (putStrLn "Directory does not exist!" >> return Nothing)
+         else (writeErrorMsg "directory does not exist" >> return Nothing)
   | cmd=="programs" = printAllLoadPathPrograms rst >> return (Just rst)
   | cmd=="edit"
    = do let modname = if null args then rst->mainMod else stripSuffix args
@@ -380,20 +406,30 @@ processThisCommand rst cmd args
                                 ("." : rst->importPaths)
         editenv <- getEnviron "EDITOR"
         let editprog = if null editenv then "vi" else editenv
-        maybe (putStrLn "Source file not found!" >> return Nothing)
+        maybe (writeErrorMsg "source file not found" >> return Nothing)
               (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
               mbf
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
-        maybe (putStrLn "Source file not found!" >> return Nothing)
+        maybe (writeErrorMsg "source file not found" >> return Nothing)
               (\fn -> system ("cat "++fn) >> putStrLn "" >> return (Just rst))
               mbf
+  | cmd=="interface"
+   = do let modname = if null args then rst->mainMod else stripSuffix args
+            genint  = rst->idcHome </> "tools/GenInt"
+        giexists <- doesFileExist genint
+        if giexists
+         then -- as long as GenInt is generated with PAKCS:
+              setEnviron "CURRYPATH" (rst->idcHome++"/lib:"++
+                                      rst->idcHome++"/lib/meta") >>
+              system (genint ++ " -int " ++ modname) >> return (Just rst)
+         else writeErrorMsg "GenInt executable not found" >> return Nothing
   | cmd=="set" = processSetOption rst args
   | cmd=="save"
    = if rst->mainMod == "Prelude"
-     then putStrLn "No program loaded!" >> return Nothing
+     then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
        unless (status>0) $ do
@@ -403,7 +439,7 @@ processThisCommand rst cmd args
        return (Just rst)
   | cmd=="fork"
    = if rst->mainMod == "Prelude"
-     then putStrLn "No program loaded!" >> return Nothing
+     then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
        unless (status>0) $ do
@@ -415,7 +451,7 @@ processThisCommand rst cmd args
                   "> /dev/null 2> /dev/null &") >> done
        cleanMainGoalFile
        return (Just rst)
-  | otherwise = putStrLn ("Error: unknown command: ':"++cmd++"'") >>
+  | otherwise = writeErrorMsg ("unknown command: ':"++cmd++"'") >>
                 return Nothing
 
 -- Process setting of an option
@@ -426,9 +462,9 @@ processSetOption rst option
                     allopts = filter (isPrefixOf (map toLower opt)) allOptions
                  in
      if null allopts
-     then putStrLn ("Error: unknown option: ':"++option++"'") >> return Nothing
+     then writeErrorMsg ("unknown option: ':"++option++"'") >> return Nothing
      else if length allopts > 1
-          then putStrLn ("Error: ambiguous option: ':"++option++"'") >>
+          then writeErrorMsg ("ambiguous option: ':"++option++"'") >>
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
@@ -446,18 +482,18 @@ processThisOption rst option args
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
-     else maybe (putStrLn "Illegal number" >> return Nothing)
+     else maybe (writeErrorMsg "illegal number" >> return Nothing)
                 (\ (n,s) -> if null (strip s)
                             then return (Just { ndMode := IDS n | rst })
-                            else putStrLn "Illegal number" >> return Nothing)
+                            else writeErrorMsg "illegal number" >> return Nothing)
                 (readNat args)
   | option=="par"
    = if null args
      then return (Just { ndMode := Par 0 | rst })
-     else maybe (putStrLn "Illegal number" >> return Nothing)
+     else maybe (writeErrorMsg "illegal number" >> return Nothing)
                 (\ (n,s) -> if null (strip s)
                             then return (Just { ndMode := Par n | rst })
-                            else putStrLn "Illegal number" >> return Nothing)
+                            else writeErrorMsg "illegal number" >> return Nothing)
                 (readNat args)
   | option=="supply"       = return (Just { idSupply := args | rst })
   | option=="v0"           = return (Just { verbose := 0 | rst })
@@ -476,7 +512,7 @@ processThisOption rst option args
   | option=="+time"        = return (Just { showTime := True  | rst })
   | option=="-time"        = return (Just { showTime := False | rst })
   | option=="rts"          = return (Just { rtsOpts := args | rst })
-  | otherwise = putStrLn ("Error: unknown option: '"++option++"'") >>
+  | otherwise = writeErrorMsg ("unknown option: '"++option++"'") >>
                 return Nothing
 
 printOptions rst = putStrLn $
@@ -487,7 +523,9 @@ printOptions rst = putStrLn $
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "supply <I>     - set idsupply implementation (integer or ioref)\n"++
-  "v<n>           - verbosity level (0 = quiet,..., 4 = all intermediate)\n"++
+  "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
+  "                 2: backend messages, 3: intermediate messages and commands;\n"++
+  "                 4: all intermediate results)\n"++
   "+/-interactive - turn on/off interactive execution of main goal\n"++
   "+/-first       - turn on/off printing only first solution\n"++
   "+/-optimize    - turn on/off optimization\n"++
@@ -518,23 +556,25 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
 
 printHelpOnCommands = putStrLn $
   "Commands (can be abbreviated to a prefix if unique)\n"++
-  ":load <prog>  - load program \"<prog>.[l]curry\" as main module\n"++
-  ":add  <prog>  - add module \"<prog>\" to currently loaded modules\n"++
-  ":reload       - recompile currently loaded modules\n"++
-  ":programs     - show names of all Curry programs available in load path\n"++
-  ":cd <dir>     - change current directory to <dir>\n"++
-  ":edit         - load source of currently loaded module into editor\n"++
-  ":edit <mod>   - load source of module <m> into editor\n"++
-  ":show         - show currently loaded source program\n"++
-  ":show <mod>   - show source of module <m>\n"++
-  ":set <option> - set an option\n"++
-  ":set          - see help on options and current options\n"++
-  ":save         - save executable with main expression 'main'\n"++
-  ":save <exp>   - save executable with main expression <exp>\n"++
-  ":fork <expr>  - fork new process evaluating <expr>\n"++
-  ":help         - show this message\n"++
-  ":!<command>   - execute <command> in shell\n"++
-  ":quit         - leave the system\n"
+  ":load <prog>     - load program \"<prog>.[l]curry\" as main module\n"++
+  ":add  <prog>     - add module \"<prog>\" to currently loaded modules\n"++
+  ":reload          - recompile currently loaded modules\n"++
+  ":programs        - show names of all Curry programs available in load path\n"++
+  ":cd <dir>        - change current directory to <dir>\n"++
+  ":edit            - load source of currently loaded module into editor\n"++
+  ":edit <mod>      - load source of module <m> into editor\n"++
+  ":show            - show currently loaded source program\n"++
+  ":show <mod>      - show source of module <m>\n"++
+  ":interface       - show currently loaded source program\n"++
+  ":interface <mod> - show source of module <m>\n"++
+  ":set <option>    - set an option\n"++
+  ":set             - see help on options and current options\n"++
+  ":save            - save executable with main expression 'main'\n"++
+  ":save <exp>      - save executable with main expression <exp>\n"++
+  ":fork <expr>     - fork new process evaluating <expr>\n"++
+  ":help            - show this message\n"++
+  ":!<command>      - execute <command> in shell\n"++
+  ":quit            - leave the system\n"
 
 -- Print all Curry programs in current load path:
 printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
@@ -569,6 +609,20 @@ isPolyType (CTVar _) = True
 isPolyType (CFuncType domain range) = isPolyType domain || isPolyType range
 isPolyType (CTCons _ typelist) = any isPolyType typelist
 
+--- Returns true if the type expression is a functional type.
+isFunctionalType :: CTypeExpr -> Bool
+isFunctionalType texp = case texp of CFuncType _ _ -> True
+                                     _             -> False
+
+--- Returns true if the type expression is (IO t) with t/=() and
+--- t is not functional
+isIOReturnType :: CTypeExpr -> Bool
+isIOReturnType (CTVar _) = False
+isIOReturnType (CFuncType _ _) = False
+isIOReturnType (CTCons tc typelist) =
+  tc==(prelude,"IO") && head typelist /= CTCons (prelude,"()") []
+  && not (isFunctionalType (head typelist))
+
 --- Returns all modules used in the given type.
 modsOfType :: CTypeExpr -> [String]
 modsOfType (CTVar _) = []
@@ -576,32 +630,36 @@ modsOfType (CFuncType t1 t2) = union (modsOfType t1) (modsOfType t2)
 modsOfType (CTCons (mod,_) typelist) =
   foldr union [mod] (map modsOfType typelist)
 
---- Shows an AbstractCurry type expression in standard Curry syntax
---- but replaces all occurrences of type variables by "()".
---- If the first argument is True, the type expression is enclosed
+--- Shows an AbstractCurry type expression in standard Curry syntax.
+--- If the first argument is True, all occurrences of type variables
+--- are replaced by "()".
+--- If the second argument is True, the type expression is enclosed
 --- in brackets.
-showMonoTypeExpr :: Bool -> CTypeExpr -> String
-showMonoTypeExpr _ (CTVar _) = "()" --showTypeVar (showIdentifier name)
-showMonoTypeExpr nested (CFuncType domain range) =
-   maybeShowBrackets nested (showMonoTypeExpr (isCFuncType domain) domain ++
-                             " -> " ++ showMonoTypeExpr False range)
-showMonoTypeExpr nested (CTCons (mod,name) typelist)
+showMonoTypeExpr :: Bool -> Bool -> CTypeExpr -> String
+showMonoTypeExpr mono _ (CTVar (_,name)) =
+   if mono then "()" else showIdentifier name
+showMonoTypeExpr mono nested (CFuncType domain range) =
+   maybeShowBrackets nested
+                     (showMonoTypeExpr mono (isCFuncType domain) domain ++
+                      " -> " ++ showMonoTypeExpr mono False range)
+showMonoTypeExpr mono nested (CTCons (mod,name) typelist)
    | mod==prelude && name == "untyped" = "-"
    | otherwise  = maybeShowBrackets (nested && not (null typelist))
-                                    (showTypeCons mod name typelist)
+                                    (showTypeCons mono mod name typelist)
 
-showTypeCons :: String -> String -> [CTypeExpr] -> String
-showTypeCons _ name [] = name
-showTypeCons mod name (t:ts)
-   | mod == prelude = showPreludeTypeCons name (t:ts)
-   | otherwise        = name ++ (prefixMap (showMonoTypeExpr True) (t:ts) " ")
+showTypeCons :: Bool -> String -> String -> [CTypeExpr] -> String
+showTypeCons _ _ name [] = name
+showTypeCons mono mod name (t:ts)
+   | mod == prelude = showPreludeTypeCons mono name (t:ts)
+   | otherwise = name ++ (prefixMap (showMonoTypeExpr mono True) (t:ts) " ")
 
-showPreludeTypeCons :: String -> [CTypeExpr] -> String
-showPreludeTypeCons name typelist
+showPreludeTypeCons :: Bool -> String -> [CTypeExpr] -> String
+showPreludeTypeCons mono name typelist
   | name == "[]" && head typelist == CTCons (prelude,"Char") [] = "String"
-  | name == "[]" = "[" ++ (showMonoTypeExpr False (head typelist)) ++ "]"
-  | isTuple name = "(" ++ (combineMap (showMonoTypeExpr False) typelist ",") ++ ")"
-  | otherwise    = name ++ (prefixMap (showMonoTypeExpr True) typelist " ")
+  | name == "[]" = "[" ++ (showMonoTypeExpr mono False (head typelist)) ++ "]"
+  | isTuple name = "(" ++
+                   combineMap (showMonoTypeExpr mono False) typelist "," ++ ")"
+  | otherwise    = name ++ (prefixMap (showMonoTypeExpr mono True) typelist " ")
 
 -- Remove characters '<' and '>' from identifiers sind these characters
 -- are sometimes introduced in new identifiers generated by the front end (for sections)

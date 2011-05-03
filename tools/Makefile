@@ -4,6 +4,11 @@
 all:    ImportCalls
 
 # generate saved state for interface generator:
+GenInt: GenInt.curry
+	/home/pakcs/pakcs/bin/pakcs -s GenInt # later replaced by KiCS2
+	mv GenInt.state GenInt
+
+# generate saved state for ImportCalls tool:
 ImportCalls: ImportCalls.curry
 	../bin/kics2 :l ImportCalls :save :q
 
@@ -18,4 +23,4 @@ currytest: ../bin/currytestkics
 .PHONY: clean
 clean: 
 	../bin/cleancurry
-	rm -f ../bin/currytestkics
+	rm -f GenInt ../bin/currytestkics
