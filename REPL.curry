@@ -148,6 +148,24 @@ processInput rst g
                    cleanMainGoalFile
                    repl rst
 
+-- Show the type of goal w.r.t. main program:
+showTypeOfGoal :: ReplState -> String -> IO Bool
+showTypeOfGoal rst goal = do
+  writeMainGoalFile rst [] Nothing goal
+  let mainGoalProg = stripSuffix mainGoalFile
+      acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
+      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
+                         (setFullPath ("." : rst->importPaths) defaultParams)
+  callFrontendWithParams ACY frontendParams mainGoalProg
+  removeFile mainGoalFile
+  acyexists <- doesFileExist acyMainGoalFile
+  if not acyexists then return False else do
+    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
+    removeFile acyMainGoalFile
+    let (CFunc _ _ _ maintype _) = mfunc
+    putStrLn $ goal ++ " :: " ++ showMonoTypeExpr False False maintype
+    return True
+
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> String -> IO Int
 compileProgramWithGoal rst goal = do
@@ -363,8 +381,9 @@ execMain rst = do
     return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","cd",
-               "programs","edit","interface","show","set","save","fork"]
+allCommands = ["quit","help","?","load","reload","add","cd","fork",
+               "programs","edit","interface","show","set","save","type",
+               "usedimports"]
 
 -- Process a command of the REPL.
 -- The result is either just a new ReplState or Nothing if an error occurred.
@@ -405,6 +424,9 @@ processThisCommand rst cmd args
         maybe (writeErrorMsg "source file of module not found" >>return Nothing)
               (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
               mbf
+  | cmd=="type"
+   = do typeok <- showTypeOfGoal rst args
+        return (if typeok then Just rst else Nothing)
   | cmd=="cd"
    = do exdir <- doesDirectoryExist args
         if exdir
@@ -444,7 +466,16 @@ processThisCommand rst cmd args
               setEnviron "CURRYPATH" (rst->idcHome++"/lib:"++
                                       rst->idcHome++"/lib/meta") >>
               system (genint ++ " -int " ++ modname) >> return (Just rst)
-         else writeErrorMsg "GenInt executable not found" >> return Nothing
+         else do writeErrorMsg "tools/GenInt executable not found"
+                 return Nothing
+  | cmd=="usedimports"
+   = do let modname = if null args then rst->mainMod else stripSuffix args
+            icalls  = rst->idcHome </> "tools/ImportCalls"
+        icexists <- doesFileExist icalls
+        if icexists
+         then system (icalls ++ " " ++ modname) >> return (Just rst)
+         else do writeErrorMsg "tools/ImportCalls executable not found"
+                 return Nothing
   | cmd=="set" = processSetOption rst args
   | cmd=="save"
    = if rst->mainMod == "Prelude"
@@ -578,6 +609,7 @@ printHelpOnCommands = putStrLn $
   ":load <prog>     - load program \"<prog>.[l]curry\" as main module\n"++
   ":add  <prog>     - add module \"<prog>\" to currently loaded modules\n"++
   ":reload          - recompile currently loaded modules\n"++
+  ":type <expr>     - show type of expression <expr>\n"++
   ":programs        - show names of all Curry programs available in load path\n"++
   ":cd <dir>        - change current directory to <dir>\n"++
   ":edit            - load source of currently loaded module into editor\n"++
@@ -586,10 +618,11 @@ printHelpOnCommands = putStrLn $
   ":show <mod>      - show source of module <m>\n"++
   ":interface       - show currently loaded source program\n"++
   ":interface <mod> - show source of module <m>\n"++
+  ":usedimports     - show all used imported functions/constructors\n"++
   ":set <option>    - set an option\n"++
   ":set             - see help on options and current options\n"++
   ":save            - save executable with main expression 'main'\n"++
-  ":save <exp>      - save executable with main expression <exp>\n"++
+  ":save <expr>     - save executable with main expression <expr>\n"++
   ":fork <expr>     - fork new process evaluating <expr>\n"++
   ":help            - show this message\n"++
   ":!<command>      - execute <command> in shell\n"++
