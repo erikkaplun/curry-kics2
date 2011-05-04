@@ -875,8 +875,9 @@ printDFS1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printDFS1 prt mainexp = computeWithDFS mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression in a depth-first manner:
-printDFSi :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
-printDFSi prt mainexp = computeWithDFS mainexp >>= printValsOnDemand prt
+printDFSi :: (NormalForm a, Show a) =>
+             MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFSi ud prt mainexp = computeWithDFS mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
 computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
@@ -958,8 +959,9 @@ printBFS1 prt mainexp = computeWithBFS mainexp >>= printOneValue prt
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-printBFSi :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
-printBFSi prt mainexp = computeWithBFS mainexp >>= printValsOnDemand prt
+printBFSi :: (NormalForm a, Show a) =>
+             MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFSi ud prt mainexp = computeWithBFS mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
@@ -1039,10 +1041,10 @@ printIDS1 initdepth prt mainexp =
   computeWithIDS initdepth mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression with iterative deepening:
-printIDSi :: (NormalForm a, Show a) => Int -> (a -> IO ())
+printIDSi :: (NormalForm a, Show a) => MoreDefault -> Int -> (a -> IO ())
           -> (IDSupply -> a) -> IO ()
-printIDSi initdepth prt mainexp =
-  computeWithIDS initdepth mainexp >>= printValsOnDemand prt
+printIDSi ud initdepth prt mainexp =
+  computeWithIDS initdepth mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
@@ -1087,8 +1089,9 @@ printPar1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printPar1 prt mainexp = computeWithPar mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression in a parallel manner:
-printPari :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
-printPari prt mainexp = computeWithPar mainexp >>= printValsOnDemand prt
+printPari :: (NormalForm a, Show a) =>
+             MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printPari ud prt mainexp = computeWithPar mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => (IDSupply -> a) -> IO (IOList a)

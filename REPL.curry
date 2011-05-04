@@ -5,6 +5,7 @@
 --- @version April 2011
 --- --------------------------------------------------------------------------
 
+import RCFile
 import System(system,getArgs,getEnviron,setEnviron,getPID)
 import Char(isDigit,isSpace,toLower)
 import IO
@@ -44,6 +45,7 @@ cleanMainGoalFile = do
 -- REPL state:
 type ReplState =
   { idcHome      :: String     -- installation directory of the system
+  , rcvars       :: [(String,String)] -- content of rc file
   , idSupply     :: String     -- IDSupply implementation (ioref or integer)
   , verbose      :: Int        -- verbosity level: 0 = quiet,
                                -- 1 = show frontend (module) compile/load
@@ -75,6 +77,7 @@ data MainGoalCompile = GoalError -- error occurred
 initReplState :: ReplState
 initReplState =
   { idcHome      = ""
+  , rcvars       = []
   , idSupply     = "integer"
   , verbose      = 1
   , importPaths  = []
@@ -104,8 +107,9 @@ main = do
   let rst = { idcHome := Inst.installDir
             , importPaths := map (Inst.installDir </>) ["/lib","/lib/meta"]
             | initReplState }
+  rcdefs <- readRC
   args <- getArgs
-  processArgsAndStart rst args
+  processArgsAndStart { rcvars := rcdefs | rst } args
 
 processArgsAndStart rst [] =
   if rst -> quit
@@ -312,7 +316,12 @@ createHaskellMain rst goalstate isdet isio =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
         if isdet then "evalD" else
         if rst->ndMode == PrDFS then "prdfs "++printOperation
-        else let searchSuffix = if rst->interactive then "i" else
+        else let moreDefault = case rcValue (rst->rcvars) "moresolutions" of
+                                 "yes" -> "MoreYes"
+                                 "no"  -> "MoreNo"
+                                 "all" -> "MoreAll"
+                                 _     -> "MoreYes"
+                 searchSuffix = if rst->interactive then "i "++moreDefault else
                                 if rst->firstSol    then "1" else ""
               in ("print" ++ case (rst->ndMode) of
                               DFS   -> "DFS"++searchSuffix
@@ -321,6 +330,7 @@ createHaskellMain rst goalstate isdet isio =
                               Par _ -> "Par"++searchSuffix )++' ':printOperation
    in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $
        "module Main where\n"++
+       "import MonadList\n"++
        "import Basics\n"++
        (if printOperation=="print" then "" else "import PrintBindings\n") ++
        "import Curry_"++stripSuffix mainGoalFile++"\n"++
@@ -343,9 +353,10 @@ execMain rst = do
                 (if null (rst->rtsOpts) && null paropts
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
-      cmd = (if rst->showTime then timecmd else "") ++ maincmd
-  writeVerboseInfo rst 3 $ "Executing: " ++ maincmd
-  system (if rst->interactive then execInteractive cmd else cmd)
+      tcmd    = (if rst->showTime then timecmd else "") ++ maincmd
+      icmd    = if rst->interactive then execInteractive rst tcmd else tcmd
+  writeVerboseInfo rst 3 $ "Executing: " ++ icmd
+  system icmd
  where
   isUbuntu = do
     bsid <- connectToCommand "lsb_release -i" >>= hGetContents
@@ -405,16 +416,24 @@ processThisCommand rst cmd args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
         editenv <- getEnviron "EDITOR"
-        let editprog = if null editenv then "vi" else editenv
-        maybe (writeErrorMsg "source file not found" >> return Nothing)
-              (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
-              mbf
+        let editcmd = rcValue (rst->rcvars) "editcommand"
+            editprog = if null editcmd then editenv else editcmd
+        if null editenv && null editcmd
+         then writeErrorMsg "no editor defined" >> return Nothing
+         else maybe (writeErrorMsg "source file not found" >> return Nothing)
+                (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
+                mbf
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                                 ("." : rst->importPaths)
         maybe (writeErrorMsg "source file not found" >> return Nothing)
-              (\fn -> system ("cat "++fn) >> putStrLn "" >> return (Just rst))
+              (\fn -> do let showcmd = rcValue (rst->rcvars) "showcommand"
+                         system $ (if null showcmd then "cat" else showcmd)
+                                  ++' ':fn
+                         putStrLn ""
+                         return (Just rst)
+              )
               mbf
   | cmd=="interface"
    = do let modname = if null args then rst->mainMod else stripSuffix args
@@ -596,11 +615,10 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
-strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
-
 -- Interactive execution of a main search command: current, a new
 -- terminal is opened due to problematic interaction with readline
-execInteractive cmd = "xterm -e " ++ cmd
+execInteractive rst cmd =
+  rcValue (rst->rcvars) "interactivecommand" ++ ' ':cmd
 
 -----------------------------------------------------------------------
 --- Returns true if the type expression contains type variables.

@@ -112,31 +112,44 @@ askKey = do
   _ <- getChar
   return ()
 
+-- Type of default actions for interactive value printing
+data MoreDefault = MoreYes | MoreNo | MoreAll deriving Eq
+
 -- Print all values of a IO monad list on request by the user:
-printValsOnDemand :: Show a => (a -> IO ()) -> IOList a -> IO ()
+printValsOnDemand :: Show a => MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
 printValsOnDemand = printValsInteractive True
 
-printValsInteractive :: Show a => Bool -> (a -> IO ()) -> IOList a -> IO ()
-printValsInteractive _ _ Abort = error "MonadList.printValsInteractive: Abort" -- TODO
-printValsInteractive _ _ MNil = putStrLn "No more solutions" >> askKey
-printValsInteractive st prt (MCons x getRest) = prt x >> askUser st prt getRest
-printValsInteractive st prt (WithReset l _) = l >>= printValsInteractive st prt
+printValsInteractive :: Show a => Bool -> MoreDefault
+                               -> (a -> IO ()) -> IOList a -> IO ()
+printValsInteractive _ _ _ Abort = error "MonadList.printValsInteractive: Abort" -- TODO
+printValsInteractive _ _ _ MNil = putStrLn "No more solutions" >> askKey
+printValsInteractive st md prt (MCons x getRest) =
+  prt x >> askMore st md prt getRest
+printValsInteractive st md prt (WithReset l _) =
+  l >>= printValsInteractive st md prt
 
 -- ask the user for more values
-askUser :: Show a => Bool -> (a -> IO ()) -> IO (IOList a) -> IO ()
-askUser st prt getrest =
-    if not st then getrest >>= printValsInteractive st prt else do
-  putStr "More solutions? [y(es)/n(o)/A(ll)] "
+askMore :: Show a => Bool -> MoreDefault
+                  -> (a -> IO ()) -> IO (IOList a) -> IO ()
+askMore st md prt getrest =
+    if not st then getrest >>= printValsInteractive st md prt else do
+  putStr $ "More solutions? ["++
+           (if md==MoreYes then 'Y' else 'y'):"(es)/"++
+           (if md==MoreNo  then 'N' else 'n'):"(o)/"++
+           (if md==MoreAll then 'A' else 'a'):"(ll)] "
   hFlush stdout
   hSetBuffering stdin NoBuffering
   c <- getChar
   if c == '\n' then return () else putChar '\n'
   case (toLower c) of
-    'y'  -> getrest >>= printValsInteractive st prt
+    'y'  -> getrest >>= printValsInteractive st md prt
     'n'  -> return ()
-    'a'  -> getrest >>= printValsInteractive False prt
-    '\n' -> getrest >>= printValsInteractive False prt
-    _    -> askUser st prt getrest
+    'a'  -> getrest >>= printValsInteractive False md prt
+    '\n' -> case md of
+              MoreYes -> getrest >>= printValsInteractive st md prt
+              MoreNo  -> return ()
+              MoreAll -> getrest >>= printValsInteractive False md prt
+    _    -> askMore st md prt getrest
 
 list2iolist :: [a] -> IO (IOList a)
 list2iolist [] = mnil
