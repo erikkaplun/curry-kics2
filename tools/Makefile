@@ -1,7 +1,7 @@
 # generate various tools for handling Curry programs:
 
 .PHONY: all
-all:    ImportCalls
+all: GenInt ImportCalls
 
 # generate saved state for interface generator:
 GenInt: GenInt.curry
@@ -23,4 +23,4 @@ currytest: ../bin/currytestkics
 .PHONY: clean
 clean: 
 	../bin/cleancurry
-	rm -f GenInt ../bin/currytestkics
+	rm -f ../bin/currytestkics
