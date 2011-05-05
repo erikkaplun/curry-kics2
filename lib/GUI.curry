@@ -29,14 +29,10 @@ module GUI(GuiPort,Widget(..),Button,ConfigButton,
            chooseColor,popup_message,debugTcl)  where
 
 import Read
---import Unsafe(trace)
+import Unsafe(trace)
 import IO
 import IOExts(connectToCommand)
 import Char(isSpace,toUpper)
-
-trace :: String -> a -> a -- TODO: use Unsafe.trace
---trace _ = id
-trace _ x = x
 
 -- If showTclTkErrors is true, all synchronization errors occuring in the
 -- Tcl/Tk communication are shown (such errors should only occur on
