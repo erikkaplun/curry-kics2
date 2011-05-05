@@ -29,6 +29,7 @@ REPL: Installation REPL.curry
 install: idc REPL.state
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
+	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
 
 # generate module with basic installation information:
@@ -75,3 +76,4 @@ clean:
 	rm -f ./examples/Curry_*.*
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
+	cd www   ; ${MAKE} clean

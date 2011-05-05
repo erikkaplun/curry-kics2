@@ -53,6 +53,7 @@ do
       fi
     fi
     # delete also auxiliary files of PAKCS to be upward compatible:
+    rm -f "$F.state"
     PAKCSDIR="$CURRYDIR/pakcs"
     if [ -d $PAKCSDIR ] ; then
       rm -f $PAKCSDIR/$FBASE.pl $PAKCSDIR/$FBASE.po
