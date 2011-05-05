@@ -148,23 +148,33 @@ processInput rst g
                    cleanMainGoalFile
                    repl rst
 
--- Show the type of goal w.r.t. main program:
-showTypeOfGoal :: ReplState -> String -> IO Bool
-showTypeOfGoal rst goal = do
-  writeMainGoalFile rst [] Nothing goal
+-- Generate, read, and delete .acy file of main goal file.
+-- Return Nothing if some error occurred during parsin.
+getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
+getAcyOfMainGoal rst = do
   let mainGoalProg = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
       frontendParams = setQuiet (if rst->verbose < 2 then True else False)
                          (setFullPath ("." : rst->importPaths) defaultParams)
   callFrontendWithParams ACY frontendParams mainGoalProg
-  removeFile mainGoalFile
   acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then return False else do
-    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
+  if not acyexists then return Nothing else do
+    prog <- readAbstractCurryFile acyMainGoalFile
     removeFile acyMainGoalFile
-    let (CFunc _ _ _ maintype _) = mfunc
-    putStrLn $ goal ++ " :: " ++ showMonoTypeExpr False False maintype
-    return True
+    return (Just prog)
+
+-- Show the type of goal w.r.t. main program:
+showTypeOfGoal :: ReplState -> String -> IO Bool
+showTypeOfGoal rst goal = do
+  writeMainGoalFile rst [] Nothing goal
+  mbprog <- getAcyOfMainGoal rst
+  removeFile mainGoalFile
+  maybe (return False)
+        (\ (CurryProg _ _ _ [mfunc] _) -> do
+           let (CFunc _ _ _ maintype _) = mfunc
+           putStrLn $ goal ++ " :: " ++ showMonoTypeExpr False False maintype
+           return True)
+        mbprog
 
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> String -> IO Int
@@ -205,16 +215,9 @@ writeMainGoalFile rst imports mtype goal =
 --- and t is not a function, then ">>= print" is added to the goal.
 --- The result is False if the main goal contains some error.
 makeMainGoalMonomorphic :: ReplState -> String -> IO Bool
-makeMainGoalMonomorphic rst goal = do
-  let mainGoalProg = stripSuffix mainGoalFile
-      acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
-      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
-                         (setFullPath ("." : rst->importPaths) defaultParams)
-  callFrontendWithParams ACY frontendParams mainGoalProg
-  acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then return False else do
-    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
-    removeFile acyMainGoalFile
+makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
+  maybe (return False)
+   (\ (CurryProg _ _ _ [mfunc] _) -> do
     let (CFunc _ _ _ maintype _) = mfunc
         newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
     if isFunctionalType maintype
@@ -235,21 +238,15 @@ makeMainGoalMonomorphic rst goal = do
         if newgoal==goal
          then return True
          else writeMainGoalFile rst [] Nothing newgoal >> return True
+   )
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
 -- The status of the main goal is returned.
 insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
-insertFreeVarsInMainGoal rst goal = do
-  let mainGoalProg = stripSuffix mainGoalFile
-      acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
-      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
-                         (setFullPath ("." : rst->importPaths) defaultParams)
-  callFrontendWithParams ACY frontendParams mainGoalProg
-  acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then return GoalError else do
-    (CurryProg _ _ _ [mfunc] _) <- readAbstractCurryFile acyMainGoalFile
-    removeFile acyMainGoalFile
+insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
+  maybe (return GoalError)
+   (\ (CurryProg _ _ _ [mfunc] _) -> do
     let freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings) || length freevars > 5
      then return GoalWithoutBindings
@@ -267,6 +264,7 @@ insertFreeVarsInMainGoal rst goal = do
                 ("Adding printing of bindings for free variables: "++
                  concat (intersperse "," freevars))
               return (GoalWithBindings (length freevars) newgoal)
+   )
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
@@ -458,24 +456,24 @@ processThisCommand rst cmd args
               )
               mbf
   | cmd=="interface"
-   = do let modname = if null args then rst->mainMod else stripSuffix args
-            genint  = rst->idcHome </> "tools/GenInt"
+   = do let modname  = if null args then rst->mainMod else stripSuffix args
+            toolexec = "tools/GenInt"
+            genint   = rst->idcHome </> toolexec
         giexists <- doesFileExist genint
         if giexists
          then -- as long as GenInt is generated with PAKCS:
               setEnviron "CURRYPATH" (rst->idcHome++"/lib:"++
                                       rst->idcHome++"/lib/meta") >>
               system (genint ++ " -int " ++ modname) >> return (Just rst)
-         else do writeErrorMsg "tools/GenInt executable not found"
-                 return Nothing
+         else errorMissingTool toolexec >> return Nothing
   | cmd=="usedimports"
-   = do let modname = if null args then rst->mainMod else stripSuffix args
-            icalls  = rst->idcHome </> "tools/ImportCalls"
+   = do let modname  = if null args then rst->mainMod else stripSuffix args
+            toolexec = "tools/ImportCalls"
+            icalls   = rst->idcHome </> toolexec
         icexists <- doesFileExist icalls
         if icexists
          then system (icalls ++ " " ++ modname) >> return (Just rst)
-         else do writeErrorMsg "tools/ImportCalls executable not found"
-                 return Nothing
+         else errorMissingTool toolexec >> return Nothing
   | cmd=="set" = processSetOption rst args
   | cmd=="save"
    = if rst->mainMod == "Prelude"
@@ -642,6 +640,11 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
                  else "") files
     putStrLn ""
 
+-- Print error message for missing executable for some tool
+errorMissingTool execfile = writeErrorMsg $
+  Inst.installDir ++ '/' : execfile ++ " not found\n" ++
+  "Possible solution: run \"cd "++Inst.installDir++" && make install\""
+
 -----------------------------------------------------------------------
 -- Auxiliaries:
 
@@ -654,6 +657,8 @@ execInteractive rst cmd =
   rcValue (rst->rcvars) "interactivecommand" ++ ' ':cmd
 
 -----------------------------------------------------------------------
+-- Auxiliaries for process AbstractCurry type expressions
+
 --- Returns true if the type expression contains type variables.
 isPolyType :: CTypeExpr -> Bool
 isPolyType (CTVar _) = True
