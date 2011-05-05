@@ -37,10 +37,13 @@ banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
 mainGoalFile = "Curry_Main_Goal.curry"
 
 -- Remove mainGoalFile and auxiliaries
-cleanMainGoalFile = do
-  system $ Inst.installDir++"/bin/cleancurry "++mainGoalFile
-  goalfileexists <- doesFileExist mainGoalFile
-  unless (not goalfileexists) $ removeFile mainGoalFile
+cleanMainGoalFile :: ReplState -> IO ()
+cleanMainGoalFile rst
+  | rcValue (rst->rcvars) "keepfiles" == "yes" = done
+  | otherwise = do
+     system $ Inst.installDir++"/bin/cleancurry "++mainGoalFile
+     goalfileexists <- doesFileExist mainGoalFile
+     unless (not goalfileexists) $ removeFile mainGoalFile
 
 -- REPL state:
 type ReplState =
@@ -145,7 +148,7 @@ processInput rst g
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
                    unless (status>0) (execMain rst >> done)
-                   cleanMainGoalFile
+                   cleanMainGoalFile rst
                    repl rst
 
 -- Generate, read, and delete .acy file of main goal file.
@@ -483,7 +486,7 @@ processThisCommand rst cmd args
        unless (status>0) $ do
           renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
           writeVerboseInfo rst 1 ("Executable saved in '"++rst->mainMod++"'")
-       cleanMainGoalFile
+       cleanMainGoalFile rst
        return (Just rst)
   | cmd=="fork"
    = if rst->mainMod == "Prelude"
@@ -497,7 +500,7 @@ processThisCommand rst cmd args
           writeVerboseInfo rst 3 ("Starting executable '"++execname++"'...")
           system ("( "++execname++" && rm -f "++execname++ ") "++
                   "> /dev/null 2> /dev/null &") >> done
-       cleanMainGoalFile
+       cleanMainGoalFile rst
        return (Just rst)
   | otherwise = writeErrorMsg ("unknown command: ':"++cmd++"'") >>
                 return Nothing

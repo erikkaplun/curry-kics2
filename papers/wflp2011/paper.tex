@@ -303,12 +303,15 @@ a new operation in order to avoid complications by translating
 nested case expressions.
 Thus, we assume that all programs are \emph{uniform}
 according to the definition in Fig.~\ref{fig:uniform}.\footnote{%
-Uniform programs have been also considered in
+A variant of uniform programs have been considered in
 \cite{MorenoEtAl90ALP} to define lazy narrowing strategies
 for functional logic programs. Although the motivations are similar,
 our notion of uniform program is more restrictive since we
 allow only a single non-variable argument in each left-hand side
-of a rule.}
+of a rule.
+Uniform programs have been also applied in
+\cite{Zartmann97SAS} to define a denotational analysis
+of functional logic programs.}
 There, the variables in the left-hand sides of each rule are pairwise
 different, and
 the constructors in the left-hand sides of the matching rules of each function
@@ -342,7 +345,7 @@ equivalence of narrowing computations in LOIS systems
 and rewriting computations in uniform programs.
 Due to these results, uniform programs are a reasonable intermediate
 language for our translation into Haskell which will be presented
-in the following sections.
+in the following.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -689,10 +692,10 @@ an infinite set of memory cells which can represented as a tree structure:
   \end{haskell}
 The infinite tree of memory cells (with initial value \code{NoChoice})
 can be constructed as follows,
-where the operation \code{unsafeInterleaveIO} is used to construct
+where \code{unsafeInterleaveIO} is used to construct
 the tree on demand:
 \begin{haskell}
-  initSupply = getIDTree
+  initSupply = getIDTree$\listline$
   getIDTree = do s1 <- unsafeInterleaveIO getIDTree
                  s2 <- unsafeInterleaveIO getIDTree
                  r  <- unsafeInterleaveIO (newIORef NoChoice)
@@ -806,8 +809,8 @@ Since this compiler
 is in an experimental state, we could not execute all benchmarks with
 MonC (these are marked by ``n/a'').
 
-The functional logic language Toy \cite{Lopez-FraguasSanchez-Hernandez99}
-has many similarities to Curry and the Toy system compiles Toy programs
+The functional logic language TOY \cite{Lopez-FraguasSanchez-Hernandez99}
+has many similarities to Curry and the TOY system compiles TOY programs
 into Prolog programs. However, we have not included a comparison
 in this paper since \cite{AntoyHanus00FROCOS} contains benchmarks
 showing that the implementation of sharing used in PAKCS produces
@@ -839,7 +842,7 @@ SWI     &      1.63   &   1.39  &  1.84 &   11.66  \\
 \end{figure}
 %
 The first collection of benchmarks\footnote{All benchmarks are available
-at \url{http://www.informatik.uni-kiel.de/~mh/repos/kics2/benchmarks.tgz}.}
+at \url{http://www-ps.informatik.uni-kiel.de/kics2/benchmarks/}.}
 (Fig.~\ref{fig:bench-first-order})
 are purely first-order functional programs.
 The Prolog (SICStus, SWI) and Haskell (GHC) programs have been rewritten
@@ -1096,7 +1099,7 @@ show that unification can be supported with a reasonable efficiency.
 We have presented a new system to compile functional logic programs
 into purely functional programs.
 In order to be consistent with the call-time choice semantics
-of functional logic languages like Curry or Toy,
+of functional logic languages like Curry or TOY,
 we represent non-deterministic values
 in choice structures where each choice has an identification.
 Values for such choice identifiers are passed through
@@ -1382,6 +1385,12 @@ P.~Wadler.
 \newblock How to replace failure by a list of successes.
 \newblock In {\em Functional Programming and Computer Architecture}, pages
   113--128. Springer LNCS 201, 1985.
+
+\bibitem{Zartmann97SAS}
+F.~Zartmann.
+\newblock Denotational Abstract Interpretation of Functional Logic Programs.
+\newblock In {\em Proc. of the 4th International Symposium on Static Analysis
+  (SAS'97)}, pp. 141--156. Springer LNCS 1302, 1997.
 
 \end{thebibliography}
 

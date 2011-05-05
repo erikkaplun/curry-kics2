@@ -6,10 +6,11 @@
 module RCFile(readRC,rcValue,strip) where
 
 import PropertyFile
-import Directory(doesFileExist)
+import Directory(doesFileExist,renameFile)
 import Char(toLower,isSpace)
 import System(system,getEnviron)
 import Installation(installDir)
+import Sort(mergeSort)
 
 --- Location of the rc file of a user.
 --- After bootstrapping, one can also use Distribution.rcFileName
@@ -26,9 +27,29 @@ readRC = do
   rcname   <- rcFileName
   rcexists <- doesFileExist rcname
   if rcexists
-   then readPropertyFile rcname
+   then updateRC >> readPropertyFile rcname
    else do system ("cp "++installDir++"/kics2rc.default "++rcname)
            readPropertyFile rcname
+
+--- Reads the rc file (which must be present) and compares the definitions
+--- with the distribution rc file. If the set of variables is different,
+--- update the rc file with the distribution but keep the user's definitions.
+updateRC :: IO ()
+updateRC = do
+  let distrcname = installDir++"/kics2rc.default"
+  rcname   <- rcFileName
+  userprops <- readPropertyFile rcname  
+  distprops <- readPropertyFile distrcname
+  if mergeSort (<=) (map fst userprops) == mergeSort (<=) (map fst distprops)
+   then done
+   else do putStrLn $ "Updating \""++rcname++"\"..."
+           renameFile rcname (rcname++".bak")
+           system ("cp "++installDir++"/kics2rc.default "++rcname)
+           mapIO_ (\ (n,v) -> maybe done
+                                    (\uv -> if uv==v then done else
+                                            updatePropertyFile rcname n uv)
+                                    (lookup n userprops))
+                  distprops
 
 --- Look up a configuration variable in the list of variables from the rc file.
 --- Uppercase/lowercase is ignored for the variable names and the empty

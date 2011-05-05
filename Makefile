@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE="04/05/11"
+COMPILERDATE="05/05/11"
 
 .PHONY: all
 all: idc REPL.state
