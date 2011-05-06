@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE="21/04/11"
+COMPILERDATE="05/05/11"
 
 .PHONY: all
 all: idc REPL.state
@@ -21,11 +21,15 @@ idc: Installation Compile.curry
 REPL.state: Installation REPL.curry
 	pakcs -s REPL
 
+REPL: Installation REPL.curry
+	bin/kics2 :l REPL :save :q
+
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: idc REPL.state
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
+	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
 
 # generate module with basic installation information:
@@ -65,10 +69,11 @@ installhaskell:
 .PHONY: clean
 clean:
 	bin/cleancurry -r
-	rm -f idc Installation.hs Installation.curry REPL.state
+	rm -f idc Installation.hs Installation.curry REPL.state REPL
 	rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f idsupply*/*.hi idsupply*/*.o
 	rm -f ./examples/Curry_*.*
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
+	cd www   ; ${MAKE} clean

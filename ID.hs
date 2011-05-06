@@ -101,7 +101,7 @@ data ID
 
 instance Show ID where
   show (ID i)       = "?" ++ show i
-  show (FreeID i)   = "Free" ++ show i
+  show (FreeID i)   = "_x" ++ show i
   show (Narrowed i) = "Narrowed" ++ show i
 
 -- |Construct an 'ID' for a free variable from an 'IDSupply'
