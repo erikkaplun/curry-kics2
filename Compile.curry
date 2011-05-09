@@ -489,12 +489,28 @@ transBody qn vs exp = case exp of
     -- translate branches
     mapM transBranch bs `bindM` \bs' ->
     -- create branches for non-deterministic constructors
-    let pConsName = consNameFromPattern $ head bs in
+    let bs'' = addUnifIntegerRule bs bs'
+        pConsName = consNameFromPattern $ head bs in
     newBranches qn vs i pConsName `bindM` \ns ->
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
-    returnM $ Case ct e' (bs' ++ ns)
+    returnM $ Case ct e' (bs'' ++ ns)
   _ -> transCompleteExpr exp
+
+addUnifIntegerRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
+addUnifIntegerRule bs bs' = 
+  case bs of 
+   (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
+   _                                 -> bs'
+  where addRule bs bs' rules = 
+           case (bs,bs') of
+             (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs') 
+               -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
+             -- TODO: magic number
+             _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
+                         (funcCall (basics,"matchInteger") 
+                           [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
+                  : bs'
 
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
@@ -717,6 +733,13 @@ funcType :: TypeExpr -> TypeExpr -> TypeExpr
 funcType t1 t2 = TCons (basics, "Func") [t1, t2]
 
 -- expressions
+
+list2FCList :: [Expr] -> Expr
+list2FCList [] = consCall (prelude, "[]") []
+list2FCList (e:es) = consCall (prelude, ":") [e,list2FCList es]
+
+pair2FCPair :: (Expr,Expr) -> Expr
+pair2FCPair (e1,e2) = consCall (prelude, "(,)") [e1,e2]
 
 lazyLet :: [(Int, Expr)] -> Expr -> Expr
 lazyLet decls e = Let decls e
