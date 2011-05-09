@@ -797,8 +797,8 @@ unknown = let x free in x
 --- does not share any results. Moreover, the evaluation suspends
 --- as long as the expression contains unbound variables.
 --- Similar to Prolog's findall.
-getAllValues :: a -> IO [a]
-getAllValues e = return (findall (=:=e))
+--getAllValues :: a -> IO [a]
+--getAllValues e = return (findall (=:=e))
 
 --- Gets a value of an expression (currently, via an incomplete
 --- depth-first strategy). The expression must have a value, otherwise

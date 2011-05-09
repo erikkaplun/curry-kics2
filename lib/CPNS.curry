@@ -8,7 +8,7 @@
 ------------------------------------------------------------------------------
 
 module CPNS(registerPort,getPortInfo,unregisterPort,
-            cpnsStart,cpnsStop,cpnsShow,cpnsAlive) where
+            cpnsStart,cpnsStop,cpnsShow,cpnsAlive,main) where
 
 import Socket
 import IO
@@ -130,6 +130,7 @@ cpnsServer regs socket = do
         ShowRegistry -> doIfLocalHost rhost $ do
           putStrLn "Currently registered port names:"
           newregs <- showAndCleanRegs regs
+          hFlush stdout
           hClose h
           cpnsServer newregs socket )
       msg
@@ -149,6 +150,7 @@ tryRegisterPortName regs name pid sn pn = do
              " / number "++show pn ++ " at " ++ calendarTimeToString ctime
   let newregs = (name,pid,sn,pn) : filter (\ (n,_,_,_)->name/=n) regs
   printMemInfo newregs
+  hFlush stdout
   return (ack, newregs)
 
 -- Delete all registrations for a given port name:
@@ -157,6 +159,7 @@ unregisterPortName regs name = do
   putStrLn $ "Unregister port \""++name++"\" at "++calendarTimeToString ctime
   let newregs = filter (\ (n,_,_,_)->name/=n) regs
   printMemInfo newregs
+  hFlush stdout
   return newregs
 
 -- Get the socket number for a registered port name
@@ -289,7 +292,7 @@ cpnsAlive timeout host = catch tryPingCPNS (\_ -> return False)
 --- Starts the CPNS demon at localhost if it is not already running:
 startCPNSDIfNecessary :: IO ()
 startCPNSDIfNecessary = do
-  --system $ "\""++installDir++"/cpns/start\""
+  system $ "\""++installDir++"/cpns/start\""
   done
 
 --- Main function for CPNS demon. Check arguments and execute command.

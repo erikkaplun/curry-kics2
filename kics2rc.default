@@ -1,0 +1,42 @@
+############################################################################
+# KiCS2 configuration file
+#
+# The syntax of this file is 
+#
+# property=value\n
+#
+# Lines starting with '#' are comments.
+#
+############################################################################
+
+# Define path for searching modules in addition to standard KiCS2 libraries:
+# (this path is placed in front of the standard KiCS2 library path)
+libraries=
+
+# Default value when asking for more solutions (values: yes | no | all)
+moresolutions=yes
+
+# Allow Curry extensions (currently: function patterns)
+# (values: yes | no):
+curryextensions=yes
+
+# Show warnings for non-trivial overlapping rules (values: yes | no)
+warnoverlapping=yes
+
+# System command to edit the source file of a Curry program
+# (if not defined, the value of the environment variable EDITOR is used)
+editcommand=
+
+# System command to show the source file of a Curry program
+showcommand=cat
+
+# System command to execute a Curry program in interactive mode for asking for
+# more solutions (e.g., new terminal window)
+interactivecommand=xterm -e
+
+# Should the auxiliary files generated for the main goal be kept?
+# (values: yes | no )
+# Usually, they are deleted, i.e., "yes" might be useful for debugging
+keepfiles=no
+
+############################################################################
