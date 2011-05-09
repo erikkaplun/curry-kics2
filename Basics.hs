@@ -289,6 +289,7 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
 -- Matching for Integers
 ------------------------------------------------------------------------------
 
+-- TODO: use unboxed int
 
 matchInteger :: NonDet a => [(Int,a)] -> C_Integer -> a
 matchInteger rules (C_Neg nat)              = 
@@ -302,9 +303,11 @@ matchInteger rules (Choices_C_Integer i cs) =
 matchInteger rules Fail_C_Integer           = failCons
 matchInteger rules (Guard_C_Integer cs int) = guardCons cs (matchInteger rules int)
 
-matchNat [] _ = failCons
+matchNat []    _                    = failCons
 matchNat rules C_IHi                = maybe failCons id $ lookup 1 rules
-matchNat rules (C_O nat)            = matchNat (map halfKey $ filter (even.fst) rules) nat
+matchNat rules (C_O nat)            = matchNat (map halfKey $ filter (evenPos.fst) rules) nat
+  where
+   evenPos n = even n && (0 < n)
 matchNat rules (C_I nat)            = matchNat (map halfKey $ filter (odd.fst) rules) nat
 matchNat rules (Choice_C_Nat i l r) = narrow i (matchNat rules l) (matchNat rules r)
 matchNat rules (Choices_C_Nat i cs) = narrows i $ map (matchNat rules) cs
