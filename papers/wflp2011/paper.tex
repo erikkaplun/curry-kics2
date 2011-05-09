@@ -59,12 +59,12 @@ In this paper we present our first steps towards a new system
 to compile functional logic programs of the source language Curry
 into purely functional Haskell programs.
 Our implementation is based on the idea to represent
-non-deterministic results as values in the data types corresponding
+non-deterministic results as values of the data types corresponding
 to the results.
 This enables the application of various search strategies
 to extract values from the search space.
 We show by several benchmarks that our implementation
-can compete with or outperforms other existing implementations of Curry.
+can compete with or outperform other existing implementations of Curry.
 \end{abstract}
 
 
@@ -98,7 +98,7 @@ imperative) language, like C \cite{Lux99FLOPS}
 or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP}.
 Another approach is the reuse of already existing implementations
 of some of these features by translating
-functional logic programs into logic or functional languages.
+functional logic programs into either logic or functional languages.
 For instance, if one compiles into Prolog, one can reuse
 the existing backtracking implementation for non-deterministic
 search as well as logic variables and unification for computing with partial
@@ -164,7 +164,7 @@ that can be traversed by various operations.
 Moreover, purely deterministic computations
 are implemented as purely functional programs so that
 they are executed with almost the same efficiency
-of their purely functional counterparts.
+as their purely functional counterparts.
 
 In the next section, we sketch the source language Curry
 and introduce a normalized form of Curry programs that is the
@@ -229,7 +229,7 @@ we could have the reduction
 \end{haskell}
 leading to the unintended result \code{True}.
 Note that this result cannot be obtained if we use a strict strategy
-where arguments are evaluated before the function calls.
+where arguments are evaluated before the operation calls.
 In order to avoid dependencies on the evaluation strategies
 and exclude such unintended results,
 Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
@@ -247,7 +247,7 @@ with call-time choice semantics where actual arguments passed to
 operations are shared. Hence, we can evaluate the expression above
 lazily, provided that all occurrences of \code{aBool}
 are shared so that all of them reduce either to \code{True} or to \code{False}.
-The requirements of this call-time choice semantics are the
+The requirements of the call-time choice semantics are the
 reason why it is not simply possible to use list comprehensions
 or non-determinism monads for a straightforward implementation
 of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
@@ -299,8 +299,8 @@ is explicitly encoded in individual matching functions.
 In contrast to \cite{AlbertHanusHuchOliverVidal05},
 where the pattern matching strategy is encoded in case expressions,
 we assume that each case expression is transformed into
-a new operation in order to avoid complications by translating
-nested case expressions.
+a new operation in order to avoid complications arising from the translation
+of nested case expressions.
 Thus, we assume that all programs are \emph{uniform}
 according to the definition in Fig.~\ref{fig:uniform}.\footnote{%
 A variant of uniform programs has been considered in
@@ -436,13 +436,13 @@ to the choice of \code{aBool}, we obtain the result
 \end{haskell}
 When we show the values contained in this result,
 we have to make \emph{consistent} selections in choices with
-same identifiers. This, if we select the left branch as the value
+same identifiers. Thus, if we select the left branch as the value
 of the outermost \code{Choice}, we also have to select the left branch
 in the selected argument \code{(Choice 1 False True)} so that only
 the value \code{False} is possible here.
 Similarly, if we select the right branch as the value of the outermost
 \code{Choice}, we also have to select the right branch in
-its selected argument \code{(Choice 1 True False)} which yields the only
+its selected argument \code{(Choice 1 True False)} which yields the sole
 value \code{False}.
 
 Note that each \code{Choice} occurring for the first time in a computation
@@ -561,8 +561,8 @@ a failing computation should not abort the complete evaluation
 but it should be considered as some part of a computation that
 does not produce a meaningful result.
 In order to implement this behavior, we extend
-each datatype by a further constructor \code{Fail}
-and complete each function containing matching rules
+each data type by a further constructor \code{Fail}
+and complete each operation containing matching rules
 by a final rule that matches everything and returns the value \code{Fail}.
 For instance, consider the definition of lists
 \begin{curry}
@@ -799,7 +799,7 @@ Curry into Prolog \cite{AntoyHanus00FROCOS}
 available
 but much slower). PAKCS has been used for a number of practical
 applications of Curry.
-Another mature implementation which we consider is MCC \cite{Lux99FLOPS}
+Another mature implementation we consider is MCC \cite{Lux99FLOPS}
 (Version 0.9.10) which compiles Curry into C.
 MonC \cite{BrasselFischerHanusReck11} is a compiler
 from Curry into Haskell. It is based on a monadic representation
@@ -817,7 +817,7 @@ showing that the implementation of sharing used in PAKCS produces
 more efficient programs.
 
 Our compiler has been executed with the Glasgow Haskell Compiler
-(GHC 6.12.1, option -O2). All benchmarks were executed on a Linux machine
+(GHC 6.12.3, option -O2). All benchmarks were executed on a Linux machine
 running Debian 5.0.7 with an Intel Core 2 Duo (3.0GHz) processor.
 The timings were performed with the time command measuring the
 execution time (in seconds) of a compiled executable for each benchmark
