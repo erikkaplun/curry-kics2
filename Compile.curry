@@ -83,7 +83,7 @@ makeModule mods state mod@((_, (fn, fcy)), _) =
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  info opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
+  info 1 opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (analysis, types) <- readQTermFile ndaFile
   return { ndResult := (state -> ndResult) `plusFM` analysis
          , typeMap  := (state ->  typeMap) `plusFM` types
@@ -93,7 +93,7 @@ loadAnalysis total state ((mid, (fn, _)), current) = do
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
-  info opts $ compMessage current total ("Compiling " ++ mid) fn destination
+  info 1 opts $ compMessage current total ("Compiling " ++ mid) fn destination
 
   let fcy' = filterPrelude opts fcy
   dumpLevel DumpFlat opts fcyName (show fcy')
@@ -198,11 +198,11 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
 -- empty String
 lookupExternals :: Options -> String -> IO String
 lookupExternals opts fn = do
-  info opts $ "Looking for external file: " ++ extName
+  info 4 opts $ "Looking for external file: " ++ extName
   exists <- doesFileExist extName
   if exists
-    then info opts "External file found" >> readFile extName
-    else info opts "No External file found" >> return ""
+    then info 4 opts "External file found" >> readFile extName
+    else info 4 opts "No External file found" >> return ""
     where extName = path </> externalModule ++ '_' : bareName <.> "hs"
           (path, file) = splitDirectoryBaseName fn
           bareName = stripSuffix file
@@ -220,16 +220,16 @@ splitExternals content = se (lines content) ([], [], []) where
       where (pragmas, imps, decls) = se lns res
 
 -- Show an info message unless the quiet flag is set
-info :: Options -> String -> IO ()
-info opts msg = unless (opts -> optQuiet) $ putStrLn msg
+info :: Int -> Options -> String -> IO ()
+info level opts msg = unless (level > opts -> optVerbosity) $ putStrLn msg
 
 status :: Options -> String -> IO ()
-status opts msg = info opts $ msg ++ " ..."
+status opts msg = info 4 opts $ msg ++ " ..."
 
 -- Dump an intermediate result to a file
 dumpLevel :: Dump -> Options -> String -> String -> IO ()
 dumpLevel level opts file src = when (level `elem` opts -> optDump) $ do
-  info opts ("Dumping " ++ file)
+  info 4 opts ("Dumping " ++ file)
   writeFileInDir (withPath (</> opts -> optOutputSubdir) file) src
 
 rename :: Prog -> Prog
@@ -409,7 +409,7 @@ transFunc f@(Func qn _ _ _ _) =
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
       getNDClass qn `bindM` \ndCl ->
-      liftIO (info opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
+      liftIO (info 3 opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
       case ndCl of
         DFO ->
           -- create deterministic function
@@ -498,17 +498,17 @@ transBody qn vs exp = case exp of
   _ -> transCompleteExpr exp
 
 addUnifIntegerRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
-addUnifIntegerRule bs bs' = 
-  case bs of 
+addUnifIntegerRule bs bs' =
+  case bs of
    (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
    _                                 -> bs'
-  where addRule bs bs' rules = 
+  where addRule bs bs' rules =
            case (bs,bs') of
-             (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs') 
+             (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
                -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
              -- TODO: magic number
              _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
-                         (funcCall (basics,"matchInteger") 
+                         (funcCall (basics,"matchInteger")
                            [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
                   : bs'
 

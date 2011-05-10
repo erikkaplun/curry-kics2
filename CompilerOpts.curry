@@ -20,7 +20,7 @@ import Installation (compilerName, majorVersion, minorVersion, compilerDate)
 type Options =
   { optHelp               :: Bool     -- show usage
   , optVersion            :: Bool     -- show version
-  , optQuiet              :: Bool     -- quiet mode
+  , optVerbosity          :: Int      -- verbosity level (0 = quiet, 1 = + status, 2 = + frontend, 3 = + nd-analysis, 4 = + dump-all)
   , optForce              :: Bool     -- force recompilation
   , optImportPaths        :: [String] -- directories searched for imports
   , optOutputSubdir       :: String   -- subdirectory for compiled modules
@@ -37,11 +37,15 @@ data Dump
   | DumpTypeDecls   -- dump transformed type declarations
   | DumpAbstractHs  -- dump abstract Haskell
 
+allDumps :: [Dump]
+allDumps = [ DumpFlat, DumpLifted, DumpRenamed
+           , DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
+
 defaultOptions :: Options
 defaultOptions =
   { optHelp               = False
   , optVersion            = False
-  , optQuiet              = False
+  , optVerbosity          = 1
   , optForce              = False
   , optImportPaths        = []
   , optOutputSubdir       = "/.curry/kics2/"
@@ -50,19 +54,32 @@ defaultOptions =
   , optXNoImplicitPrelude = False
   }
 
+parseVerbosity :: String -> Int -> Int
+parseVerbosity s v = case s of
+  "0" -> 0
+  "1" -> 1
+  "2" -> 2
+  "3" -> 3
+  "4" -> 4
+  _   -> v
+
 options :: [OptDescr (Options -> Options)]
 options =
   [ Option ['h', '?'] ["help"]
-      (NoArg (\opts -> { optHelp    := True | opts }))
+      (NoArg (\opts -> { optHelp      := True | opts }))
       "show usage information"
-  , Option ['v'] ["version"]
-      (NoArg (\opts -> { optVersion := True | opts }))
+  , Option ['V'] ["version"]
+      (NoArg (\opts -> { optVersion   := True | opts }))
       "show version number"
+  , Option ['v'] ["verbosity"]
+      (ReqArg (\arg opts -> { optVerbosity :=
+        parseVerbosity arg (opts -> optVerbosity) | opts }) "<n>")
+      "set verbosity (0 = quiet, 1 = + status, 2 = + frontend, 3 = + nd-analysis, 4 = + dump-all)"
   , Option ['q'] ["quiet"]
-      (NoArg (\opts -> { optQuiet   := True | opts }))
+      (NoArg (\opts -> { optVerbosity := 0    | opts }))
       "run in quiet mode"
   , Option ['f'] ["force"]
-      (NoArg (\opts -> { optForce   := True | opts }))
+      (NoArg (\opts -> { optForce     := True | opts }))
       "force recompilation"
   , Option ['i'] ["import-dir"]
       (ReqArg (\arg opts -> { optImportPaths :=
