@@ -20,24 +20,21 @@ member :: a -> [a] -> Success
 member x (y:ys) = x =:= y ? member x ys
 
 
-zebra | member (England, unknown,  unknown) houses
-      & rightOf (unknown, Green,  unknown)
-                (unknown, Ivory, unknown)
+zebra | member (England, unknown, Kools) houses
+      & rightOf (unknown, Green,  Parliaments)
+                (England, Ivory, Kools)
                 houses
       & member (England, unknown,  Kools) houses
       & nextTo (unknown, unknown, Chesterfield)
-               (unknown, unknown,  unknown)
+               (unknown, unknown, unknown)
                houses
       & member (Japan, Green,  Parliaments) houses
-      & member (Spain, Blue,  Winston) houses
-      & nextTo (Norway, Red, unknown)
+      & nextTo (Norway, Red, Chesterfield)
                (Spain, Blue,  Winston)
                houses
       = houses
   where
    houses = [(Norway,unknown,unknown),
-             unknown,
-             unknown,
+             (unknown, unknown, unknown),
+             (unknown, unknown , unknown),
              unknown]
-
-main = zebra
