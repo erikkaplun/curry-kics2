@@ -142,9 +142,7 @@ narrowID n@(Narrowed _) = n
 
 -- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
-mkInt (ID       i) = mkIntRef i
-mkInt (FreeID   _) = error "ID.mkInt: FreeID"
-mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
+mkInt = mkIntRef . ref
 
 -- |Ensure that an 'ID' is not an 'ID' for a binary choice
 ensureNotID :: ID -> ID

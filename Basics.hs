@@ -7,6 +7,7 @@ module Basics
 
 import qualified Data.Map
 import Control.Monad
+import Control.Monad.State.Strict
 import Control.Parallel.TreeSearch
 import GHC.Exts (Int#, Char#, chr#)
 import System.IO (Handle)
@@ -133,7 +134,7 @@ class (Show a, NonDet a) => NormalForm a where
   -- |TODO: We are not perfectly sure what this does (or at least should do)
   ($!<) :: (a -> IO b) -> a -> IO b
   -- new approach
-  searchNF :: (forall b . NormalForm b => (b -> IO c) -> b -> IO c) -> (a -> IO c) -> a -> IO c
+  searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
   searchNF = error "searchNF not implemented"
 
 
@@ -1326,33 +1327,154 @@ printPari ud prt mainexp = computeWithPar mainexp >>= printValsOnDemand ud prt
 computeWithPar :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithPar mainexp = do
   s <- initSupply
-  list2iolist
-    (parSearch (searchMPlus Data.Map.empty (try (id $!! (mainexp s)))))
+  list2iolist (parSearch (searchMPlus (mainexp s)))
 
 type SetOfChoices = Data.Map.Map Integer Choice
 
-lookupChoice' :: SetOfChoices -> ID -> Choice
-lookupChoice' set r =
-  maybe NoChoice id (Data.Map.lookup (mkInt r) set)
+lookupChoiceRaw' :: Monad m => ID ->  StateT SetOfChoices m Choice 
+lookupChoiceRaw' r = do
+   set <- get
+   maybe (return NoChoice) return (Data.Map.lookup (mkInt r) set)
 
-setChoice' :: SetOfChoices -> ID -> Choice -> SetOfChoices
-setChoice' set r c = Data.Map.insert (mkInt r) c set
+lookupChoice' :: Monad m => ID ->  StateT SetOfChoices m Choice   
+lookupChoice' r = fst `liftM` lookupChoiceID' r 
+lookupID' :: Monad m => ID ->  StateT SetOfChoices m ID
+lookupID' r = snd `liftM`lookupChoiceID' r
+
+lookupChoiceID' :: Monad m => ID -> StateT SetOfChoices m (Choice,ID)
+lookupChoiceID' r = do
+  cr <- lookupChoiceRaw' r
+  case cr of
+   BoundTo j _ -> lookupChoiceID' j
+   BindTo j -> do 
+     (cj,k) <- lookupChoiceID' j  
+     case cj of
+       ChooseN n pn -> do
+          propagateBind' r j pn
+          return ((ChooseN n pn),k)
+       c            -> return (c,k)
+   c        -> return (c,r)    
+   
+setChoiceRaw' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()  
+setChoiceRaw' r c = modify (Data.Map.insert (mkInt r) c)
+
+setChoice' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()
+setChoice' r (BindTo j) | mkInt r == mkInt j = return () 
+setChoice' r c =  lookupChoice' r >>= unchain 
+ where
+   unchain (BindTo k) = do
+     setChoice' k c
+     case c of
+       (ChooseN _ pNum) -> propagateBind' r k pNum
+       _                -> return ()
+   unchain (BoundTo k _) = 
+     error "setChoice'.unchain: bound Variable should not be rebound"
+   unchain oldChoice =
+     case c of
+       BindTo j -> do
+         lastId <- lookupID' j
+         if mkInt lastId == mkInt r
+            then return ()
+            else setChoiceRaw' r c     
+       _ -> setChoiceRaw' r c
+                 
+propagateBind' i j pn = do  
+  zipWithM_ (\childr childj -> setChoice' childr (BindTo j))
+            (nextNIDs i pn) (nextNIDs j pn)
+  setChoiceRaw' i (BoundTo j pn)
+
+solves' :: MonadPlus m => [Constraint] -> StateT SetOfChoices m ()
+solves' []     = return ()
+solves' (c:cs) = solve c >> solves' cs
+ where
+  solve Unsolvable = mzero
+  solve (i :=: cc) = lookupChoice' i >>= choose cc
+    where
+     -- store lazy binds for later use
+     choose (LazyBind  _) NoChoice      = setChoice' i cc
+     -- solve stored lazy binds when they are needed
+     choose _             (LazyBind cs) = setChoice' i cc >> solves' cs 
+     choose (LazyBind cs) _             = solves' cs
+     choose (BindTo j)    ci            = lookupChoice' j >>= check i j ci
+     choose c             NoChoice      = setChoice' i c
+     choose c             ci            = guard (c == ci)
+
+     -- Check whether i can be bound to j and do so if possible
+     check :: MonadPlus m => ID -> ID -> Choice -> Choice -> StateT SetOfChoices m ()
+     check i j _        (LazyBind cs)          
+       = setChoice' j (BindTo i) >> solves' cs
+     check i j NoChoice _                      
+       = setChoice' i (BindTo j)
+     check i j _        NoChoice               
+       = setChoice' j (BindTo i)
+     check i j (ChooseN iN ip) (ChooseN jN jp) = 
+       if iN == jN && ip == jp
+       then solves' (zipWith (\childi childj -> childi :=: BindTo childj)
+                     (nextNIDs i ip) (nextNIDs j ip))
+       else mzero
+     check _ _ ci       cj                     = guard (ci == cj)
+  solve (ConstraintChoice i lcs rcs) = lookupChoice' i >>= chooseCC
+   where
+    chooseCC ChooseLeft  = solves' lcs
+    chooseCC ChooseRight = solves' rcs
+    chooseCC NoChoice    = setChoice' i ChooseLeft >> solves' lcs 
+                           `mplus` 
+                           setChoice' i ChooseRight >> solves' rcs 
+    chooseCC c           = error $ "solves'.solve.chooseCC: " ++ show c
+  solve (ConstraintChoices i css) = lookupChoice' i >>= chooseCCs 
+   where
+    chooseCCs (ChooseN c _) = solves' (css !! c)
+    chooseCCs NoChoice      = msum $ zipWith mkChoice [0 ..] css
+    chooseCCs c             = error $ "ID.solve.chooseCCs: " ++ show c
+
+    mkChoice n cs =  setChoice' i (ChooseN n (-1)) >> solves' cs
+ 
+
+
 
 -- Collect results of a non-deterministic computation in a monadic structure.
-searchMPlus :: (NonDet a, MonadPlus m) => SetOfChoices -> Try a -> m a
-searchMPlus _   Fail           = mzero
-searchMPlus _   (Val v)        = return v
-searchMPlus set (Choice i x y) = choose (lookupChoice' set i)
+
+searchMPlus :: (NormalForm a, MonadPlus m) => a -> m a
+searchMPlus x = evalStateT (searchMPlus' return (id $!! x)) Data.Map.empty 
+
+searchMPlus' :: (NormalForm a, MonadPlus m) => 
+                (a -> StateT SetOfChoices m b) 
+                -> a 
+                -> StateT SetOfChoices m b
+searchMPlus' cont = searchMPlus'' cont . try
+
+searchMPlus'' :: (NormalForm a, MonadPlus m) => 
+                (a -> StateT SetOfChoices m b) 
+                -> Try a 
+                -> StateT SetOfChoices m b
+searchMPlus'' _   Fail           = mzero
+searchMPlus'' cont (Val v)        = searchNF searchMPlus' cont v
+searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
   where
-    choose ChooseLeft  = searchMPlus set (try x)
-    choose ChooseRight = searchMPlus set (try y)
-    choose NoChoice    = searchMPlus (pick ChooseLeft)  (try x)
-                 `mplus` searchMPlus (pick ChooseRight) (try y)
+    choose ChooseLeft  = searchMPlus'' cont (try x)
+    choose ChooseRight = searchMPlus'' cont (try y)
+    choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
+                         `mplus` 
+                         (setChoice' i ChooseRight >> searchMPlus' cont y)
+searchMPlus'' cont (Choices i branches) = lookupChoice' i >>= choose
+  where
+    choose (ChooseN c _) = searchMPlus' cont (branches !! c)
+    choose NoChoice      = 
+      msum $ zipWith (\n c -> pick n >> searchMPlus' cont c) [0..] branches 
+    choose (LazyBind cs) = processLazyBind' i cont cs branches      
+    pick c = setChoice' i (ChooseN c (-1))
+searchMPlus'' cont (Frees i branches) = lookupChoice' i >>= choose
+  where
+    choose (ChooseN c _) = searchMPlus' cont (branches !! c)
+    -- TODO: reason about how to implement this
+    choose NoChoice      = error "searchMPlus: unbound logic Variable encountered"
+    choose (LazyBind cs) = processLazyBind' i cont cs branches
+searchMPlus'' cont  (Guard cs e) = 
+  solves' cs >> searchMPlus' cont e
 
-    pick c = setChoice' set i c
-
-
-
+processLazyBind' i cont cs branches = do
+  setChoice' i NoChoice  
+  searchMPlus' cont (guardCons cs (choicesCons i branches))
 ----------------------------------------------------------------------
 -- Auxillary Functions
 ----------------------------------------------------------------------
