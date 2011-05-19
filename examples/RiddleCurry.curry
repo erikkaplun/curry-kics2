@@ -1,5 +1,7 @@
 module RiddleCurry where
 
+import AllSolutions
+
 infix 3 &&&
 infix 4 `is`
 
@@ -68,7 +70,9 @@ constraints =
   , any' (pet `is` Snails &&& smoke `is` Winston)
   , any' (color `is` Yellow &&& smoke `is` Kools)
   , any' (smoke `is` LuckyStrike &&& drink `is` OrangeJuice)
-  , any' (country `is` Japan &&& smoke `is` Parliaments) ]
+  , any' (country `is` Japan &&& smoke `is` Parliaments)
+  , any' (pet `is` Zebra)
+  , any' (drink `is`  Water)]
 
 isSolution :: [House] -> Success
 isSolution houses = all' ($houses) constraints
@@ -82,3 +86,5 @@ solutions | isSolution house = house
 -- ,(England,Red,Snails,Winston,Milk),(Japan,Green,Free,Parliaments,Coffee)
 -- ,(Spain,Ivory,Dog,LuckyStrike,OrangeJuice)]
 main = solutions
+
+mainCaps = getAllValues solutions

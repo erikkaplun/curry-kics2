@@ -1,5 +1,7 @@
 module RiddleReduced where
 
+import AllSolutions
+
 data Country = Norway | England | Spain | Japan
 
 data Color = Red | Yellow | Blue | Green | Ivory
@@ -38,3 +40,5 @@ zebra | member (England, unknown, Kools) houses
              (unknown, unknown, unknown),
              (unknown, unknown , unknown),
              unknown]
+
+zebraCaps = getAllValues zebra

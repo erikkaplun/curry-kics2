@@ -749,6 +749,7 @@ toIO (C_IO io) = io
 toIO (Choice_C_IO _ _ _) = error "toIO: Choice_C_IO"
 toIO (Guard_C_IO _ _) = error "toIO: Guard_C_IO"
 toIO Fail_C_IO = error "toIO: Fail_C_IO"
+toIO (Choices_C_IO _ _) = error "toIO: Choices_C_IO"
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
@@ -1466,11 +1467,11 @@ searchMPlus'' cont (Choices i branches) = lookupChoice' i >>= choose
 searchMPlus'' cont (Frees i branches) = lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    -- TODO: reason about how to implement this
-    choose NoChoice      = error "searchMPlus: unbound logic Variable encountered"
+    choose NoChoice      = cont $ choicesCons i branches
     choose (LazyBind cs) = processLazyBind' i cont cs branches
 searchMPlus'' cont  (Guard cs e) = 
   solves' cs >> searchMPlus' cont e
+  
 
 processLazyBind' i cont cs branches = do
   setChoice' i NoChoice  
