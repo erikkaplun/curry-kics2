@@ -232,7 +232,7 @@ makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
                                  goal
                writeVerboseInfo rst 2
                  ("Type of main expression \"" ++
-                  showMonoTypeExpr False False maintype ++ 
+                  showMonoTypeExpr False False maintype ++
                   "\" made monomorphic")
                writeVerboseInfo rst 1
                   "Type variables of main expression replaced by \"()\""
@@ -305,8 +305,8 @@ createAndCompileMain rst goalstate = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst goalstate isdet isio
-  let ghcImports = [ rst -> idcHome
-                   , rst -> idcHome ++ "/idsupply" ++ rst -> idSupply
+  let ghcImports = [ rst -> idcHome ++ "/runtime"
+                   , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply
                    , "." </> rst -> outputSubdir
                    ]
                    ++ map (</> rst -> outputSubdir) (rst -> importPaths)

@@ -129,7 +129,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
        "import Curry_"++mod++"\n"++
        "main = "++mainexp++"\n"
   putStrLn $ "Main expression: " ++ mainexp
-  let imports = [idcHome,idcHome++"/idsupply"++idsupply,
+  let imports = [idcHome++"/runtime",idcHome++"/runtime/idsupply"++idsupply,
                  ".curry/kics2",idcHome++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
                             "-XMultiParamTypeClasses","-XFlexibleInstances",
@@ -233,7 +233,7 @@ benchFPpl prog withMon =
  ,ghcOBenchmark  prog
  ,sicsBenchmark  (map toLower prog)
  ,swiBenchmark   (map toLower prog)
- ] 
+ ]
  ++ monBenchmarkIf withMon "MON+" prog True "main"
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
