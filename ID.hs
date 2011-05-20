@@ -142,9 +142,7 @@ narrowID n@(Narrowed _) = n
 
 -- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
-mkInt (ID       i) = mkIntRef i
-mkInt (FreeID   _) = error "ID.mkInt: FreeID"
-mkInt (Narrowed _) = error "ID.mkInt: Narrowed"
+mkInt = mkIntRef . ref
 
 -- |Ensure that an 'ID' is not an 'ID' for a binary choice
 ensureNotID :: ID -> ID
@@ -182,14 +180,16 @@ lookupChoiceID i = do
   trace $ "lookupChoiceID returned " ++ take 200 (show r)
   return r
   where
+    -- TODO: reactivate shortening of chains as soon as we know how
+    --       to do this correct and efficient
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
     -- to the last ID in the chain.
     unchain (BindTo j) = do
       retVal@(c, lastId) <- lookupChoiceID j
       case c of
-        NoChoice      -> shortenTo lastId
-        ChooseN _ num -> propagateBind i lastId num
-        LazyBind _    -> shortenTo lastId
+        NoChoice      -> return () --shortenTo lastId
+        ChooseN _ num -> propagateBind i j num -- lastId num
+        LazyBind _    -> return () --shortenTo lastId
         _             -> error $ "ID.lookupChoiceID: " ++ show c
       return retVal
       where
@@ -200,6 +200,7 @@ lookupChoiceID i = do
     -- For BoundTo, the chains should already be shortened since the Choice
     -- "BoundTo j" is only set if the variable j has been set to a "ChooseN"
     -- and therefore could not have been changed in between.
+    -- TODO: check if the previous statement is correct
     unchain (BoundTo j num) = do
       retVal@(c, lastId) <- lookupChoiceID j
       case c of

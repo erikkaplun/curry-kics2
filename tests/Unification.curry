@@ -86,3 +86,4 @@ goal31 = x =:= [] &> y ++ [False] =:= x where x, y free -- fail
 goal32 = x =:= [] &> y1:(y2 ++ [False]) =:= x where x, y1, y2 free -- fail
 goal33 = x =:= [] &> (y2 ++ [False]) =:= x where x, y2 free -- fail
 goal34 = x =:= [] &> y1:[False] =:= x where x, y1 free -- fail
+goal35 = x =:= y &> y =:= z &> z =:= [True] &> x =:= [True] &> x =:= z &> x where x,y,z free -- [True]
