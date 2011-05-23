@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SRC=PrimTypes.curry
-DEST=Curry_PrimTypes.hs
+DEST=.curry/kics2/Curry_PrimTypes.hs
 
 function replace ()
 {
@@ -96,9 +96,10 @@ function replace ()
   | sed "/(<?=).*C_PrimData/d" \
   | sed "s/C_PrimData/PrimData/g" \
   | sed "s/PrimTypes/Prelude/g" \
+  | sed "s/_case_/_casePT_/g" \
   | sed '/^$/{N;/^\n$/D}' \
   > $1
 }
 
 rm -f $DEST
-compilecurry $SRC || replace $DEST
+./compilecurry $SRC || replace $DEST

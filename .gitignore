@@ -1,10 +1,23 @@
+# interface and object files
 *.hi
+*.hi-boot
 *.o
+*.o-boot
+
+# intermediate files
 *.fcy
-C_*
-*.state
 *.ahs
 .curry
+C_*
+Installation.*
+
+# binaries
+*.state
 examples/comptest
 idc
-Installation.*
+cpns/CPNSD
+www/Registry
+www/submitform
+tools/GenInt
+tools/ImportCalls
+

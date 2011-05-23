@@ -59,7 +59,7 @@ sourceDeps opts m fn mEnv = do
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
     where
       importPaths = "." : opts -> optImportPaths
-      quiet       = opts -> optQuiet
+      quiet       = (opts -> optVerbosity) < 2
 
 filterMissing :: SourceEnv -> ([(ModuleIdent, Source)], [String])
 filterMissing env = (map (mapSnd fromJust) present, errs) where

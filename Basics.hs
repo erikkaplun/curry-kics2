@@ -285,6 +285,42 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
   fromCurry :: ctype -> htype
   toCurry   :: htype -> ctype
 
+------------------------------------------------------------------------------
+-- Matching for Integers
+------------------------------------------------------------------------------
+
+-- TODO: use unboxed int
+
+matchInteger :: NonDet a => [(Int,a)] -> C_Integer -> a
+matchInteger rules (C_Neg nat)              = 
+  matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat 
+matchInteger rules C_Zero                   = maybe failCons id $ lookup 0 rules
+matchInteger rules (C_Pos nat)              = matchNat (filter ((>0).fst) rules) nat
+matchInteger rules (Choice_C_Integer i l r) = 
+  narrow i (matchInteger rules l) (matchInteger rules r)
+matchInteger rules (Choices_C_Integer i cs) = 
+  narrows i $ map (matchInteger rules) cs
+matchInteger rules Fail_C_Integer           = failCons
+matchInteger rules (Guard_C_Integer cs int) = guardCons cs (matchInteger rules int)
+
+matchNat []    _                    = failCons
+matchNat rules C_IHi                = maybe failCons id $ lookup 1 rules
+matchNat rules (C_O nat)            = matchNat (map halfKey $ filter (evenPos.fst) rules) nat
+  where
+   evenPos n = even n && (0 < n)
+matchNat rules (C_I nat)            = matchNat (map halfKey $ filter (odd.fst) rules) nat
+matchNat rules (Choice_C_Nat i l r) = narrow i (matchNat rules l) (matchNat rules r)
+matchNat rules (Choices_C_Nat i cs) = narrows i $ map (matchNat rules) cs
+matchNat rules (Guard_C_Nat cs nat) = guardCons cs $ matchNat rules nat
+
+
+halfKey :: (Int,a) -> (Int,a)
+halfKey =  mapFst (`div` 2)
+
+
+mapFst :: (a -> b) -> (a,c) -> (b,c)
+mapFst f (a,b) = (f a,b)    
+
 -- ---------------------------------------------------------------------------
 -- Built-in types
 -- ---------------------------------------------------------------------------
@@ -362,6 +398,199 @@ instance Unifiable C_Success where
 
 (&) :: C_Success -> C_Success -> C_Success
 x & y = const y $!! x
+
+
+-- Integer
+
+data C_Integer
+     = C_Neg C_Nat
+     | C_Zero
+     | C_Pos C_Nat
+     | Choice_C_Integer ID C_Integer C_Integer
+     | Choices_C_Integer ID ([C_Integer])
+     | Fail_C_Integer
+     | Guard_C_Integer ([Constraint]) C_Integer
+
+instance Show C_Integer where
+  showsPrec d (Choice_C_Integer i x y) = showsChoice d i x y
+  showsPrec d (Choices_C_Integer i xs) = showsChoices d i xs
+  showsPrec d (Guard_C_Integer c e) = showsGuard d c e
+  showsPrec _ Fail_C_Integer = showChar '!'
+  showsPrec d (C_Neg x1) = (showString "(Neg") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec d C_Zero = showString "Zero"
+  showsPrec d (C_Pos x1) = (showString "(Pos") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+
+
+instance Read C_Integer where
+  readsPrec d s = (readParen (d > 10) (\r -> [ (C_Neg x1,r1) | (_,r0) <- readQualified "Prelude" "Neg" r, (x1,r1) <- readsPrec 11 r0]) s) ++ ((readParen False (\r -> [ (C_Zero,r0) | (_,r0) <- readQualified "Prelude" "Zero" r]) s) ++ (readParen (d > 10) (\r -> [ (C_Pos x1,r1) | (_,r0) <- readQualified "Prelude" "Pos" r, (x1,r1) <- readsPrec 11 r0]) s))
+
+
+instance NonDet C_Integer where
+  choiceCons = Choice_C_Integer
+  choicesCons = Choices_C_Integer
+  failCons = Fail_C_Integer
+  guardCons = Guard_C_Integer
+  try (Choice_C_Integer i x y) = tryChoice i x y
+  try (Choices_C_Integer i xs) = tryChoices i xs
+  try Fail_C_Integer = Fail
+  try (Guard_C_Integer c e) = Guard c e
+  try x = Val x
+
+
+instance Generable C_Integer where
+  generate s = Choices_C_Integer (freeID s) [(C_Neg (generate (leftSupply s))),C_Zero,(C_Pos (generate (leftSupply s)))]
+
+
+instance NormalForm C_Integer where
+  ($!!) cont (C_Neg x1) = (\y1 -> cont (C_Neg y1)) $!! x1
+  ($!!) cont C_Zero = cont C_Zero
+  ($!!) cont (C_Pos x1) = (\y1 -> cont (C_Pos y1)) $!! x1
+  ($!!) cont (Choice_C_Integer i x y) = nfChoice cont i x y
+  ($!!) cont (Choices_C_Integer i xs) = nfChoices cont i xs
+  ($!!) cont (Guard_C_Integer c x) = guardCons c (cont $!! x)
+  ($!!) _ Fail_C_Integer = failCons
+  ($##) cont (C_Neg x1) = (\y1 -> cont (C_Neg y1)) $## x1
+  ($##) cont C_Zero = cont C_Zero
+  ($##) cont (C_Pos x1) = (\y1 -> cont (C_Pos y1)) $## x1
+  ($##) cont (Choice_C_Integer i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Integer i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Integer c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Integer = failCons
+  ($!<) cont (C_Neg x1) = (\y1 -> cont (C_Neg y1)) $!< x1
+  ($!<) cont C_Zero = cont C_Zero
+  ($!<) cont (C_Pos x1) = (\y1 -> cont (C_Pos y1)) $!< x1
+  ($!<) cont (Choice_C_Integer i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_C_Integer i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
+  searchNF search cont (C_Neg x1) = search (\y1 -> cont (C_Neg y1)) x1
+  searchNF search cont C_Zero = cont C_Zero
+  searchNF search cont (C_Pos x1) = search (\y1 -> cont (C_Pos y1)) x1
+
+
+instance Unifiable C_Integer where
+  (=.=) (C_Neg x1) (C_Neg y1) = x1 =:= y1
+  (=.=) C_Zero C_Zero = C_Success
+  (=.=) (C_Pos x1) (C_Pos y1) = x1 =:= y1
+  (=.=) _ _ = Fail_C_Success
+  (=.<=) (C_Neg x1) (C_Neg y1) = x1 =:<= y1
+  (=.<=) C_Zero C_Zero = C_Success
+  (=.<=) (C_Pos x1) (C_Pos y1) = x1 =:<= y1
+  (=.<=) _ _ = Fail_C_Success
+  bind i (C_Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind (leftID i) x2)]))
+  bind i C_Zero = ((i :=: (ChooseN 1 0)):(concat []))
+  bind i (C_Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
+  bind i (Choice_C_Integer j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Integer j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Integer j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Integer = [Unsolvable]
+  bind i (Guard_C_Integer cs e) = cs ++ (bind i e)
+  lazyBind i (C_Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
+  lazyBind i C_Zero = [(i :=: (ChooseN 1 0))]
+  lazyBind i (C_Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
+  lazyBind i (Choice_C_Integer j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_Integer j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Integer j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ Fail_C_Integer = [Unsolvable]
+  lazyBind i (Guard_C_Integer cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
+
+
+
+
+-- Nats
+
+data C_Nat
+     = C_IHi
+     | C_O C_Nat
+     | C_I C_Nat
+     | Choice_C_Nat ID C_Nat C_Nat
+     | Choices_C_Nat ID ([C_Nat])
+     | Fail_C_Nat
+     | Guard_C_Nat ([Constraint]) C_Nat
+
+instance Show C_Nat where
+  showsPrec d (Choice_C_Nat i x y) = showsChoice d i x y
+  showsPrec d (Choices_C_Nat i xs) = showsChoices d i xs
+  showsPrec d (Guard_C_Nat c e) = showsGuard d c e
+  showsPrec _ Fail_C_Nat = showChar '!'
+  showsPrec d C_IHi = showString "IHi"
+  showsPrec d (C_O x1) = (showString "(O") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec d (C_I x1) = (showString "(I") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+
+
+instance Read C_Nat where
+  readsPrec d s = (readParen False (\r -> [ (C_IHi,r0) | (_,r0) <- readQualified "Prelude" "IHi" r]) s) ++ ((readParen (d > 10) (\r -> [ (C_O x1,r1) | (_,r0) <- readQualified "Prelude" "O" r, (x1,r1) <- readsPrec 11 r0]) s) ++ (readParen (d > 10) (\r -> [ (C_I x1,r1) | (_,r0) <- readQualified "Prelude" "I" r, (x1,r1) <- readsPrec 11 r0]) s))
+
+
+instance NonDet C_Nat where
+  choiceCons = Choice_C_Nat
+  choicesCons = Choices_C_Nat
+  failCons = Fail_C_Nat
+  guardCons = Guard_C_Nat
+  try (Choice_C_Nat i x y) = tryChoice i x y
+  try (Choices_C_Nat i xs) = tryChoices i xs
+  try Fail_C_Nat = Fail
+  try (Guard_C_Nat c e) = Guard c e
+  try x = Val x
+
+
+instance Generable C_Nat where
+  generate s = Choices_C_Nat (freeID s) [C_IHi,(C_O (generate (leftSupply s))),(C_I (generate (leftSupply s)))]
+
+
+instance NormalForm C_Nat where
+  ($!!) cont C_IHi = cont C_IHi
+  ($!!) cont (C_O x1) = (\y1 -> cont (C_O y1)) $!! x1
+  ($!!) cont (C_I x1) = (\y1 -> cont (C_I y1)) $!! x1
+  ($!!) cont (Choice_C_Nat i x y) = nfChoice cont i x y
+  ($!!) cont (Choices_C_Nat i xs) = nfChoices cont i xs
+  ($!!) cont (Guard_C_Nat c x) = guardCons c (cont $!! x)
+  ($!!) _ Fail_C_Nat = failCons
+  ($##) cont C_IHi = cont C_IHi
+  ($##) cont (C_O x1) = (\y1 -> cont (C_O y1)) $## x1
+  ($##) cont (C_I x1) = (\y1 -> cont (C_I y1)) $## x1
+  ($##) cont (Choice_C_Nat i x y) = gnfChoice cont i x y
+  ($##) cont (Choices_C_Nat i xs) = gnfChoices cont i xs
+  ($##) cont (Guard_C_Nat c x) = guardCons c (cont $## x)
+  ($##) _ Fail_C_Nat = failCons
+  ($!<) cont C_IHi = cont C_IHi
+  ($!<) cont (C_O x1) = (\y1 -> cont (C_O y1)) $!< x1
+  ($!<) cont (C_I x1) = (\y1 -> cont (C_I y1)) $!< x1
+  ($!<) cont (Choice_C_Nat i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_C_Nat i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
+  searchNF search cont C_IHi = cont C_IHi
+  searchNF search cont (C_O x1) = search (\y1 -> cont (C_O y1)) x1
+  searchNF search cont (C_I x1) = search (\y1 -> cont (C_I y1)) x1
+
+
+instance Unifiable C_Nat where
+  (=.=) C_IHi C_IHi = C_Success
+  (=.=) (C_O x1) (C_O y1) = x1 =:= y1
+  (=.=) (C_I x1) (C_I y1) = x1 =:= y1
+  (=.=) _ _ = Fail_C_Success
+  (=.<=) C_IHi C_IHi = C_Success
+  (=.<=) (C_O x1) (C_O y1) = x1 =:<= y1
+  (=.<=) (C_I x1) (C_I y1) = x1 =:<= y1
+  (=.<=) _ _ = Fail_C_Success
+  bind i C_IHi = ((i :=: (ChooseN 0 0)):(concat []))
+  bind i (C_O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
+  bind i (C_I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
+  bind i (Choice_C_Nat j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Nat j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Nat j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Nat = [Unsolvable]
+  bind i (Guard_C_Nat cs e) = cs ++ (bind i e)
+  lazyBind i C_IHi = [(i :=: (ChooseN 0 0))]
+  lazyBind i (C_O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
+  lazyBind i (C_I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
+  lazyBind i (Choice_C_Nat j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_Nat j@(FreeID _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Nat j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ Fail_C_Nat = [Unsolvable]
+  lazyBind i (Guard_C_Nat cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
+
+
+
 
 -- Higher Order Funcs
 
