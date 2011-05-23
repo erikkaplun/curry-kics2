@@ -40,8 +40,8 @@ tryChoice _        = error "Basics.tryChoice: no ID"
 
 tryChoices :: ID -> [a] -> Try a
 tryChoices (ID _)         = error "Basics.tryChoices: ID"
-tryChoices i@(FreeID _)   = Frees   i
-tryChoices i@(Narrowed _) = Choices i
+tryChoices i@(FreeID _ _) = Frees   i
+tryChoices i@(Narrowed _ _) = Choices i
 
 -- ---------------------------------------------------------------------------
 -- Non-determinism
@@ -151,8 +151,8 @@ nfChoice _ _ _ _ = error "Basics.nfChoice: no ID"
 -- the normal forms of its alternatives
 nfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
 nfChoices _      (ID _)       _  = error "Basics.nfChoices: ID"
-nfChoices cont i@(FreeID _)   xs = cont (choicesCons i xs)
-nfChoices cont i@(Narrowed _) xs = choicesCons i (map (cont $!!) xs)
+nfChoices cont i@(FreeID _ _)   xs = cont (choicesCons i xs)
+nfChoices cont i@(Narrowed _ _) xs = choicesCons i (map (cont $!!) xs)
 
 
 -- Auxiliaries for $##
@@ -178,7 +178,7 @@ nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ID"
 
 nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
 nfChoicesIO _      (ID _)     _  = error "Basics.nfChoicesIO: ID"
-nfChoicesIO cont i@(FreeID _) xs = lookupChoiceID i >>= choose
+nfChoicesIO cont i@(FreeID _ _) xs = lookupChoiceID i >>= choose
   where
   choose (ChooseN c _, _) = cont $!< (xs !! c)
   choose (LazyBind cs, _) = do
@@ -186,7 +186,7 @@ nfChoicesIO cont i@(FreeID _) xs = lookupChoiceID i >>= choose
     cont (guardCons cs (choicesCons i xs))
   choose (NoChoice   , _) = cont (choicesCons i xs) -- TODO replace i with j?
   choose c                = error $ "Basics.nfChoicesIO.choose: " ++ show c
-nfChoicesIO cont i@(Narrowed _) xs = cont (choicesCons i xs)
+nfChoicesIO cont i@(Narrowed  _ _) xs = cont (choicesCons i xs)
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs
 --   cont (choicesCons i xs)
@@ -293,13 +293,13 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
 -- TODO: use unboxed int
 
 matchInteger :: NonDet a => [(Int,a)] -> C_Integer -> a
-matchInteger rules (C_Neg nat)              = 
-  matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat 
+matchInteger rules (C_Neg nat)              =
+  matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat
 matchInteger rules C_Zero                   = maybe failCons id $ lookup 0 rules
 matchInteger rules (C_Pos nat)              = matchNat (filter ((>0).fst) rules) nat
-matchInteger rules (Choice_C_Integer i l r) = 
+matchInteger rules (Choice_C_Integer i l r) =
   narrow i (matchInteger rules l) (matchInteger rules r)
-matchInteger rules (Choices_C_Integer i cs) = 
+matchInteger rules (Choices_C_Integer i cs) =
   narrows i $ map (matchInteger rules) cs
 matchInteger rules Fail_C_Integer           = failCons
 matchInteger rules (Guard_C_Integer cs int) = guardCons cs (matchInteger rules int)
@@ -320,7 +320,7 @@ halfKey =  mapFst (`div` 2)
 
 
 mapFst :: (a -> b) -> (a,c) -> (b,c)
-mapFst f (a,b) = (f a,b)    
+mapFst f (a,b) = (f a,b)
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -359,7 +359,7 @@ instance NonDet C_Success where
   try x = Val x
 
 instance Generable C_Success where
-  generate s = Choices_C_Success (freeID s) [C_Success]
+  generate s = Choices_C_Success (freeID [0] s) [C_Success]
 
 instance NormalForm C_Success where
   ($!!) cont C_Success = cont C_Success
@@ -385,14 +385,14 @@ instance Unifiable C_Success where
   (=.<=) _ _ = Fail_C_Success
   bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
   bind i (Choice_C_Success j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Success j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Success j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Success j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Success = [Unsolvable]
   bind i (Guard_C_Success cs e) = cs ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Success j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Success j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Success j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Success = [Unsolvable]
   lazyBind i (Guard_C_Success cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -439,7 +439,7 @@ instance NonDet C_Integer where
 
 
 instance Generable C_Integer where
-  generate s = Choices_C_Integer (freeID s) [(C_Neg (generate (leftSupply s))),C_Zero,(C_Pos (generate (leftSupply s)))]
+  generate s = Choices_C_Integer (freeID [1,0,1] s) [(C_Neg (generate (leftSupply s))),C_Zero,(C_Pos (generate (leftSupply s)))]
 
 
 instance NormalForm C_Integer where
@@ -481,16 +481,16 @@ instance Unifiable C_Integer where
   bind i C_Zero = ((i :=: (ChooseN 1 0)):(concat []))
   bind i (C_Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_C_Integer j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Integer j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Integer j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Integer j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Integer j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Integer = [Unsolvable]
   bind i (Guard_C_Integer cs e) = cs ++ (bind i e)
   lazyBind i (C_Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i C_Zero = [(i :=: (ChooseN 1 0))]
   lazyBind i (C_Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_C_Integer j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Integer j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Integer j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Integer j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Integer j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Integer = [Unsolvable]
   lazyBind i (Guard_C_Integer cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -535,7 +535,7 @@ instance NonDet C_Nat where
 
 
 instance Generable C_Nat where
-  generate s = Choices_C_Nat (freeID s) [C_IHi,(C_O (generate (leftSupply s))),(C_I (generate (leftSupply s)))]
+  generate s = Choices_C_Nat (freeID [0,1,1] s) [C_IHi,(C_O (generate (leftSupply s))),(C_I (generate (leftSupply s)))]
 
 
 instance NormalForm C_Nat where
@@ -577,16 +577,16 @@ instance Unifiable C_Nat where
   bind i (C_O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
   bind i (C_I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_C_Nat j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Nat j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Nat j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Nat j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Nat = [Unsolvable]
   bind i (Guard_C_Nat cs e) = cs ++ (bind i e)
   lazyBind i C_IHi = [(i :=: (ChooseN 0 0))]
   lazyBind i (C_O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (C_I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_C_Nat j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Nat j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Nat j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Nat j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Nat = [Unsolvable]
   lazyBind i (Guard_C_Nat cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -640,13 +640,13 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_Func j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_Func j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_Func j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_Func j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_Func = [Unsolvable]
   bind i (Guard_Func cs e) = cs ++ (bind i e)
   lazyBind i (Choice_Func j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_Func j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_Func j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_Func j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_Func = [Unsolvable]
   lazyBind i (Guard_Func cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -732,13 +732,13 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_IO j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_IO j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_IO j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_IO j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_IO = [Unsolvable]
   bind i (Guard_C_IO cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_IO j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_IO j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_IO j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_IO j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -841,13 +841,13 @@ instance Unifiable (PrimData t0) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_PrimData j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_PrimData j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_PrimData j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_PrimData j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_PrimData = [Unsolvable]
   bind i (Guard_PrimData cs e) = cs ++ (bind i e)
   lazyBind i (Choice_PrimData j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_PrimData j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_PrimData j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_PrimData j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_PrimData = [Unsolvable]
   lazyBind i (Guard_PrimData cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -873,8 +873,8 @@ showsChoice _ _ _ _ = error "showsChoice with no ID"
 
 showsChoices :: Show a => Int -> ID -> [a] -> ShowS
 showsChoices d i@(ID _) _        = error "showsChoices with ID"
-showsChoices d i@(FreeID _) _    = shows i
-showsChoices d i@(Narrowed _) xs =
+showsChoices d i@(FreeID _ _) _  = shows i
+showsChoices d i@(Narrowed _ _) xs =
   showString "[?" . shows i .
   foldr (.) id (zipWith (\n x -> showString ", " . shows n . showString "->" . showsPrec d x) [0 ..] xs) .
   showChar ']'
@@ -997,7 +997,7 @@ printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
     choose (NoChoice   , j) = cont $ choicesCons j xs
 
-printValsDFS' fb cont (Choices i xs) = lookupChoiceID i >>= choose
+printValsDFS' fb cont (Choices i@(Narrowed pns _) xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
@@ -1009,16 +1009,15 @@ printValsDFS' fb cont (Choices i xs) = lookupChoiceID i >>= choose
 --  TODO: reactivate the implementation above, when performant
      if fb
        then do
-         foldr1 (>>) $ zipWith (newChoice True) [0 ..] xs
+         foldr1 (>>) $ zipWith3 (newChoice True) [0 ..] xs pns
          setChoice i NoChoice
-       else foldr1 (>>) $ zipWithButLast (newChoice True) (newChoice False) [0 ..] xs
+       else foldr1 (>>) $ zipWithButLast3 (newChoice True) (newChoice False) [0 ..] xs pns
       where
 
-       newChoice fbt n a = do
-         setChoice i (ChooseN n (-1)) -- was errChoice
+       newChoice fbt n a pn = do
+         setChoice i $ ChooseN n pn
          printValsDFS fbt cont a
 
-       errChoice = error "propagation number used within narrowed Choice"
     choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
 
 printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
@@ -1052,14 +1051,14 @@ processLazyBind False cs i xs search = do
   setChoice i NoChoice
   search $ guardCons cs $ choicesCons i xs
 
-zipWithButLast :: (a -> b -> c) -> (a -> b -> c) -> [a] -> [b] -> [c]
-zipWithButLast _ _     []     _      = []
-zipWithButLast _ _      _     []     = []
-zipWithButLast _ lastf (a:[]) (b:_ ) = lastf a b : []
-zipWithButLast _ lastf (a:_ ) (b:[]) = lastf a b : []
-zipWithButLast f lastf (a:as) (b:bs) = f a b : zipWithButLast f lastf as bs
-
-
+zipWithButLast3 :: (a -> b -> c -> d) -> (a -> b -> c -> d) -> [a] -> [b] -> [c] -> [d]
+zipWithButLast3 _ _     []     _      _      = []
+zipWithButLast3 _ _      _     []     _      = []
+zipWithButLast3 _ _      _     _      []     = []
+zipWithButLast3 _ lastf (a:[]) (b:_ ) (c:_)  = lastf a b c : []
+zipWithButLast3 _ lastf (a:_ ) (b:[]) (c:_)  = lastf a b c : []
+zipWithButLast3 _ lastf (a:_ ) (b:_ ) (c:[]) = lastf a b c : []
+zipWithButLast3 f lastf (a:as) (b:bs) (c:cs) = f a b c : zipWithButLast3 f lastf as bs cs
 
 -- Attempt to gain more abstraction during search
 
@@ -1332,13 +1331,13 @@ computeWithPar mainexp = do
 
 type SetOfChoices = Data.Map.Map Integer Choice
 
-lookupChoiceRaw' :: Monad m => ID ->  StateT SetOfChoices m Choice 
+lookupChoiceRaw' :: Monad m => ID ->  StateT SetOfChoices m Choice
 lookupChoiceRaw' r = do
    set <- get
    maybe (return NoChoice) return (Data.Map.lookup (mkInt r) set)
 
-lookupChoice' :: Monad m => ID ->  StateT SetOfChoices m Choice   
-lookupChoice' r = fst `liftM` lookupChoiceID' r 
+lookupChoice' :: Monad m => ID ->  StateT SetOfChoices m Choice
+lookupChoice' r = fst `liftM` lookupChoiceID' r
 lookupID' :: Monad m => ID ->  StateT SetOfChoices m ID
 lookupID' r = snd `liftM`lookupChoiceID' r
 
@@ -1347,28 +1346,28 @@ lookupChoiceID' r = do
   cr <- lookupChoiceRaw' r
   case cr of
    BoundTo j _ -> lookupChoiceID' j
-   BindTo j -> do 
-     (cj,k) <- lookupChoiceID' j  
+   BindTo j -> do
+     (cj,k) <- lookupChoiceID' j
      case cj of
        ChooseN n pn -> do
           propagateBind' r j pn
           return ((ChooseN n pn),k)
        c            -> return (c,k)
-   c        -> return (c,r)    
-   
-setChoiceRaw' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()  
+   c        -> return (c,r)
+
+setChoiceRaw' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()
 setChoiceRaw' r c = modify (Data.Map.insert (mkInt r) c)
 
 setChoice' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()
-setChoice' r (BindTo j) | mkInt r == mkInt j = return () 
-setChoice' r c =  lookupChoice' r >>= unchain 
+setChoice' r (BindTo j) | mkInt r == mkInt j = return ()
+setChoice' r c =  lookupChoice' r >>= unchain
  where
    unchain (BindTo k) = do
      setChoice' k c
      case c of
        (ChooseN _ pNum) -> propagateBind' r k pNum
        _                -> return ()
-   unchain (BoundTo k _) = 
+   unchain (BoundTo k _) =
      error "setChoice'.unchain: bound Variable should not be rebound"
    unchain oldChoice =
      case c of
@@ -1376,10 +1375,10 @@ setChoice' r c =  lookupChoice' r >>= unchain
          lastId <- lookupID' j
          if mkInt lastId == mkInt r
             then return ()
-            else setChoiceRaw' r c     
+            else setChoiceRaw' r c
        _ -> setChoiceRaw' r c
-                 
-propagateBind' i j pn = do  
+
+propagateBind' i j pn = do
   zipWithM_ (\childr childj -> setChoice' childr (BindTo j))
             (nextNIDs i pn) (nextNIDs j pn)
   setChoiceRaw' i (BoundTo j pn)
@@ -1394,7 +1393,7 @@ solves' (c:cs) = solve c >> solves' cs
      -- store lazy binds for later use
      choose (LazyBind  _) NoChoice      = setChoice' i cc
      -- solve stored lazy binds when they are needed
-     choose _             (LazyBind cs) = setChoice' i cc >> solves' cs 
+     choose _             (LazyBind cs) = setChoice' i cc >> solves' cs
      choose (LazyBind cs) _             = solves' cs
      choose (BindTo j)    ci            = lookupChoice' j >>= check i j ci
      choose c             NoChoice      = setChoice' i c
@@ -1402,13 +1401,13 @@ solves' (c:cs) = solve c >> solves' cs
 
      -- Check whether i can be bound to j and do so if possible
      check :: MonadPlus m => ID -> ID -> Choice -> Choice -> StateT SetOfChoices m ()
-     check i j _        (LazyBind cs)          
+     check i j _        (LazyBind cs)
        = setChoice' j (BindTo i) >> solves' cs
-     check i j NoChoice _                      
+     check i j NoChoice _
        = setChoice' i (BindTo j)
-     check i j _        NoChoice               
+     check i j _        NoChoice
        = setChoice' j (BindTo i)
-     check i j (ChooseN iN ip) (ChooseN jN jp) = 
+     check i j (ChooseN iN ip) (ChooseN jN jp) =
        if iN == jN && ip == jp
        then solves' (zipWith (\childi childj -> childi :=: BindTo childj)
                      (nextNIDs i ip) (nextNIDs j ip))
@@ -1418,35 +1417,35 @@ solves' (c:cs) = solve c >> solves' cs
    where
     chooseCC ChooseLeft  = solves' lcs
     chooseCC ChooseRight = solves' rcs
-    chooseCC NoChoice    = setChoice' i ChooseLeft >> solves' lcs 
-                           `mplus` 
-                           setChoice' i ChooseRight >> solves' rcs 
+    chooseCC NoChoice    = setChoice' i ChooseLeft >> solves' lcs
+                           `mplus`
+                           setChoice' i ChooseRight >> solves' rcs
     chooseCC c           = error $ "solves'.solve.chooseCC: " ++ show c
-  solve (ConstraintChoices i css) = lookupChoice' i >>= chooseCCs 
+  solve (ConstraintChoices i css) = lookupChoice' i >>= chooseCCs
    where
     chooseCCs (ChooseN c _) = solves' (css !! c)
     chooseCCs NoChoice      = msum $ zipWith mkChoice [0 ..] css
     chooseCCs c             = error $ "ID.solve.chooseCCs: " ++ show c
 
     mkChoice n cs =  setChoice' i (ChooseN n (-1)) >> solves' cs
- 
+
 
 
 
 -- Collect results of a non-deterministic computation in a monadic structure.
 
 searchMPlus :: (NormalForm a, MonadPlus m) => a -> m a
-searchMPlus x = evalStateT (searchMPlus' return (id $!! x)) Data.Map.empty 
+searchMPlus x = evalStateT (searchMPlus' return (id $!! x)) Data.Map.empty
 
-searchMPlus' :: (NormalForm a, MonadPlus m) => 
-                (a -> StateT SetOfChoices m b) 
-                -> a 
+searchMPlus' :: (NormalForm a, MonadPlus m) =>
+                (a -> StateT SetOfChoices m b)
+                -> a
                 -> StateT SetOfChoices m b
 searchMPlus' cont = searchMPlus'' cont . try
 
-searchMPlus'' :: (NormalForm a, MonadPlus m) => 
-                (a -> StateT SetOfChoices m b) 
-                -> Try a 
+searchMPlus'' :: (NormalForm a, MonadPlus m) =>
+                (a -> StateT SetOfChoices m b)
+                -> Try a
                 -> StateT SetOfChoices m b
 searchMPlus'' _   Fail           = mzero
 searchMPlus'' cont (Val v)        = searchNF searchMPlus' cont v
@@ -1455,26 +1454,26 @@ searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
     choose ChooseLeft  = searchMPlus'' cont (try x)
     choose ChooseRight = searchMPlus'' cont (try y)
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
-                         `mplus` 
+                         `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
 searchMPlus'' cont (Choices i branches) = lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    choose NoChoice      = 
-      msum $ zipWith (\n c -> pick n >> searchMPlus' cont c) [0..] branches 
-    choose (LazyBind cs) = processLazyBind' i cont cs branches      
+    choose NoChoice      =
+      msum $ zipWith (\n c -> pick n >> searchMPlus' cont c) [0..] branches
+    choose (LazyBind cs) = processLazyBind' i cont cs branches
     pick c = setChoice' i (ChooseN c (-1))
 searchMPlus'' cont (Frees i branches) = lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
     choose NoChoice      = cont $ choicesCons i branches
     choose (LazyBind cs) = processLazyBind' i cont cs branches
-searchMPlus'' cont  (Guard cs e) = 
+searchMPlus'' cont  (Guard cs e) =
   solves' cs >> searchMPlus' cont e
-  
+
 
 processLazyBind' i cont cs branches = do
-  setChoice' i NoChoice  
+  setChoice' i NoChoice
   searchMPlus' cont (guardCons cs (choicesCons i branches))
 ----------------------------------------------------------------------
 -- Auxillary Functions

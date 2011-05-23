@@ -94,18 +94,18 @@ data ID
     -- |Identifier for a choice introduced by the use of the (?) operator
   = ID Ref
     -- |Identifier for a choice for a free variable
-  | FreeID IDSupply
+  | FreeID [Int] IDSupply
     -- |Identifier for a choice for a narrowed variable (free before)
-  | Narrowed IDSupply
+  | Narrowed [Int] IDSupply
     deriving Eq
 
 instance Show ID where
   show (ID i)       = "?" ++ show i
-  show (FreeID i)   = "_x" ++ show i
-  show (Narrowed i) = "Narrowed" ++ show i
+  show (FreeID _ i) = "_x" ++ show i
+  show (Narrowed _ i) = "Narrowed" ++ show i
 
 -- |Construct an 'ID' for a free variable from an 'IDSupply'
-freeID :: IDSupply -> ID
+freeID :: [Int] -> IDSupply -> ID
 freeID = FreeID
 
 -- |Construct an 'ID' for a binary choice from an 'IDSupply'
@@ -114,31 +114,31 @@ thisID s = ID (thisRef s)
 
 -- |Retrieve the 'Ref' from an 'ID'
 ref :: ID -> Ref
-ref (ID       r) = r
-ref (FreeID   s) = thisRef s
-ref (Narrowed s) = thisRef s
+ref (ID       r)   = r
+ref (FreeID _ s)   = thisRef s
+ref (Narrowed _ s) = thisRef s
 
 -- |Retrieve the 'IDSupply' from an free or narrowed 'ID'
 supply :: ID -> IDSupply
-supply (ID       _) = error "ID.supply: ID"
-supply (FreeID   s) = s
-supply (Narrowed s) = s
+supply (ID       _)   = error "ID.supply: ID"
+supply (FreeID _ s)   = s
+supply (Narrowed _ s) = s
 
 -- |Retrieve the left child 'ID' from an free 'ID'
 leftID :: ID -> ID
-leftID  (FreeID s) = freeID (leftSupply s)
-leftID  _          = error "ID.leftID: no FreeID"
+leftID  (FreeID _ s) = freeID [] (leftSupply s)
+leftID  _            = error "ID.leftID: no FreeID"
 
 -- |Retrieve the right child 'ID' from an free 'ID'
 rightID :: ID -> ID
-rightID (FreeID s) = freeID (rightSupply s)
-rightID  _         = error "ID.rightID: no FreeID"
+rightID (FreeID _ s) = freeID [] (rightSupply s)
+rightID  _           = error "ID.rightID: no FreeID"
 
 -- |Convert a free or narrowed 'ID' into a narrowed one
 narrowID :: ID -> ID
-narrowID (ID _)         = error "ID.narrowID: ID"
-narrowID (FreeID s)     = Narrowed s
-narrowID n@(Narrowed _) = n
+narrowID (ID _)           = error "ID.narrowID: ID"
+narrowID (FreeID pns s)   = Narrowed pns s
+narrowID n@(Narrowed _ _) = n
 
 -- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
@@ -146,15 +146,15 @@ mkInt = mkIntRef . ref
 
 -- |Ensure that an 'ID' is not an 'ID' for a binary choice
 ensureNotID :: ID -> ID
-ensureNotID (ID _)         = error "ensureNotID: ID"
-ensureNotID x@(FreeID _)   = x
-ensureNotID x@(Narrowed _) = x
+ensureNotID (ID _)           = error "ensureNotID: ID"
+ensureNotID x@(FreeID _ _)   = x
+ensureNotID x@(Narrowed _ _) = x
 
 -- |Ensure that an 'ID' is an 'ID' for a free variable
 ensureFreeID :: ID -> ID
-ensureFreeID (ID _)       = error "ensureFreeID: ID"
-ensureFreeID x@(FreeID _) = x
-ensureFreeID (Narrowed _) = error "ensureFreeID: Narrowed"
+ensureFreeID (ID _)         = error "ensureFreeID: ID"
+ensureFreeID x@(FreeID _ _) = x
+ensureFreeID (Narrowed _ _) = error "ensureFreeID: Narrowed"
 
 -- ---------------------------------------------------------------------------
 -- Choice Management
@@ -306,7 +306,7 @@ propagateBind x y cnt = do
   zipWithM_ (\a b -> setChoice a (BindTo b))
     (nextNIDs xFreeNarrowed cnt) (nextNIDs yFree cnt)
   where
-    xFreeNarrowed = ensureNotID x
+    xFreeNarrowed = ensureFreeID x -- ensureNotID x
     yFree = ensureFreeID y
 
 -- |Reset a free variable to its former 'Choice' and reset its children if
@@ -331,7 +331,7 @@ nextNIDs = nextNIDsFromSupply . supply
 
 -- Compute a list of the next n free 'ID's for a given 'IDSupply' s
 nextNIDsFromSupply :: IDSupply -> Int -> [ID]
-nextNIDsFromSupply s n = map freeID $ nextNSupplies s n
+nextNIDsFromSupply s n = map (freeID []) $ nextNSupplies s n
 
 -- |Compute the next n independent 'IDSupply's for a given 'IDSupply' s
 nextNSupplies :: IDSupply -> Int -> [IDSupply]

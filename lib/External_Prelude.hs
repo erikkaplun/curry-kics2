@@ -94,8 +94,7 @@ instance NonDet C_Int where
   try x = Val x
 
 instance Generable C_Int where
---   generate s = C_CurryInt (generate s)
-  generate s = Choices_C_Int (freeID s) [C_CurryInt (generate (leftSupply s))]
+  generate s = Choices_C_Int (freeID [1] s) [(C_CurryInt (generate (leftSupply s)))]
 
 instance NormalForm C_Int where
   ($!!) cont x@(C_Int _) = cont x
@@ -133,15 +132,15 @@ instance Unifiable C_Int where
   bind i (C_Int      x2) = (i :=: ChooseN 0 1) : bind (leftID i) (primint2curryint x2)
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Int j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = cs ++ (bind i e)
   lazyBind i (C_Int      x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primint2curryint x2))]
   lazyBind i (C_CurryInt x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x2)]
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Int j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Int j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -259,13 +258,13 @@ instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Float j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Float = [Unsolvable]
   bind i (Guard_C_Float cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Float j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Float j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -347,13 +346,13 @@ instance Unifiable C_Char where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Char = [Unsolvable]
   bind i (Guard_C_Char cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Char j@(FreeID _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Char j@(Narrowed _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
