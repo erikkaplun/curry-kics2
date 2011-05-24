@@ -306,8 +306,8 @@ propagateBind x y cnt = do
   zipWithM_ (\a b -> setChoice a (BindTo b))
     (nextNIDs xFreeNarrowed cnt) (nextNIDs yFree cnt)
   where
-    xFreeNarrowed = ensureFreeID x -- ensureNotID x
-    yFree = ensureFreeID y
+    xFreeNarrowed = ensureNotID x
+    yFree = ensureNotID y
 
 -- |Reset a free variable to its former 'Choice' and reset its children if
 --  the binding has already been propagated
