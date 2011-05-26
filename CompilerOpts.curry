@@ -2,10 +2,10 @@
 --- Compiler options for the ID-based curry compiler
 ---
 --- @author Fabian Reck, Bjoern Peemoeller
---- @version April 2011
+--- @version May 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
-  ( Options (..), Dump (..), defaultOptions, compilerOpts
+  ( Options (..), Verbosity (..), DumpLevel (..), defaultOptions, compilerOpts
   ) where
 
 import FileGoodies (splitPath)
@@ -18,18 +18,25 @@ import GetOpt
 import Installation (compilerName, majorVersion, minorVersion, compilerDate)
 
 type Options =
-  { optHelp               :: Bool     -- show usage
-  , optVersion            :: Bool     -- show version
-  , optVerbosity          :: Int      -- verbosity level (0 = quiet, 1 = + status, 2 = + frontend, 3 = + nd-analysis, 4 = + dump-all)
-  , optForce              :: Bool     -- force recompilation
-  , optImportPaths        :: [String] -- directories searched for imports
-  , optOutputSubdir       :: String   -- subdirectory for compiled modules
-  , optDetOptimization    :: Bool     -- optimization for deterministic functions
-  , optDump               :: [Dump]   -- dump intermediate results
-  , optXNoImplicitPrelude :: Bool
+  { optHelp               :: Bool        -- show usage and exit
+  , optVersion            :: Bool        -- show version and exit
+  , optVerbosity          :: Verbosity   -- verbosity level
+  , optForce              :: Bool        -- force recompilation
+  , optImportPaths        :: [String]    -- directories searched for imports
+  , optOutputSubdir       :: String      -- subdirectory for compiled modules
+  , optDetOptimization    :: Bool        -- optimization for deterministic functions
+  , optDump               :: [DumpLevel] -- dump intermediate results
+  , optXNoImplicitPrelude :: Bool        -- don't implicitly import Prelude
   }
 
-data Dump
+data Verbosity
+  = VerbQuiet    -- be quiet
+  | VerbStatus   -- show compilation status
+  | VerbFrontend -- additionally show frontend infos
+  | VerbAnalysis -- additionally show analysis infos
+  | VerbDetails  -- additionally show details
+
+data DumpLevel
   = DumpFlat        -- dump flat curry
   | DumpLifted      -- dump flat curry after case lifting
   | DumpRenamed     -- dump renamed flat curry
@@ -37,15 +44,15 @@ data Dump
   | DumpTypeDecls   -- dump transformed type declarations
   | DumpAbstractHs  -- dump abstract Haskell
 
-allDumps :: [Dump]
-allDumps = [ DumpFlat, DumpLifted, DumpRenamed
+allDumps :: [DumpLevel]
+allDumps = [ DumpFlat    , DumpLifted   , DumpRenamed
            , DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
 
 defaultOptions :: Options
 defaultOptions =
   { optHelp               = False
   , optVersion            = False
-  , optVerbosity          = 1
+  , optVerbosity          = VerbStatus
   , optForce              = False
   , optImportPaths        = []
   , optOutputSubdir       = "/.curry/kics2/"
@@ -54,13 +61,13 @@ defaultOptions =
   , optXNoImplicitPrelude = False
   }
 
-parseVerbosity :: String -> Int -> Int
+parseVerbosity :: String -> Verbosity -> Verbosity
 parseVerbosity s v = case s of
-  "0" -> 0
-  "1" -> 1
-  "2" -> 2
-  "3" -> 3
-  "4" -> 4
+  "0" -> VerbQuiet
+  "1" -> VerbStatus
+  "2" -> VerbFrontend
+  "3" -> VerbAnalysis
+  "4" -> VerbDetails
   _   -> v
 
 options :: [OptDescr (Options -> Options)]
@@ -76,7 +83,7 @@ options =
         parseVerbosity arg (opts -> optVerbosity) | opts }) "<n>")
       "set verbosity (0 = quiet, 1 = + status, 2 = + frontend, 3 = + nd-analysis, 4 = + dump-all)"
   , Option ['q'] ["quiet"]
-      (NoArg (\opts -> { optVerbosity := 0    | opts }))
+      (NoArg (\opts -> { optVerbosity := VerbQuiet | opts }))
       "run in quiet mode"
   , Option ['f'] ["force"]
       (NoArg (\opts -> { optForce     := True | opts }))
@@ -116,8 +123,7 @@ options =
         nub (DumpRenamed : opts -> optDump) | opts }))
       "dump renamed abstract Haskell representation"
   , Option [] ["dump-all"]
-      (NoArg (\opts -> { optDump := [DumpFlat, DumpLifted, DumpRenamed
-        , DumpFunDecls, DumpTypeDecls, DumpAbstractHs] | opts }))
+      (NoArg (\opts -> { optDump := allDumps | opts }))
       "dump all intermediate results"
   , Option ['x'] ["x-no-implicit-prelude"]
       (NoArg (\opts -> { optXNoImplicitPrelude := True | opts }))
