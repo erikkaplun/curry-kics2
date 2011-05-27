@@ -256,8 +256,10 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
     [(basics "generate", simpleRule [PVar (1,"s")] (genBody (Var (1, "s"))))]
 
   genBody idSupp =
-    applyF choicesConsName [(applyF (basics "freeID") [idSupp]), list2ac $
-      map (\(FC.Cons qn _ _ texps) -> applyF qn (consArgs2gen idSupp (length texps))) cdecls]
+    applyF choicesConsName [(applyF (basics "freeID") [arities, idSupp]), list2ac $
+      map (\(FC.Cons qn arity _ texps) -> applyF qn (consArgs2gen idSupp arity)) cdecls]
+
+  arities = list2ac $ map (intc . consArity) cdecls
 
   consArgs2gen idSupp n = map (applyF (basics "generate") . (:[])) $ mkSuppList n idSupp
 
@@ -412,8 +414,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   bindFreeRule funcName = (funcName,
     simpleRule
       [ PVar (1,"i")
-      , PComb choicesConsName [PAs (2,"j") (PComb (basics "FreeID") [PVar (3,"_")])
-      , PVar (4,"xs")]
+      , PComb choicesConsName [PAs (2,"j") (PComb (basics "FreeID") [PVar (3,"_"), PVar (4, "_")])
+      , PVar (5,"_")]
       ]
       ( list2ac [ applyF (basics ":=:")
                   [ Var (1,"i")
@@ -427,14 +429,14 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   bindNarrowedRule funcName = (funcName,
     simpleRule
       [ PVar (1,"i")
-      , PComb choicesConsName [PAs (2,"j") (PComb (basics "Narrowed") [PVar (3,"_")])
-      , PVar (4,"xs")]
+      , PComb choicesConsName [PAs (2,"j") (PComb (basics "Narrowed") [PVar (3,"_"), PVar (4,"_")])
+      , PVar (5,"xs")]
       ]
       ( list2ac [ applyF (basics "ConstraintChoices")
                   [ Var (2,"j")
                   , applyF (pre "map")
                      [applyF funcName [Var (1,"i")]
-                     , Var (4,"xs")]
+                     , Var (5,"xs")]
                   ]
                 ]
       ))

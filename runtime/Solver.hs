@@ -60,14 +60,14 @@ solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= chooseCC
       (mkSolution (setUnsetChoice i ChooseLeft ) >>> solves lcs)
       (mkSolution (setUnsetChoice i ChooseRight) >>> solves rcs)
     chooseCC c           = error $ "ID.solve.chooseCC: " ++ show c
-solve (ConstraintChoices i css) = lookupChoice i >>= chooseCCs
+solve (ConstraintChoices i@(Narrowed pns _) css) = lookupChoice i >>= chooseCCs
   where
     chooseCCs (ChooseN c _) = solves (css !! c)
     chooseCCs NoChoice      = return $
-      ChoicesST (return ()) $ zipWith mkChoice [0 ..] css
+      ChoicesST (return ()) $ zipWith3 mkChoice [0 ..] css pns
     chooseCCs c           = error $ "ID.solve.chooseCCs: " ++ show c
 
-    mkChoice n cs = mkSolution (setUnsetChoice i (ChooseN n (-1))) >>> solves cs
+    mkChoice n cs pn = mkSolution (setUnsetChoice i (ChooseN n pn)) >>> solves cs
 solve (i :=: cc) = lookupChoice i >>= choose cc
   where
   -- 1st param: the Choice which should be stored for i

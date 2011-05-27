@@ -26,6 +26,7 @@ import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import qualified FlatCurry2Types as FC2T (fcyTypes2abs)
 import LiftCase (liftCases)
+import Message (putErrLn, showStatus, showAnalysis, showDetail)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, funcPrefix
@@ -57,23 +58,22 @@ build opts fn = do
     then return (Just fn)
     else lookupFileInPath fn [".curry", ".lcurry"] ["."]
   case mbFn of
-    Nothing -> putStrLn $ "Could not find file " ++ fn
+    Nothing -> putErrLn $ "Could not find file " ++ fn
     Just f -> do
       (mods, errs) <- deps opts f
       if null errs
-        then foldIO (makeModule mods)
-            initState (zip mods [1 .. ]) >> done
-        else mapIO_ putStrLn errs
+        then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
+        else mapIO_ putErrLn errs
         where initState = { compOptions := opts | defaultState }
 
-makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int) -> IO State
-makeModule mods state mod@((_, (fn, fcy)), _) =
-  if (opts -> optForce)
-  then compileModule modCnt state mod
-  else smake (destFile (opts -> optOutputSubdir) fn)
-             depFiles
-             (compileModule modCnt state mod)
-             (loadAnalysis modCnt state mod)
+makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
+           -> IO State
+makeModule mods state mod@((_, (fn, fcy)), _)
+  | opts -> optForce  = compileModule modCnt state mod
+  | otherwise         = smake (destFile (opts -> optOutputSubdir) fn)
+                              depFiles
+                              (compileModule modCnt state mod)
+                              (loadAnalysis modCnt state mod)
   where
     depFiles = fn : map (\i -> destFile (opts -> optOutputSubdir)
                                $ fst $ fromJust $ lookup i mods) imps
@@ -83,7 +83,7 @@ makeModule mods state mod@((_, (fn, fcy)), _) =
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  info 1 opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
+  showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (analysis, types) <- readQTermFile ndaFile
   return { ndResult := (state -> ndResult) `plusFM` analysis
          , typeMap  := (state ->  typeMap) `plusFM` types
@@ -93,44 +93,44 @@ loadAnalysis total state ((mid, (fn, _)), current) = do
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
-  info 1 opts $ compMessage current total ("Compiling " ++ mid) fn destination
+  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn destination
 
   let fcy' = filterPrelude opts fcy
-  dumpLevel DumpFlat opts fcyName (show fcy')
+  dump DumpFlat opts fcyName (show fcy')
 
-  status opts "Lifting case expressions"
+  showDetail opts "Lifting case expressions"
   let pLifted = liftCases True fcy'
-  dumpLevel DumpLifted opts liftedName (show pLifted)
+  dump DumpLifted opts liftedName (show pLifted)
 
-  status opts "Renaming symbols"
+  showDetail opts "Renaming symbols"
   let renamed@(Prog _ _ ts _ _)  = rename pLifted
-  dumpLevel DumpRenamed opts renamedName (show renamed)
+  dump DumpRenamed opts renamedName (show renamed)
 
-  status opts "Transforming functions"
+  showDetail opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
   writeQTermFileInDir (analysisFile (opts -> optOutputSubdir) fn)
                       ((state' -> ndResult), (state' -> typeMap))
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
-  dumpLevel DumpFunDecls opts funDeclName (show ahsFun)
+  dump DumpFunDecls opts funDeclName (show ahsFun)
 
-  status opts "Transforming type declarations"
+  showDetail opts "Transforming type declarations"
   let typeDecls = FC2T.fcyTypes2abs ts
-  dumpLevel DumpTypeDecls opts typeDeclName (show typeDecls)
+  dump DumpTypeDecls opts typeDeclName (show typeDecls)
 
-  status opts "Combining to Abstract Haskell"
+  showDetail opts "Combining to Abstract Haskell"
   let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls funs ops)
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
-  dumpLevel DumpAbstractHs opts abstractHsName (show ahsPatched)
+  dump DumpAbstractHs opts abstractHsName (show ahsPatched)
 
-  status opts "Integrating external declarations"
+  showDetail opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  status opts $ "Generating Haskell module " ++ destination
+  showDetail opts $ "Generating Haskell module " ++ destination
   writeFileInDir destination integrated
 
-  status opts $ "Writing auxiliary info file " ++ funcInfo
+  showDetail opts $ "Writing auxiliary info file " ++ funcInfo
   writeQTermFileInDir funcInfo (extractFuncInfos funs)
 
   return state'
@@ -170,9 +170,8 @@ patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
 
 compMessage :: Int -> Int -> String -> String -> String -> String
 compMessage curNum maxNum msg fn dest
-  = '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
-    ++ ' ' : msg
-    ++ " ( " ++ fn ++ ", " ++ dest ++ " )"
+  =  '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
+  ++ ' ' : msg  ++ " ( " ++ fn ++ ", " ++ dest ++ " )"
     where
       sCurNum = show curNum
       sMaxNum = show maxNum
@@ -180,10 +179,9 @@ compMessage curNum maxNum msg fn dest
       fill n s = replicate (n - length s) ' ' ++ s
 
 filterPrelude :: Options -> Prog -> Prog
-filterPrelude opts p@(Prog m imps td fd od) =
-  if (opts -> optXNoImplicitPrelude)
-    then Prog m (filter (/= prelude) imps) td fd od
-    else p
+filterPrelude opts p@(Prog m imps td fd od)
+  | opts -> optXNoImplicitPrelude = Prog m (filter (/= prelude) imps) td fd od
+  | otherwise                     = p
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
@@ -198,11 +196,11 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
 -- empty String
 lookupExternals :: Options -> String -> IO String
 lookupExternals opts fn = do
-  info 4 opts $ "Looking for external file: " ++ extName
+  showDetail opts $ "Looking for external file: " ++ extName
   exists <- doesFileExist extName
   if exists
-    then info 4 opts "External file found" >> readFile extName
-    else info 4 opts "No External file found" >> return ""
+    then showDetail opts "External file found" >> readFile extName
+    else showDetail opts "No External file found" >> return ""
     where extName = path </> externalModule ++ '_' : bareName <.> "hs"
           (path, file) = splitDirectoryBaseName fn
           bareName = stripSuffix file
@@ -219,17 +217,10 @@ splitExternals content = se (lines content) ([], [], []) where
     | otherwise              = (pragmas, imps, ln : decls)
       where (pragmas, imps, decls) = se lns res
 
--- Show an info message unless the quiet flag is set
-info :: Int -> Options -> String -> IO ()
-info level opts msg = unless (level > opts -> optVerbosity) $ putStrLn msg
-
-status :: Options -> String -> IO ()
-status opts msg = info 4 opts $ msg ++ " ..."
-
 -- Dump an intermediate result to a file
-dumpLevel :: Dump -> Options -> String -> String -> IO ()
-dumpLevel level opts file src = when (level `elem` opts -> optDump) $ do
-  info 4 opts ("Dumping " ++ file)
+dump :: DumpLevel -> Options -> String -> String -> IO ()
+dump level opts file src = when (level `elem` opts -> optDump) $ do
+  showDetail opts $ "Dumping " ++ file
   writeFileInDir (withPath (</> opts -> optOutputSubdir) file) src
 
 rename :: Prog -> Prog
@@ -409,7 +400,7 @@ transFunc f@(Func qn _ _ _ _) =
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
       getNDClass qn `bindM` \ndCl ->
-      liftIO (info 3 opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
+      liftIO (showAnalysis opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
       case ndCl of
         DFO ->
           -- create deterministic function
@@ -502,15 +493,15 @@ addUnifIntegerRule bs bs' =
   case bs of
    (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
    _                                 -> bs'
-  where addRule bs bs' rules =
-           case (bs,bs') of
-             (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
-               -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
-             -- TODO: magic number
-             _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
-                         (funcCall (basics,"matchInteger")
-                           [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
-                  : bs'
+  where
+    addRule bs bs' rules = case (bs,bs') of
+      (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
+        -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
+      -- TODO: magic number
+      _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
+                  (funcCall (basics,"matchInteger")
+                    [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
+          : bs'
 
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
