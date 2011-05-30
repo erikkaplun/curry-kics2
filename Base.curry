@@ -1,6 +1,9 @@
 module Base where
 
 data NDClass
-  = ND  -- non-deterministic function
-  | DHO -- deterministic higher-order function
-  | DFO -- deterministic first-order function
+  = D   -- deterministic function
+  | ND  -- non-deterministic function
+
+data HOClass
+ = FO   -- first order function or constructor
+ | HO   -- higher order function or constructor

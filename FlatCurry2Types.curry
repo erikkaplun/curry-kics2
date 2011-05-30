@@ -14,10 +14,12 @@ import FlatCurryGoodies
 import AbstractHaskell
 import AbstractHaskellGoodies
 import FlatCurry2AbstractHaskell
+import FiniteMap
 import List (intersperse)
 import Names
-  ( mkChoiceName, mkChoicesName, mkFailName, mkGuardName
-  , renameModule, unGenRename, unRenameModule)
+  ( mkChoiceName, mkChoicesName, mkFailName, mkGuardName, mkFoConsName
+  , mkHoConsName, renameModule, unGenRename, unRenameModule)
+import Analysis
 
 -- ---------------------------------------------------------------------------
 -- Generate code for user-defined types
@@ -25,16 +27,37 @@ import Names
 
 --- Translate a list of FlatCurry type declarations into the
 --- corresponding type and instance declarations for Haskell.
-fcyTypes2abs :: [FC.TypeDecl] -> [TypeDecl]
-fcyTypes2abs = concatMap genTypeDefinitions
+fcyTypes2abs :: HOResult -> [FC.TypeDecl] -> [TypeDecl]
+fcyTypes2abs hores = concatMap (genTypeDefinitions hores)
 
-genTypeDefinitions :: FC.TypeDecl -> [TypeDecl]
-genTypeDefinitions (FC.TypeSyn qf vis targs texp) =
+fcy2absCDecl :: HOResult -> FC.ConsDecl -> [ConsDecl]
+fcy2absCDecl hores (FC.Cons qf ar vis texps)
+  | isHigherOrder = [foCons, hoCons]
+  | otherwise     = [foCons]
+  where
+    isHigherOrder = lookupFM hores qf == Just HO
+    foCons = Cons (mkFoConsName qf) ar vis' (map fcy2absTExp texps)
+    hoCons = Cons (mkHoConsName qf) ar vis' (map fcy2absHOTExp texps)
+    vis' = fcy2absVis vis
+
+fcy2absHOTExp :: FC.TypeExpr -> TypeExpr
+fcy2absHOTExp (FC.TVar i)         = TVar (fcy2absTVar i)
+fcy2absHOTExp (FC.TCons qn texps) = TCons qn (map fcy2absHOTExp texps)
+fcy2absHOTExp (FC.FuncType t1 t2) = funcType (fcy2absHOTExp t1) (fcy2absHOTExp t2)
+  where funcType ta tb = TCons (basics "Func") [ta, tb]
+
+fcy2absTExp :: FC.TypeExpr -> TypeExpr
+fcy2absTExp (FC.TVar i)         = TVar (fcy2absTVar i)
+fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (fcy2absTExp t2)
+fcy2absTExp (FC.TCons qf texps) = TCons qf (map fcy2absTExp texps)
+
+genTypeDefinitions :: HOResult -> FC.TypeDecl -> [TypeDecl]
+genTypeDefinitions _ (FC.TypeSyn qf vis targs texp) =
   [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)]
-genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
+genTypeDefinitions hores (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   then [ Type (mn, tc) acvis targs [] ]
   else [ Type (mn, tc) acvis targs
-          (map fcy2absCDecl cdecls ++
+          (concatMap (fcy2absCDecl hores) cdecls ++
           [ Cons choiceConsName  3 acvis [idType, ctype, ctype]
           , Cons choicesConsName 2 acvis [idType, clisttype]
           , Cons failConsName    0 acvis []
@@ -80,7 +103,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
       (pre "showsPrec",
       simpleRule [PVar (1, "_"), PComb failConsName []]
         (applyF (pre "showChar") [charc '!']))]
-      ++ map showConsRule cdecls)
+      ++ concatMap showConsRule cdecls)
 
   -- Generate specific show for lists (only for finite lists!)
   showRule4List =
@@ -88,16 +111,21 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
       Rule [] [noGuard (constF (pre "showsPrec4CurryList"))] [])
 
   -- Generate Show instance rule for a data constructor:
-  showConsRule (FC.Cons qn _ _ texps) =
-    (pre "showsPrec",
-     simpleRule
-      [PVar (0,"d"), PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-        (case take 8 (snd qn) of
-           "OP_Cons"  -> showListCons
-           "OP_Tuple" -> showTupleCons
-           _          -> showBody))
+  showConsRule (FC.Cons qn _ _ texps)
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
+
    where
+     isHoCons = lookupFM hores qn == Just HO
      carity = length texps
+
+     rule name = (pre "showsPrec",
+                  simpleRule
+                    [PVar (0,"d"), PComb name (map (\i -> PVar (i,'x':show i)) [1..carity])]
+                      (case take 8 (snd name) of
+                        "OP_Cons"  -> showListCons
+                        "OP_Tuple" -> showTupleCons
+                        _          -> showBody))
 
      showBody =
       if carity==0
@@ -134,6 +162,8 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
 -- ---------------------------------------------------------------------------
 -- Generate instance of Read class:
+--
+-- TODO: No instance for higher-order constructors
 -- ---------------------------------------------------------------------------
   readInstance = mkInstance (pre "Read") [] ctype targs
      [case take 8 tc of
@@ -257,7 +287,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
   genBody idSupp =
     applyF choicesConsName [(applyF (basics "freeID") [arities, idSupp]), list2ac $
-      map (\(FC.Cons qn arity _ texps) -> applyF qn (consArgs2gen idSupp arity)) cdecls]
+      map (\(FC.Cons qn arity _ _) -> applyF qn (consArgs2gen idSupp arity)) cdecls]
 
   arities = list2ac $ map (intc . consArity) cdecls
 
@@ -269,15 +299,15 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   normalformInstance
     = mkInstance (basics "NormalForm") [] ctype targs $ concat
       -- $!!
-      [ map (normalformConsRule (basics "$!!")) cdecls
+      [ concatMap (normalformConsRule (basics "$!!")) cdecls
       , normalFormExtConsRules (basics "$!!")
           (basics "nfChoice") (basics "nfChoices")
       -- $##
-      , map (normalformConsRule (basics "$##")) cdecls
+      , concatMap (normalformConsRule (basics "$##")) cdecls
       , normalFormExtConsRules (basics "$##")
           (basics "gnfChoice") (basics "gnfChoices")
       -- $!<
-      , map (normalformConsRule (basics "$!<")) cdecls
+      , concatMap (normalformConsRule (basics "$!<")) cdecls
       , [ (basics "$!<", simpleRule [PVar (1,"cont"),
             PComb choiceConsName [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
               (applyF (basics "nfChoiceIO")
@@ -290,22 +320,26 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
               (applyV (1,"cont") [Var (2,"x")]))
         ]
       -- searchNF
-      , map searchNFConsRule cdecls
+      , concatMap searchNFConsRule cdecls
       ]
 
   -- Generate NormalForm instance rule for a data constructor:
-  normalformConsRule funcName (FC.Cons qn _ _ texps) =
-    (funcName, simpleRule
-      [PVar (1,"cont"), PComb qn (map (\i -> PVar (i,'x':show i)) [1..carity])]
-          nfBody)
-   where
-     carity = length texps
+  normalformConsRule funcName (FC.Cons qn _ _ texps)
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
 
-     nfBody =
+   where
+     isHoCons = lookupFM hores qn == Just HO
+     carity = length texps
+     rule name = (funcName, simpleRule
+      [PVar (1,"cont"), PComb name (map (\i -> PVar (i,'x':show i)) [1..carity])]
+          (nfBody name))
+
+     nfBody name =
       foldr (\i exp -> applyF funcName
                         [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
             (applyV (1,"cont")
-                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
+                    [applyF name (map (\i -> Var (i,'y':show i)) [1..carity])])
             [1..carity]
 
   normalFormExtConsRules funcName choiceFunc choicesFunc =
@@ -326,18 +360,23 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
     ]
 
   -- Generate searchNF instance rule for a data constructor:
-  searchNFConsRule  (FC.Cons qn _ _ texps) =
-    ( basics "searchNF"
-    , simpleRule [PVar (1,"search"), PVar (2,"cont"), consPattern qn "x" carity]
-      nfBody)
+  searchNFConsRule  (FC.Cons qn _ _ texps)
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
+
    where
+     isHoCons = lookupFM hores qn == Just HO
+     rule name =     ( basics "searchNF"
+            , simpleRule [PVar (1,"search"), PVar (2,"cont"), consPattern name "x" carity]
+      (nfBody name))
+
      carity = length texps
 
-     nfBody =
+     nfBody name =
       foldr (\i exp -> applyV (1, "search")
                         [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
             (applyV (1,"cont")
-                    [applyF qn (map (\i -> Var (i,'y':show i)) [1..carity])])
+                    [applyF name (map (\i -> Var (i,'y':show i)) [1..carity])])
             [1..carity]
 
 -- ---------------------------------------------------------------------------
@@ -346,13 +385,13 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   unifiableInstance
     = mkInstance (basics "Unifiable") [] ctype targs $ concat
        -- unification
-      [ map (unifiableConsRule (basics "=.=") (basics "=:=")) cdecls
+      [ concatMap (unifiableConsRule (basics "=.=") (basics "=:=")) cdecls
       , catchAllCase (basics "=.=") (basics "Fail_C_Success")
         -- lazy unification (function patterns)
-      , map (unifiableConsRule (basics "=.<=") (basics "=:<=")) cdecls
+      , concatMap (unifiableConsRule (basics "=.<=") (basics "=:<=")) cdecls
       , catchAllCase (basics "=.<=") (basics "Fail_C_Success")
         -- bind
-      , map (bindConsRule (basics "bind") (\ident arg -> applyF (basics "bind") [ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
+      , concatMap (bindConsRule (basics "bind") (\ident arg -> applyF (basics "bind") [ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
       , [ bindChoiceRule   (basics "bind")
         , bindFreeRule     (basics "bind")
         , bindNarrowedRule (basics "bind")
@@ -360,7 +399,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
         , bindGuardRule    False
         ]
         -- lazy bind (function patterns)
-      , map (bindConsRule (basics "lazyBind") (\ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [ident, arg]]]) head) (zip [0 ..] cdecls)
+      , concatMap (bindConsRule (basics "lazyBind") (\ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [ident, arg]]]) head) (zip [0 ..] cdecls)
       , [ bindChoiceRule   (basics "lazyBind")
         , bindFreeRule     (basics "lazyBind")
         , bindNarrowedRule (basics "lazyBind")
@@ -370,10 +409,14 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
      ]
 
   -- Generate Unifiable instance rule for a data constructor
-  unifiableConsRule consFunc genFunc (FC.Cons qn _ _ texps) =
-    ( consFunc, simpleRule [consPattern qn "x" carity, consPattern qn "y" carity]
-                (unifBody genFunc) )
+  unifiableConsRule consFunc genFunc (FC.Cons qn _ _ texps)
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
+
    where
+     isHoCons = lookupFM hores qn == Just HO
+     rule name = ( consFunc, simpleRule [consPattern name "x" carity, consPattern name "y" carity]
+                (unifBody genFunc) )
      unifBody funcName
        | carity == 0 = constF (basics "C_Success")
        | otherwise   = foldr1 (\x xs -> applyF (basics "&") [x, xs])
@@ -384,9 +427,14 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 
   -- Generate bindRules for a data constructor:
   --  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
-  bindConsRule funcName bindArgs combine (num, (FC.Cons qn _ _ texps)) =
-    (funcName,
-      simpleRule [PVar (1, "i"), PComb qn $ map (\i -> PVar (i, 'x':show i)) [2 .. (length texps) + 1] ]
+  bindConsRule funcName bindArgs combine (num, (FC.Cons qn _ _ texps))
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
+
+   where
+     isHoCons = lookupFM hores qn == Just HO
+     rule name = (funcName,
+      simpleRule [PVar (1, "i"), PComb name $ map (\i -> PVar (i, 'x':show i)) [2 .. (length texps) + 1] ]
         ( applyF (pre ":")
                  [ applyF (basics ":=:")
                    [ Var (1, "i")
@@ -469,7 +517,7 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
 -- ---------------------------------------------------------------------------
 
   curryInstance = mkInstance (curryPre "Curry") [] ctype targs $ concat
-     [ extConsRules (curryPre "=?="), map eqConsRule cdecls, catchAllPattern (curryPre "=?=")
+     [ extConsRules (curryPre "=?="), concatMap eqConsRule cdecls, catchAllPattern (curryPre "=?=")
      , extConsRules (curryPre "<?="), ordConsRules cdecls  , catchAllPattern (curryPre "<?=")
      ]
     where
@@ -521,28 +569,36 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
     where nameRule rule = (name, rule)
 
   -- Generate equality instance rule for a data constructor:
-  eqConsRule (FC.Cons qn _ _ texps) =
-    ( curryPre "=?="
-    , simpleRule [consPattern qn "x" carity, consPattern qn "y" carity] eqBody
-    )
-    where
-      carity = length texps
+  eqConsRule (FC.Cons qn _ _ texps)
+    | isHoCons  = map rule [qn, mkHoConsName qn]
+    | otherwise = [rule qn]
 
-      eqBody = if carity == 0
-        then constF (curryPre "C_True")
-        else foldr1 (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x,xs])
-                    (map (\i -> applyF (curryPre "=?=")
-                                       [Var (i,'x':show i),Var (i,'y':show i)])
-                    [1..carity])
+   where
+     isHoCons = lookupFM hores qn == Just HO
+     rule name = ( curryPre "=?="
+        , simpleRule [consPattern name "x" carity, consPattern name "y" carity] eqBody
+        )
+     carity = length texps
+
+     eqBody = if carity == 0
+      then constF (curryPre "C_True")
+      else foldr1 (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x,xs])
+                  (map (\i -> applyF (curryPre "=?=")
+                                      [Var (i,'x':show i),Var (i,'y':show i)])
+                  [1..carity])
 
   -- Generate Unifiable instance rule for a data constructor:
   ordConsRules [] = []
-  ordConsRules (FC.Cons qn _ _ texps : cds) =
-    (curryPre "<?=",
-     simpleRule [consPattern qn "x" carity, consPattern qn "y" carity]
-          (ordBody [1..carity])) : map (ordCons2Rule (qn,carity)) cds ++
-    ordConsRules cds
+  ordConsRules (FC.Cons qn _ _ texps : cds)
+    | isHoCons  = concatMap rule [qn, mkHoConsName qn]
+    | otherwise = rule qn
+
    where
+     isHoCons = lookupFM hores qn == Just HO
+     rule name = (curryPre "<?=",
+        simpleRule [consPattern name "x" carity, consPattern name "y" carity]
+          (ordBody [1..carity])) : concatMap (ordCons2Rule (name,carity)) cds ++ ordConsRules cds
+
      carity = length texps
 
      ordBody [] = constF (curryPre "C_True")
@@ -555,10 +611,15 @@ genTypeDefinitions (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                  [applyF (curryPre "d_OP_lt")  [xi,yi],
                   applyF (curryPre "d_OP_ampersand_ampersand") [applyF (curryPre "=?=") [xi,yi], ordBody is]]
 
-  ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2) =
-    (curryPre "<?=", simpleRule
+  ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2)
+    | isHoCons  = map rule [qn2, mkHoConsName qn2]
+    | otherwise = [rule qn2]
+
+   where
+     isHoCons = lookupFM hores qn2 == Just HO
+     rule name = (curryPre "<?=", simpleRule
                 [ PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1])
-                , PComb qn2 (map (\i -> PVar (i,"_")) [1..(length texps2)])]
+                , PComb name (map (\i -> PVar (i,"_")) [1..(length texps2)])]
                 (constF (curryPre "C_True")))
 
 -- ---------------------------------------------------------------------------

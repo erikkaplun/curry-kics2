@@ -22,6 +22,8 @@ mkChoiceName  (q, n) = (q, "Choice"  +|+ n)
 mkChoicesName (q, n) = (q, "Choices" +|+ n)
 mkFailName    (q, n) = (q, "Fail"    +|+ n)
 mkGuardName   (q, n) = (q, "Guard"   +|+ n)
+mkFoConsName  (q, n) = (q, n)
+mkHoConsName  (q, n) = (q, "HO" +|+ n)
 s +|+ t = s ++ "_" ++ t
 
 prelude :: String
@@ -71,12 +73,21 @@ externalFunc (q, n) = (q, "external_" ++ n)
 
 -- Compute the determinism prefix of a curry function
 -- 1st arg: is the function used for compilation in determinism mode
--- 2nd arg: classification of the function
-funcPrefix :: Bool -> NDClass -> String
-funcPrefix _     DFO = "d_"
-funcPrefix _      ND = "nd_"
-funcPrefix True  DHO = "d_"  -- "dho_"
-funcPrefix False DHO = "nd_" -- "ndho_"
+-- 2nd arg: determinism classification of the function
+-- 3rd arg: higher-order classification of the function
+funcPrefix :: Bool -> NDClass -> HOClass -> String
+funcPrefix _     D  FO = "d_"
+funcPrefix True  D  HO = "d_"  -- "dho_"
+funcPrefix False D  HO = "nd_" -- "ndho_"
+funcPrefix _     ND _  = "nd_"
+
+-- Compute the determinism prefix of a curry constructor
+-- 1st arg: is the function used for compilation in determinism mode
+-- 2nd arg: classification of the constructor
+consPrefix :: Bool -> HOClass -> String
+consPrefix _     FO = ""
+consPrefix True  HO = ""
+consPrefix False HO = "HO_"
 
 -- rename modules
 mkModName :: String -> String

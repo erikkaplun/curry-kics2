@@ -5,7 +5,7 @@
 --- @version May 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
-  ( Options (..), Verbosity (..), DumpLevel (..), defaultOptions, compilerOpts
+  ( Options (..), Verbosity (..), DumpLevel (..), defaultOptions, compilerOpts, debugOptions
   ) where
 
 import FileGoodies (splitPath)
@@ -60,6 +60,8 @@ defaultOptions =
   , optDump               = []
   , optXNoImplicitPrelude = False
   }
+
+debugOptions = { optVerbosity := VerbDetails , optForce := True | defaultOptions }
 
 parseVerbosity :: String -> Verbosity -> Verbosity
 parseVerbosity s v = case s of

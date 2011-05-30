@@ -744,6 +744,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
 -- END GENERATED FROM PrimTypes.curry
 
 
+-- TODO what to do whith choices and failures
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
 toIO (Choice_C_IO _ _ _) = error "toIO: Choice_C_IO"
@@ -1454,7 +1455,7 @@ searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
-searchMPlus'' cont (Choices i@(Narrowed pns _)  branches) = 
+searchMPlus'' cont (Choices i@(Narrowed pns _)  branches) =
    lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
