@@ -8,9 +8,16 @@ import Maybe (fromJust, fromMaybe)
 import Base
 import Dependency2
 import Names
+import ReadShowTerm (readQTerm, showQTerm)
 
 
 type Map a = FM QName a
+
+showMap :: Map a -> String
+showMap m = showQTerm $ fmToList m
+
+readMap :: String -> Map a
+readMap m = listToFM (<) $ readQTerm m
 
 -- from AnalysisSolver
 data Declaration = F FuncDecl|T TypeDecl

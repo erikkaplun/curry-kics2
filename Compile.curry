@@ -81,20 +81,20 @@ storeAnalysis state fn = do
     where
       opts           = state -> compOptions
       ndaFile        = analysisFile (opts -> optOutputSubdir) fn
-      ndAnalysis     = state -> ndResult
-      hoFuncAnalysis = state -> hoResultFun
-      hoConsAnalysis = state -> hoResultCons
-      types          = state -> typeMap
+      ndAnalysis     = showMap $ state -> ndResult
+      hoFuncAnalysis = showMap $ state -> hoResultFun
+      hoConsAnalysis = showMap $ state -> hoResultCons
+      types          = showMap $ state -> typeMap
 
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
-  return { ndResult     := (state -> ndResult    ) `plusFM` ndAnalysis
-         , hoResultFun  := (state -> hoResultFun ) `plusFM` hoFuncAnalysis
-         , hoResultCons := (state -> hoResultCons) `plusFM` hoConsAnalysis
-         , typeMap      := (state -> typeMap     ) `plusFM` types
+  return { ndResult     := (state -> ndResult    ) `plusFM` readMap ndAnalysis
+         , hoResultFun  := (state -> hoResultFun ) `plusFM` readMap hoFuncAnalysis
+         , hoResultCons := (state -> hoResultCons) `plusFM` readMap hoConsAnalysis
+         , typeMap      := (state -> typeMap     ) `plusFM` readMap types
          | state }
     where
       ndaFile = analysisFile (opts -> optOutputSubdir) fn
