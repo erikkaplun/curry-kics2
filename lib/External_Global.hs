@@ -40,7 +40,7 @@ instance NormalForm (C_Global a) where
 
 instance Unifiable (C_Global a) where
   (=.=) _ _ = error "(=.=) for C_Global"
-  bind i (Choice_C_Global j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  bind i (Choice_C_Global j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
 
 instance CP.Curry a => CP.Curry (C_Global a) where
   (=?=) = error "(=?=) is undefined for Globals"
@@ -49,7 +49,7 @@ instance CP.Curry a => CP.Curry (C_Global a) where
 
 external_d_C_global :: CP.Curry a => a -> C_GlobalSpec -> C_Global a
 external_d_C_global val C_Temporary = ref `seq` (C_Global_Temp ref)
-  where ref = unsafePerformIO (newIORef val) 
+  where ref = unsafePerformIO (newIORef val)
 external_d_C_global val (C_Persistent cname) =
   let name = fromCurry cname :: String
    in unsafePerformIO (initGlobalFile name >> return (C_Global_Pers name))

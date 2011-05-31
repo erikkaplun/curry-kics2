@@ -19,7 +19,7 @@ external_d_C_prim_connectToCmd = fromHaskellIO1
 
 forwardError :: Handle -> IO ()
 forwardError h = do
-   eof <- hIsEOF h 
+   eof <- hIsEOF h
    if eof then return ()
           else hGetLine h >>= hPutStrLn stderr >> forwardError h
 
@@ -34,7 +34,7 @@ assocs :: IORef Assocs
 assocs = unsafePerformIO (newIORef [])
 
 external_d_C_prim_setAssoc :: CP.C_String -> CP.C_String -> CP.C_IO CP.OP_Unit
-external_d_C_prim_setAssoc = fromHaskellIO2 
+external_d_C_prim_setAssoc = fromHaskellIO2
   (\key val -> do as <- readIORef assocs
                   writeIORef assocs ((key,val):as))
 
@@ -78,7 +78,7 @@ instance NormalForm (C_IORef a) where
 
 instance Unifiable (C_IORef a) where
   (=.=) _ _ = error "(=.=) for C_IORef"
-  bind i (Choice_C_IORef j@(FreeID _) _ _) = [i :=: (BindTo j)]
+  bind i (Choice_C_IORef j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
   (=?=) = error "(=?=) is undefined for IORefs"

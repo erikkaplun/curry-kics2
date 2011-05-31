@@ -61,7 +61,7 @@ terminateForwardMessages portnum = do
   h <- connectToSocket "localhost" portnum
   hPutStrLn h "TERMINATE"
   hClose h
-   
+
 startGUI modnames = do
   (guiportnum,socket) <- listenOnFresh
   --system (installDir++"/bin/currytest -f "++show guiportnum++" &")
@@ -173,7 +173,7 @@ protocolGUI portnum initmods stateref =
      setValue rfail "" gp
      setValue rprot "" gp
      setValue rcmsgs "" gp
-     setConfig rstatus (Background "red") gp
+     setConfig rstatus (Background "yellow") gp
      setValue rstatus "testing" gp
      initModuleIndex stateref
      startTestModule gp

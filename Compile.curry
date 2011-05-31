@@ -2,7 +2,7 @@
 --- ID based curry compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version March 2011
+--- @version May 2011
 --- --------------------------------------------------------------------------
 module Compile where
 
@@ -20,7 +20,7 @@ import ReadShowTerm (readQTermFile)
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
 import AbstractHaskellPrinter (showProg,showLiteral)
-import CallGraph
+import Analysis
 import CompilerOpts
 import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
@@ -29,28 +29,21 @@ import LiftCase (liftCases)
 import Message (putErrLn, showStatus, showAnalysis, showDetail)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
-  ( renameModule, renameFile, renameQName, funcPrefix
+  ( renameModule, renameFile, renameQName, consPrefix, funcPrefix
   , mkChoiceName, mkChoicesName, mkGuardName
   , externalFunc, externalModule, destFile, analysisFile, funcInfoFile )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate, unless, when)
 
--- ---------------------------------------------------------------------------
--- Configurations
--- ---------------------------------------------------------------------------
-
--- Chooce let-Type for IdSupply Variables
---letIdVar = lazyLet
-letIdVar = strictLet
-
--- ---------------------------------------------------------------------------
-
+-- parse the command-line arguments and build the specified files
 main :: IO ()
 main = do
   (opts, files) <- compilerOpts
   mapIO_ (build opts) files
 
+-- Load the module, resolve the dependencies and compile the source files
+-- if necessary
 build :: Options -> String -> IO ()
 build opts fn = do
   exists <- doesFileExist fn
@@ -81,15 +74,31 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     modCnt = length mods
     opts = state -> compOptions
 
+storeAnalysis :: State -> String -> IO ()
+storeAnalysis state fn = do
+  showDetail opts $ "Writing Analysis file " ++ ndaFile
+  writeQTermFileInDir ndaFile (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types)
+    where
+      opts           = state -> compOptions
+      ndaFile        = analysisFile (opts -> optOutputSubdir) fn
+      ndAnalysis     = state -> ndResult
+      hoFuncAnalysis = state -> hoResultFun
+      hoConsAnalysis = state -> hoResultCons
+      types          = state -> typeMap
+
+
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
-  (analysis, types) <- readQTermFile ndaFile
-  return { ndResult := (state -> ndResult) `plusFM` analysis
-         , typeMap  := (state ->  typeMap) `plusFM` types
+  (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
+  return { ndResult     := (state -> ndResult    ) `plusFM` ndAnalysis
+         , hoResultFun  := (state -> hoResultFun ) `plusFM` hoFuncAnalysis
+         , hoResultCons := (state -> hoResultCons) `plusFM` hoConsAnalysis
+         , typeMap      := (state -> typeMap     ) `plusFM` types
          | state }
-    where ndaFile = analysisFile ((state -> compOptions)-> optOutputSubdir) fn
-          opts = state -> compOptions
+    where
+      ndaFile = analysisFile (opts -> optOutputSubdir) fn
+      opts = state -> compOptions
 
 compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 compileModule total state ((mid, (fn, fcy)), current) = do
@@ -108,13 +117,12 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   showDetail opts "Transforming functions"
   (tProg, state') <- unM (transProg renamed) state
-  writeQTermFileInDir (analysisFile (opts -> optOutputSubdir) fn)
-                      ((state' -> ndResult), (state' -> typeMap))
+  storeAnalysis state' fn
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
 
   showDetail opts "Transforming type declarations"
-  let typeDecls = FC2T.fcyTypes2abs ts
+  let typeDecls = FC2T.fcyTypes2abs (state' -> hoResultCons) ts
   dump DumpTypeDecls opts typeDeclName (show typeDecls)
 
   showDetail opts "Combining to Abstract Haskell"
@@ -133,6 +141,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   showDetail opts $ "Writing auxiliary info file " ++ funcInfo
   writeQTermFileInDir funcInfo (extractFuncInfos funs)
 
+  showDetail opts $ "Done"
   return state'
 
     where
@@ -274,22 +283,26 @@ mapM f (m:ms) = f m       `bindM` \m' ->
 type TypeMap = FM QName QName
 
 type State =
-  { typeMap     :: TypeMap
-  , ndResult    :: NDResult
-  , nextID      :: VarIndex    -- index for fresh variable
-  , detMode     :: Bool        -- determinism mode
+  { typeMap      :: TypeMap
+  , ndResult     :: NDResult
+  , hoResultFun  :: HOResult
+  , hoResultCons :: HOResult
+  , nextID       :: VarIndex    -- index for fresh variable
+  , detMode      :: Bool        -- determinism mode
 --   , report      :: [String]
-  , compOptions :: Options     -- compiler options
+  , compOptions  :: Options     -- compiler options
   }
 
 defaultState :: State
 defaultState =
-  { typeMap     = listToFM (<) primTypes
-  , ndResult    = initNDResult
-  , nextID      = idVar
-  , detMode     = False
+  { typeMap      = listToFM (<) primTypes
+  , ndResult     = initNDResult
+  , hoResultFun  = initHOResult
+  , hoResultCons = emptyFM (<)
+  , nextID       = idVar
+  , detMode      = False
 --   , report      = []
-  , compOptions = defaultOptions
+  , compOptions  = defaultOptions
   }
 
 type M a = Mo State a
@@ -313,6 +326,25 @@ getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
   $ (flip lookupFM) qn $ (st -> ndResult)
+-- HOFunResult
+
+updHOFunAnalysis :: (HOResult -> HOResult) -> M ()
+updHOFunAnalysis f = updState$ \s -> { hoResultFun := f $ s -> hoResultFun | s }
+
+getFunHOClass :: QName -> M HOClass
+getFunHOClass qn = getState `bindM` \st ->
+  returnM $ fromMaybe (error $ show qn ++ " not analysed" )
+  $ (flip lookupFM) qn $ (st -> hoResultFun)
+
+-- HOConsResult
+
+updHOConsAnalysis :: (HOResult -> HOResult) -> M ()
+updHOConsAnalysis f = updState$ \s -> { hoResultCons := f $ s -> hoResultCons | s }
+
+getConsHOClass :: QName -> M HOClass
+getConsHOClass qn = getState `bindM` \st ->
+  returnM $ fromMaybe (error $ show qn ++ " not analysed" )
+  $ (flip lookupFM) qn $ (st -> hoResultCons)
 
 -- IDs
 
@@ -370,7 +402,9 @@ getCompOption select = getCompOptions `bindM` (returnM . select)
 -- ---------------------------------------------------------------------------
 transProg :: Prog -> M Prog
 transProg p@(Prog m is ts fs _) =
-  updNDAnalysis (analyseNd p) `bindM_`
+  updNDAnalysis     (analyseND     p) `bindM_`
+  updHOFunAnalysis  (analyseHOFunc p) `bindM_`
+  updHOConsAnalysis (analyseHOCons p) `bindM_`
   -- register constructors
   mapM registerCons ts `bindM_`
   -- translation of the functions
@@ -400,21 +434,24 @@ transFunc f@(Func qn _ _ _ _) =
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
       getNDClass qn `bindM` \ndCl ->
-      liftIO (showAnalysis opts (snd qn ++ " is " ++ show ndCl)) `bindM_`
+      getFunHOClass qn `bindM` \hoCl ->
+      liftIO (showAnalysis opts (snd qn ++ " is " ++ show (ndCl, hoCl))) `bindM_`
       case ndCl of
-        DFO ->
-          -- create deterministic function
-          transPureFunc f `bindM` \ fd ->
-          returnM [fd]
-        DHO ->
-          -- create deterministic as well as non-deterministic function
-          transPureFunc f `bindM` \ fd ->
-          transNDFunc   f `bindM` \ fn ->
-          returnM [fd, fn]
         ND ->
           -- create non-deterministic function
           transNDFunc   f `bindM` \ fn ->
           returnM [fn]
+        D -> case hoCl of
+          FO ->
+            -- create deterministic function
+            transPureFunc f `bindM` \ fd ->
+            returnM [fd]
+          HO ->
+            -- create deterministic as well as non-deterministic function
+            transPureFunc f `bindM` \ fd ->
+            transNDFunc   f `bindM` \ fn ->
+            returnM [fd, fn]
+
 
 -- translate into deterministic function
 transPureFunc :: FuncDecl -> M FuncDecl
@@ -435,7 +472,15 @@ renameFun :: QName -> M QName
 renameFun qn@(q, n) =
   isDetMode `bindM` \dm ->
   getNDClass qn `bindM` \ndCl ->
-  returnM (q, (funcPrefix dm ndCl) ++ n)
+  getFunHOClass qn `bindM` \hoCl ->
+  returnM (q, (funcPrefix dm ndCl hoCl) ++ n)
+
+-- renaming of constructors respective to their order and the determinism mode
+renameCons :: QName -> M QName
+renameCons qn@(q, n) =
+  isDetMode `bindM` \dm ->
+  getConsHOClass qn `bindM` \hoCl ->
+  returnM (q, (consPrefix dm hoCl) ++ n)
 
 check42 :: (TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
 check42 f t = case t of
@@ -494,14 +539,14 @@ addUnifIntegerRule bs bs' =
    (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
    _                                 -> bs'
   where
-    addRule bs bs' rules = case (bs,bs') of
+    addRule bs1 bs2 rules = case (bs1, bs2) of
       (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
         -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
       -- TODO: magic number
       _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
                   (funcCall (basics,"matchInteger")
                     [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
-          : bs'
+          : bs2
 
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
@@ -513,8 +558,15 @@ consNameFromPattern (Branch (LPattern lit) _) = case lit of
 -- translate case branch and return the name of the constructor
 transBranch :: BranchExpr -> M BranchExpr
 transBranch (Branch pat e) =
+  transPattern pat `bindM` \pat' ->
   transCompleteExpr e `bindM` \e' ->
-  returnM (Branch pat e')
+  returnM (Branch pat' e')
+
+transPattern :: Pattern -> M Pattern
+transPattern (Pattern qn vs) =
+  renameCons qn `bindM` \qn' ->
+  returnM (Pattern qn' vs)
+transPattern l@(LPattern _) = returnM l
 
 -- create new case branches for added non-deterministic constructors
 -- qn'      : qualified name of the function currently processed
@@ -575,37 +627,41 @@ transExpr (Lit (Charc  c)) = returnM ([], char  c)
 
 -- constructors
 transExpr (Comb ConsCall qn es) =
+  renameCons qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  genIds g (Comb ConsCall qn es')
+  genIds g (Comb ConsCall qn' es')
 
 -- calls to partially applied constructors are treated like calls to partially
 -- applied deterministic first order functions.
 transExpr (Comb (ConsPartCall i) qn es) =
   isDetMode `bindM` \dm ->
+  renameCons qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  genIds g (myWrap dm True DFO i (Comb (ConsPartCall i) qn es'))
+  genIds g (myWrap dm True D FO i (Comb (ConsPartCall i) qn' es'))
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
   getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
+  getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  if opt && (ndCl == DFO || (ndCl == DHO && dm))
+  if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
     then genIds g (Comb FuncCall qn' es')
-    else takeNextID  `bindM` \i ->
+    else takeNextID `bindM` \i ->
          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
   getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
+  getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
   case ndCl of
-    _ -> genIds g (myWrap dm opt ndCl i (Comb (FuncPartCall i) qn' es'))
+    _ -> genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
 
     -- TODO: we do not care about higher order calls to nd functions right now
     -- _    -> takeNextID `bindM` \i ->
@@ -668,10 +724,10 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- Wrapping
 -- ---------------------------------------------------------------------------
 
-myWrap :: Bool -> Bool -> NDClass -> Int -> Expr -> Expr
-myWrap True  _   _  _ e = e
-myWrap False opt nd a e = newWrap a iw e
-  where iw = if opt && nd == DFO then wrapDX else wrapNX
+myWrap :: Bool -> Bool -> NDClass -> HOClass -> Int -> Expr -> Expr
+myWrap True  _   _  _  _ e = e
+myWrap False opt nd ho a e = newWrap a iw e
+  where iw = if opt && nd == D && ho == FO then wrapDX else wrapNX
 
 newWrap :: Int -> ([Expr] -> Expr) -> Expr -> Expr
 newWrap n innermostWrapper e
@@ -686,6 +742,17 @@ newWrap n innermostWrapper e
 wrapDX exprs = fun 2 (basics,"wrapDX") exprs
 wrapNX exprs = fun 2 (basics,"wrapNX") exprs
 funId = fun 1 (prelude,"id") []
+
+
+-- ---------------------------------------------------------------------------
+-- Configurations
+-- ---------------------------------------------------------------------------
+
+-- Chooce let-Type for IdSupply Variables
+--letIdVar = lazyLet
+letIdVar = strictLet
+
+-- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
@@ -780,6 +847,8 @@ generate i  = funcCall (basics, "generate") [i]
 -- ---------------------------------------------------------------------------
 -- Helper functions
 -- ---------------------------------------------------------------------------
+
+
 
 defaultPragmas :: String
 defaultPragmas = "{-# LANGUAGE MagicHash #-}"

@@ -744,6 +744,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
 -- END GENERATED FROM PrimTypes.curry
 
 
+-- TODO what to do whith choices and failures
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
 toIO (Choice_C_IO _ _ _) = error "toIO: Choice_C_IO"
@@ -1141,22 +1142,20 @@ searchDFS' cont (Frees i xs) = lookupChoiceID i >>= choose
       reset <- setUnsetChoice i NoChoice
       searchDFS cont (guardCons cs $ choicesCons i xs) |< reset
 
-searchDFS' cont (Choices i xs) = lookupChoice i >>= choose
+searchDFS' cont (Choices i@(Narrowed pns _) xs) = lookupChoice i >>= choose
   where
     choose (LazyBind cs) = processLB cs
     choose (ChooseN c _) = searchDFS cont (xs !! c)
-    choose NoChoice      = foldr1 (+++) $ zipWith newChoice [0 ..] xs
+    choose NoChoice      = foldr1 (+++) $ zipWith3 newChoice [0 ..] xs pns
     choose c             = error $ "Basics.searchDFS'.choose: " ++ show c
 
     processLB cs = do
       reset <- setUnsetChoice i NoChoice
       searchDFS cont (guardCons cs $ choicesCons i xs) |< reset
 
-    newChoice n x = do
-      reset <- setUnsetChoice i (ChooseN n errChoice)
+    newChoice n x pn = do
+      reset <- setUnsetChoice i (ChooseN n pn)
       searchDFS cont x |< reset
-
-    errChoice = error "propagation number used for narrowed Choice"
 
 searchDFS' cont (Guard cs e) = solves cs >>= traverse
   where
@@ -1456,13 +1455,14 @@ searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
-searchMPlus'' cont (Choices i branches) = lookupChoice' i >>= choose
+searchMPlus'' cont (Choices i@(Narrowed pns _)  branches) =
+   lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
     choose NoChoice      =
-      msum $ zipWith (\n c -> pick n >> searchMPlus' cont c) [0..] branches
+      msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] branches pns
     choose (LazyBind cs) = processLazyBind' i cont cs branches
-    pick c = setChoice' i (ChooseN c (-1))
+    pick c pn = setChoice' i (ChooseN c pn)
 searchMPlus'' cont (Frees i branches) = lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
