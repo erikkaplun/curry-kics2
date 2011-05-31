@@ -11,7 +11,7 @@
 
 module AbstractHaskellPrinter
   ( showProg, showTypeDecls, showTypeDecl, showTypeExpr, showFuncDecl
-  , showLiteral, showExpr, showPattern
+  , showLiteral, showExpr, showPattern, showInt, showFloat
   ) where
 
 import Char  (isDigit)
@@ -349,12 +349,12 @@ showPattern opts (PAs (_,name) pat)     = showIdentifier name ++ "@"
 showPattern opts (PFuncComb qname pats) = showPattern opts (PComb qname pats)
 
 showLitPattern :: Options -> Literal -> String
-showLitPattern opts (Intc i)
-  = '(' : showSymbol opts (curryPrelude, "C_Int") ++ " " ++ show i ++ "#)"
-showLitPattern opts (Floatc f)
-  = '(' : showSymbol opts (curryPrelude, "C_Float") ++ " " ++ show f ++ "#)"
-showLitPattern opts c@(Charc _)
-  = '(' : showSymbol opts (curryPrelude, "C_Char") ++ " '" ++ showCharc c ++ "'#)"
+showLitPattern opts (Intc i) =
+  '(' : showSymbol opts (curryPrelude, "C_Int") ++ " " ++ showInt i ++ "#)"
+showLitPattern opts (Floatc f) =
+  '(' : showSymbol opts (curryPrelude, "C_Float") ++ " " ++ showFloat f ++ "#)"
+showLitPattern opts c@(Charc _) =
+  '(' : showSymbol opts (curryPrelude, "C_Char") ++ " '" ++ showCharc c ++ "'#)"
 
 showPreludeCons :: Options -> Pattern -> String
 showPreludeCons opts p
@@ -388,9 +388,17 @@ showBranchExpr opts (Branch pattern expr)
    = (showPattern opts pattern) ++ " -> " ++ (showExprOpt opts expr)
 
 showLiteral :: Literal -> String
-showLiteral (Intc i)   = show i
-showLiteral (Floatc f) = show f
+showLiteral (Intc i)   = showInt i
+showLiteral (Floatc f) = showFloat f
 showLiteral (Charc c)  = "'" ++ showCharc (Charc c) ++ "'"
+
+-- Show an integer (no brackets around negative numbers):
+showInt :: Int -> String
+showInt i = if i>=0 then show i else '-':show (negate i)
+
+-- Show an integer (no brackets around negative numbers):
+showFloat :: Float -> String
+showFloat f = if f>=0 then show f else '-':show (negateFloat f)
 
 showCharc :: Literal -> String
 showCharc (Charc c) | c=='\n'   = "\\n"

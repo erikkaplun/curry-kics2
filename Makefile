@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE="05/05/11"
+COMPILERDATE="30/05/11"
 # The Haskell installation info
 INSTALLHS="./runtime/Installation.hs"
 # The Curry installation info
@@ -18,8 +18,15 @@ all: idc REPL.state
 	chmod -R go+rX .
 
 # generate saved state for Curry->Haskell compiler:
-idc: Installation Compile.curry
-	pakcs -s Compile && mv Compile.state idc
+idc: Installation Compile.state
+	cp -p Compile.state idc
+	#cp -p Compile idc # for bootstrapping
+
+Compile.state: Installation Compile.curry
+	pakcs -s Compile
+
+Compile: Installation Compile.curry
+	bin/kics2 :l Compile :save :q
 
 # generate saved state for interactive compiler system:
 REPL.state: Installation REPL.curry
@@ -73,7 +80,8 @@ installhaskell:
 .PHONY: clean
 clean:
 	bin/cleancurry -r
-	rm -f idc ${INSTALLHS} ${INSTALLCURRY} REPL.state REPL
+	rm -f idc ${INSTALLHS} ${INSTALLCURRY} Compile.state Compile
+	rm -f REPL.state REPL
 	rm -f ./runtime/*.hi ./runtime/*.o ./runtime/*.hi-boot ./runtime/*.o-boot
 	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
 	rm -f ./runtime/idsupply*/*.hi ./runtime/idsupply*/*.o

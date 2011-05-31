@@ -19,7 +19,7 @@ import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
-import AbstractHaskellPrinter (showProg,showLiteral)
+import AbstractHaskellPrinter (showProg,showLiteral,showInt,showFloat)
 import Analysis
 import CompilerOpts
 import Files
@@ -817,8 +817,8 @@ fun :: Int -> QName -> [Expr] -> Expr
 fun i n xs | length xs == i = funcCall n xs
            | otherwise      = Comb (FuncPartCall (length xs - i)) n xs
 
-int :: Integer -> Expr
-int i = funcCall curryInt [constant (prelude, show i ++ "#")]
+int :: Int -> Expr
+int i = funcCall curryInt [constant (prelude, showInt i ++ "#")]
 
 char :: Char -> Expr
 char c = funcCall curryChar charExpr
@@ -830,7 +830,7 @@ char c = funcCall curryChar charExpr
                               [constant (prelude, show (ord c) ++ "#")]]
 
 float :: Float -> Expr
-float f = funcCall curryFloat [constant (prelude, show f ++ "#")]
+float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
 
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
