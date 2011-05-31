@@ -19,7 +19,7 @@ import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
-import AbstractHaskellPrinter (showProg,showLiteral)
+import AbstractHaskellPrinter (showProg,showLiteral,showInt,showFloat)
 import Analysis
 import CompilerOpts
 import Files
@@ -81,20 +81,20 @@ storeAnalysis state fn = do
     where
       opts           = state -> compOptions
       ndaFile        = analysisFile (opts -> optOutputSubdir) fn
-      ndAnalysis     = state -> ndResult
-      hoFuncAnalysis = state -> hoResultFun
-      hoConsAnalysis = state -> hoResultCons
-      types          = state -> typeMap
+      ndAnalysis     = showMap $ state -> ndResult
+      hoFuncAnalysis = showMap $ state -> hoResultFun
+      hoConsAnalysis = showMap $ state -> hoResultCons
+      types          = showMap $ state -> typeMap
 
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
   (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
-  return { ndResult     := (state -> ndResult    ) `plusFM` ndAnalysis
-         , hoResultFun  := (state -> hoResultFun ) `plusFM` hoFuncAnalysis
-         , hoResultCons := (state -> hoResultCons) `plusFM` hoConsAnalysis
-         , typeMap      := (state -> typeMap     ) `plusFM` types
+  return { ndResult     := (state -> ndResult    ) `plusFM` readMap ndAnalysis
+         , hoResultFun  := (state -> hoResultFun ) `plusFM` readMap hoFuncAnalysis
+         , hoResultCons := (state -> hoResultCons) `plusFM` readMap hoConsAnalysis
+         , typeMap      := (state -> typeMap     ) `plusFM` readMap types
          | state }
     where
       ndaFile = analysisFile (opts -> optOutputSubdir) fn
@@ -817,8 +817,8 @@ fun :: Int -> QName -> [Expr] -> Expr
 fun i n xs | length xs == i = funcCall n xs
            | otherwise      = Comb (FuncPartCall (length xs - i)) n xs
 
-int :: Integer -> Expr
-int i = funcCall curryInt [constant (prelude, show i ++ "#")]
+int :: Int -> Expr
+int i = funcCall curryInt [constant (prelude, showInt i ++ "#")]
 
 char :: Char -> Expr
 char c = funcCall curryChar charExpr
@@ -830,7 +830,7 @@ char c = funcCall curryChar charExpr
                               [constant (prelude, show (ord c) ++ "#")]]
 
 float :: Float -> Expr
-float f = funcCall curryFloat [constant (prelude, show f ++ "#")]
+float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
 
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
