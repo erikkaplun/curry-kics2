@@ -152,13 +152,13 @@ leqQName (m1,n1) (m2,n2) = leqString (m1++('.':n1)) (m2++('.':n2))
 
 callsDirectly2 :: TypeDecl -> [QName]
 
-callsDirectly2 (Type qName _ _ consDeclList) = nub (goThroughConsList consDeclList)
+callsDirectly2 (Type _ _ _ consDeclList) = nub (goThroughConsList consDeclList)
 
-callsDirectly2 (TypeSyn qName _ _ typeExpr) = nub (calledTypes typeExpr)
+callsDirectly2 (TypeSyn _ _ _ typeExpr) = nub (calledTypes typeExpr)
 
 
 goThroughConsList [] = []
-goThroughConsList (conDecl:conDecls) = let (Cons qName _ _ typeExprs)= conDecl in
+goThroughConsList (conDecl:conDecls) = let (Cons _ _ _ typeExprs)= conDecl in
   (concatMap calledTypes typeExprs)++(goThroughConsList conDecls)
 
 calledTypes (TVar _) = []
