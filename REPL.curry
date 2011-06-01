@@ -279,7 +279,8 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
 compileCurryProgram :: ReplState -> String -> IO Int
 compileCurryProgram rst curryprog = do
   let compileProg = (rst->idcHome)++"/idc"
-      idcoptions  = (if rst->verbose < 2 then "-q " else "") ++
+      idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
+                    "-v " ++ show (rst->verbose) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd

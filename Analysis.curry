@@ -14,10 +14,12 @@ import ReadShowTerm (readQTerm, showQTerm)
 type Map a = FM QName a
 
 showMap :: Map a -> String
-showMap m = showQTerm $ fmToList m
+--showMap m = showQTerm $ fmToList m
+showMap = showFM
 
 readMap :: String -> Map a
-readMap m = listToFM (<) $ readQTerm m
+--readMap m = listToFM (<) $ readQTerm m
+readMap m = readFM (<) m
 
 -- from AnalysisSolver
 data Declaration = F FuncDecl|T TypeDecl
