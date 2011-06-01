@@ -20,7 +20,7 @@ module GUI(GuiPort,Widget(..),Button,ConfigButton,
            runGUI,runGUIwithParams,runInitGUI,runInitGUIwithParams,
            runPassiveGUI,
            runControlledGUI,runConfigControlledGUI,runInitControlledGUI,
-           runHandlesControlledGUI,runInitHandlesControlledGUI,
+           --runHandlesControlledGUI,runInitHandlesControlledGUI,
            exitGUI,getValue,setValue,updateValue,appendValue,
            appendStyledValue,addRegionStyle,removeRegionStyle,
            getCursorPosition,seeText,
@@ -33,6 +33,7 @@ import Unsafe(trace)
 import IO
 import IOExts(connectToCommand)
 import Char(isSpace,toUpper)
+--import AllSolutions(getAllValues)
 
 -- If showTclTkErrors is true, all synchronization errors occuring in the
 -- Tcl/Tk communication are shown (such errors should only occur on
@@ -960,7 +961,8 @@ runGUIwithParams title params widget =
 runInitGUI :: String -> Widget -> (GuiPort -> IO ()) -> IO ()
 runInitGUI title widget initcmd = do
   gport <- openWish (escape_tcl title) ""
-  initSchedule widget gport [] [] initcmd
+  --initSchedule widget gport [] [] initcmd
+  initSchedule widget gport [] emptyUnitList initcmd
 
 --- IO action to run a Widget in a new window. The GUI events
 --- are processed after executing an initial action on the GUI.
@@ -971,7 +973,8 @@ runInitGUI title widget initcmd = do
 runInitGUIwithParams :: String -> String -> Widget -> (GuiPort -> IO ()) -> IO ()
 runInitGUIwithParams title params widget initcmd = do
   gport <- openWish (escape_tcl title) params
-  initSchedule widget gport [] [] initcmd
+  --initSchedule widget gport [] [] initcmd
+  initSchedule widget gport [] emptyUnitList initcmd
 
 
 --- Runs a Widget in a new GUI window and process GUI events.
@@ -1028,7 +1031,7 @@ runInitControlledGUI title (widget,exth) initcmd msgs = do
                [PortMsgHandler (\msg wp -> exth msg wp >> return [])]
                msgs initcmd
 
-
+{-
 --- Runs a Widget in a new GUI window and process GUI events.
 --- In addition, a list of event handlers is provided that process
 --- inputs received from a corresponding list of handles to input streams.
@@ -1068,6 +1071,7 @@ runInitHandlesControlledGUI title (widget,handlers) initcmd handles =
     initSchedule widget gport
                  (map IOHandler (zip handles (map toIOHandler handlers)))
                  [] initcmd
+-}
 
 -- The type of external event handlers currently supported.
 -- It is either a handler processing messages from an external port
@@ -1077,18 +1081,22 @@ data ExternalHandler msg =
  | IOHandler (Handle,
        [EventHandler] -> Handle -> GuiPort -> IO (Maybe [ReconfigureItem]))
 
+-- An empty list of unit type. Used to avoid typing problems in kics2 back end.
+emptyUnitList :: [()]
+emptyUnitList = [] --tail [()]
+
 -- start the scheduler (see below) with a given Widget on a wish port
 -- and an initial command:
 initSchedule :: Widget -> GuiPort -> [ExternalHandler msg] ->
                 [msg] -> (GuiPort -> IO ()) -> IO ()
 initSchedule widget gport exths msgs initcmd = do
+  let (tcl,evs) = mainWidget2tcl gport widget
+  --(tcl,evs) <- getAllValues (mainWidget2tcl gport widget) >>= return . head
   send2tk tcl gport
   initcmd gport
   -- add handler on wish connection as first handler:
   scheduleTkEvents evs gport
                    (IOHandler (handleOf gport,processTkEvent) : exths) msgs
- where
-  (tcl,evs) = mainWidget2tcl gport widget
 
 -- Scheduler for Tcl/Tk events:
 --

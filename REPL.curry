@@ -317,6 +317,7 @@ createAndCompileMain rst goalstate = do
                            ,if rst->verbose < 2 then "-v0" else "-v1"
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
+                           ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""
