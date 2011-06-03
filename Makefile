@@ -19,26 +19,27 @@ MAKELOG=make.log
 all:
 	${MAKE} installwithlogging
 
-#all: idc REPL.state
-#	chmod -R go+rX .
-
-# generate saved state for Curry->Haskell compiler:
-idc: Compile.state
-	cp -p Compile.state idc
-	#cp -p Compile idc # for bootstrapping
-
+# generate executable for Curry->Haskell compiler via PAKCS:
 Compile.state: ${INSTALLCURRY} Compile.curry
 	pakcs -s Compile
+	mv idc idc.bak
+	cp -p Compile.state idc
 
-Compile: ${INSTALLCURRY} Compile.curry
+# generate executable for Curry->Haskell compiler:
+Compile: idc ${INSTALLCURRY} Compile.curry
 	bin/kics2 :l Compile :save :q
+	mv idc idc.bak
+	cp -p Compile idc
 
-# generate saved state for interactive compiler system:
+# generate executable for interactive compiler system via PAKCS:
 REPL.state: ${INSTALLCURRY} REPL.curry
 	pakcs -s REPL
+	cp -p REPL.state REPLexec
 
-REPL: ${INSTALLCURRY} REPL.curry
+# generate executable for interactive compiler system:
+REPLexec: idc ${INSTALLCURRY} REPL.curry
 	bin/kics2 :l REPL :save :q
+	cp -p REPL REPLexec
 
 # install the complete system and log the installation process
 .PHONY: installwithlogging
@@ -51,7 +52,7 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: idc REPL.state
+install: REPLexec Compile
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages

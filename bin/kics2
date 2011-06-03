@@ -5,16 +5,10 @@
 # Compute the installation directory of the system
 PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
 KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
-
-if [ -x "$KICS2HOME/REPL" ] ; then
-  REPL="$KICS2HOME/REPL"
-  if [ -x "$KICS2HOME/REPL.state" ] ; then
-    echo "Warning: ignoring executable $KICS2HOME/REPL.state"
-  fi
-elif [ -x "$KICS2HOME/REPL.state" ] ; then
-  REPL="$KICS2HOME/REPL.state"
-else
-  echo "ERROR: executable for REPL not found!" >&2
+REPL="$KICS2HOME/REPLexec"
+if [ ! -x "$REPL" ] ; then
+  echo "ERROR: executable '$REPL' not found!" >&2
+  echo "Run: cd $KICS2HOME && make" >&2
   exit 1
 fi
 
