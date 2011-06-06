@@ -22,45 +22,38 @@ readMap :: String -> Map a
 readMap m = readFM (<) m
 
 -- from AnalysisSolver
-data Declaration = F FuncDecl|T TypeDecl
+data Declaration
+  = F FuncDecl
+  | T TypeDecl
 
-type AnalysisFunction  a = (FuncDecl,[QName])->Map a->(QName,a)
-type AnalysisFunction3 a = (Declaration,[QName])->Map a->(QName,a)
+type AnalysisFunction t a = Map a -> (t, [QName]) -> (QName, a)
 
+getDeclName :: Declaration -> QName
 getDeclName decl = case decl of
-  F f->funcName f
-  T t->typeName t
+  F f -> funcName f
+  T t -> typeName t
 
-getFunctionCalls::[FuncDecl]->[(FuncDecl,[QName])]
-getFunctionCalls [] = []
-getFunctionCalls (func:funcs) = (func,(callsDirectly func)):(getFunctionCalls funcs)
+getFunctionCalls :: [FuncDecl] -> [(FuncDecl, [QName])]
+getFunctionCalls fs = map (\ func -> (func, callsDirectly func)) fs
 
-getCalls::[Declaration]->[(Declaration,[QName])]
-getCalls [] = []
-getCalls (decl:decls) = (decl,(callHelp decl)):(getCalls decls)
+getCalls :: [Declaration] -> [(Declaration, [QName])]
+getCalls ds = map (\ decl -> (decl, callHelp decl)) ds
+  where
+    callHelp decl = case decl of
+      F f -> callsDirectly f
+      T t -> callsDirectly2 t
 
-callHelp decl = case decl of
-  F f->callsDirectly f
-  T t->callsDirectly2 t
-
-fullIteration::(AnalysisFunction a)->[(FuncDecl,[QName])]->Map a->Map a->Map a
-fullIteration analysis funcsWithCalls importsWithValues startMap =
-  let afterMap = listToFM (<) $ (map (\func->(analysis func (startMap `plusFM` importsWithValues))) funcsWithCalls)
-  in if (startMap `eqFM` afterMap)
-         then startMap
-         else fullIteration analysis funcsWithCalls importsWithValues afterMap
-
-fullIteration3::(AnalysisFunction3 a)->[(Declaration,[QName])]->Map a->Map a->Map a
-fullIteration3 analysis declsWithCalls importsWithValues startMap =
-  let afterMap = listToFM (<) $ (map (\decl->(analysis decl (startMap `plusFM` importsWithValues))) declsWithCalls)
-  in if (startMap `eqFM` afterMap)
-         then startMap
-         else fullIteration3 analysis declsWithCalls importsWithValues afterMap
+fullIteration :: AnalysisFunction t a -> [(t, [QName])] -> Map a -> Map a -> Map a
+fullIteration analyze calls env start =
+  let after = listToFM (<) $ map (analyze (env `plusFM` start)) calls
+  in if (start `eqFM` after)
+         then start
+         else fullIteration analyze calls env after
 
 -- ---------------------------------------------------------------------------
--- ND
+-- (Non)Determinism analysis
 -- ---------------------------------------------------------------------------
-type NDResult = FM QName NDClass
+type NDResult = Map NDClass
 
 initNDResult :: NDResult
 initNDResult = listToFM (<) [(qmark, ND)]
@@ -69,11 +62,10 @@ analyseND :: Prog -> NDResult -> NDResult
 analyseND p preRes =
   let funcs = progFuncs p
       start = listToFM (<) $ map (\f -> let name = funcName f in (name, if name == qmark then ND else D)) funcs
-  in
-  preRes `plusFM` fullIteration ndFunc (getFunctionCalls funcs) preRes start
+  in  fullIteration ndFunc (getFunctionCalls funcs) preRes start
 
-ndFunc:: (FuncDecl, [QName]) -> Map NDClass -> (QName, NDClass)
-ndFunc (f, called) ndmap
+ndFunc:: AnalysisFunction FuncDecl NDClass
+ndFunc ndmap (f, called)
   | isRuleExternal rule      = default
   | isNDExpr (ruleBody rule) = (name, ND)
   | callsND                  = (name, ND)
@@ -101,12 +93,16 @@ qmark :: QName
 qmark = renameQName (prelude, "?")
 
 -- ---------------------------------------------------------------------------
--- HO
+-- (first/higher)-order analysis
 -- ---------------------------------------------------------------------------
 type HOResult = FM QName HOClass
 
 initHOResult :: HOResult
 initHOResult = emptyFM (<) -- listToFM (<) [(f, HO) | f <- externalHOFuncs]
+
+--externalHOFuncs :: [QName]
+--externalHOFuncs = map renameQName $ zip (repeat prelude)
+--  [">>=", "apply", "catch", "try", "$!", "$!!", "$##"]
 
 analyseHOFunc :: Prog -> HOResult -> HOResult
 analyseHOFunc p preRes =
@@ -114,16 +110,14 @@ analyseHOFunc p preRes =
       types = map T $ progTypes p
       decls = funcs ++ types
       start = listToFM (<) $ map (\d ->(getDeclName d, FO)) decls
-  in
-  preRes `plusFM` fullIteration3 ordFunc (getCalls decls) preRes start
+  in  fullIteration ordFunc (getCalls decls) preRes start
 
-analyseHOCons :: Prog -> HOResult -> HOResult
-analyseHOCons p preRes =
-  let constructors = concatMap typeConsDecls $ filter (not . isTypeSyn) $ (progTypes p)
-      result = map consOrder constructors
-  in
-  preRes `plusFM` listToFM (<) result
-
+analyseHOCons :: Prog -> HOResult
+analyseHOCons p = listToFM (<)
+                $ map consOrder
+                $ concatMap typeConsDecls
+                $ filter (not . isTypeSyn)
+                $ progTypes p
 
 consOrder (Cons name _ _ texps) = (name, consOrder' texps)
   where
@@ -133,9 +127,7 @@ consOrder (Cons name _ _ texps) = (name, consOrder' texps)
       TCons _ typeExprs2 -> consOrder' (typeExprs2 ++ typeExprs)
       TVar _ -> consOrder' typeExprs
 
-externalHOFuncs :: [QName]
-externalHOFuncs = map renameQName $ zip (repeat prelude)
-  [">>=", "apply", "catch", "try", "$!", "$!!", "$##"]
+
 
 prelude :: String
 prelude = "Prelude"
@@ -145,11 +137,13 @@ hoOr::HOClass->HOClass->HOClass
 hoOr HO _ = HO
 hoOr FO x = x
 
-ordFunc::(Declaration,[QName])-> Map HOClass -> (QName,HOClass)
-ordFunc (T (Type qName _ _ conDecls),_) orderMap = (qName,(goThroughConsList orderMap conDecls))
-ordFunc (T (TypeSyn qName _ _ typeExpr),_) orderMap = (qName,(ordHelp1 orderMap typeExpr))
-ordFunc ((F func),_)  orderMap =
-    (funcName func,(ordHelp2 (funcType func) (funcArity func) orderMap))
+ordFunc :: AnalysisFunction Declaration HOClass
+ordFunc orderMap (T (Type    qName _ _ conDecls),_)
+  = (qName,(goThroughConsList orderMap conDecls))
+ordFunc orderMap (T (TypeSyn qName _ _ typeExpr),_)
+  = (qName,(ordHelp1 orderMap typeExpr))
+ordFunc orderMap (F func                        ,_)
+  = (funcName func,(ordHelp2 (funcType func) (funcArity func) orderMap))
 
 goThroughConsList _ [] = FO
 goThroughConsList orderMap (conDecl:conDecls) = let (Cons _ _ _ typeExprs)= conDecl in
