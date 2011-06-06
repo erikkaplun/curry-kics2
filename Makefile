@@ -14,6 +14,25 @@ INSTALLHS=runtime/Installation.hs
 INSTALLCURRY=Installation.curry
 # Logfile for make:
 MAKELOG=make.log
+# ghc options for compiling translating Curry programs:
+GHCOPTIONS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
+# ghc includes for compiling translating Curry programs:
+GHCINCLUDES=-iruntime:runtime/idsupplyinteger:./.curry/kics2/:lib/.curry/kics2/:lib/meta/.curry/kics2/
+
+# Source modules of the compiler (without standard libraries):
+COMPILERSOURCES = Compile.curry \
+	          AbstractHaskellPrinter.curry \
+	          FlatCurry2Types.curry \
+	          LiftCase.curry \
+	          Message.curry ModuleDeps.curry \
+	          SimpleMake.curry Splits.curry \
+	          Dependency2.curry GetOpt.curry \
+		  AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
+	          Names.curry Analysis.curry \
+	          FiniteMap.curry \
+	          SCC.curry Base.curry Files.curry \
+	          AbstractHaskell.curry \
+	          CompilerOpts.curry Utils.curry
 
 .PHONY: all
 all:
@@ -25,11 +44,19 @@ Compile.state: ${INSTALLCURRY} Compile.curry
 	mv idc idc.bak
 	cp -p Compile.state idc
 
+.PHONY: Compile
+Compile:
+	${MAKE} CompileBoot
+
 # generate executable for Curry->Haskell compiler:
-Compile: idc ${INSTALLCURRY} Compile.curry
-	bin/kics2 :l Compile :save :q
+CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
+	ghc -O2 --make -v1 ${GHCOPTIONS} ${GHCINCLUDES} CompileBoot.hs
 	mv idc idc.bak
-	cp -p Compile idc
+	cp -p CompileBoot idc
+
+# Translate Curry->Haskell compiler into Haskell:
+.curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
+	./idc -v 2  -i lib -i lib/meta Compile.curry
 
 # generate executable for interactive compiler system via PAKCS:
 REPL.state: ${INSTALLCURRY} REPL.curry
