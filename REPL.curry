@@ -411,22 +411,35 @@ processThisCommand rst cmd args
    = do printHelpOnCommands
         putStrLn "...or type any <expression> to evaluate\n"
         return (Just rst)
-  | cmd == "load"
+  | cmd=="load"
    = do let modname = stripSuffix args
-        compileCurryProgram rst modname
-        return (Just { mainMod := modname, addMods := [] | rst })
-  | cmd == "reload"
+        if null modname
+         then writeErrorMsg "missing module name" >> return Nothing
+         else do
+          mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
+          maybe (writeErrorMsg "source file of module not found" >>
+                 return Nothing)
+                (\_ -> compileCurryProgram rst modname >>
+                     return (Just { mainMod := modname, addMods := [] | rst }))
+                mbf
+  | cmd=="reload"
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded!" >> return Nothing
-     else do compileCurryProgram rst (rst->mainMod)
-             return (Just rst)
+     else if null (stripSuffix args)
+          then writeErrorMsg "superfluous argument" >> return Nothing
+          else do compileCurryProgram rst (rst->mainMod)
+                  return (Just rst)
   | cmd=="add"
    = do let modname = stripSuffix args
-        mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                                ("." : rst->importPaths)
-        maybe (writeErrorMsg "source file of module not found" >>return Nothing)
-              (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
-              mbf
+        if null modname
+         then writeErrorMsg "missing module name" >> return Nothing
+         else do
+          mbf <- lookupFileInPath modname [".curry", ".lcurry"]
+                                          ("." : rst->importPaths)
+          maybe (writeErrorMsg "source file of module not found" >>
+                 return Nothing)
+                (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
+                mbf
   | cmd=="type"
    = do typeok <- showTypeOfGoal rst args
         return (if typeok then Just rst else Nothing)

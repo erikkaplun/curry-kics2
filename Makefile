@@ -37,7 +37,7 @@ REPL.state: ${INSTALLCURRY} REPL.curry
 	cp -p REPL.state REPLexec
 
 # generate executable for interactive compiler system:
-REPLexec: idc ${INSTALLCURRY} REPL.curry
+REPLexec: ${INSTALLCURRY} REPL.curry
 	bin/kics2 :l REPL :save :q
 	cp -p REPL REPLexec
 
