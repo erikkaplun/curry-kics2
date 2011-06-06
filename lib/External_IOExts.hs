@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 import Data.IORef
 import System.IO.Unsafe(unsafePerformIO) -- for global associations
 import System.Process(runInteractiveCommand)
