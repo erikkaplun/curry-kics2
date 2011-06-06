@@ -107,12 +107,22 @@ writeErrorMsg :: String -> IO ()
 writeErrorMsg msg = putStrLn ("ERROR: "++msg)
 
 main = do
-  let rst = { idcHome := Inst.installDir
-            , importPaths := map (Inst.installDir </>) ["/lib","/lib/meta"]
-            | initReplState }
   rcdefs <- readRC
-  args <- getArgs
-  processArgsAndStart { rcvars := rcdefs | rst } args
+  args   <- getArgs
+  let rst = { idcHome := Inst.installDir
+            , rcvars := rcdefs 
+            | initReplState }
+  processArgsAndStart { importPaths := defaultImportPaths rst | rst } args
+
+-- The default import paths of KiCS2.
+defaultImportPaths :: ReplState -> [String]
+defaultImportPaths rst =
+  let rclibs = rcValue (rst->rcvars) "libraries"
+   in (if null rclibs then [] else splitPath rclibs) ++
+      map (Inst.installDir </>) ["/lib","/lib/meta"]
+
+defaultImportPathsWith :: ReplState -> String -> [String]
+defaultImportPathsWith rst dirs = splitPath dirs ++ defaultImportPaths rst
 
 processArgsAndStart rst [] =
   if rst -> quit
@@ -479,10 +489,7 @@ processThisCommand rst cmd args
             genint   = rst->idcHome </> toolexec
         giexists <- doesFileExist genint
         if giexists
-         then -- as long as GenInt is generated with PAKCS:
-              setEnviron "CURRYPATH" (rst->idcHome++"/lib:"++
-                                      rst->idcHome++"/lib/meta") >>
-              system (genint ++ " -int " ++ modname) >> return (Just rst)
+         then system (genint ++ " -int " ++ modname) >> return (Just rst)
          else errorMissingTool toolexec >> return Nothing
   | cmd=="usedimports"
    = do let modname  = if null args then rst->mainMod else stripSuffix args
@@ -534,7 +541,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts",
+allOptions = ["bfs","dfs","prdfs","ids","par","paths","supply","rts",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
@@ -542,6 +549,10 @@ allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts",
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
+  | option=="paths"
+   = if null args
+     then return (Just { importPaths := defaultImportPaths rst | rst })
+     else return (Just { importPaths := defaultImportPathsWith rst args | rst })
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
@@ -583,6 +594,7 @@ processThisOption rst option args
 
 printOptions rst = putStrLn $
   "Options for ':set' command:\n"++
+  "path <paths>   - set additional search paths for imported modules\n"++
   "prdfs          - set search mode to primitive depth-first search\n"++
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
@@ -601,6 +613,8 @@ printOptions rst = putStrLn $
   showCurrentOptions rst
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
+  "import paths     : " ++
+     concat (intersperse ":" ("." : rst->importPaths)) ++ "\n" ++
   "search mode      : " ++
       (case (rst->ndMode) of
          PrDFS -> "primitive non-monadic depth-first search"

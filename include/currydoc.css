@@ -1,0 +1,34 @@
+/* Use monospace fonts for typewriter styles */
+pre, tt, code { font-family: monospace }
+
+/* Use always white background */
+body { background: white; color: black }
+
+/* Show hyperlinks without underscore */
+a:visited, a:link, a:active { text-decoration: none }
+
+.keyword { color:blue }
+.constructorname_constrpattern { color : #FF00FF }
+.constructorname_constrcall { color : #FF00FF }
+.constructorname_constrdecla { color : #FF00FF }
+.constructorname_otherconstrkind { color : #FF00FF }
+.typeconstructor_typedecla  { color : #ff7f50 }
+.typeconstructor_typeuse  { color : #ff7f50 }
+.typeconstructor_typeexport  { color : #ff7f50 }
+.function_infixfunction  { color : #800080 }
+.function_typsig  { color : #800080 }
+.function_fundecl  { color : #800080 }
+.function_functioncall  { color : #800080 }
+.function_otherfunctionkind  { color : #800080 }
+.moduleName  { color : #800000 }
+.commentary  { color : green }
+.numberCode  { color : #008080 }
+.stringCode  { color : #800000 }
+.charCode  { color : #800000 }
+.symbol  { color : #666666 }
+.identifier_iddecl   { color : black }
+.identifier_idoccur   { color : black }
+.identifier_unknownid   { color : black }
+.codeWarning  {font-weight: bold;font-style:italic; color : red }
+.codeError  { font-style:italic; color : #a52a2a }
+.notParsed  { font-style:italic; color : #C0C0C0 }
