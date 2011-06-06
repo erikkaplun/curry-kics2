@@ -587,17 +587,17 @@ genTypeDefinitions hores (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                                       [Var (i,'x':show i),Var (i,'y':show i)])
                   [1..carity])
 
-  -- Generate Unifiable instance rule for a data constructor:
+  -- Generate <?= rule for data constructors:
   ordConsRules [] = []
   ordConsRules (FC.Cons qn _ _ texps : cds)
-    | isHoCons  = concatMap rule [qn, mkHoConsName qn]
-    | otherwise = rule qn
+    | isHoCons  = concatMap rule [qn, mkHoConsName qn] ++ ordConsRules cds
+    | otherwise = rule qn ++ ordConsRules cds
 
    where
      isHoCons = lookupFM hores qn == Just HO
      rule name = (curryPre "<?=",
         simpleRule [consPattern name "x" carity, consPattern name "y" carity]
-          (ordBody [1..carity])) : concatMap (ordCons2Rule (name,carity)) cds ++ ordConsRules cds
+          (ordBody [1..carity])) : concatMap (ordCons2Rule (name,carity)) cds
 
      carity = length texps
 
@@ -612,12 +612,12 @@ genTypeDefinitions hores (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                   applyF (curryPre "d_OP_ampersand_ampersand") [applyF (curryPre "=?=") [xi,yi], ordBody is]]
 
   ordCons2Rule (qn1,ar1) (FC.Cons qn2 _ _ texps2)
-    | isHoCons  = map rule [qn2, mkHoConsName qn2]
-    | otherwise = [rule qn2]
+    | isHoCons2 = map rule2 [qn2, mkHoConsName qn2]
+    | otherwise = [rule2 qn2]
 
    where
-     isHoCons = lookupFM hores qn2 == Just HO
-     rule name = (curryPre "<?=", simpleRule
+     isHoCons2  = lookupFM hores qn2 == Just HO
+     rule2 name = (curryPre "<?=", simpleRule
                 [ PComb qn1 (map (\i -> PVar (i,"_")) [1..ar1])
                 , PComb name (map (\i -> PVar (i,"_")) [1..(length texps2)])]
                 (constF (curryPre "C_True")))
