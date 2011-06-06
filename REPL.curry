@@ -426,9 +426,9 @@ processThisCommand rst cmd args
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded!" >> return Nothing
      else if null (stripSuffix args)
-          then writeErrorMsg "superfluous argument" >> return Nothing
-          else do compileCurryProgram rst (rst->mainMod)
+          then do compileCurryProgram rst (rst->mainMod)
                   return (Just rst)
+          else writeErrorMsg "superfluous argument" >> return Nothing
   | cmd=="add"
    = do let modname = stripSuffix args
         if null modname
