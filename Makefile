@@ -14,8 +14,10 @@ INSTALLHS=runtime/Installation.hs
 INSTALLCURRY=Installation.curry
 # Logfile for make:
 MAKELOG=make.log
-# ghc options for compiling translating Curry programs:
-GHCOPTIONS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
+# ghc options
+GHCOPTIONS=-O2 --make -v1
+# ghc language extensions for compiling translating Curry programs:
+GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translating Curry programs:
 GHCINCLUDES=-iruntime:runtime/idsupplyinteger:./.curry/kics2/:lib/.curry/kics2/:lib/meta/.curry/kics2/
 
@@ -34,39 +36,60 @@ COMPILERSOURCES = Compile.curry \
 	          AbstractHaskell.curry \
 	          CompilerOpts.curry Utils.curry
 
+# Source modules of the REPL (without standard libraries):
+REPLSOURCES = REPL.curry RCFile.curry Files.curry
+
 .PHONY: all
 all:
 	${MAKE} installwithlogging
-
-# generate executable for Curry->Haskell compiler via PAKCS:
-Compile.state: ${INSTALLCURRY} Compile.curry
-	pakcs -s Compile
-	mv idc idc.bak
-	cp -p Compile.state idc
 
 .PHONY: Compile
 Compile:
 	${MAKE} CompileBoot
 
+.PHONY: REPL
+REPL:
+	${MAKE} REPLBoot
+
+########################################################################
+# Compile
+########################################################################
+
+# generate executable for Curry->Haskell compiler via PAKCS:
+Compile.state: ${INSTALLCURRY} Compile.curry
+	pakcs -s Compile
+	-mv idc idc.bak
+	cp -p Compile.state idc
+
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
-	ghc -O2 --make -v1 ${GHCOPTIONS} ${GHCINCLUDES} CompileBoot.hs
-	mv idc idc.bak
+	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
+	-mv idc idc.bak
 	cp -p CompileBoot idc
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
-	./idc -v 2  -i lib -i lib/meta Compile.curry
+	./idc -v2 -ilib:lib/meta Compile.curry
+
+########################################################################
+# REPL
+########################################################################
 
 # generate executable for interactive compiler system via PAKCS:
 REPL.state: ${INSTALLCURRY} REPL.curry
 	pakcs -s REPL
+	-mv REPLexec REPLexec.bak
 	cp -p REPL.state REPLexec
 
-# generate executable for interactive compiler system:
-REPLexec: ${INSTALLCURRY} REPL.curry
-	bin/kics2 :l REPL :save :q
-	cp -p REPL REPLexec
+# generate executable for Curry->Haskell REPL:
+REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
+	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
+	-mv REPLexec REPLexec.bak
+	cp -p REPLBoot REPLexec
+
+# Translate Curry->Haskell compiler into Haskell:
+.curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
+	./idc -v2 -ilib:lib/meta REPL.curry
 
 # install the complete system and log the installation process
 .PHONY: installwithlogging
@@ -79,7 +102,7 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: REPLexec Compile
+install: REPL Compile
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages

@@ -5,21 +5,14 @@
 # make everything clean:
 make clean
 
-# Create kics2 via PAKCS
+# Create kics2 via PAKCS (stage 1)
 make Compile.state
-make REPL.state
 
-# Create REPL via KiCS2:
-make REPLexec
+# Create kics2 via kics2 (stage 2)
+make Compile
 
-# Compile KiCS2 compiler by PAKCS/KiCS2 compiler:
-./idc -v 3  -i lib -i lib/meta Compile.curry
-
-# Compile generated compiler with ghc:
-ghc -O2 --make -v1 -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec  -iruntime:runtime/idsupplyinteger:./.curry/kics2/:lib/.curry/kics2/:lib/meta/.curry/kics2/ CompileBoot.hs
-
-# Replace PAKCS/KiCS2 compiler by bootstrapped compiler:
-cp -p CompileBoot idc
+# Create REPL via KiCS2, stage 2
+make REPL
 
 # Now, kics2 should work with the bootstrapped compiler, i.e., you can
 # install the complete system:
