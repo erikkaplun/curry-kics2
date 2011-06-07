@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=31/05/11
+COMPILERDATE=06/06/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -37,7 +37,7 @@ COMPILERSOURCES = Compile.curry \
 	          CompilerOpts.curry Utils.curry
 
 # Source modules of the REPL (without standard libraries):
-REPLSOURCES = REPL.curry RCFile.curry Files.curry
+REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
 .PHONY: all
 all:

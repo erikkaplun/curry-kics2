@@ -21,10 +21,7 @@ import AbstractCurry
 import Distribution
 import qualified Installation as Inst
 import Files
---import Names (funcInfoFile)
-funcInfoFile subdir file =
-  let (dir,base) = splitDirectoryBaseName file
-   in dir ++ subdir ++ "Curry_" ++ stripSuffix base ++ ".info"
+import Names (funcInfoFile)
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
@@ -77,6 +74,10 @@ data MainGoalCompile = GoalError -- error occurred
                      | GoalWithoutBindings -- goal does not contain free vars
                      | GoalWithBindings Int String -- number of vars / new goal
 
+-- Result of compiling main program
+data MainCompile = MainError | MainDet | MainNonDet
+
+-- Initial state of REPL:
 initReplState :: ReplState
 initReplState =
   { idcHome      = ""
@@ -157,7 +158,7 @@ processInput rst g
                              (\rst' -> if (rst'->quit) then done else repl rst')
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
-                   unless (status>0) (execMain rst >> done)
+                   unless (status==MainError) (execMain rst status >> done)
                    cleanMainGoalFile rst
                    repl rst
 
@@ -190,7 +191,7 @@ showTypeOfGoal rst goal = do
         mbprog
 
 -- Compile main program with goal:
-compileProgramWithGoal :: ReplState -> String -> IO Int
+compileProgramWithGoal :: ReplState -> String -> IO MainCompile
 compileProgramWithGoal rst goal = do
   let infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
   oldmaincurryexists <- doesFileExist infoFile
@@ -199,7 +200,7 @@ compileProgramWithGoal rst goal = do
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst [] Nothing goal
   goalstate <- insertFreeVarsInMainGoal rst goal
-  if goalstate==GoalError then return 1 else do
+  if goalstate==GoalError then return MainError else do
     let newgoal = case goalstate of
                     GoalWithBindings _ g -> g
                     _                    -> goal
@@ -209,8 +210,8 @@ compileProgramWithGoal rst goal = do
       status <- compileCurryProgram rst mainGoalFile
       exinfo <- doesFileExist infoFile
       if status==0 && exinfo then createAndCompileMain rst goalstate
-                             else return 1
-     else return 1
+                             else return MainError
+     else return MainError
 
 -- write the file with the main goal where necessary imports
 -- and possibly a type string is provided:
@@ -301,7 +302,7 @@ readInfoFile rst = do
   readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
 
 -- Create and compile the main module containing the main goal
-createAndCompileMain :: ReplState -> MainGoalCompile -> IO Int
+createAndCompileMain :: ReplState -> MainGoalCompile -> IO MainCompile
 createAndCompileMain rst goalstate = do
   infos <- readInfoFile rst
   --print infos
@@ -335,7 +336,9 @@ createAndCompileMain rst goalstate = do
                            ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
-  system ghcCompile
+  status <- system ghcCompile
+  return (if status>0 then MainError else
+          if isdet || isio then MainDet else MainNonDet)
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
@@ -369,8 +372,8 @@ createHaskellMain rst goalstate isdet isio =
 
 
 -- Execute main program and show run time:
-execMain :: ReplState -> IO Int
-execMain rst = do
+execMain :: ReplState -> MainCompile -> IO Int
+execMain rst cmpstatus = do
   isubuntu <- isUbuntu
   let timecmd =
         if isubuntu
@@ -385,7 +388,9 @@ execMain rst = do
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       tcmd    = (if rst->showTime then timecmd else "") ++ maincmd
-      icmd    = if rst->interactive then execInteractive rst tcmd else tcmd
+      icmd    = if rst->interactive && cmpstatus==MainNonDet
+                then execInteractive rst tcmd
+                else tcmd
   writeVerboseInfo rst 3 $ "Executing: " ++ icmd
   system icmd
  where
@@ -422,10 +427,12 @@ processThisCommand rst cmd args
         putStrLn "...or type any <expression> to evaluate\n"
         return (Just rst)
   | cmd=="load"
-   = do let modname = stripSuffix args
-        if null modname
+   = do let dirmodname = stripSuffix args
+        if null dirmodname
          then writeErrorMsg "missing module name" >> return Nothing
          else do
+          let (dirname,modname) = splitDirectoryBaseName dirmodname
+          if dirname=="." then done else setCurrentDirectory dirname
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
@@ -505,7 +512,7 @@ processThisCommand rst cmd args
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
-       unless (status>0) $ do
+       unless (status==MainError) $ do
           renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
           writeVerboseInfo rst 1 ("Executable saved in '"++rst->mainMod++"'")
        cleanMainGoalFile rst
@@ -515,7 +522,7 @@ processThisCommand rst cmd args
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
-       unless (status>0) $ do
+       unless (status==MainError) $ do
           pid <- getPID
           let execname = "/tmp/kics2fork" ++ show pid
           system ("mv ." </> rst -> outputSubdir </> "Main " ++ execname)
