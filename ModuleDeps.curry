@@ -15,10 +15,11 @@ module ModuleDeps (ModuleIdent, Source, deps) where
 import CompilerOpts
 import FileGoodies
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
-import FlatCurry (readFlatCurryWithParseOptions, Prog (..))
+import FlatCurry (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
 import Distribution
 import List (partition)
 import Maybe (fromJust, isJust)
+import Directory
 
 import Files
 import SCC
@@ -31,11 +32,24 @@ type SourceEnv = FM ModuleIdent (Maybe Source)
 
 deps :: Options -> String -> IO ([(ModuleIdent, Source)], [String])
 deps opts fn = do
-  mEnv <- sourceDeps opts ident fn (emptyFM (<))
+  mEnv <- sourceDeps opts (stripSuffix $ baseName fn) fn (emptyFM (<))
+  fcyvalid <- isFlatCurryValid fn
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports and sort topologically
-  return (mods2, errs1 ++ errs2)
-    where ident = stripSuffix $ baseName fn
+  return (mods2, if fcyvalid then errs1 ++ errs2 else ["Compilation aborted"])
+
+-- Has the given program name a valid FlatCurry file?
+-- Used to check the result of the front end.
+isFlatCurryValid :: String -> IO Bool
+isFlatCurryValid fname = do
+  let fcyname = flatCurryFileName fname
+  existcy  <- doesFileExist fname
+  existfcy <- doesFileExist fcyname
+  if existcy && existfcy
+   then do cymtime  <- getModificationTime fname
+           fcymtime <- getModificationTime fcyname
+           return (fcymtime >= cymtime)
+   else return False
 
 moduleDeps :: Options -> SourceEnv -> ModuleIdent -> IO SourceEnv
 moduleDeps opts mEnv m = case lookupFM mEnv m of
