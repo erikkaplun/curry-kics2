@@ -660,11 +660,11 @@ instance Read (a -> b) where
   readsPrec = error "read for function is undefined"
 
 instance NonDet (a -> b) where
-  choiceCons  = undefined
-  choicesCons = undefined
-  failCons    = undefined
-  guardCons   = undefined
-  try         = undefined
+  choiceCons  = error "choiceCons for function is undefined"
+  choicesCons = error "choicesCons for function is undefined"
+  failCons    = error "failed"
+  guardCons   = error "guardCons for function is undefined"
+  try         = error "try for function is undefined"
 
 instance Generable (a -> b) where
   generate = error "generate for function is undefined"
@@ -747,10 +747,21 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
 -- TODO what to do whith choices and failures
 toIO :: C_IO a -> IO a
 toIO (C_IO io) = io
-toIO (Choice_C_IO _ _ _) = error "toIO: Choice_C_IO"
-toIO (Guard_C_IO _ _) = error "toIO: Guard_C_IO"
-toIO Fail_C_IO = error "toIO: Fail_C_IO"
-toIO (Choices_C_IO _ _) = error "toIO: Choices_C_IO"
+toIO (Choice_C_IO _ _ _) = error "toIO: Non-determinism in IO occured"
+toIO (Guard_C_IO constraints e) = do
+  st <- solves constraints
+  case st of
+    SuccessST _ -> toIO e
+    FailST           -> error "toIO (Guard): failed"
+    ChoiceST  _ _ _  -> error "toIO (Guard): Non-determinism in IO occured"
+    ChoicesST _ _    -> error "toIO (Guard): Non-determinism in IO occured"
+toIO Fail_C_IO = error "toIO: failed"
+toIO (Choices_C_IO i choices) = do
+  c <- lookupChoice i
+  case c of
+    ChooseN idx _ -> toIO (choices !! idx)
+    NoChoice -> error "toIO (Choices): Non-determinism in IO occured"
+    LazyBind constraints -> toIO (guardCons constraints (choicesCons i choices))
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io

@@ -62,7 +62,7 @@ test9 = putStrLn "Test9 output" >>=  \_ -> failed
 
 test10 = (putStrLn "Test10 output 1" >> failed) ? (putStrLn "Test10 output 2" >> return True)
 
-test11 = (putStrLn "Test10 output 1" >> return True) ? (putStrLn "Test10 output 2" >> failed)
+test11 = (putStrLn "Test11 output 1" >> return True) ? (putStrLn "Test11 output 2" >> failed)
 
 test12 = x =:= True &> putStrLn (show x) where x free
 
