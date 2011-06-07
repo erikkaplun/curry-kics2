@@ -33,7 +33,6 @@ import Unsafe(trace)
 import IO
 import IOExts(connectToCommand)
 import Char(isSpace,toUpper)
---import AllSolutions(getAllValues)
 
 -- If showTclTkErrors is true, all synchronization errors occuring in the
 -- Tcl/Tk communication are shown (such errors should only occur on
@@ -202,15 +201,15 @@ data CanvasItem = CLine [(Int,Int)] String
 --- The (hidden) data type of references to a widget in a GUI window.
 --- Note that the constructor WRefLabel will not be exported so that values
 --- can only be created inside this module.
---- @cons WRefLabel wp label type - here "wp" is the GUI port related
----       to the widget, "label" is the (globally unique) identifier of
+--- @cons WRefLabel label type - 
+---       "label" is the (globally unique) identifier of
 ---       this widget used in Tk, and "type" is one of
 ---       button / canvas / checkbutton / entry / label / listbox /
 ---       message / scale / scrollbar / textedit
-data WidgetRef = WRefLabel GuiPort String String
+data WidgetRef = WRefLabel String String
 
-wRef2Label (WRefLabel _ var _)   = wRefname2Label var
-wRef2Wtype (WRefLabel _ _ wtype) = wtype
+wRef2Label (WRefLabel var _)   = wRefname2Label var
+wRef2Wtype (WRefLabel _ wtype) = wtype
 
 --- The data type of possible text styles.
 --- @cons Bold - text in bold font
@@ -299,8 +298,8 @@ type EventHandler = (String,Event,GuiPort -> IO [ReconfigureItem])
 -- result: pair of (Tcl command string,
 --                  list of (eventname, eventtype, eventhandler))
 
-widget2tcl :: GuiPort -> String -> Widget -> (String,[EventHandler])
-widget2tcl wp label (PlainButton confs) =
+widget2tcl :: String -> Widget -> (String,[EventHandler])
+widget2tcl label (PlainButton confs) =
     ("button "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -309,9 +308,9 @@ widget2tcl wp label (PlainButton confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "button" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "button" label confs
 
-widget2tcl wp label (Canvas confs) =
+widget2tcl label (Canvas confs) =
     ("canvas "++label++"\n"
      ++"set "++refname++"_scrollx 100\n"
      ++"set "++refname++"_scrolly 100\n"
@@ -327,9 +326,9 @@ widget2tcl wp label (Canvas confs) =
                    ++refname++"_scrollx $"++refname++"_scrolly]}}\n"
      ++ conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "canvas" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "canvas" label confs
 
-widget2tcl wp label (CheckButton confs) =
+widget2tcl label (CheckButton confs) =
     ("checkbutton "++label++"\n" ++
      label++" configure -variable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -338,9 +337,9 @@ widget2tcl wp label (CheckButton confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "checkbutton" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "checkbutton" label confs
 
-widget2tcl wp label (Entry confs) =
+widget2tcl label (Entry confs) =
     ("entry "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -349,9 +348,9 @@ widget2tcl wp label (Entry confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "entry" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "entry" label confs
 
-widget2tcl wp label (Label confs) =
+widget2tcl label (Label confs) =
     ("label "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -360,18 +359,18 @@ widget2tcl wp label (Label confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "label" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "label" label confs
 
-widget2tcl wp label (ListBox confs) =
+widget2tcl label (ListBox confs) =
     ("listbox "++label++" -exportselection false\n" ++
      "proc getvar"++refname++" {} { return ["++label++" curselection]}\n" ++
      "proc setvar"++refname++" {s} { "++label++" selection clear 0 end ; "
              ++label++" selection set $s ; "++label++" see $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "listbox" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "listbox" label confs
 
-widget2tcl wp label (Message confs) =
+widget2tcl label (Message confs) =
     ("message "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -380,9 +379,9 @@ widget2tcl wp label (Message confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "message" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "message" label confs
 
-widget2tcl wp label (MenuButton confs) =
+widget2tcl label (MenuButton confs) =
     ("menubutton "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -391,9 +390,9 @@ widget2tcl wp label (MenuButton confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "menubutton" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "menubutton" label confs
 
-widget2tcl wp label (Scale from to confs) =
+widget2tcl label (Scale from to confs) =
     ("scale "++label++" -from "++show from++" -to "++show to++
      " -orient horizontal -length 200\n" ++
      "variable "++refname++" "++show from++"\n"++  -- initialize scale variable
@@ -404,23 +403,23 @@ widget2tcl wp label (Scale from to confs) =
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "scale" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "scale" label confs
 
-widget2tcl wp label (ScrollH widget confs) =
+widget2tcl label (ScrollH widget confs) =
     ("scrollbar "++label++" -orient horizontal -command {"++
                                          wRef2Label widget++" xview}\n" ++
      wRef2Label widget++" configure -xscrollcommand {"++label++" set}\n" ++
      wRef2Label widget++" configure -wrap none\n" ++ -- no line wrap
      conf_tcl , conf_evs)
-   where (conf_tcl,conf_evs) = configs2tcl "scrollbar" wp label confs
+   where (conf_tcl,conf_evs) = configs2tcl "scrollbar" label confs
 
-widget2tcl wp label (ScrollV widget confs) =
+widget2tcl label (ScrollV widget confs) =
     ("scrollbar "++label++" -command {"++wRef2Label widget++" yview}\n" ++
      wRef2Label widget++" configure -yscrollcommand {"++label++" set}\n" ++
      conf_tcl , conf_evs)
-   where (conf_tcl,conf_evs) = configs2tcl "scrollbar" wp label confs
+   where (conf_tcl,conf_evs) = configs2tcl "scrollbar" label confs
 
-widget2tcl wp label (TextEdit confs) =
+widget2tcl label (TextEdit confs) =
     ("text "++label++"\n"++ --" -height 15\n" ++
      "proc getvar"++refname++" {} { "++label++" get 1.0 {end -1 chars}}\n" ++
      "proc setvar"++refname++" {s} { "++label++" delete 1.0 end ; "
@@ -433,7 +432,7 @@ widget2tcl wp label (TextEdit confs) =
      unlines (map enableBackground colors)
     , conf_evs)
    where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "textedit" wp label confs
+         (conf_tcl,conf_evs) = configs2tcl "textedit" label confs
 
          enableFont tag style
            = label ++ " tag configure " ++ tag ++ " -font \"[font actual [" ++
@@ -451,7 +450,7 @@ widget2tcl wp label (TextEdit confs) =
            = label++" tag configure "++ camelCase color ++
              " -background \"" ++ color ++ "\""
 
-widget2tcl wp label (Row confs ws) =
+widget2tcl label (Row confs ws) =
   ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
     else "frame "++label++"\n") ++
    wstcl ++
@@ -462,11 +461,11 @@ widget2tcl wp label (Row confs ws) =
                 (1,"")
                 wsGridInfo),
    wsevs)
-  where (wstcl,wsevs) = widgets2tcl wp label 97 ws
+  where (wstcl,wsevs) = widgets2tcl label 97 ws
         wsGridInfo = widgets2gridinfo ws
         
 
-widget2tcl wp label (Col confs ws) =
+widget2tcl label (Col confs ws) =
   ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
     else "frame "++label++"\n") ++
       wstcl ++
@@ -477,22 +476,22 @@ widget2tcl wp label (Col confs ws) =
                    (1,"")
                    (widgets2gridinfo ws)),
       wsevs)
-  where (wstcl,wsevs) = widgets2tcl wp label 97 ws
+  where (wstcl,wsevs) = widgets2tcl label 97 ws
         wsGridInfo = widgets2gridinfo ws
 
-widget2tcl wp label (Matrix confs ws) = 
+widget2tcl label (Matrix confs ws) = 
   ((if label == "" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n" 
     else "frame "++label++"\n") ++ wstcl,wsevs)
 
   where
-    (wstcl,wsevs) =  matrix2tcl 97 1 wp label confs ws
+    (wstcl,wsevs) =  matrix2tcl 97 1 label confs ws
     wsGridInfo = concatMap widgets2gridinfo ws
 
 -- actual translation function of the list of lists of widgets in a matrix
-matrix2tcl :: Int -> Int -> GuiPort -> String -> [ConfCollection] 
+matrix2tcl :: Int -> Int -> String -> [ConfCollection] 
                     -> [[Widget]] -> (String,[EventHandler])
-matrix2tcl _ _ _ _ _ [] = ("",[])
-matrix2tcl nextLabel n wp label confs (ws:wss) =
+matrix2tcl _ _ _ _ [] = ("",[])
+matrix2tcl nextLabel n label confs (ws:wss) =
    (wstcl ++ 
    (snd $ foldl (\ (m,g) l->(m+1,g++"grid "++label ++ labelIndex2string (nextLabel+m-1)
                                   ++" -row "++show n ++" -column "++show m++" "
@@ -500,8 +499,8 @@ matrix2tcl nextLabel n wp label confs (ws:wss) =
                                   ++gridInfo2tcl m label "col" l ++ "\n"))
                 (1,"")
                 wsGridInfo) ++ wsstcl, wsevs++wssevs)
-  where (wsstcl,wssevs) = matrix2tcl (nextLabel+length ws) (n+1) wp label confs wss
-        (wstcl,wsevs) = widgets2tcl wp label nextLabel ws
+  where (wsstcl,wssevs) = matrix2tcl (nextLabel+length ws) (n+1) label confs wss
+        (wstcl,wsevs) = widgets2tcl label nextLabel ws
         wsGridInfo = widgets2gridinfo ws
 
 -- compute the required resize behavior of the top window
@@ -620,12 +619,12 @@ gridInfo2tcl n label "row" confs
 -- (button/canvas/checkbutton/entry/label/listbox/message/scale/scrollbar/
 --  textedit)
 -- and the third argument is the widget label
-config2tcl :: String -> GuiPort -> String -> ConfItem -> String
+config2tcl :: String -> String -> ConfItem -> String
 
 -- is the state of the widget active ("normal" in Tcl/Tk) or
 -- inactive ("disabled" in Tcl/Tk)?
 -- (inactive widgets do not accept any events)
-config2tcl wtype _ label (Active active) =
+config2tcl wtype label (Active active) =
   if wtype=="button" || wtype=="checkbutton" || wtype=="entry" ||
      wtype=="menubutton" || wtype=="scale" || wtype=="textedit"
   then if active
@@ -635,22 +634,22 @@ config2tcl wtype _ label (Active active) =
 
 -- alignment of information inside a widget
 -- argument must be: n, ne, e, se, s, sw, w, nw, or center
-config2tcl wtype _ label (Anchor align) =
+config2tcl wtype label (Anchor align) =
   if wtype=="button" || wtype=="checkbutton" || wtype=="label" ||
      wtype=="menubutton" || wtype=="message"
   then label++" configure -anchor "++align++"\n"
   else trace ("WARNING: GUI.Anchor ignored for widget type \""++wtype++"\"\n") ""
 
 -- background color:
-config2tcl _ _ label (Background color)
+config2tcl _ label (Background color)
  = label++" configure -background \""++color++"\"\n"
 
 -- foreground color:
-config2tcl _ _ label (Foreground color)
+config2tcl _ label (Foreground color)
  = label++" configure -foreground \""++color++"\"\n"
 
 -- command associated to various widgets:
-config2tcl wtype _ label (Handler evtype _)
+config2tcl wtype label (Handler evtype _)
  | evtype == DefaultEvent
  = if wtype=="button"
    then label++" configure -command"++writeEvent else
@@ -673,7 +672,7 @@ config2tcl wtype _ label (Handler evtype _)
   writeEvent = " { writeevent \""++label++event2tcl evtype++"\" }\n"
 
 -- height of a widget (not defined for all widget types):
-config2tcl wtype _ label (Height h)
+config2tcl wtype label (Height h)
  | wtype=="entry" || wtype=="message" || wtype=="menubutton" ||
    wtype=="scale"
   = trace ("WARNING: GUI.Height ignored for widget type \""++wtype++"\"\n") ""
@@ -684,20 +683,20 @@ config2tcl wtype _ label (Height h)
   = label++" configure -height "++show h++"\n"
 
 -- value of checkbuttons:
-config2tcl wtype _ label (CheckInit s)
+config2tcl wtype label (CheckInit s)
  | wtype=="checkbutton"
    = "setvar"++wLabel2Refname label++" \""++s++"\"\n"
  | otherwise
  = trace ("WARNING: GUI.CheckInit ignored for widget type \""++wtype++"\"\n") ""
 
 -- items in a canvas:
-config2tcl wtype _ label (CanvasItems items)
+config2tcl wtype label (CanvasItems items)
  | wtype=="canvas" = canvasItems2tcl label items
  | otherwise
  = trace ("WARNING: GUI.CanvasItems ignored for widget type \""++wtype++"\"\n") ""
 
 -- value lists for listboxes:
-config2tcl wtype _ label (List l)
+config2tcl wtype label (List l)
  | wtype=="listbox"
    = label++" delete 0 end\n" ++ setlistelems (ensureSpine l)
  | otherwise
@@ -709,7 +708,7 @@ config2tcl wtype _ label (List l)
                          setlistelems es
 
 -- items in a menu button:
-config2tcl wtype _ label (Menu l)
+config2tcl wtype label (Menu l)
  | wtype=="menubutton"
    = label++" configure -menu "++label++".a\n" ++
      menu2tcl (label++".a") l
@@ -717,11 +716,11 @@ config2tcl wtype _ label (Menu l)
  = trace ("WARNING: GUI.Menu ignored for widget type \""++wtype++"\"\n") ""
 
 -- references to widgets are bound to actual widget labels:
-config2tcl wtype wp label (WRef r)
- | r =:= WRefLabel wp (wLabel2Refname label) wtype = ""
+config2tcl wtype label (WRef r)
+ | r =:= WRefLabel (wLabel2Refname label) wtype = ""
 
 -- initial text value of widgets:
-config2tcl wtype _ label (Text s)
+config2tcl wtype label (Text s)
  | wtype=="canvas"
    = trace "WARNING: GUI.Text ignored for Canvas\n" ""
  | wtype=="checkbutton"
@@ -730,7 +729,7 @@ config2tcl wtype _ label (Text s)
    = "setvar"++wLabel2Refname label++" \""++escape_tcl s++"\"\n"
 
 -- width of a widget:
-config2tcl wtype _ label (Width w)
+config2tcl wtype label (Width w)
  | wtype=="canvas"
    = label++" configure -width "++show w++"\n"++
      "set"++wLabel2Refname label++"_scrollx "++show w++"\n"
@@ -738,12 +737,12 @@ config2tcl wtype _ label (Width w)
 
 -- configuration options for widget composition are ignored here
 -- since they are used during geometry management 
-config2tcl _ _ _ Fill = ""
-config2tcl _ _ _ FillX = ""
-config2tcl _ _ _ FillY = ""
+config2tcl _ _ Fill = ""
+config2tcl _ _ FillX = ""
+config2tcl _ _ FillY = ""
 
 -- for testing, put arbitrary Tk options for this widget:
-config2tcl _ _ label (TclOption tcloptions)
+config2tcl _ label (TclOption tcloptions)
  = label++" configure "++tcloptions++"\n"
 
 
@@ -784,10 +783,10 @@ menu2handler label (MMenuButton _ menu : ms) i =
   menu2handler label ms (i+1)
 
 -- translate configuration options into Tcl/Tk commands and event handler map:
-configs2tcl :: String -> GuiPort -> String -> [ConfItem]
+configs2tcl :: String -> String -> [ConfItem]
                -> (String,[EventHandler])
-configs2tcl wtype wp label confs =
-  (concatMap (config2tcl wtype wp label) confs,
+configs2tcl wtype label confs =
+  (concatMap (config2tcl wtype label) confs,
    configs2handler label confs)
 
 
@@ -835,10 +834,10 @@ wRefname2Label l = map (\c -> if c=='_' then '.' else c) l
 
 
 -- translate a list of widgets into pair Tcl string / event list:
-widgets2tcl _ _ _ [] = ("",[])
-widgets2tcl wp lab nr (w:ws) = (wtcl ++ wstcl, wevs ++ wsevs)
-  where (wtcl,wevs) = widget2tcl wp (lab++labelIndex2string nr) w
-        (wstcl,wsevs) = widgets2tcl wp lab (nr+1) ws
+widgets2tcl _ _ [] = ("",[])
+widgets2tcl lab nr (w:ws) = (wtcl ++ wstcl, wevs ++ wsevs)
+  where (wtcl,wevs) = widget2tcl (lab++labelIndex2string nr) w
+        (wstcl,wsevs) = widgets2tcl lab (nr+1) ws
 
 -- translate a label index into a textual label
 -- (e.g., 97->".a" or 123->".z1"):
@@ -847,18 +846,18 @@ labelIndex2string li = if li<123 then ['.',chr li]
                                  else ['.','z'] ++ show (li-122)
 
 -- translate main widget:
-mainWidget2tcl :: GuiPort -> Widget -> (String,[EventHandler])
-mainWidget2tcl wp widget =
+mainWidget2tcl :: Widget -> (String,[EventHandler])
+mainWidget2tcl widget =
   ("proc writeevent {l} { puts \":EVT$l\" }\n" ++
    "proc putlabel {l v} { writeevent $l }\n" ++
    "proc putvar {var value} { puts \":VAR$var%[string length $value]*$value\"}\n" ++
    widgettcl, evs)
-  where (widgettcl,evs) = widget2tcl wp "" widget
+  where (widgettcl,evs) = widget2tcl "" widget
 
 
 --- Prints the generated Tcl commands of a main widget (useful for debugging).
 debugTcl :: Widget -> IO ()
-debugTcl widget = putStrLn (fst (mainWidget2tcl wp widget))  where wp free
+debugTcl widget = putStrLn (fst (mainWidget2tcl widget))  
 
 
 ------------------------------------------------------------------------
@@ -935,7 +934,7 @@ openWish title params = do
 runPassiveGUI :: String -> Widget -> IO GuiPort
 runPassiveGUI title widget = do
   gport <- openWish (escape_tcl title) ""
-  send2tk (fst (mainWidget2tcl gport widget)) gport
+  send2tk (fst (mainWidget2tcl widget)) gport
   return gport
 
 
@@ -1090,8 +1089,7 @@ emptyUnitList = [] --tail [()]
 initSchedule :: Widget -> GuiPort -> [ExternalHandler msg] ->
                 [msg] -> (GuiPort -> IO ()) -> IO ()
 initSchedule widget gport exths msgs initcmd = do
-  let (tcl,evs) = mainWidget2tcl gport widget
-  --(tcl,evs) <- getAllValues (mainWidget2tcl gport widget) >>= return . head
+  let (tcl,evs) = mainWidget2tcl widget
   send2tk tcl gport
   initcmd gport
   -- add handler on wish connection as first handler:
@@ -1208,9 +1206,8 @@ toIOHandler handler _ handle gport = handler handle gport >> return (Just [])
 --- (deprecated operation, only included for backward compatibility).
 --- Warning: does not work for Command options!
 setConfig :: WidgetRef -> ConfItem -> GuiPort -> IO ()
-setConfig (WRefLabel wpv var wtype) confitem gport = do
-  checkWishConsistency wpv gport
-  send2tk (config2tcl wtype wpv (wRefname2Label var) confitem) gport
+setConfig (WRefLabel var wtype) confitem gport = do
+  send2tk (config2tcl wtype (wRefname2Label var) confitem) gport
 
 
 selectEvent evwidget evtype [] _ =
@@ -1286,14 +1283,12 @@ exitGUI gport = send2tk "exit" gport -- this also terminates the scheduler
 
 --- Gets the (String) value of a variable in a GUI.
 getValue :: WidgetRef -> GuiPort -> IO String
-getValue (WRefLabel wpv var _) gport = do
-  checkWishConsistency wpv gport
+getValue (WRefLabel var _) gport = 
   getWidgetVar var gport
 
 --- Sets the (String) value of a variable in a GUI.
 setValue :: WidgetRef -> String -> GuiPort -> IO ()
-setValue (WRefLabel wpv var _) val gport = do
-  checkWishConsistency wpv gport
+setValue (WRefLabel var _) val gport = 
   send2tk ("setvar"++var++" \""++escape_tcl val++"\"") gport
 
 --- Updates the (String) value of a variable w.r.t. to an update function.
@@ -1305,11 +1300,10 @@ updateValue upd wref gport = do
 --- Appends a String value to the contents of a TextEdit widget and
 --- adjust the view to the end of the TextEdit widget.
 appendValue :: WidgetRef -> String -> GuiPort -> IO ()
-appendValue (WRefLabel wpv var wtype) val gport =
+appendValue (WRefLabel var wtype) val gport =
   if wtype/="textedit"
   then trace ("WARNING: GUI.appendValue ignored for widget type \""++wtype++"\"\n") done
-  else checkWishConsistency wpv gport >>
-       send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\"") gport >>
+  else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\"") gport >>
        send2tk (wRefname2Label var++" see end") gport
 
 --- Appends a String value with style tags to the contents of a TextEdit widget
@@ -1320,11 +1314,10 @@ appendValue (WRefLabel wpv var wtype) val gport =
 --- ignored.
 --- This is an experimental function and might be changed in the future.
 appendStyledValue :: WidgetRef -> String -> [Style] -> GuiPort -> IO ()
-appendStyledValue (WRefLabel wpv var wtype) val styles gport =
+appendStyledValue (WRefLabel var wtype) val styles gport =
   if wtype/="textedit"
    then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++wtype++"\"\n") done
-   else checkWishConsistency wpv gport >>
-        send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\""
+   else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\""
                  ++" \""++showStyles styles++"\"") gport >>
         send2tk (wRefname2Label var++" see end") gport
  where
@@ -1341,11 +1334,10 @@ appendStyledValue (WRefLabel wpv var wtype) val styles gport =
 --- This is an experimental function and might be changed in the future.
 addRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                -> IO ()
-addRegionStyle (WRefLabel wpv var wtype) (l1,c1) (l2,c2) style gport =
+addRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
   if wtype/="textedit"
   then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
-  else checkWishConsistency wpv gport >>
-       send2tk (wRefname2Label var++" tag add "++showStyle style++" "++
+  else send2tk (wRefname2Label var++" tag add "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
 
@@ -1355,23 +1347,21 @@ addRegionStyle (WRefLabel wpv var wtype) (l1,c1) (l2,c2) style gport =
 --- This is an experimental function and might be changed in the future.
 removeRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                   -> IO ()
-removeRegionStyle (WRefLabel wpv var wtype) (l1,c1) (l2,c2) style gport =
+removeRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
   if wtype/="textedit"
   then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
-  else checkWishConsistency wpv gport >>
-       send2tk (wRefname2Label var++" tag remove "++showStyle style++" "++
+  else send2tk (wRefname2Label var++" tag remove "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
 
 --- Get the position (line,column) of the insertion cursor in a TextEdit
 --- widget. Lines are numbered from 1 and columns are numbered from 0.
 getCursorPosition :: WidgetRef -> GuiPort -> IO (Int,Int)
-getCursorPosition (WRefLabel wpv var wtype) gport =
+getCursorPosition (WRefLabel var wtype) gport =
   if wtype/="textedit"
   then error ("GUI.getCursorPosition not applicable to widget type \""++
               wtype++"\"")
-  else do checkWishConsistency wpv gport
-          send2tk ("puts [ "++wRefname2Label var++" index insert ]") gport
+  else do send2tk ("puts [ "++wRefname2Label var++" index insert ]") gport
           line <- receiveFromTk gport
           let (ls,ps) = break (=='.') line
           return (if null ps then (0,0) else (readNat ls, readNat (tail ps)))
@@ -1381,26 +1371,23 @@ getCursorPosition (WRefLabel wpv var wtype) gport =
 --- character is visible.
 --- Lines are numbered from 1 and columns are numbered from 0.
 seeText :: WidgetRef -> (Int,Int) -> GuiPort -> IO ()
-seeText (WRefLabel wpv var wtype) (line,column) gport =
+seeText (WRefLabel var wtype) (line,column) gport =
   if wtype/="textedit"
   then trace ("WARNING: GUI.seeText ignored for widget type \""++wtype++"\"\n") done
-  else checkWishConsistency wpv gport >>
-       send2tk (wRefname2Label var++" see "++show line++"."++show column) gport
+  else send2tk (wRefname2Label var++" see "++show line++"."++show column) gport
 
 
 --- Sets the input focus of this GUI to the widget referred by the first
 --- argument.
 --- This is useful for automatically selecting input entries in an application.
 focusInput :: WidgetRef -> GuiPort -> IO ()
-focusInput (WRefLabel wpv var _) gport = do
-  checkWishConsistency wpv gport
+focusInput (WRefLabel var _) gport = do
   send2tk ("focus "++wRefname2Label var) gport
 
 --- Adds a list of canvas items to a canvas referred by the first argument.
 addCanvas :: WidgetRef -> [CanvasItem] -> GuiPort -> IO ()
-addCanvas (WRefLabel wpv var wtype) items gport = do
-  checkWishConsistency wpv gport
-  send2tk (config2tcl wtype wpv (wRefname2Label var) (CanvasItems items)) gport
+addCanvas (WRefLabel var wtype) items gport = do
+  send2tk (config2tcl wtype (wRefname2Label var) (CanvasItems items)) gport
 
 
 ----------------------------------------------------------------------------
