@@ -94,7 +94,7 @@ instance NonDet C_Int where
   try x = Val x
 
 instance Generable C_Int where
-  generate s = Choices_C_Int (freeID [1] s) [(C_CurryInt (generate (leftSupply s)))]
+  generate s = Choices_C_Int (freeID [1] s) [C_CurryInt (generate (leftSupply s))]
 
 instance NormalForm C_Int where
   ($!!) cont x@(C_Int _) = cont x
@@ -127,8 +127,6 @@ instance Unifiable C_Int where
   (=.<=) (C_CurryInt x1) (C_Int      y1) = x1 =:<= (primint2curryint y1)
   (=.<=) (C_CurryInt x1) (C_CurryInt y1) = x1 =:<= y1
   (=.<=) _ _ = Fail_C_Success
---   bind i (C_Int x2) = bind i (primint2curryint x2)
---   bind i (C_CurryInt x2) = bind i x2
   bind i (C_Int      x2) = (i :=: ChooseN 0 1) : bind (leftID i) (primint2curryint x2)
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
@@ -293,6 +291,7 @@ instance Curry C_Float where
 -- ---------------------------------------------------------------------------
 data C_Char
      = C_Char Char#
+     | CurryChar BinInt
      | Choice_C_Char ID C_Char C_Char
      | Choices_C_Char ID ([C_Char])
      | Fail_C_Char
@@ -304,8 +303,12 @@ instance Show C_Char where
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
   showsPrec d (C_Char x1) = showString (show (C# x1))
+  showsPrec d (CurryChar x1) = (\x-> shows (C# (curryChar2primChar x))) $!! x1
 
-  showList cs = showList (map (\(C_Char c) -> (C# c)) cs)
+  showList cs = showList (map convert cs)
+   where
+    convert (C_Char c) = C# c
+    convert (CurryChar c) = C# (curryChar2primChar c)
 
 instance Read C_Char where
   readsPrec d s = map readChar (readsPrec d s) where readChar (C# c, s) = (C_Char c, s)
@@ -324,32 +327,50 @@ instance NonDet C_Char where
   try x = Val x
 
 instance Generable C_Char where
-  generate _ = error "No generator for C_Char"
+  generate s = Choices_C_Char (freeID [1] s) [CurryChar (generate (leftSupply s))]
 
 instance NormalForm C_Char where
   ($!!) cont x@(C_Char _) = cont x
+  ($!!) cont (CurryChar x) = (cont . CurryChar) $!! x
   ($!!) cont (Choice_C_Char i x y) = nfChoice cont i x y
   ($!!) cont (Choices_C_Char i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Char c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Char = failCons
   ($##) cont x@(C_Char _) = cont x
+  ($##) cont (CurryChar x) = (cont . CurryChar) $## x
   ($##) cont (Choice_C_Char i x y) = gnfChoice cont i x y
   ($##) cont (Choices_C_Char i xs) = gnfChoices cont i xs
   ($##) cont (Guard_C_Char c x) = guardCons c (cont $## x)
   ($##) _ Fail_C_Char = failCons
+  ($!<) cont (CurryChar x)         =( cont . CurryChar) $!< x
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF search cont c@(C_Char _) = cont c
+  searchNF search cont (CurryChar x) = search (cont . CurryChar) x
 
 instance Unifiable C_Char where
-  (=.=) _ _ = Fail_C_Success
-  (=.<=) _ _ = Fail_C_Success
+  (=.=) (C_Char       x1) (C_Char      x2) | x1 `eqChar#` x2 = C_Success
+                                           | otherwise = Fail_C_Success
+  (=.=) (C_Char       x1) (CurryChar x2) = primChar2CurryChar x1 =:= x2
+  (=.=) (CurryChar  x1) (C_Char      x2) = x1 =:= primChar2CurryChar x2
+  (=.=) (CurryChar x1)    (CurryChar   x2) = x1 =:= x2
+  (=.=) _                 _                = Fail_C_Success
+  (=.<=) (C_Char       x1) (C_Char      x2) | x1 `eqChar#` x2 = C_Success
+                                            | otherwise = Fail_C_Success
+  (=.<=) (C_Char       x1) (CurryChar x2) = primChar2CurryChar x1 =:<= x2
+  (=.<=) (CurryChar  x1) (C_Char      x2) = x1 =:<= primChar2CurryChar x2
+  (=.<=) (CurryChar x1)    (CurryChar   x2) = x1 =:<= x2
+  (=.<=) _                 _                = Fail_C_Success
+  bind i (C_Char    x) = (i :=: ChooseN 0 1) : bind (leftID i) (primChar2CurryChar x)
+  bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x  
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Char = [Unsolvable]
   bind i (Guard_C_Char cs e) = cs ++ (bind i e)
+  lazyBind i (C_Char    x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primChar2CurryChar x))]
+  lazyBind i (CurryChar x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x)]
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
@@ -366,6 +387,9 @@ instance Curry C_Char where
   (=?=) y (Guard_C_Char c x) = guardCons c (y =?= x)
   (=?=) _ Fail_C_Char = failCons
   (=?=) (C_Char x1) (C_Char y1) = toCurry (x1 `eqChar#` y1)
+  (=?=) (C_Char      x1) (CurryChar y1) = (primChar2CurryChar x1) =?= y1
+  (=?=) (CurryChar x1) (C_Char      y1) = x1 =?= (primChar2CurryChar y1)
+  (=?=) (CurryChar x1) (CurryChar y1) = x1 =?= y1
   (<?=) (Choice_C_Char i x y) z = narrow i (x <?= z) (y <?= z)
   (<?=) (Choices_C_Char i xs) y = narrows i (map ((<?= y)) xs)
   (<?=) (Guard_C_Char c x) y = guardCons c (x <?= y)
@@ -375,7 +399,16 @@ instance Curry C_Char where
   (<?=) y (Guard_C_Char c x) = guardCons c (y <?= x)
   (<?=) _ Fail_C_Char = failCons
   (<?=) (C_Char x1) (C_Char y1) = toCurry (x1 `leChar#` y1)
+  (<?=) (C_Char      x1) (CurryChar y1) = (primChar2CurryChar x1) `d_C_lteqInteger` y1
+  (<?=) (CurryChar x1) (C_Char      y1) = x1 `d_C_lteqInteger` (primChar2CurryChar y1)
+  (<?=) (CurryChar x1) (CurryChar y1) = x1 `d_C_lteqInteger` y1
 
+
+primChar2CurryChar :: Char# -> BinInt
+primChar2CurryChar c = primint2curryint (ord# c)
+
+curryChar2primChar :: BinInt -> Char#
+curryChar2primChar c = chr# (curryint2primint c)
 -- ---------------------------------------------------------------------------
 -- Conversion from and to primitive Haskell types
 -- ---------------------------------------------------------------------------
@@ -383,17 +416,18 @@ instance Curry C_Char where
 instance ConvertCurryHaskell C_Int Int where
   toCurry (I# i) = C_Int i
 
-  fromCurry (C_Int i) = I# i
-  fromCurry _         = error "Int data with no ground term"
+  fromCurry (C_Int i)      = I# i
+  fromCurry (C_CurryInt i) = I# (curryint2primint i)
+  fromCurry _              = error "Int data with no ground term"
 
 instance ConvertCurryHaskell C_Int Integer where
   toCurry i = int2C_Int (fromInteger i)
+   where
+    int2C_Int (I# c) = C_Int c
 
   fromCurry (C_Int i) = toInteger (I# i)
+  fromCurry (C_CurryInt i) = toInteger (I# (curryint2primint i))
   fromCurry _         = error "Int data with no ground term"
-
-int2C_Int :: Int -> C_Int
-int2C_Int (I# c) = C_Int c
 
 instance ConvertCurryHaskell C_Float Float where
   toCurry (F# f) = C_Float f
@@ -405,6 +439,7 @@ instance ConvertCurryHaskell C_Char Char where
   toCurry (C# c) = C_Char c
 
   fromCurry (C_Char c) = C# c
+  fromCurry (CurryChar c) = C# (curryChar2primChar c)
   fromCurry _          = error "Char data with no ground term"
 
 instance (ConvertCurryHaskell ct ht) =>
@@ -517,11 +552,14 @@ external_d_OP_eq_eq  = (=?=)
 external_d_OP_lt_eq :: Curry a => a -> a -> C_Bool
 external_d_OP_lt_eq = (<?=)
 
+
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
+external_d_C_prim_ord (CurryChar c) = C_CurryInt c
 
 external_d_C_prim_chr :: C_Int -> C_Char
-external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
+external_d_C_prim_chr (C_Int i)      = C_Char (chr# i)
+external_d_C_prim_chr (C_CurryInt i) = CurryChar i
 
 external_d_OP_plus :: C_Int -> C_Int -> C_Int
 external_d_OP_plus (C_Int      x) (C_Int      y) = C_Int (x +# y)
@@ -641,7 +679,7 @@ external_d_C_return :: a -> C_IO a
 external_d_C_return a = fromIO (return a)
 
 external_d_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_d_C_prim_putChar = fromHaskellIO1 putChar
+external_d_C_prim_putChar = fromHaskellIO1 putChar 
 
 external_d_C_getChar :: C_IO C_Char
 external_d_C_getChar = fromHaskellIO0 getChar

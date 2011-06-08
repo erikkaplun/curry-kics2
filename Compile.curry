@@ -534,7 +534,7 @@ transBody qn vs exp = case exp of
     -- translate branches
     mapM transBranch bs `bindM` \bs' ->
     -- create branches for non-deterministic constructors
-    let bs'' = addUnifIntegerRule bs bs'
+    let bs'' = addUnifIntCharRule bs bs'
         pConsName = consNameFromPattern $ head bs in
     newBranches qn vs i pConsName `bindM` \ns ->
     -- TODO: superfluous?
@@ -542,20 +542,26 @@ transBody qn vs exp = case exp of
     returnM $ Case ct e' (bs'' ++ ns)
   _ -> transCompleteExpr exp
 
-addUnifIntegerRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
-addUnifIntegerRule bs bs' =
+addUnifIntCharRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
+addUnifIntCharRule bs bs' =
   case bs of
-   (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
+   (Branch (LPattern (Intc  _)) _ :_) -> addRule True  bs bs' []
+   (Branch (LPattern (Charc _)) _ :_) -> addRule False bs bs' []
    _                                 -> bs'
   where
-    addRule bs1 bs2 rules = case (bs1, bs2) of
-      (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
-        -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
+    addRule isInt bs1 bs2 rules = case (bs1, bs2) of
+      (Branch (LPattern lit) _ :nextBs, Branch p e:nextBs')
+        -> Branch p e : addRule isInt nextBs nextBs' ((Lit lit,e):rules)
+      
       -- TODO: magic number
-      _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
-                  (funcCall (basics,"matchInteger")
+      _ -> Branch (Pattern (constr isInt) [5000])
+                  (funcCall (matchFun isInt)
                     [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
           : bs2
+    matchFun True  = (basics,"matchInteger")
+    matchFun False = (basics,"matchChar")
+    constr   True  = renameQName (prelude,"CurryInt")
+    constr   False = (curryPrelude,"CurryChar")
 
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p

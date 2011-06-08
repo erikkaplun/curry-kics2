@@ -6,6 +6,7 @@ module Basics
   ) where
 
 import qualified Data.Map
+import Data.Char(ord)
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Parallel.TreeSearch
@@ -322,6 +323,13 @@ halfKey =  mapFst (`div` 2)
 mapFst :: (a -> b) -> (a,c) -> (b,c)
 mapFst f (a,b) = (f a,b)
 
+------------------------------------------------------------------------------
+-- Matching for Chars
+------------------------------------------------------------------------------
+
+matchChar :: NonDet a => [(Char,a)] -> BinInt -> a
+matchChar rules = matchInteger (map (mapFst ord) rules) 
+
 -- ---------------------------------------------------------------------------
 -- Built-in types
 -- ---------------------------------------------------------------------------
@@ -401,7 +409,7 @@ instance Unifiable C_Success where
 x & y = const y $!! x
 
 
--- Integer
+-- BinInt
 
 data BinInt
      = Neg Nat
