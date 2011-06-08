@@ -70,9 +70,10 @@ type ReplState =
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 -- Result of compiling main goal
-data MainGoalCompile = GoalError -- error occurred
-                     | GoalWithoutBindings -- goal does not contain free vars
-                     | GoalWithBindings Int String -- number of vars / new goal
+data MainGoalCompile =
+   GoalError                               -- error occurred
+ | GoalWithoutBindings CurryProg           -- goal does not contain free vars
+ | GoalWithBindings CurryProg Int String   -- number of vars / new goal
 
 -- Result of compiling main program
 data MainCompile = MainError | MainDet | MainNonDet
@@ -201,10 +202,10 @@ compileProgramWithGoal rst goal = do
   writeMainGoalFile rst [] Nothing goal
   goalstate <- insertFreeVarsInMainGoal rst goal
   if goalstate==GoalError then return MainError else do
-    let newgoal = case goalstate of
-                    GoalWithBindings _ g -> g
-                    _                    -> goal
-    typeok <- makeMainGoalMonomorphic rst newgoal
+    let (newprog,newgoal) = case goalstate of
+                    GoalWithBindings p _ g -> (p,g)
+                    GoalWithoutBindings p  -> (p,goal)
+    typeok <- makeMainGoalMonomorphic rst newprog newgoal
     if typeok
      then do
       status <- compileCurryProgram rst mainGoalFile
@@ -228,31 +229,28 @@ writeMainGoalFile rst imports mtype goal =
 --- If the main goal has type "IO t" where t is monomorphic, t/=(),
 --- and t is not a function, then ">>= print" is added to the goal.
 --- The result is False if the main goal contains some error.
-makeMainGoalMonomorphic :: ReplState -> String -> IO Bool
-makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
-  maybe (return False)
-   (\ (CurryProg _ _ _ [mfunc] _) -> do
-    let (CFunc _ _ _ maintype _) = mfunc
-        newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
-    if isFunctionalType maintype
-     then writeErrorMsg "expression is of functional type" >> return False
+makeMainGoalMonomorphic :: ReplState -> CurryProg -> String -> IO Bool
+makeMainGoalMonomorphic rst (CurryProg _ _ _ [mfunc] _) goal = do
+  let (CFunc _ _ _ maintype _) = mfunc
+      newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
+  if isFunctionalType maintype
+   then writeErrorMsg "expression is of functional type" >> return False
+   else
+    if isPolyType maintype
+     then do writeMainGoalFile rst (modsOfType maintype)
+                               (Just (showMonoTypeExpr True False maintype))
+                               goal
+             writeVerboseInfo rst 2
+               ("Type of main expression \"" ++
+                showMonoTypeExpr False False maintype ++
+                "\" made monomorphic")
+             writeVerboseInfo rst 1
+                "Type variables of main expression replaced by \"()\""
+             return True
      else
-      if isPolyType maintype
-       then do writeMainGoalFile rst (modsOfType maintype)
-                                 (Just (showMonoTypeExpr True False maintype))
-                                 goal
-               writeVerboseInfo rst 2
-                 ("Type of main expression \"" ++
-                  showMonoTypeExpr False False maintype ++
-                  "\" made monomorphic")
-               writeVerboseInfo rst 1
-                  "Type variables of main expression replaced by \"()\""
-               return True
-       else
-        if newgoal==goal
-         then return True
-         else writeMainGoalFile rst [] Nothing newgoal >> return True
-   )
+      if newgoal==goal
+       then return True
+       else writeMainGoalFile rst [] Nothing newgoal >> return True
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
@@ -260,12 +258,12 @@ makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
 insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
   maybe (return GoalError)
-   (\ (CurryProg _ _ _ [mfunc] _) -> do
+   (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings) || length freevars > 5
-     then return GoalWithoutBindings
+     then return (GoalWithoutBindings prog)
      else let (exp,whereclause) = break (=="where") (words goal)
-           in if null whereclause then return GoalWithoutBindings else do
+           in if null whereclause then return (GoalWithoutBindings prog) else do
               let newgoal = unwords $
                         ["("] ++
                         exp ++ [",["] ++
@@ -277,7 +275,10 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
               writeVerboseInfo rst 2
                 ("Adding printing of bindings for free variables: "++
                  concat (intersperse "," freevars))
-              return (GoalWithBindings (length freevars) newgoal)
+              mbprog <- getAcyOfMainGoal rst
+              return (maybe GoalError
+                            (\p -> GoalWithBindings p (length freevars) newgoal)
+                            mbprog)
    )
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
@@ -343,8 +344,8 @@ createAndCompileMain rst goalstate = do
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
   let printOperation = case goalstate of
-                         GoalWithBindings n _ -> "printWithBindings"++show n
-                         _                    -> "print"
+                         GoalWithBindings _ n _ -> "printWithBindings"++show n
+                         _                      -> "print"
       mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else

@@ -6,13 +6,13 @@ all: AddTypes GenInt ImportCalls CreateMakefile
 
 # generate saved state for addtypes program:
 AddTypes: AddTypes.curry
-	../bin/kics2 :l AddTypes :save :q
+	../bin/kics2 :set v2 :l AddTypes :save :q
 	(cd ../bin ; rm -f addtypes ; \
 	             ln -s ../tools/AddTypes addtypes)
 
 # generate saved state for interface generator:
 GenInt: GenInt.curry
-	../bin/kics2 :l GenInt :save :q
+	../bin/kics2 :set v2 :l GenInt :save :q
 
 # generate saved state for ImportCalls tool:
 ImportCalls: ImportCalls.curry
@@ -20,7 +20,7 @@ ImportCalls: ImportCalls.curry
 
 # generate saved state for currycreatemake program:
 CreateMakefile: CreateMakefile.curry ../lib/meta/FlatCurryRead.curry
-	../bin/kics2 :l CreateMakefile :save :q
+	../bin/kics2 :set v2 :l CreateMakefile :save :q
 	(cd ../bin ; rm -f currycreatemake ; \
 	             ln -s ../tools/CreateMakefile currycreatemake)
 
