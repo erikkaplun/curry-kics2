@@ -2,6 +2,7 @@
 
 .PHONY: all
 all: AddTypes GenInt ImportCalls CreateMakefile
+	@cd browser   ; ${MAKE}
 	@cd currydoc  ; ${MAKE}
 
 # generate saved state for addtypes program:
@@ -37,4 +38,5 @@ clean:
 	../bin/cleancurry
 	(cd ../bin ; rm -f addtypes currycreatemake currytestkics)
 	cd analysis  ; ../../bin/cleancurry
+	cd browser   ; ${MAKE} clean
 	cd currydoc  ; ${MAKE} clean

@@ -522,6 +522,12 @@ external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
 
 external_d_C_prim_chr :: C_Int -> C_Char
 external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
+external_d_C_prim_chr x@(C_CurryInt _) =
+  external_d_C_prim_chr_CurryInt `d_OP_dollar_hash_hash` x
+
+external_d_C_prim_chr_CurryInt (C_CurryInt i) =
+  C_Char (chr# (curryint2primint i))
+
 
 external_d_OP_plus :: C_Int -> C_Int -> C_Int
 external_d_OP_plus (C_Int      x) (C_Int      y) = C_Int (x +# y)
@@ -660,8 +666,11 @@ external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
 external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail act err = fromIO $ catch (toIO act) handle
+external_d_C_catchFail act err = fromIO $ catch (toIOWithFailCheck act) handle
   where handle ioErr = print ioErr >> (toIO err)
+        toIOWithFailCheck act =
+          case act of Fail_C_IO -> ioError (userError "I/O action failed")
+                      _         -> toIO act
 
 external_d_C_prim_show :: Show a => a -> C_String
 external_d_C_prim_show a = toCurry (show a)

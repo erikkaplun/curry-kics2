@@ -400,7 +400,7 @@ execMain rst cmpstatus = do
     return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","cd","fork",
+allCommands = ["quit","help","?","load","reload","add","browse","cd","fork",
                "programs","edit","interface","show","set","save","type",
                "usedimports"]
 
@@ -498,6 +498,16 @@ processThisCommand rst cmd args
         giexists <- doesFileExist genint
         if giexists
          then system (genint ++ " -int " ++ modname) >> return (Just rst)
+         else errorMissingTool toolexec >> return Nothing
+  | cmd=="browse"
+   = if not (null (stripSuffix args))
+     then writeErrorMsg "superfluous argument" >> return Nothing
+     else do
+        let toolexec = "tools/browser/BrowserGUI"
+            browser  = rst->idcHome </> toolexec
+        cbexists <- doesFileExist browser
+        if cbexists
+         then system (browser ++ " " ++ rst->mainMod) >> return (Just rst)
          else errorMissingTool toolexec >> return Nothing
   | cmd=="usedimports"
    = do let modname  = if null args then rst->mainMod else stripSuffix args
@@ -654,6 +664,7 @@ printHelpOnCommands = putStrLn $
   ":edit <mod>      - load source of module <m> into editor\n"++
   ":show            - show currently loaded source program\n"++
   ":show <mod>      - show source of module <m>\n"++
+  ":browse          - browse program and its imported modules\n"++
   ":interface       - show currently loaded source program\n"++
   ":interface <mod> - show source of module <m>\n"++
   ":usedimports     - show all used imported functions/constructors\n"++
