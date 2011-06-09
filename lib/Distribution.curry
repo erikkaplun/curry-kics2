@@ -267,25 +267,23 @@ callFrontendWithParams :: FrontendTarget -> FrontendParams -> String -> IO ()
 callFrontendWithParams target params progname = do
   parsecurry <- callParseCurry
   let lf      = maybe "" id (logfile params)
-      syscall = "\"" ++ parsecurry ++ "\" " ++ showFrontendTarget target
-                     ++ showFrontendParams 
-                     ++ " " ++ progname
+      syscall = parsecurry ++ " " ++ showFrontendTarget target
+                           ++ showFrontendParams 
+                           ++ " " ++ progname
   if null lf
     then system syscall
     else system (syscall++" > "++lf++" 2>&1")
   return ()
  where
-   isPakcs =
-     if curryCompiler == "pakcs" || curryCompiler == "kics2" then True else
-     if curryCompiler == "kics"  then False
-       else error "Distribution.callFrontend: unknown curryCompiler"
-
-   callParseCurry =
-     if isPakcs then
-      do return (installDir++"/bin/parsecurry")
-     else
-      do path <- maybe getLoadPath return (fullPath params)
-         return (installDir++"/bin/parsecurry"++concatMap (" -i"++) path)
+   callParseCurry = case curryCompiler of
+     "pakcs" -> return ("\""++installDir++"/bin/parsecurry\"")
+     "kics"  -> do path <- maybe getLoadPath return (fullPath params)
+                   return ("\""++installDir++"/bin/parsecurry\""++
+                           concatMap (" -i"++) path)
+     "kics2"  -> do path <- maybe getLoadPath return (fullPath params)
+                    return ("\""++installDir++"/bin/cymake\" -e"++
+                            concatMap (\d->" -i\""++d++"\"") path)
+     _ -> error "Distribution.callFrontend: unknown curryCompiler"
 
    showFrontendTarget FCY  = "--flat"
    showFrontendTarget FINT = "--flat"
@@ -297,11 +295,14 @@ callFrontendWithParams target params progname = do
    showFrontendParams =
      (if quiet params then runQuiet else "")
      ++ (maybe "" (" -o "++) (outfile params))
-     ++ (maybe "" (\p -> " --fullpath " ++ concat (intersperse ":" p))
+     ++ (maybe "" (\p -> if curryCompiler=="pakcs"
+                         then " --fullpath " ++ concat (intersperse ":" p)
+                         else "")
                (fullPath params))
 
-   runQuiet = if isPakcs then " --quiet "
-                         else " --no-verb --no-warn --no-overlap-warn " -- kics
+   runQuiet = if curryCompiler=="pakcs"
+              then " --quiet "
+              else " --no-verb --no-warn --no-overlap-warn " -- kics(2)
 
 rcErr :: String -> a -> IO a
 rcErr s x = hPutStrLn stderr (s ++ " undefined in rc file") >> return x

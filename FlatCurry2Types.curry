@@ -56,7 +56,9 @@ genTypeDefinitions _ (FC.TypeSyn qf vis targs texp) =
   [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)]
 genTypeDefinitions hores (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
   then [ Type (mn, tc) acvis targs [] ]
-  else [ Type (mn, tc) acvis targs
+  else [ Type (mn, tc)
+          Public -- type names are always exported to avoid ghc type errors
+          targs
           (concatMap (fcy2absCDecl hores) cdecls ++
           [ Cons choiceConsName  3 acvis [idType, ctype, ctype]
           , Cons choicesConsName 2 acvis [idType, clisttype]

@@ -17,17 +17,20 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 -- Curry types
 -- ---------------------------------------------------------------------------
 
--- Class for curry types
-class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+-- Class for Curry types
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
+      => Curry a where
+  -- implementation of strict equalit (==) for a data type
   (=?=) :: a -> a -> C_Bool
-  (=?=) = error "(=?=) is undefined"
+  (=?=) = error "(==) is undefined"
 
+  -- implementation of less-or-equal (<=) for a data type
   (<?=) :: a -> a -> C_Bool
-  (<?=) = error "(<?=) is undefined"
+  (<?=) = error "(<=) is undefined"
 
 instance Curry (PrimData a) where
-  (=?=) = error "(=?=) is undefined for primitive data"
-  (<?=) = error "(<?=) is undefined for primitive data"
+  (=?=) = error "(==) is undefined for primitive data"
+  (<?=) = error "(<=) is undefined for primitive data"
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 instance Curry C_Success where
@@ -53,10 +56,16 @@ instance Curry C_Success where
 
 
 instance (Curry t0,Curry t1) => Curry (Func t0 t1) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 instance Curry t0 => Curry (C_IO t0) where
+  (=?=) = error "(==) is undefined for I/O actions"
+  (<?=) = error "(<=) is undefined for I/O actions"
 
 instance Curry (a -> b) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 -- ---------------------------------------------------------------------------
 -- Int

@@ -1,0 +1,4 @@
+#!/bin/sh
+# call cymake of PAKCS (for the moment...)
+PAKCSBINDIR=$(dirname `which pakcs`)
+$PAKCSBINDIR/../mccparser/bin/cymake ${1+"$@"}
