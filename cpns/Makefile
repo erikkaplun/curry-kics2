@@ -7,7 +7,7 @@ CPNSD=CPNSD
 LOGFILE="/tmp/PAKCS_CPNSD_LOG"
 
 ${CPNSD}: ../lib/CPNS.curry
-	cd ../lib && ../bin/kics2 :load CPNS :save :q
+	cd ../lib && ../bin/kics2 :set v2 :load CPNS :save :q
 	mv ../lib/CPNS ${CPNSD}
 
 # Shows the currently registered ports:

@@ -21,10 +21,7 @@ import AbstractCurry
 import Distribution
 import qualified Installation as Inst
 import Files
---import Names (funcInfoFile)
-funcInfoFile subdir file =
-  let (dir,base) = splitDirectoryBaseName file
-   in dir ++ subdir ++ "Curry_" ++ stripSuffix base ++ ".info"
+import Names (funcInfoFile)
 
 banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
  where
@@ -73,10 +70,15 @@ type ReplState =
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
 
 -- Result of compiling main goal
-data MainGoalCompile = GoalError -- error occurred
-                     | GoalWithoutBindings -- goal does not contain free vars
-                     | GoalWithBindings Int String -- number of vars / new goal
+data MainGoalCompile =
+   GoalError                               -- error occurred
+ | GoalWithoutBindings CurryProg           -- goal does not contain free vars
+ | GoalWithBindings CurryProg Int String   -- number of vars / new goal
 
+-- Result of compiling main program
+data MainCompile = MainError | MainDet | MainNonDet
+
+-- Initial state of REPL:
 initReplState :: ReplState
 initReplState =
   { idcHome      = ""
@@ -107,12 +109,22 @@ writeErrorMsg :: String -> IO ()
 writeErrorMsg msg = putStrLn ("ERROR: "++msg)
 
 main = do
-  let rst = { idcHome := Inst.installDir
-            , importPaths := map (Inst.installDir </>) ["/lib","/lib/meta"]
-            | initReplState }
   rcdefs <- readRC
-  args <- getArgs
-  processArgsAndStart { rcvars := rcdefs | rst } args
+  args   <- getArgs
+  let rst = { idcHome := Inst.installDir
+            , rcvars := rcdefs 
+            | initReplState }
+  processArgsAndStart { importPaths := defaultImportPaths rst | rst } args
+
+-- The default import paths of KiCS2.
+defaultImportPaths :: ReplState -> [String]
+defaultImportPaths rst =
+  let rclibs = rcValue (rst->rcvars) "libraries"
+   in (if null rclibs then [] else splitPath rclibs) ++
+      map (Inst.installDir </>) ["/lib","/lib/meta"]
+
+defaultImportPathsWith :: ReplState -> String -> [String]
+defaultImportPathsWith rst dirs = splitPath dirs ++ defaultImportPaths rst
 
 processArgsAndStart rst [] =
   if rst -> quit
@@ -147,7 +159,7 @@ processInput rst g
                              (\rst' -> if (rst'->quit) then done else repl rst')
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
-                   unless (status>0) (execMain rst >> done)
+                   unless (status==MainError) (execMain rst status >> done)
                    cleanMainGoalFile rst
                    repl rst
 
@@ -180,7 +192,7 @@ showTypeOfGoal rst goal = do
         mbprog
 
 -- Compile main program with goal:
-compileProgramWithGoal :: ReplState -> String -> IO Int
+compileProgramWithGoal :: ReplState -> String -> IO MainCompile
 compileProgramWithGoal rst goal = do
   let infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
   oldmaincurryexists <- doesFileExist infoFile
@@ -189,18 +201,18 @@ compileProgramWithGoal rst goal = do
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst [] Nothing goal
   goalstate <- insertFreeVarsInMainGoal rst goal
-  if goalstate==GoalError then return 1 else do
-    let newgoal = case goalstate of
-                    GoalWithBindings _ g -> g
-                    _                    -> goal
-    typeok <- makeMainGoalMonomorphic rst newgoal
+  if goalstate==GoalError then return MainError else do
+    let (newprog,newgoal) = case goalstate of
+                    GoalWithBindings p _ g -> (p,g)
+                    GoalWithoutBindings p  -> (p,goal)
+    typeok <- makeMainGoalMonomorphic rst newprog newgoal
     if typeok
      then do
       status <- compileCurryProgram rst mainGoalFile
       exinfo <- doesFileExist infoFile
       if status==0 && exinfo then createAndCompileMain rst goalstate
-                             else return 1
-     else return 1
+                             else return MainError
+     else return MainError
 
 -- write the file with the main goal where necessary imports
 -- and possibly a type string is provided:
@@ -217,31 +229,28 @@ writeMainGoalFile rst imports mtype goal =
 --- If the main goal has type "IO t" where t is monomorphic, t/=(),
 --- and t is not a function, then ">>= print" is added to the goal.
 --- The result is False if the main goal contains some error.
-makeMainGoalMonomorphic :: ReplState -> String -> IO Bool
-makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
-  maybe (return False)
-   (\ (CurryProg _ _ _ [mfunc] _) -> do
-    let (CFunc _ _ _ maintype _) = mfunc
-        newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
-    if isFunctionalType maintype
-     then writeErrorMsg "expression is of functional type" >> return False
+makeMainGoalMonomorphic :: ReplState -> CurryProg -> String -> IO Bool
+makeMainGoalMonomorphic rst (CurryProg _ _ _ [mfunc] _) goal = do
+  let (CFunc _ _ _ maintype _) = mfunc
+      newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
+  if isFunctionalType maintype
+   then writeErrorMsg "expression is of functional type" >> return False
+   else
+    if isPolyType maintype
+     then do writeMainGoalFile rst (modsOfType maintype)
+                               (Just (showMonoTypeExpr True False maintype))
+                               goal
+             writeVerboseInfo rst 2
+               ("Type of main expression \"" ++
+                showMonoTypeExpr False False maintype ++
+                "\" made monomorphic")
+             writeVerboseInfo rst 1
+                "Type variables of main expression replaced by \"()\""
+             return True
      else
-      if isPolyType maintype
-       then do writeMainGoalFile rst (modsOfType maintype)
-                                 (Just (showMonoTypeExpr True False maintype))
-                                 goal
-               writeVerboseInfo rst 2
-                 ("Type of main expression \"" ++
-                  showMonoTypeExpr False False maintype ++
-                  "\" made monomorphic")
-               writeVerboseInfo rst 1
-                  "Type variables of main expression replaced by \"()\""
-               return True
-       else
-        if newgoal==goal
-         then return True
-         else writeMainGoalFile rst [] Nothing newgoal >> return True
-   )
+      if newgoal==goal
+       then return True
+       else writeMainGoalFile rst [] Nothing newgoal >> return True
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
@@ -249,12 +258,12 @@ makeMainGoalMonomorphic rst goal = getAcyOfMainGoal rst >>=
 insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
   maybe (return GoalError)
-   (\ (CurryProg _ _ _ [mfunc] _) -> do
+   (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings) || length freevars > 5
-     then return GoalWithoutBindings
+     then return (GoalWithoutBindings prog)
      else let (exp,whereclause) = break (=="where") (words goal)
-           in if null whereclause then return GoalWithoutBindings else do
+           in if null whereclause then return (GoalWithoutBindings prog) else do
               let newgoal = unwords $
                         ["("] ++
                         exp ++ [",["] ++
@@ -266,7 +275,10 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
               writeVerboseInfo rst 2
                 ("Adding printing of bindings for free variables: "++
                  concat (intersperse "," freevars))
-              return (GoalWithBindings (length freevars) newgoal)
+              mbprog <- getAcyOfMainGoal rst
+              return (maybe GoalError
+                            (\p -> GoalWithBindings p (length freevars) newgoal)
+                            mbprog)
    )
  where
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
@@ -291,7 +303,7 @@ readInfoFile rst = do
   readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
 
 -- Create and compile the main module containing the main goal
-createAndCompileMain :: ReplState -> MainGoalCompile -> IO Int
+createAndCompileMain :: ReplState -> MainGoalCompile -> IO MainCompile
 createAndCompileMain rst goalstate = do
   infos <- readInfoFile rst
   --print infos
@@ -317,6 +329,7 @@ createAndCompileMain rst goalstate = do
                            ,if rst->verbose < 2 then "-v0" else "-v1"
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
+                           ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""
@@ -324,13 +337,15 @@ createAndCompileMain rst goalstate = do
                            ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
-  system ghcCompile
+  status <- system ghcCompile
+  return (if status>0 then MainError else
+          if isdet || isio then MainDet else MainNonDet)
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
   let printOperation = case goalstate of
-                         GoalWithBindings n _ -> "printWithBindings"++show n
-                         _                    -> "print"
+                         GoalWithBindings _ n _ -> "printWithBindings"++show n
+                         _                      -> "print"
       mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
@@ -358,8 +373,8 @@ createHaskellMain rst goalstate isdet isio =
 
 
 -- Execute main program and show run time:
-execMain :: ReplState -> IO Int
-execMain rst = do
+execMain :: ReplState -> MainCompile -> IO Int
+execMain rst cmpstatus = do
   isubuntu <- isUbuntu
   let timecmd =
         if isubuntu
@@ -374,7 +389,9 @@ execMain rst = do
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
       tcmd    = (if rst->showTime then timecmd else "") ++ maincmd
-      icmd    = if rst->interactive then execInteractive rst tcmd else tcmd
+      icmd    = if rst->interactive && cmpstatus==MainNonDet
+                then execInteractive rst tcmd
+                else tcmd
   writeVerboseInfo rst 3 $ "Executing: " ++ icmd
   system icmd
  where
@@ -383,7 +400,7 @@ execMain rst = do
     return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","cd","fork",
+allCommands = ["quit","help","?","load","reload","add","browse","cd","fork",
                "programs","edit","interface","show","set","save","type",
                "usedimports"]
 
@@ -410,22 +427,37 @@ processThisCommand rst cmd args
    = do printHelpOnCommands
         putStrLn "...or type any <expression> to evaluate\n"
         return (Just rst)
-  | cmd == "load"
-   = do let modname = stripSuffix args
-        compileCurryProgram rst modname
-        return (Just { mainMod := modname, addMods := [] | rst })
-  | cmd == "reload"
+  | cmd=="load"
+   = do let dirmodname = stripSuffix args
+        if null dirmodname
+         then writeErrorMsg "missing module name" >> return Nothing
+         else do
+          let (dirname,modname) = splitDirectoryBaseName dirmodname
+          if dirname=="." then done else setCurrentDirectory dirname
+          mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
+          maybe (writeErrorMsg "source file of module not found" >>
+                 return Nothing)
+                (\_ -> compileCurryProgram rst modname >>
+                     return (Just { mainMod := modname, addMods := [] | rst }))
+                mbf
+  | cmd=="reload"
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded!" >> return Nothing
-     else do compileCurryProgram rst (rst->mainMod)
-             return (Just rst)
+     else if null (stripSuffix args)
+          then do compileCurryProgram rst (rst->mainMod)
+                  return (Just rst)
+          else writeErrorMsg "superfluous argument" >> return Nothing
   | cmd=="add"
    = do let modname = stripSuffix args
-        mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                                ("." : rst->importPaths)
-        maybe (writeErrorMsg "source file of module not found" >>return Nothing)
-              (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
-              mbf
+        if null modname
+         then writeErrorMsg "missing module name" >> return Nothing
+         else do
+          mbf <- lookupFileInPath modname [".curry", ".lcurry"]
+                                          ("." : rst->importPaths)
+          maybe (writeErrorMsg "source file of module not found" >>
+                 return Nothing)
+                (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
+                mbf
   | cmd=="type"
    = do typeok <- showTypeOfGoal rst args
         return (if typeok then Just rst else Nothing)
@@ -465,10 +497,17 @@ processThisCommand rst cmd args
             genint   = rst->idcHome </> toolexec
         giexists <- doesFileExist genint
         if giexists
-         then -- as long as GenInt is generated with PAKCS:
-              setEnviron "CURRYPATH" (rst->idcHome++"/lib:"++
-                                      rst->idcHome++"/lib/meta") >>
-              system (genint ++ " -int " ++ modname) >> return (Just rst)
+         then system (genint ++ " -int " ++ modname) >> return (Just rst)
+         else errorMissingTool toolexec >> return Nothing
+  | cmd=="browse"
+   = if not (null (stripSuffix args))
+     then writeErrorMsg "superfluous argument" >> return Nothing
+     else do
+        let toolexec = "tools/browser/BrowserGUI"
+            browser  = rst->idcHome </> toolexec
+        cbexists <- doesFileExist browser
+        if cbexists
+         then system (browser ++ " " ++ rst->mainMod) >> return (Just rst)
          else errorMissingTool toolexec >> return Nothing
   | cmd=="usedimports"
    = do let modname  = if null args then rst->mainMod else stripSuffix args
@@ -484,7 +523,7 @@ processThisCommand rst cmd args
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
-       unless (status>0) $ do
+       unless (status==MainError) $ do
           renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
           writeVerboseInfo rst 1 ("Executable saved in '"++rst->mainMod++"'")
        cleanMainGoalFile rst
@@ -494,7 +533,7 @@ processThisCommand rst cmd args
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
        status <- compileProgramWithGoal rst (if null args then "main" else args)
-       unless (status>0) $ do
+       unless (status==MainError) $ do
           pid <- getPID
           let execname = "/tmp/kics2fork" ++ show pid
           system ("mv ." </> rst -> outputSubdir </> "Main " ++ execname)
@@ -520,7 +559,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts",
+allOptions = ["bfs","dfs","prdfs","ids","par","paths","supply","rts",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
@@ -528,6 +567,10 @@ allOptions = ["bfs","dfs","prdfs","ids","par","supply","rts",
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
+  | option=="paths"
+   = if null args
+     then return (Just { importPaths := defaultImportPaths rst | rst })
+     else return (Just { importPaths := defaultImportPathsWith rst args | rst })
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
@@ -569,6 +612,7 @@ processThisOption rst option args
 
 printOptions rst = putStrLn $
   "Options for ':set' command:\n"++
+  "path <paths>   - set additional search paths for imported modules\n"++
   "prdfs          - set search mode to primitive depth-first search\n"++
   "dfs            - set search mode to depth-first search\n"++
   "bfs            - set search mode to breadth-first search\n"++
@@ -587,6 +631,8 @@ printOptions rst = putStrLn $
   showCurrentOptions rst
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
+  "import paths     : " ++
+     concat (intersperse ":" ("." : rst->importPaths)) ++ "\n" ++
   "search mode      : " ++
       (case (rst->ndMode) of
          PrDFS -> "primitive non-monadic depth-first search"
@@ -618,6 +664,7 @@ printHelpOnCommands = putStrLn $
   ":edit <mod>      - load source of module <m> into editor\n"++
   ":show            - show currently loaded source program\n"++
   ":show <mod>      - show source of module <m>\n"++
+  ":browse          - browse program and its imported modules\n"++
   ":interface       - show currently loaded source program\n"++
   ":interface <mod> - show source of module <m>\n"++
   ":usedimports     - show all used imported functions/constructors\n"++

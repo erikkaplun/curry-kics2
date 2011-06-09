@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 import System.IO
 import Control.Concurrent
 import qualified Curry_Prelude as CP
@@ -61,9 +62,9 @@ external_d_C_prim_hWaitForInput =
 
 myhWaitForInput :: Handle -> Int -> IO Bool
 myhWaitForInput h i =
-  if i < 0 
+  if i < 0
   then hIsEOF h >>= return . not
-  else hWaitForInput h i 
+  else hWaitForInput h i
 
 
 external_d_C_prim_hWaitForInputs :: CP.OP_List C_Handle -> CP.C_Int
@@ -73,7 +74,7 @@ external_d_C_prim_hWaitForInputs = fromHaskellIO2 selectHandle
 selectHandle :: [CurryHandle] -> Int -> IO Int
 selectHandle handles t = do
   mvar <- newEmptyMVar
-  threads <- mapM (\ (i,h) -> forkIO (waitOnHandle (inputHandle h) i t mvar)) 
+  threads <- mapM (\ (i,h) -> forkIO (waitOnHandle (inputHandle h) i t mvar))
                   (zip [0..] handles)
   inspectRes (length handles) mvar threads
 
@@ -81,7 +82,7 @@ inspectRes :: Int -> MVar (Maybe Int) -> [ThreadId] ->  IO Int
 inspectRes 0 _    _       = return (-1)
 inspectRes n mvar threads = do
   res <- readMVar mvar
-  case res of 
+  case res of
     Nothing -> inspectRes (n-1) mvar threads
     Just v  -> mapM_ killThread threads >> return v
 

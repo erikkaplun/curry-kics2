@@ -1,16 +1,29 @@
 # generate various tools for handling Curry programs:
 
 .PHONY: all
-all: GenInt ImportCalls
+all: AddTypes GenInt ImportCalls CreateMakefile
+	@cd browser   ; ${MAKE}
+	@cd currydoc  ; ${MAKE}
+
+# generate saved state for addtypes program:
+AddTypes: AddTypes.curry
+	../bin/kics2 :set v2 :l AddTypes :save :q
+	(cd ../bin ; rm -f addtypes ; \
+	             ln -s ../tools/AddTypes addtypes)
 
 # generate saved state for interface generator:
 GenInt: GenInt.curry
-	/home/pakcs/pakcs/bin/pakcs -s GenInt # later replaced by KiCS2
-	mv GenInt.state GenInt
+	../bin/kics2 :set v2 :l GenInt :save :q
 
 # generate saved state for ImportCalls tool:
 ImportCalls: ImportCalls.curry
 	../bin/kics2 :l ImportCalls :save :q
+
+# generate saved state for currycreatemake program:
+CreateMakefile: CreateMakefile.curry ../lib/meta/FlatCurryRead.curry
+	../bin/kics2 :set v2 :l CreateMakefile :save :q
+	(cd ../bin ; rm -f currycreatemake ; \
+	             ln -s ../tools/CreateMakefile currycreatemake)
 
 # generate saved state for currytest program:
 .PHONY: currytest
@@ -23,4 +36,7 @@ currytest: ../bin/currytestkics
 .PHONY: clean
 clean: 
 	../bin/cleancurry
-	rm -f ../bin/currytestkics
+	(cd ../bin ; rm -f addtypes currycreatemake currytestkics)
+	cd analysis  ; ../../bin/cleancurry
+	cd browser   ; ${MAKE} clean
+	cd currydoc  ; ${MAKE} clean

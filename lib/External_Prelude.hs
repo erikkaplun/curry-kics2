@@ -17,17 +17,20 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 -- Curry types
 -- ---------------------------------------------------------------------------
 
--- Class for curry types
-class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+-- Class for Curry types
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
+      => Curry a where
+  -- implementation of strict equalit (==) for a data type
   (=?=) :: a -> a -> C_Bool
-  (=?=) = error "(=?=) is undefined"
+  (=?=) = error "(==) is undefined"
 
+  -- implementation of less-or-equal (<=) for a data type
   (<?=) :: a -> a -> C_Bool
-  (<?=) = error "(<?=) is undefined"
+  (<?=) = error "(<=) is undefined"
 
 instance Curry (PrimData a) where
-  (=?=) = error "(=?=) is undefined for primitive data"
-  (<?=) = error "(<?=) is undefined for primitive data"
+  (=?=) = error "(==) is undefined for primitive data"
+  (<?=) = error "(<=) is undefined for primitive data"
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 instance Curry C_Success where
@@ -53,10 +56,16 @@ instance Curry C_Success where
 
 
 instance (Curry t0,Curry t1) => Curry (Func t0 t1) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 instance Curry t0 => Curry (C_IO t0) where
+  (=?=) = error "(==) is undefined for I/O actions"
+  (<?=) = error "(<=) is undefined for I/O actions"
 
 instance Curry (a -> b) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 -- ---------------------------------------------------------------------------
 -- Int
@@ -65,7 +74,7 @@ instance Curry (a -> b) where
 -- BEGIN GENERATED FROM PrimTypes.curry
 data C_Int
      = C_Int Int#
-     | C_CurryInt C_Integer
+     | C_CurryInt BinInt
      | Choice_C_Int ID C_Int C_Int
      | Choices_C_Int ID ([C_Int])
      | Fail_C_Int
@@ -94,7 +103,7 @@ instance NonDet C_Int where
   try x = Val x
 
 instance Generable C_Int where
-  generate s = Choices_C_Int (freeID [1] s) [(C_CurryInt (generate (leftSupply s)))]
+  generate s = Choices_C_Int (freeID [1] s) [C_CurryInt (generate (leftSupply s))]
 
 instance NormalForm C_Int where
   ($!!) cont x@(C_Int _) = cont x
@@ -127,8 +136,6 @@ instance Unifiable C_Int where
   (=.<=) (C_CurryInt x1) (C_Int      y1) = x1 =:<= (primint2curryint y1)
   (=.<=) (C_CurryInt x1) (C_CurryInt y1) = x1 =:<= y1
   (=.<=) _ _ = Fail_C_Success
---   bind i (C_Int x2) = bind i (primint2curryint x2)
---   bind i (C_CurryInt x2) = bind i x2
   bind i (C_Int      x2) = (i :=: ChooseN 0 1) : bind (leftID i) (primint2curryint x2)
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
@@ -171,29 +178,29 @@ instance Curry_Prelude.Curry C_Int where
   (<?=) (C_CurryInt x1) (C_CurryInt y1) = x1 `d_C_lteqInteger` y1
 -- END GENERATED FROM PrimTypes.curry
 
-primint2curryint :: Int# -> C_Integer
+primint2curryint :: Int# -> BinInt
 primint2curryint n
-  | n <#  0#  = C_Neg (primint2currynat (negateInt# n))
-  | n ==# 0#  = C_Zero
-  | otherwise = C_Pos (primint2currynat n)
+  | n <#  0#  = Neg (primint2currynat (negateInt# n))
+  | n ==# 0#  = Zero
+  | otherwise = Pos (primint2currynat n)
 
-primint2currynat :: Int# -> C_Nat
+primint2currynat :: Int# -> Nat
 primint2currynat n
-  | n ==# 1#                = C_IHi
-  | (n `remInt#` 2#) ==# 0# = C_O (primint2currynat (n `quotInt#` 2#))
-  | otherwise               = C_I (primint2currynat (n `quotInt#` 2#))
+  | n ==# 1#                = IHi
+  | (n `remInt#` 2#) ==# 0# = O (primint2currynat (n `quotInt#` 2#))
+  | otherwise               = I (primint2currynat (n `quotInt#` 2#))
 
-currynat2primint :: C_Nat -> Int#
-currynat2primint C_IHi   = 1#
-currynat2primint (C_O n) = 2# *# currynat2primint n
-currynat2primint (C_I n) = 2# *# currynat2primint n +# 1#
-currynat2primint _       = error "Prelude.currynat2primint: no ground term"
+currynat2primint :: Nat -> Int#
+currynat2primint IHi   = 1#
+currynat2primint (O n) = 2# *# currynat2primint n
+currynat2primint (I n) = 2# *# currynat2primint n +# 1#
+currynat2primint _     = error "Prelude.currynat2primint: no ground term"
 
-curryint2primint :: C_Integer -> Int#
-curryint2primint C_Zero    = 0#
-curryint2primint (C_Pos n) = currynat2primint n
-curryint2primint (C_Neg n) = negateInt# (currynat2primint n)
-curryint2primint x         = error "Prelude.curryint2primint: no ground term"
+curryint2primint :: BinInt -> Int#
+curryint2primint Zero    = 0#
+curryint2primint (Pos n) = currynat2primint n
+curryint2primint (Neg n) = negateInt# (currynat2primint n)
+curryint2primint x       = error "Prelude.curryint2primint: no ground term"
 
 
 
@@ -293,6 +300,7 @@ instance Curry C_Float where
 -- ---------------------------------------------------------------------------
 data C_Char
      = C_Char Char#
+     | CurryChar BinInt
      | Choice_C_Char ID C_Char C_Char
      | Choices_C_Char ID ([C_Char])
      | Fail_C_Char
@@ -304,8 +312,12 @@ instance Show C_Char where
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
   showsPrec d (C_Char x1) = showString (show (C# x1))
+  showsPrec d (CurryChar x1) = (\x-> shows (C# (curryChar2primChar x))) $!! x1
 
-  showList cs = showList (map (\(C_Char c) -> (C# c)) cs)
+  showList cs = showList (map convert cs)
+   where
+    convert (C_Char c) = C# c
+    convert (CurryChar c) = C# (curryChar2primChar c)
 
 instance Read C_Char where
   readsPrec d s = map readChar (readsPrec d s) where readChar (C# c, s) = (C_Char c, s)
@@ -324,32 +336,50 @@ instance NonDet C_Char where
   try x = Val x
 
 instance Generable C_Char where
-  generate _ = error "No generator for C_Char"
+  generate s = Choices_C_Char (freeID [1] s) [CurryChar (generate (leftSupply s))]
 
 instance NormalForm C_Char where
   ($!!) cont x@(C_Char _) = cont x
+  ($!!) cont (CurryChar x) = (cont . CurryChar) $!! x
   ($!!) cont (Choice_C_Char i x y) = nfChoice cont i x y
   ($!!) cont (Choices_C_Char i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Char c x) = guardCons c (cont $!! x)
   ($!!) _ Fail_C_Char = failCons
   ($##) cont x@(C_Char _) = cont x
+  ($##) cont (CurryChar x) = (cont . CurryChar) $## x
   ($##) cont (Choice_C_Char i x y) = gnfChoice cont i x y
   ($##) cont (Choices_C_Char i xs) = gnfChoices cont i xs
   ($##) cont (Guard_C_Char c x) = guardCons c (cont $## x)
   ($##) _ Fail_C_Char = failCons
+  ($!<) cont (CurryChar x)         =( cont . CurryChar) $!< x
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF search cont c@(C_Char _) = cont c
+  searchNF search cont (CurryChar x) = search (cont . CurryChar) x
 
 instance Unifiable C_Char where
-  (=.=) _ _ = Fail_C_Success
-  (=.<=) _ _ = Fail_C_Success
+  (=.=) (C_Char       x1) (C_Char      x2) | x1 `eqChar#` x2 = C_Success
+                                           | otherwise = Fail_C_Success
+  (=.=) (C_Char       x1) (CurryChar x2) = primChar2CurryChar x1 =:= x2
+  (=.=) (CurryChar  x1) (C_Char      x2) = x1 =:= primChar2CurryChar x2
+  (=.=) (CurryChar x1)    (CurryChar   x2) = x1 =:= x2
+  (=.=) _                 _                = Fail_C_Success
+  (=.<=) (C_Char       x1) (C_Char      x2) | x1 `eqChar#` x2 = C_Success
+                                            | otherwise = Fail_C_Success
+  (=.<=) (C_Char       x1) (CurryChar x2) = primChar2CurryChar x1 =:<= x2
+  (=.<=) (CurryChar  x1) (C_Char      x2) = x1 =:<= primChar2CurryChar x2
+  (=.<=) (CurryChar x1)    (CurryChar   x2) = x1 =:<= x2
+  (=.<=) _                 _                = Fail_C_Success
+  bind i (C_Char    x) = (i :=: ChooseN 0 1) : bind (leftID i) (primChar2CurryChar x)
+  bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Char = [Unsolvable]
   bind i (Guard_C_Char cs e) = cs ++ (bind i e)
+  lazyBind i (C_Char    x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primChar2CurryChar x))]
+  lazyBind i (CurryChar x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x)]
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
@@ -366,6 +396,9 @@ instance Curry C_Char where
   (=?=) y (Guard_C_Char c x) = guardCons c (y =?= x)
   (=?=) _ Fail_C_Char = failCons
   (=?=) (C_Char x1) (C_Char y1) = toCurry (x1 `eqChar#` y1)
+  (=?=) (C_Char      x1) (CurryChar y1) = (primChar2CurryChar x1) =?= y1
+  (=?=) (CurryChar x1) (C_Char      y1) = x1 =?= (primChar2CurryChar y1)
+  (=?=) (CurryChar x1) (CurryChar y1) = x1 =?= y1
   (<?=) (Choice_C_Char i x y) z = narrow i (x <?= z) (y <?= z)
   (<?=) (Choices_C_Char i xs) y = narrows i (map ((<?= y)) xs)
   (<?=) (Guard_C_Char c x) y = guardCons c (x <?= y)
@@ -375,7 +408,16 @@ instance Curry C_Char where
   (<?=) y (Guard_C_Char c x) = guardCons c (y <?= x)
   (<?=) _ Fail_C_Char = failCons
   (<?=) (C_Char x1) (C_Char y1) = toCurry (x1 `leChar#` y1)
+  (<?=) (C_Char      x1) (CurryChar y1) = (primChar2CurryChar x1) `d_C_lteqInteger` y1
+  (<?=) (CurryChar x1) (C_Char      y1) = x1 `d_C_lteqInteger` (primChar2CurryChar y1)
+  (<?=) (CurryChar x1) (CurryChar y1) = x1 `d_C_lteqInteger` y1
 
+
+primChar2CurryChar :: Char# -> BinInt
+primChar2CurryChar c = primint2curryint (ord# c)
+
+curryChar2primChar :: BinInt -> Char#
+curryChar2primChar c = chr# (curryint2primint c)
 -- ---------------------------------------------------------------------------
 -- Conversion from and to primitive Haskell types
 -- ---------------------------------------------------------------------------
@@ -383,17 +425,18 @@ instance Curry C_Char where
 instance ConvertCurryHaskell C_Int Int where
   toCurry (I# i) = C_Int i
 
-  fromCurry (C_Int i) = I# i
-  fromCurry _         = error "Int data with no ground term"
+  fromCurry (C_Int i)      = I# i
+  fromCurry (C_CurryInt i) = I# (curryint2primint i)
+  fromCurry _              = error "Int data with no ground term"
 
 instance ConvertCurryHaskell C_Int Integer where
   toCurry i = int2C_Int (fromInteger i)
+   where
+    int2C_Int (I# c) = C_Int c
 
   fromCurry (C_Int i) = toInteger (I# i)
+  fromCurry (C_CurryInt i) = toInteger (I# (curryint2primint i))
   fromCurry _         = error "Int data with no ground term"
-
-int2C_Int :: Int -> C_Int
-int2C_Int (I# c) = C_Int c
 
 instance ConvertCurryHaskell C_Float Float where
   toCurry (F# f) = C_Float f
@@ -405,6 +448,7 @@ instance ConvertCurryHaskell C_Char Char where
   toCurry (C# c) = C_Char c
 
   fromCurry (C_Char c) = C# c
+  fromCurry (CurryChar c) = C# (curryChar2primChar c)
   fromCurry _          = error "Char data with no ground term"
 
 instance (ConvertCurryHaskell ct ht) =>
@@ -517,11 +561,14 @@ external_d_OP_eq_eq  = (=?=)
 external_d_OP_lt_eq :: Curry a => a -> a -> C_Bool
 external_d_OP_lt_eq = (<?=)
 
+
 external_d_C_prim_ord :: C_Char -> C_Int
 external_d_C_prim_ord (C_Char c) = C_Int (ord# c)
+external_d_C_prim_ord (CurryChar c) = C_CurryInt c
 
 external_d_C_prim_chr :: C_Int -> C_Char
-external_d_C_prim_chr (C_Int i) = C_Char (chr# i)
+external_d_C_prim_chr (C_Int i)      = C_Char (chr# i)
+external_d_C_prim_chr (C_CurryInt i) = CurryChar i
 
 external_d_OP_plus :: C_Int -> C_Int -> C_Int
 external_d_OP_plus (C_Int      x) (C_Int      y) = C_Int (x +# y)
@@ -621,7 +668,7 @@ external_d_C_divMod (C_CurryInt x) (C_Int      y) = mkIntTuple `d_OP_dollar_hash
 external_d_C_divMod (C_CurryInt x) (C_CurryInt y) = mkIntTuple `d_OP_dollar_hash` (x `d_C_divModInteger` y)
 external_d_C_divMod x y = (\a -> (\b -> (a `external_d_C_divMod` b)) `d_OP_dollar_hash` y) `d_OP_dollar_hash` x
 
-mkIntTuple :: OP_Tuple2 C_Integer C_Integer -> OP_Tuple2 C_Int C_Int
+mkIntTuple :: OP_Tuple2 BinInt BinInt -> OP_Tuple2 C_Int C_Int
 mkIntTuple (OP_Tuple2 d m) = OP_Tuple2 (C_CurryInt d) (C_CurryInt m)
 
 external_d_C_negateFloat :: C_Float -> C_Float
@@ -660,8 +707,11 @@ external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
 external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail act err = fromIO $ catch (toIO act) handle
+external_d_C_catchFail act err = fromIO $ catch (toIOWithFailCheck act) handle
   where handle ioErr = print ioErr >> (toIO err)
+        toIOWithFailCheck act =
+          case act of Fail_C_IO -> ioError (userError "I/O action failed")
+                      _         -> toIO act
 
 external_d_C_prim_show :: Show a => a -> C_String
 external_d_C_prim_show a = toCurry (show a)
@@ -740,253 +790,253 @@ external_nd_C_try = error "external_ndho_C_try"
 -- Functions on Integer and Nat added from PrimTypes
 -- -------------------------------------------------
 
-instance Curry_Prelude.Curry C_Nat where
-  (=?=) (Choice_C_Nat i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
-  (=?=) (Choices_C_Nat i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
-  (=?=) (Guard_C_Nat c x) y = guardCons c (x Curry_Prelude.=?= y)
-  (=?=) Fail_C_Nat _ = failCons
-  (=?=) z (Choice_C_Nat i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
-  (=?=) y (Choices_C_Nat i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
-  (=?=) y (Guard_C_Nat c x) = guardCons c (y Curry_Prelude.=?= x)
-  (=?=) _ Fail_C_Nat = failCons
-  (=?=) C_IHi C_IHi = Curry_Prelude.C_True
-  (=?=) (C_O x1) (C_O y1) = x1 Curry_Prelude.=?= y1
-  (=?=) (C_I x1) (C_I y1) = x1 Curry_Prelude.=?= y1
+instance Curry_Prelude.Curry Nat where
+  (=?=) (Choice_Nat i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
+  (=?=) (Choices_Nat i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
+  (=?=) (Guard_Nat c x) y = guardCons c (x Curry_Prelude.=?= y)
+  (=?=) Fail_Nat _ = failCons
+  (=?=) z (Choice_Nat i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
+  (=?=) y (Choices_Nat i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
+  (=?=) y (Guard_Nat c x) = guardCons c (y Curry_Prelude.=?= x)
+  (=?=) _ Fail_Nat = failCons
+  (=?=) IHi IHi = Curry_Prelude.C_True
+  (=?=) (O x1) (O y1) = x1 Curry_Prelude.=?= y1
+  (=?=) (I x1) (I y1) = x1 Curry_Prelude.=?= y1
   (=?=) _ _ = Curry_Prelude.C_False
-  (<?=) (Choice_C_Nat i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
-  (<?=) (Choices_C_Nat i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
-  (<?=) (Guard_C_Nat c x) y = guardCons c (x Curry_Prelude.<?= y)
-  (<?=) Fail_C_Nat _ = failCons
-  (<?=) z (Choice_C_Nat i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
-  (<?=) y (Choices_C_Nat i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
-  (<?=) y (Guard_C_Nat c x) = guardCons c (y Curry_Prelude.<?= x)
-  (<?=) _ Fail_C_Nat = failCons
-  (<?=) C_IHi C_IHi = Curry_Prelude.C_True
-  (<?=) C_IHi (C_O _) = Curry_Prelude.C_True
-  (<?=) C_IHi (C_I _) = Curry_Prelude.C_True
-  (<?=) (C_O x1) (C_O y1) = x1 Curry_Prelude.<?= y1
-  (<?=) (C_O _) (C_I _) = Curry_Prelude.C_True
-  (<?=) (C_I x1) (C_I y1) = x1 Curry_Prelude.<?= y1
+  (<?=) (Choice_Nat i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
+  (<?=) (Choices_Nat i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
+  (<?=) (Guard_Nat c x) y = guardCons c (x Curry_Prelude.<?= y)
+  (<?=) Fail_Nat _ = failCons
+  (<?=) z (Choice_Nat i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
+  (<?=) y (Choices_Nat i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
+  (<?=) y (Guard_Nat c x) = guardCons c (y Curry_Prelude.<?= x)
+  (<?=) _ Fail_Nat = failCons
+  (<?=) IHi IHi = Curry_Prelude.C_True
+  (<?=) IHi (O _) = Curry_Prelude.C_True
+  (<?=) IHi (I _) = Curry_Prelude.C_True
+  (<?=) (O x1) (O y1) = x1 Curry_Prelude.<?= y1
+  (<?=) (O _) (I _) = Curry_Prelude.C_True
+  (<?=) (I x1) (I y1) = x1 Curry_Prelude.<?= y1
   (<?=) _ _ = Curry_Prelude.C_False
 
 
-instance Curry_Prelude.Curry C_Integer where
-  (=?=) (Choice_C_Integer i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
-  (=?=) (Choices_C_Integer i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
-  (=?=) (Guard_C_Integer c x) y = guardCons c (x Curry_Prelude.=?= y)
-  (=?=) Fail_C_Integer _ = failCons
-  (=?=) z (Choice_C_Integer i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
-  (=?=) y (Choices_C_Integer i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
-  (=?=) y (Guard_C_Integer c x) = guardCons c (y Curry_Prelude.=?= x)
-  (=?=) _ Fail_C_Integer = failCons
-  (=?=) (C_Neg x1) (C_Neg y1) = x1 Curry_Prelude.=?= y1
-  (=?=) C_Zero C_Zero = Curry_Prelude.C_True
-  (=?=) (C_Pos x1) (C_Pos y1) = x1 Curry_Prelude.=?= y1
+instance Curry_Prelude.Curry BinInt where
+  (=?=) (Choice_BinInt i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
+  (=?=) (Choices_BinInt i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
+  (=?=) (Guard_BinInt c x) y = guardCons c (x Curry_Prelude.=?= y)
+  (=?=) Fail_BinInt _ = failCons
+  (=?=) z (Choice_BinInt i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
+  (=?=) y (Choices_BinInt i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
+  (=?=) y (Guard_BinInt c x) = guardCons c (y Curry_Prelude.=?= x)
+  (=?=) _ Fail_BinInt = failCons
+  (=?=) (Neg x1) (Neg y1) = x1 Curry_Prelude.=?= y1
+  (=?=) Zero Zero = Curry_Prelude.C_True
+  (=?=) (Pos x1) (Pos y1) = x1 Curry_Prelude.=?= y1
   (=?=) _ _ = Curry_Prelude.C_False
-  (<?=) (Choice_C_Integer i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
-  (<?=) (Choices_C_Integer i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
-  (<?=) (Guard_C_Integer c x) y = guardCons c (x Curry_Prelude.<?= y)
-  (<?=) Fail_C_Integer _ = failCons
-  (<?=) z (Choice_C_Integer i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
-  (<?=) y (Choices_C_Integer i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
-  (<?=) y (Guard_C_Integer c x) = guardCons c (y Curry_Prelude.<?= x)
-  (<?=) _ Fail_C_Integer = failCons
-  (<?=) (C_Neg x1) (C_Neg y1) = x1 Curry_Prelude.<?= y1
-  (<?=) (C_Neg _) C_Zero = Curry_Prelude.C_True
-  (<?=) (C_Neg _) (C_Pos _) = Curry_Prelude.C_True
-  (<?=) C_Zero C_Zero = Curry_Prelude.C_True
-  (<?=) C_Zero (C_Pos _) = Curry_Prelude.C_True
-  (<?=) (C_Pos x1) (C_Pos y1) = x1 Curry_Prelude.<?= y1
+  (<?=) (Choice_BinInt i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
+  (<?=) (Choices_BinInt i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
+  (<?=) (Guard_BinInt c x) y = guardCons c (x Curry_Prelude.<?= y)
+  (<?=) Fail_BinInt _ = failCons
+  (<?=) z (Choice_BinInt i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
+  (<?=) y (Choices_BinInt i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
+  (<?=) y (Guard_BinInt c x) = guardCons c (y Curry_Prelude.<?= x)
+  (<?=) _ Fail_BinInt = failCons
+  (<?=) (Neg x1) (Neg y1) = x1 Curry_Prelude.<?= y1
+  (<?=) (Neg _) Zero = Curry_Prelude.C_True
+  (<?=) (Neg _) (Pos _) = Curry_Prelude.C_True
+  (<?=) Zero Zero = Curry_Prelude.C_True
+  (<?=) Zero (Pos _) = Curry_Prelude.C_True
+  (<?=) (Pos x1) (Pos y1) = x1 Curry_Prelude.<?= y1
   (<?=) _ _ = Curry_Prelude.C_False
 
 
 
-d_C_cmpNat :: C_Nat -> C_Nat -> Curry_Prelude.C_Ordering
+d_C_cmpNat :: Nat -> Nat -> Curry_Prelude.C_Ordering
 d_C_cmpNat x1 x2 = case x1 of
-     C_IHi -> d_OP__casePT_33 x2
-     (C_O x5) -> d_OP__casePT_32 x5 x2
-     (C_I x8) -> d_OP__casePT_30 x8 x2
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_cmpNat x1001 x2) (d_C_cmpNat x1002 x2)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_cmpNat z x2) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_C_cmpNat x1001 x2)
+     IHi -> d_OP__casePT_33 x2
+     (O x5) -> d_OP__casePT_32 x5 x2
+     (I x8) -> d_OP__casePT_30 x8 x2
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_cmpNat x1001 x2) (d_C_cmpNat x1002 x2)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_cmpNat z x2) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_cmpNat x1001 x2)
      _ -> failCons
 
-d_C_succ :: C_Nat -> C_Nat
+d_C_succ :: Nat -> Nat
 d_C_succ x1 = case x1 of
-     C_IHi -> C_O C_IHi
-     (C_O x2) -> C_I x2
-     (C_I x3) -> C_O (d_C_succ x3)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_succ x1001) (d_C_succ x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_succ z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_C_succ x1001)
+     IHi -> O IHi
+     (O x2) -> I x2
+     (I x3) -> O (d_C_succ x3)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_succ x1001) (d_C_succ x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_succ z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_succ x1001)
      _ -> failCons
 
-d_C_pred :: C_Nat -> C_Nat
+d_C_pred :: Nat -> Nat
 d_C_pred x1 = case x1 of
-     C_IHi -> Curry_Prelude.d_C_failed
-     (C_O x2) -> d_OP__casePT_28 x2
-     (C_I x5) -> C_O x5
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_pred x1001) (d_C_pred x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_pred z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_C_pred x1001)
+     IHi -> Curry_Prelude.d_C_failed
+     (O x2) -> d_OP__casePT_28 x2
+     (I x5) -> O x5
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_pred x1001) (d_C_pred x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_pred z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_pred x1001)
      _ -> failCons
 
-d_OP_plus_caret :: C_Nat -> C_Nat -> C_Nat
+d_OP_plus_caret :: Nat -> Nat -> Nat
 d_OP_plus_caret x1 x2 = case x1 of
-     C_IHi -> d_C_succ x2
-     (C_O x3) -> d_OP__casePT_27 x3 x2
-     (C_I x6) -> d_OP__casePT_26 x6 x2
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_caret x1001 x2) (d_OP_plus_caret x1002 x2)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_plus_caret z x2) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP_plus_caret x1001 x2)
+     IHi -> d_C_succ x2
+     (O x3) -> d_OP__casePT_27 x3 x2
+     (I x6) -> d_OP__casePT_26 x6 x2
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_caret x1001 x2) (d_OP_plus_caret x1002 x2)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_plus_caret z x2) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_plus_caret x1001 x2)
      _ -> failCons
 
-d_OP_minus_caret :: C_Nat -> C_Nat -> C_Integer
+d_OP_minus_caret :: Nat -> Nat -> BinInt
 d_OP_minus_caret x1 x2 = case x1 of
-     C_IHi -> d_C_inc (C_Neg x2)
-     (C_O x3) -> d_OP__casePT_25 x1 x3 x2
-     (C_I x6) -> d_OP__casePT_24 x6 x2
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_caret x1001 x2) (d_OP_minus_caret x1002 x2)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_minus_caret z x2) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP_minus_caret x1001 x2)
+     IHi -> d_Inc (Neg x2)
+     (O x3) -> d_OP__casePT_25 x1 x3 x2
+     (I x6) -> d_OP__casePT_24 x6 x2
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_caret x1001 x2) (d_OP_minus_caret x1002 x2)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_minus_caret z x2) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_minus_caret x1001 x2)
      _ -> failCons
 
-d_C_mult2 :: C_Integer -> C_Integer
+d_C_mult2 :: BinInt -> BinInt
 d_C_mult2 x1 = case x1 of
-     (C_Pos x2) -> C_Pos (C_O x2)
-     C_Zero -> C_Zero
-     (C_Neg x3) -> C_Neg (C_O x3)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_mult2 x1001) (d_C_mult2 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_mult2 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_mult2 x1001)
+     (Pos x2) -> Pos (O x2)
+     Zero -> Zero
+     (Neg x3) -> Neg (O x3)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_mult2 x1001) (d_C_mult2 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_C_mult2 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_mult2 x1001)
      _ -> failCons
 
-d_OP_star_caret :: C_Nat -> C_Nat -> C_Nat
+d_OP_star_caret :: Nat -> Nat -> Nat
 d_OP_star_caret x1 x2 = case x1 of
-     C_IHi -> x2
-     (C_O x3) -> C_O (d_OP_star_caret x3 x2)
-     (C_I x4) -> d_OP_plus_caret x2 (C_O (d_OP_star_caret x4 x2))
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_star_caret x1001 x2) (d_OP_star_caret x1002 x2)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_star_caret z x2) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP_star_caret x1001 x2)
+     IHi -> x2
+     (O x3) -> O (d_OP_star_caret x3 x2)
+     (I x4) -> d_OP_plus_caret x2 (O (d_OP_star_caret x4 x2))
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_star_caret x1001 x2) (d_OP_star_caret x1002 x2)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_star_caret z x2) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_star_caret x1001 x2)
      _ -> failCons
 
-d_C_div2 :: C_Nat -> C_Nat
+d_C_div2 :: Nat -> Nat
 d_C_div2 x1 = case x1 of
-     C_IHi -> Curry_Prelude.d_C_failed
-     (C_O x2) -> x2
-     (C_I x3) -> x3
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_div2 x1001) (d_C_div2 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_div2 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_C_div2 x1001)
+     IHi -> Curry_Prelude.d_C_failed
+     (O x2) -> x2
+     (I x3) -> x3
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_div2 x1001) (d_C_div2 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_div2 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_div2 x1001)
      _ -> failCons
 
-d_C_mod2 :: C_Nat -> C_Integer
+d_C_mod2 :: Nat -> BinInt
 d_C_mod2 x1 = case x1 of
-     C_IHi -> C_Pos C_IHi
-     (C_O x2) -> C_Zero
-     (C_I x3) -> C_Pos C_IHi
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_mod2 x1001) (d_C_mod2 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_mod2 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_C_mod2 x1001)
+     IHi -> Pos IHi
+     (O x2) -> Zero
+     (I x3) -> Pos IHi
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_mod2 x1001) (d_C_mod2 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_C_mod2 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_mod2 x1001)
      _ -> failCons
 
-d_C_quotRemNat :: C_Nat -> C_Nat -> Curry_Prelude.OP_Tuple2 C_Integer C_Integer
-d_C_quotRemNat x1 x2 = d_OP__casePT_23 x1 x2 (Curry_Prelude.d_OP_eq_eq x2 C_IHi)
+d_C_quotRemNat :: Nat -> Nat -> Curry_Prelude.OP_Tuple2 BinInt BinInt
+d_C_quotRemNat x1 x2 = d_OP__casePT_23 x1 x2 (Curry_Prelude.d_OP_eq_eq x2 IHi)
 
-d_OP_quotRemNat_dot_shift_dot_104 :: C_Nat -> C_Nat -> C_Nat
+d_OP_quotRemNat_dot_shift_dot_104 :: Nat -> Nat -> Nat
 d_OP_quotRemNat_dot_shift_dot_104 x1 x2 = case x1 of
-     (C_O x3) -> C_O x2
-     (C_I x4) -> C_I x2
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2) (d_OP_quotRemNat_dot_shift_dot_104 x1002 x2)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_quotRemNat_dot_shift_dot_104 z x2) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2)
+     (O x3) -> O x2
+     (I x4) -> I x2
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2) (d_OP_quotRemNat_dot_shift_dot_104 x1002 x2)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP_quotRemNat_dot_shift_dot_104 z x2) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2)
      _ -> failCons
 
-d_C_lteqInteger :: C_Integer -> C_Integer -> Curry_Prelude.C_Bool
+d_C_lteqInteger :: BinInt -> BinInt -> Curry_Prelude.C_Bool
 d_C_lteqInteger x1 x2 = Curry_Prelude.d_OP_slash_eq (d_C_cmpInteger x1 x2) Curry_Prelude.C_GT
 
-d_C_cmpInteger :: C_Integer -> C_Integer -> Curry_Prelude.C_Ordering
+d_C_cmpInteger :: BinInt -> BinInt -> Curry_Prelude.C_Ordering
 d_C_cmpInteger x1 x2 = case x1 of
-     C_Zero -> d_OP__casePT_14 x2
-     (C_Pos x5) -> d_OP__casePT_13 x5 x2
-     (C_Neg x8) -> d_OP__casePT_12 x8 x2
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_cmpInteger x1001 x2) (d_C_cmpInteger x1002 x2)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_cmpInteger z x2) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_cmpInteger x1001 x2)
+     Zero -> d_OP__casePT_14 x2
+     (Pos x5) -> d_OP__casePT_13 x5 x2
+     (Neg x8) -> d_OP__casePT_12 x8 x2
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_cmpInteger x1001 x2) (d_C_cmpInteger x1002 x2)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_C_cmpInteger z x2) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_cmpInteger x1001 x2)
      _ -> failCons
 
-d_C_neg :: C_Integer -> C_Integer
-d_C_neg x1 = case x1 of
-     C_Zero -> C_Zero
-     (C_Pos x2) -> C_Neg x2
-     (C_Neg x3) -> C_Pos x3
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_neg x1001) (d_C_neg x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_neg z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_neg x1001)
+d_Neg :: BinInt -> BinInt
+d_Neg x1 = case x1 of
+     Zero -> Zero
+     (Pos x2) -> Neg x2
+     (Neg x3) -> Pos x3
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_Neg x1001) (d_Neg x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_Neg z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_Neg x1001)
      _ -> failCons
 
-d_C_inc :: C_Integer -> C_Integer
-d_C_inc x1 = case x1 of
-     C_Zero -> C_Pos C_IHi
-     (C_Pos x2) -> C_Pos (d_C_succ x2)
-     (C_Neg x3) -> d_OP__casePT_11 x3
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_inc x1001) (d_C_inc x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_inc z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_inc x1001)
+d_Inc :: BinInt -> BinInt
+d_Inc x1 = case x1 of
+     Zero -> Pos IHi
+     (Pos x2) -> Pos (d_C_succ x2)
+     (Neg x3) -> d_OP__casePT_11 x3
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_Inc x1001) (d_Inc x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_Inc z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_Inc x1001)
      _ -> failCons
 
-d_C_dec :: C_Integer -> C_Integer
+d_C_dec :: BinInt -> BinInt
 d_C_dec x1 = case x1 of
-     C_Zero -> C_Neg C_IHi
-     (C_Pos x2) -> d_OP__casePT_10 x2
-     (C_Neg x5) -> C_Neg (d_C_succ x5)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_dec x1001) (d_C_dec x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_dec z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_dec x1001)
+     Zero -> Neg IHi
+     (Pos x2) -> d_OP__casePT_10 x2
+     (Neg x5) -> Neg (d_C_succ x5)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_dec x1001) (d_C_dec x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_C_dec z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_dec x1001)
      _ -> failCons
 
-d_OP_plus_hash :: C_Integer -> C_Integer -> C_Integer
+d_OP_plus_hash :: BinInt -> BinInt -> BinInt
 d_OP_plus_hash x1 x2 = case x1 of
-     C_Zero -> x2
-     (C_Pos x3) -> d_OP__casePT_9 x1 x3 x2
-     (C_Neg x6) -> d_OP__casePT_8 x1 x6 x2
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_hash x1001 x2) (d_OP_plus_hash x1002 x2)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP_plus_hash z x2) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP_plus_hash x1001 x2)
+     Zero -> x2
+     (Pos x3) -> d_OP__casePT_9 x1 x3 x2
+     (Neg x6) -> d_OP__casePT_8 x1 x6 x2
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_hash x1001 x2) (d_OP_plus_hash x1002 x2)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP_plus_hash z x2) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_plus_hash x1001 x2)
      _ -> failCons
 
-d_OP_minus_hash :: C_Integer -> C_Integer -> C_Integer
+d_OP_minus_hash :: BinInt -> BinInt -> BinInt
 d_OP_minus_hash x1 x2 = case x2 of
-     C_Zero -> x1
-     (C_Pos x3) -> d_OP_plus_hash x1 (C_Neg x3)
-     (C_Neg x4) -> d_OP_plus_hash x1 (C_Pos x4)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_hash x1 x1001) (d_OP_minus_hash x1 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP_minus_hash x1 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP_minus_hash x1 x1001)
+     Zero -> x1
+     (Pos x3) -> d_OP_plus_hash x1 (Neg x3)
+     (Neg x4) -> d_OP_plus_hash x1 (Pos x4)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_hash x1 x1001) (d_OP_minus_hash x1 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP_minus_hash x1 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_minus_hash x1 x1001)
      _ -> failCons
 
-d_OP_star_hash :: C_Integer -> C_Integer -> C_Integer
+d_OP_star_hash :: BinInt -> BinInt -> BinInt
 d_OP_star_hash x1 x2 = case x1 of
-     C_Zero -> C_Zero
-     (C_Pos x3) -> d_OP__casePT_7 x3 x2
-     (C_Neg x6) -> d_OP__casePT_6 x6 x2
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP_star_hash x1001 x2) (d_OP_star_hash x1002 x2)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP_star_hash z x2) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP_star_hash x1001 x2)
+     Zero -> Zero
+     (Pos x3) -> d_OP__casePT_7 x3 x2
+     (Neg x6) -> d_OP__casePT_6 x6 x2
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_star_hash x1001 x2) (d_OP_star_hash x1002 x2)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP_star_hash z x2) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_star_hash x1001 x2)
      _ -> failCons
 
-d_C_quotRemInteger :: C_Integer -> C_Integer -> Curry_Prelude.OP_Tuple2 C_Integer C_Integer
+d_C_quotRemInteger :: BinInt -> BinInt -> Curry_Prelude.OP_Tuple2 BinInt BinInt
 d_C_quotRemInteger x1 x2 = case x2 of
-     C_Zero -> Curry_Prelude.d_C_failed
-     (C_Pos x3) -> d_OP__casePT_5 x3 x1
-     (C_Neg x9) -> d_OP__casePT_4 x9 x1
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_quotRemInteger x1 x1001) (d_C_quotRemInteger x1 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_quotRemInteger x1 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_quotRemInteger x1 x1001)
+     Zero -> Curry_Prelude.d_C_failed
+     (Pos x3) -> d_OP__casePT_5 x3 x1
+     (Neg x9) -> d_OP__casePT_4 x9 x1
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_quotRemInteger x1 x1001) (d_C_quotRemInteger x1 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_C_quotRemInteger x1 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_quotRemInteger x1 x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP2_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP2_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1001) (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1002)
@@ -994,7 +1044,7 @@ d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP3_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP3_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1001) (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1002)
@@ -1002,7 +1052,7 @@ d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP5_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP5_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1001) (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1002)
@@ -1010,7 +1060,7 @@ d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP6_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP6_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1001) (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1002)
@@ -1018,7 +1068,7 @@ d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP8_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP8_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1001) (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1002)
@@ -1026,7 +1076,7 @@ d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1001)
      _ -> failCons
 
-d_OP_quotRemInteger_dot___hash_selFP9_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_quotRemInteger_dot___hash_selFP9_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1001) (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1002)
@@ -1034,17 +1084,17 @@ d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1001)
      _ -> failCons
 
-d_C_divModInteger :: C_Integer -> C_Integer -> Curry_Prelude.OP_Tuple2 C_Integer C_Integer
+d_C_divModInteger :: BinInt -> BinInt -> Curry_Prelude.OP_Tuple2 BinInt BinInt
 d_C_divModInteger x1 x2 = case x2 of
-     C_Zero -> Curry_Prelude.d_C_failed
-     (C_Pos x3) -> d_OP__casePT_3 x3 x1
-     (C_Neg x11) -> d_OP__casePT_1 x11 x1
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_C_divModInteger x1 x1001) (d_C_divModInteger x1 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_C_divModInteger x1 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_C_divModInteger x1 x1001)
+     Zero -> Curry_Prelude.d_C_failed
+     (Pos x3) -> d_OP__casePT_3 x3 x1
+     (Neg x11) -> d_OP__casePT_1 x11 x1
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_divModInteger x1 x1001) (d_C_divModInteger x1 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_C_divModInteger x1 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_divModInteger x1 x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP11_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP11_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP11_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP11_hash_d x1001) (d_OP_divModInteger_dot___hash_selFP11_hash_d x1002)
@@ -1052,7 +1102,7 @@ d_OP_divModInteger_dot___hash_selFP11_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP11_hash_d x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP12_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP12_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP12_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP12_hash_m x1001) (d_OP_divModInteger_dot___hash_selFP12_hash_m x1002)
@@ -1060,7 +1110,7 @@ d_OP_divModInteger_dot___hash_selFP12_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP12_hash_m x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP14_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP14_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP14_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP14_hash_d x1001) (d_OP_divModInteger_dot___hash_selFP14_hash_d x1002)
@@ -1068,7 +1118,7 @@ d_OP_divModInteger_dot___hash_selFP14_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP14_hash_d x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP15_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP15_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP15_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP15_hash_m x1001) (d_OP_divModInteger_dot___hash_selFP15_hash_m x1002)
@@ -1076,7 +1126,7 @@ d_OP_divModInteger_dot___hash_selFP15_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP15_hash_m x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP17_hash_d :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP17_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP17_hash_d x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP17_hash_d x1001) (d_OP_divModInteger_dot___hash_selFP17_hash_d x1002)
@@ -1084,7 +1134,7 @@ d_OP_divModInteger_dot___hash_selFP17_hash_d x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP17_hash_d x1001)
      _ -> failCons
 
-d_OP_divModInteger_dot___hash_selFP18_hash_m :: Curry_Prelude.OP_Tuple2 C_Integer C_Integer -> C_Integer
+d_OP_divModInteger_dot___hash_selFP18_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> BinInt
 d_OP_divModInteger_dot___hash_selFP18_hash_m x1 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP18_hash_m x1001) (d_OP_divModInteger_dot___hash_selFP18_hash_m x1002)
@@ -1092,187 +1142,187 @@ d_OP_divModInteger_dot___hash_selFP18_hash_m x1 = case x1 of
      (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP18_hash_m x1001)
      _ -> failCons
 
-d_C_divInteger :: C_Integer -> C_Integer -> C_Integer
+d_C_divInteger :: BinInt -> BinInt -> BinInt
 d_C_divInteger x1 x2 = Curry_Prelude.d_C_fst (d_C_divModInteger x1 x2)
 
-d_C_modInteger :: C_Integer -> C_Integer -> C_Integer
+d_C_modInteger :: BinInt -> BinInt -> BinInt
 d_C_modInteger x1 x2 = Curry_Prelude.d_C_snd (d_C_divModInteger x1 x2)
 
-d_C_quotInteger :: C_Integer -> C_Integer -> C_Integer
+d_C_quotInteger :: BinInt -> BinInt -> BinInt
 d_C_quotInteger x1 x2 = Curry_Prelude.d_C_fst (d_C_quotRemInteger x1 x2)
 
-d_C_remInteger :: C_Integer -> C_Integer -> C_Integer
+d_C_remInteger :: BinInt -> BinInt -> BinInt
 d_C_remInteger x1 x2 = Curry_Prelude.d_C_snd (d_C_quotRemInteger x1 x2)
 
 d_OP__casePT_1 x11 x1 = case x1 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 C_Zero C_Zero
-     (C_Pos x12) -> let
+     Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
+     (Pos x12) -> let
           x13 = d_C_quotRemNat x12 x11
           x14 = d_OP_divModInteger_dot___hash_selFP14_hash_d x13
           x15 = d_OP_divModInteger_dot___hash_selFP15_hash_m x13
            in (d_OP__casePT_0 x11 x14 x15)
-     (C_Neg x18) -> let
+     (Neg x18) -> let
           x19 = d_C_quotRemNat x18 x11
           x20 = d_OP_divModInteger_dot___hash_selFP17_hash_d x19
           x21 = d_OP_divModInteger_dot___hash_selFP18_hash_m x19
-           in (Curry_Prelude.OP_Tuple2 x20 (d_C_neg x21))
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_1 x11 x1001) (d_OP__casePT_1 x11 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_1 x11 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_1 x11 x1001)
+           in (Curry_Prelude.OP_Tuple2 x20 (d_Neg x21))
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_1 x11 x1001) (d_OP__casePT_1 x11 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_1 x11 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_1 x11 x1001)
      _ -> failCons
 
 d_OP__casePT_0 x11 x14 x15 = case x15 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x14) x15
-     (C_Neg x16) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x14)) (d_OP_minus_hash x15 (C_Pos x11))
-     (C_Pos x17) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x14)) (d_OP_minus_hash x15 (C_Pos x11))
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_0 x11 x14 x1001) (d_OP__casePT_0 x11 x14 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_0 x11 x14 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_0 x11 x14 x1001)
+     Zero -> Curry_Prelude.OP_Tuple2 (d_Neg x14) x15
+     (Neg x16) -> Curry_Prelude.OP_Tuple2 (d_Neg (d_Inc x14)) (d_OP_minus_hash x15 (Pos x11))
+     (Pos x17) -> Curry_Prelude.OP_Tuple2 (d_Neg (d_Inc x14)) (d_OP_minus_hash x15 (Pos x11))
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_0 x11 x14 x1001) (d_OP__casePT_0 x11 x14 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_0 x11 x14 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_0 x11 x14 x1001)
      _ -> failCons
 
 d_OP__casePT_3 x3 x1 = case x1 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 C_Zero C_Zero
-     (C_Pos x4) -> d_C_quotRemNat x4 x3
-     (C_Neg x5) -> let
+     Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
+     (Pos x4) -> d_C_quotRemNat x4 x3
+     (Neg x5) -> let
           x6 = d_C_quotRemNat x5 x3
           x7 = d_OP_divModInteger_dot___hash_selFP11_hash_d x6
           x8 = d_OP_divModInteger_dot___hash_selFP12_hash_m x6
            in (d_OP__casePT_2 x3 x7 x8)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_3 x3 x1001) (d_OP__casePT_3 x3 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_3 x3 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_3 x3 x1001)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_3 x3 x1001) (d_OP__casePT_3 x3 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_3 x3 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_3 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_2 x3 x7 x8 = case x8 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x7) x8
-     (C_Neg x9) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x7)) (d_OP_minus_hash (C_Pos x3) x8)
-     (C_Pos x10) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x7)) (d_OP_minus_hash (C_Pos x3) x8)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_2 x3 x7 x1001) (d_OP__casePT_2 x3 x7 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_2 x3 x7 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_2 x3 x7 x1001)
+     Zero -> Curry_Prelude.OP_Tuple2 (d_Neg x7) x8
+     (Neg x9) -> Curry_Prelude.OP_Tuple2 (d_Neg (d_Inc x7)) (d_OP_minus_hash (Pos x3) x8)
+     (Pos x10) -> Curry_Prelude.OP_Tuple2 (d_Neg (d_Inc x7)) (d_OP_minus_hash (Pos x3) x8)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_2 x3 x7 x1001) (d_OP__casePT_2 x3 x7 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_2 x3 x7 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_2 x3 x7 x1001)
      _ -> failCons
 
 d_OP__casePT_4 x9 x1 = case x1 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 C_Zero C_Zero
-     (C_Pos x10) -> let
+     Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
+     (Pos x10) -> let
           x11 = d_C_quotRemNat x10 x9
           x12 = d_OP_quotRemInteger_dot___hash_selFP5_hash_d x11
           x13 = d_OP_quotRemInteger_dot___hash_selFP6_hash_m x11
-           in (Curry_Prelude.OP_Tuple2 (d_C_neg x12) x13)
-     (C_Neg x14) -> let
+           in (Curry_Prelude.OP_Tuple2 (d_Neg x12) x13)
+     (Neg x14) -> let
           x15 = d_C_quotRemNat x14 x9
           x16 = d_OP_quotRemInteger_dot___hash_selFP8_hash_d x15
           x17 = d_OP_quotRemInteger_dot___hash_selFP9_hash_m x15
-           in (Curry_Prelude.OP_Tuple2 x16 (d_C_neg x17))
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_4 x9 x1001) (d_OP__casePT_4 x9 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_4 x9 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_4 x9 x1001)
+           in (Curry_Prelude.OP_Tuple2 x16 (d_Neg x17))
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_4 x9 x1001) (d_OP__casePT_4 x9 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_4 x9 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_4 x9 x1001)
      _ -> failCons
 
 d_OP__casePT_5 x3 x1 = case x1 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 C_Zero C_Zero
-     (C_Pos x4) -> d_C_quotRemNat x4 x3
-     (C_Neg x5) -> let
+     Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
+     (Pos x4) -> d_C_quotRemNat x4 x3
+     (Neg x5) -> let
           x6 = d_C_quotRemNat x5 x3
           x7 = d_OP_quotRemInteger_dot___hash_selFP2_hash_d x6
           x8 = d_OP_quotRemInteger_dot___hash_selFP3_hash_m x6
-           in (Curry_Prelude.OP_Tuple2 (d_C_neg x7) (d_C_neg x8))
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_5 x3 x1001) (d_OP__casePT_5 x3 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_5 x3 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_5 x3 x1001)
+           in (Curry_Prelude.OP_Tuple2 (d_Neg x7) (d_Neg x8))
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_5 x3 x1001) (d_OP__casePT_5 x3 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_5 x3 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_5 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_6 x6 x2 = case x2 of
-     C_Zero -> C_Zero
-     (C_Pos x7) -> C_Neg (d_OP_star_caret x6 x7)
-     (C_Neg x8) -> C_Pos (d_OP_star_caret x6 x8)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_6 x6 x1001) (d_OP__casePT_6 x6 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_6 x6 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_6 x6 x1001)
+     Zero -> Zero
+     (Pos x7) -> Neg (d_OP_star_caret x6 x7)
+     (Neg x8) -> Pos (d_OP_star_caret x6 x8)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_6 x6 x1001) (d_OP__casePT_6 x6 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_6 x6 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_6 x6 x1001)
      _ -> failCons
 
 d_OP__casePT_7 x3 x2 = case x2 of
-     C_Zero -> C_Zero
-     (C_Pos x4) -> C_Pos (d_OP_star_caret x3 x4)
-     (C_Neg x5) -> C_Neg (d_OP_star_caret x3 x5)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_7 x3 x1001) (d_OP__casePT_7 x3 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_7 x3 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_7 x3 x1001)
+     Zero -> Zero
+     (Pos x4) -> Pos (d_OP_star_caret x3 x4)
+     (Neg x5) -> Neg (d_OP_star_caret x3 x5)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_7 x3 x1001) (d_OP__casePT_7 x3 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_7 x3 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_7 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_8 x1 x6 x2 = case x2 of
-     C_Zero -> x1
-     (C_Pos x7) -> d_OP_minus_caret x7 x6
-     (C_Neg x8) -> C_Neg (d_OP_plus_caret x6 x8)
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_8 x1 x6 x1001) (d_OP__casePT_8 x1 x6 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_8 x1 x6 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_8 x1 x6 x1001)
+     Zero -> x1
+     (Pos x7) -> d_OP_minus_caret x7 x6
+     (Neg x8) -> Neg (d_OP_plus_caret x6 x8)
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_8 x1 x6 x1001) (d_OP__casePT_8 x1 x6 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_8 x1 x6 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_8 x1 x6 x1001)
      _ -> failCons
 
 d_OP__casePT_9 x1 x3 x2 = case x2 of
-     C_Zero -> x1
-     (C_Pos x4) -> C_Pos (d_OP_plus_caret x3 x4)
-     (C_Neg x5) -> d_OP_minus_caret x3 x5
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_9 x1 x3 x1001) (d_OP__casePT_9 x1 x3 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_9 x1 x3 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_9 x1 x3 x1001)
+     Zero -> x1
+     (Pos x4) -> Pos (d_OP_plus_caret x3 x4)
+     (Neg x5) -> d_OP_minus_caret x3 x5
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_9 x1 x3 x1001) (d_OP__casePT_9 x1 x3 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_9 x1 x3 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_9 x1 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_10 x2 = case x2 of
-     C_IHi -> C_Zero
-     (C_O x3) -> C_Pos (d_C_pred (C_O x3))
-     (C_I x4) -> C_Pos (C_O x4)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_10 x1001) (d_OP__casePT_10 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_10 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_10 x1001)
+     IHi -> Zero
+     (O x3) -> Pos (d_C_pred (O x3))
+     (I x4) -> Pos (O x4)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_10 x1001) (d_OP__casePT_10 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_10 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_10 x1001)
      _ -> failCons
 
 d_OP__casePT_11 x3 = case x3 of
-     C_IHi -> C_Zero
-     (C_O x4) -> C_Neg (d_C_pred (C_O x4))
-     (C_I x5) -> C_Neg (C_O x5)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_11 x1001) (d_OP__casePT_11 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_11 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_11 x1001)
+     IHi -> Zero
+     (O x4) -> Neg (d_C_pred (O x4))
+     (I x5) -> Neg (O x5)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_11 x1001) (d_OP__casePT_11 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_11 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_11 x1001)
      _ -> failCons
 
 d_OP__casePT_12 x8 x2 = case x2 of
-     C_Zero -> Curry_Prelude.C_LT
-     (C_Pos x9) -> Curry_Prelude.C_LT
-     (C_Neg x10) -> d_C_cmpNat x10 x8
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_12 x8 x1001) (d_OP__casePT_12 x8 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_12 x8 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_12 x8 x1001)
+     Zero -> Curry_Prelude.C_LT
+     (Pos x9) -> Curry_Prelude.C_LT
+     (Neg x10) -> d_C_cmpNat x10 x8
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_12 x8 x1001) (d_OP__casePT_12 x8 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_12 x8 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_12 x8 x1001)
      _ -> failCons
 
 d_OP__casePT_13 x5 x2 = case x2 of
-     C_Zero -> Curry_Prelude.C_GT
-     (C_Pos x6) -> d_C_cmpNat x5 x6
-     (C_Neg x7) -> Curry_Prelude.C_GT
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_13 x5 x1001) (d_OP__casePT_13 x5 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_13 x5 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_13 x5 x1001)
+     Zero -> Curry_Prelude.C_GT
+     (Pos x6) -> d_C_cmpNat x5 x6
+     (Neg x7) -> Curry_Prelude.C_GT
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_13 x5 x1001) (d_OP__casePT_13 x5 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_13 x5 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_13 x5 x1001)
      _ -> failCons
 
 d_OP__casePT_14 x2 = case x2 of
-     C_Zero -> Curry_Prelude.C_EQ
-     (C_Pos x3) -> Curry_Prelude.C_LT
-     (C_Neg x4) -> Curry_Prelude.C_GT
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_14 x1001) (d_OP__casePT_14 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_14 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_14 x1001)
+     Zero -> Curry_Prelude.C_EQ
+     (Pos x3) -> Curry_Prelude.C_LT
+     (Neg x4) -> Curry_Prelude.C_GT
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_14 x1001) (d_OP__casePT_14 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_14 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_14 x1001)
      _ -> failCons
 
 d_OP__casePT_23 x1 x2 x3 = case x3 of
-     Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 (C_Pos x1) C_Zero
-     Curry_Prelude.C_False -> d_OP__casePT_22 x1 x2 (Curry_Prelude.d_OP_eq_eq x1 C_IHi)
+     Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 (Pos x1) Zero
+     Curry_Prelude.C_False -> d_OP__casePT_22 x1 x2 (Curry_Prelude.d_OP_eq_eq x1 IHi)
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_23 x1 x2 x1001) (d_OP__casePT_23 x1 x2 x1002)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_23 x1 x2 z) x1001)
      (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (d_OP__casePT_23 x1 x2 x1001)
      _ -> failCons
 
 d_OP__casePT_22 x1 x2 x3 = case x3 of
-     Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 C_Zero (C_Pos x2)
+     Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 Zero (Pos x2)
      Curry_Prelude.C_False -> d_OP__casePT_21 x1 x2 Curry_Prelude.d_C_otherwise
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_22 x1 x2 x1001) (d_OP__casePT_22 x1 x2 x1002)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_22 x1 x2 z) x1001)
@@ -1288,8 +1338,8 @@ d_OP__casePT_21 x1 x2 x3 = case x3 of
      _ -> failCons
 
 d_OP__casePT_20 x1 x2 x3 = case x3 of
-     Curry_Prelude.C_EQ -> Curry_Prelude.OP_Tuple2 (C_Pos C_IHi) C_Zero
-     Curry_Prelude.C_LT -> Curry_Prelude.OP_Tuple2 C_Zero (C_Pos x1)
+     Curry_Prelude.C_EQ -> Curry_Prelude.OP_Tuple2 (Pos IHi) Zero
+     Curry_Prelude.C_LT -> Curry_Prelude.OP_Tuple2 Zero (Pos x1)
      Curry_Prelude.C_GT -> d_OP__casePT_19 x1 x2 (d_C_quotRemNat (d_C_div2 x1) x2)
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_20 x1 x2 x1001) (d_OP__casePT_20 x1 x2 x1002)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_20 x1 x2 z) x1001)
@@ -1304,21 +1354,21 @@ d_OP__casePT_19 x1 x2 x5 = case x5 of
      _ -> failCons
 
 d_OP__casePT_18 x1 x2 x4 x3 = case x3 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 (C_Pos C_IHi) (d_OP_minus_caret x1 x2)
-     (C_Pos x5) -> d_OP__casePT_17 x1 x2 x5 x4
-     (C_Neg x12) -> Curry_Prelude.d_C_failed
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_18 x1 x2 x4 x1001) (d_OP__casePT_18 x1 x2 x4 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_18 x1 x2 x4 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_18 x1 x2 x4 x1001)
+     Zero -> Curry_Prelude.OP_Tuple2 (Pos IHi) (d_OP_minus_caret x1 x2)
+     (Pos x5) -> d_OP__casePT_17 x1 x2 x5 x4
+     (Neg x12) -> Curry_Prelude.d_C_failed
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_18 x1 x2 x4 x1001) (d_OP__casePT_18 x1 x2 x4 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_18 x1 x2 x4 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_18 x1 x2 x4 x1001)
      _ -> failCons
 
 d_OP__casePT_17 x1 x2 x5 x4 = case x4 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 (C_Pos (C_O x5)) (d_C_mod2 x1)
-     (C_Pos x6) -> d_OP__casePT_16 x1 x2 x5 x6 (d_C_quotRemNat (d_OP_quotRemNat_dot_shift_dot_104 x1 x6) x2)
-     (C_Neg x11) -> Curry_Prelude.d_C_failed
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_17 x1 x2 x5 x1001) (d_OP__casePT_17 x1 x2 x5 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_17 x1 x2 x5 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_17 x1 x2 x5 x1001)
+     Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) (d_C_mod2 x1)
+     (Pos x6) -> d_OP__casePT_16 x1 x2 x5 x6 (d_C_quotRemNat (d_OP_quotRemNat_dot_shift_dot_104 x1 x6) x2)
+     (Neg x11) -> Curry_Prelude.d_C_failed
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_17 x1 x2 x5 x1001) (d_OP__casePT_17 x1 x2 x5 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_17 x1 x2 x5 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_17 x1 x2 x5 x1001)
      _ -> failCons
 
 d_OP__casePT_16 x1 x2 x5 x6 x9 = case x9 of
@@ -1329,66 +1379,66 @@ d_OP__casePT_16 x1 x2 x5 x6 x9 = case x9 of
      _ -> failCons
 
 d_OP__casePT_15 x5 x8 x7 = case x7 of
-     C_Zero -> Curry_Prelude.OP_Tuple2 (C_Pos (C_O x5)) x8
-     (C_Pos x9) -> Curry_Prelude.OP_Tuple2 (C_Pos (d_OP_plus_caret (C_O x5) x9)) x8
-     (C_Neg x10) -> Curry_Prelude.d_C_failed
-     (Choice_C_Integer x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_15 x5 x8 x1001) (d_OP__casePT_15 x5 x8 x1002)
-     (Choices_C_Integer x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_15 x5 x8 z) x1001)
-     (Guard_C_Integer x1000 x1001) -> guardCons x1000 (d_OP__casePT_15 x5 x8 x1001)
+     Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) x8
+     (Pos x9) -> Curry_Prelude.OP_Tuple2 (Pos (d_OP_plus_caret (O x5) x9)) x8
+     (Neg x10) -> Curry_Prelude.d_C_failed
+     (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_15 x5 x8 x1001) (d_OP__casePT_15 x5 x8 x1002)
+     (Choices_BinInt x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_15 x5 x8 z) x1001)
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_15 x5 x8 x1001)
      _ -> failCons
 
 d_OP__casePT_24 x6 x2 = case x2 of
-     C_IHi -> C_Pos (C_O x6)
-     (C_O x7) -> d_C_inc (d_C_mult2 (d_OP_minus_caret x6 x7))
-     (C_I x8) -> d_C_mult2 (d_OP_minus_caret x6 x8)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_24 x6 x1001) (d_OP__casePT_24 x6 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_24 x6 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_24 x6 x1001)
+     IHi -> Pos (O x6)
+     (O x7) -> d_Inc (d_C_mult2 (d_OP_minus_caret x6 x7))
+     (I x8) -> d_C_mult2 (d_OP_minus_caret x6 x8)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_24 x6 x1001) (d_OP__casePT_24 x6 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_24 x6 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_24 x6 x1001)
      _ -> failCons
 
 d_OP__casePT_25 x1 x3 x2 = case x2 of
-     C_IHi -> C_Pos (d_C_pred x1)
-     (C_O x4) -> d_C_mult2 (d_OP_minus_caret x3 x4)
-     (C_I x5) -> d_C_dec (d_C_mult2 (d_OP_minus_caret x3 x5))
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_25 x1 x3 x1001) (d_OP__casePT_25 x1 x3 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_25 x1 x3 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_25 x1 x3 x1001)
+     IHi -> Pos (d_C_pred x1)
+     (O x4) -> d_C_mult2 (d_OP_minus_caret x3 x4)
+     (I x5) -> d_C_dec (d_C_mult2 (d_OP_minus_caret x3 x5))
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_25 x1 x3 x1001) (d_OP__casePT_25 x1 x3 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_25 x1 x3 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_25 x1 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_26 x6 x2 = case x2 of
-     C_IHi -> C_O (d_C_succ x6)
-     (C_O x7) -> C_I (d_OP_plus_caret x6 x7)
-     (C_I x8) -> C_O (d_OP_plus_caret (d_C_succ x6) x8)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_26 x6 x1001) (d_OP__casePT_26 x6 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_26 x6 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_26 x6 x1001)
+     IHi -> O (d_C_succ x6)
+     (O x7) -> I (d_OP_plus_caret x6 x7)
+     (I x8) -> O (d_OP_plus_caret (d_C_succ x6) x8)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_26 x6 x1001) (d_OP__casePT_26 x6 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_26 x6 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_26 x6 x1001)
      _ -> failCons
 
 d_OP__casePT_27 x3 x2 = case x2 of
-     C_IHi -> C_I x3
-     (C_O x4) -> C_O (d_OP_plus_caret x3 x4)
-     (C_I x5) -> C_I (d_OP_plus_caret x3 x5)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_27 x3 x1001) (d_OP__casePT_27 x3 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_27 x3 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_27 x3 x1001)
+     IHi -> I x3
+     (O x4) -> O (d_OP_plus_caret x3 x4)
+     (I x5) -> I (d_OP_plus_caret x3 x5)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_27 x3 x1001) (d_OP__casePT_27 x3 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_27 x3 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_27 x3 x1001)
      _ -> failCons
 
 d_OP__casePT_28 x2 = case x2 of
-     C_IHi -> C_IHi
-     (C_O x3) -> C_I (d_C_pred x2)
-     (C_I x4) -> C_I (C_O x4)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_28 x1001) (d_OP__casePT_28 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_28 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_28 x1001)
+     IHi -> IHi
+     (O x3) -> I (d_C_pred x2)
+     (I x4) -> I (O x4)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_28 x1001) (d_OP__casePT_28 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_28 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_28 x1001)
      _ -> failCons
 
 d_OP__casePT_30 x8 x2 = case x2 of
-     C_IHi -> Curry_Prelude.C_GT
-     (C_O x9) -> d_OP__casePT_29 x8 x9 (d_C_cmpNat x8 x9)
-     (C_I x10) -> d_C_cmpNat x8 x10
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_30 x8 x1001) (d_OP__casePT_30 x8 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_30 x8 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_30 x8 x1001)
+     IHi -> Curry_Prelude.C_GT
+     (O x9) -> d_OP__casePT_29 x8 x9 (d_C_cmpNat x8 x9)
+     (I x10) -> d_C_cmpNat x8 x10
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_30 x8 x1001) (d_OP__casePT_30 x8 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_30 x8 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_30 x8 x1001)
      _ -> failCons
 
 d_OP__casePT_29 x8 x9 x10 = case x10 of
@@ -1401,12 +1451,12 @@ d_OP__casePT_29 x8 x9 x10 = case x10 of
      _ -> failCons
 
 d_OP__casePT_32 x5 x2 = case x2 of
-     C_IHi -> Curry_Prelude.C_GT
-     (C_O x6) -> d_C_cmpNat x5 x6
-     (C_I x7) -> d_OP__casePT_31 x5 x7 (d_C_cmpNat x5 x7)
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_32 x5 x1001) (d_OP__casePT_32 x5 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_32 x5 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_32 x5 x1001)
+     IHi -> Curry_Prelude.C_GT
+     (O x6) -> d_C_cmpNat x5 x6
+     (I x7) -> d_OP__casePT_31 x5 x7 (d_C_cmpNat x5 x7)
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_32 x5 x1001) (d_OP__casePT_32 x5 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_32 x5 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_32 x5 x1001)
      _ -> failCons
 
 d_OP__casePT_31 x5 x7 x8 = case x8 of
@@ -1419,10 +1469,10 @@ d_OP__casePT_31 x5 x7 x8 = case x8 of
      _ -> failCons
 
 d_OP__casePT_33 x2 = case x2 of
-     C_IHi -> Curry_Prelude.C_EQ
-     (C_O x3) -> Curry_Prelude.C_LT
-     (C_I x4) -> Curry_Prelude.C_LT
-     (Choice_C_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_33 x1001) (d_OP__casePT_33 x1002)
-     (Choices_C_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_33 z) x1001)
-     (Guard_C_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_33 x1001)
+     IHi -> Curry_Prelude.C_EQ
+     (O x3) -> Curry_Prelude.C_LT
+     (I x4) -> Curry_Prelude.C_LT
+     (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_33 x1001) (d_OP__casePT_33 x1002)
+     (Choices_Nat x1000 x1001) -> narrows x1000 (map (\z -> d_OP__casePT_33 z) x1001)
+     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_33 x1001)
      _ -> failCons

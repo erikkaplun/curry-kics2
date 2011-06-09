@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 import qualified System.Time as T
 import qualified Curry_Prelude as CP
 
@@ -6,8 +7,8 @@ instance ConvertCurryHaskell C_ClockTime T.ClockTime where
   toCurry   (T.TOD i _) = C_CTime (toCurry i)
 
 instance ConvertCurryHaskell C_CalendarTime T.CalendarTime where
-  fromCurry (C_CalendarTime y m d h min s tz ) = 
-           T.CalendarTime (fromCurry y) 
+  fromCurry (C_CalendarTime y m d h min s tz ) =
+           T.CalendarTime (fromCurry y)
                           (toEnum (fromCurry m - 1))
                           (fromCurry d)
                           (fromCurry h)
@@ -16,10 +17,10 @@ instance ConvertCurryHaskell C_CalendarTime T.CalendarTime where
                           0 undefined undefined undefined
                           (fromCurry tz)
                           undefined
-           
-  toCurry (T.CalendarTime y m d h min s _ _ _ _ tz _) = 
-          C_CalendarTime (toCurry y) 
-                         (toCurry (fromEnum m + 1)) 
+
+  toCurry (T.CalendarTime y m d h min s _ _ _ _ tz _) =
+          C_CalendarTime (toCurry y)
+                         (toCurry (fromEnum m + 1))
                          (toCurry d)
                          (toCurry h)
                          (toCurry min)

@@ -8,6 +8,7 @@ import qualified Curry_Prelude as CP
 -- globals where Curry values are stored in the IORefs
 data C_Global a
      = Choice_C_Global ID (C_Global a) (C_Global a)
+     | Choices_C_Global ID ([C_Global a])
      | Fail_C_Global
      | Guard_C_Global [Constraint] (C_Global a)
      | C_Global_Temp (IORef a)  -- a temporary global
@@ -21,6 +22,7 @@ instance Read (C_Global a) where
 
 instance NonDet (C_Global a) where
   choiceCons = Choice_C_Global
+  choicesCons = Choices_C_Global
   failCons = Fail_C_Global
   guardCons = Guard_C_Global
   try (Choice_C_Global i x y) = tryChoice i x y
@@ -32,10 +34,11 @@ instance Generable (C_Global a) where
   generate _ = error "ERROR: no generator for Global"
 
 instance NormalForm (C_Global a) where
-  cont $!! io@(C_Global_Temp _) = cont io
-  cont $!! io@(C_Global_Pers _) = cont io
-  cont $!! Choice_C_Global i io1 io2 = nfChoice cont i io1 io2
-  cont $!! Guard_C_Global c io = guardCons c (cont $!! io)
+  cont $!! g@(C_Global_Temp _) = cont g
+  cont $!! g@(C_Global_Pers _) = cont g
+  cont $!! Choice_C_Global i g1 g2 = nfChoice cont i g1 g2
+  cont $!! Choices_C_Global i gs = nfChoices cont i gs
+  cont $!! Guard_C_Global c g = guardCons c (cont $!! g)
   _    $!! Fail_C_Global = failCons
 
 instance Unifiable (C_Global a) where
@@ -43,8 +46,8 @@ instance Unifiable (C_Global a) where
   bind i (Choice_C_Global j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
 
 instance CP.Curry a => CP.Curry (C_Global a) where
-  (=?=) = error "(=?=) is undefined for Globals"
-  (<?=) = error "(<?=) is undefined for Globals"
+  (=?=) = error "(==) is undefined for Globals"
+  (<?=) = error "(<=) is undefined for Globals"
 
 
 external_d_C_global :: CP.Curry a => a -> C_GlobalSpec -> C_Global a

@@ -1,5 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 import Network
-import Network.Socket 
+import Network.Socket
 import Control.Concurrent
 import qualified Curry_Prelude as CP
 

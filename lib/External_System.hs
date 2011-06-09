@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
 import System
 import System.Posix.Process(getProcessID)
 import System.CPUTime(getCPUTime)

@@ -14,7 +14,7 @@ import List (intersperse, find)
 import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
-import FlatCurryGoodies (funcName, consName, updQNamesInProg)
+import FlatCurryGoodies (funcName, consName, updQNamesInProg, isTypeSyn)
 import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
@@ -74,17 +74,19 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     modCnt = length mods
     opts = state -> compOptions
 
-storeAnalysis :: State -> String -> IO ()
-storeAnalysis state fn = do
+type AnalysisResult = (TypeMap, NDResult, HOResult, HOResult)
+
+storeAnalysis :: State -> AnalysisResult -> String -> IO ()
+storeAnalysis state (types, ndAna, hoFunAna, hoConsAna) fn = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
-  writeQTermFileInDir ndaFile (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types)
+  writeQTermFileInDir ndaFile (ndAnaStr, hoFuncAnaStr, hoConsAnaStr, typesStr)
     where
-      opts           = state -> compOptions
-      ndaFile        = analysisFile (opts -> optOutputSubdir) fn
-      ndAnalysis     = showMap $ state -> ndResult
-      hoFuncAnalysis = showMap $ state -> hoResultFun
-      hoConsAnalysis = showMap $ state -> hoResultCons
-      types          = showMap $ state -> typeMap
+      opts         = state -> compOptions
+      ndaFile      = analysisFile (opts -> optOutputSubdir) fn
+      ndAnaStr     = showMap ndAna
+      hoFuncAnaStr = showMap hoFunAna
+      hoConsAnaStr = showMap hoConsAna
+      typesStr     = showMap types
 
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
@@ -116,8 +118,8 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
-  (tProg, state') <- unM (transProg renamed) state
-  storeAnalysis state' fn
+  ((tProg,modAnalysisResult), state') <- unM (transProg renamed) state
+  storeAnalysis state' modAnalysisResult fn
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -309,8 +311,10 @@ type M a = Mo State a
 
 -- type map
 
-updTypeMap :: (TypeMap -> TypeMap) -> M ()
-updTypeMap f = updState (\st -> { typeMap := f $ st -> typeMap | st })
+addTypeMap :: TypeMap -> M ()
+addTypeMap newTypes = 
+ updState (\st -> { typeMap :=  st -> typeMap `plusFM` newTypes  | st })
+ 
 
 getType :: QName -> M QName
 getType qn = getState `bindM` \st ->
@@ -319,8 +323,8 @@ getType qn = getState `bindM` \st ->
 
 -- NDResult
 
-updNDAnalysis :: (NDResult -> NDResult) -> M ()
-updNDAnalysis f = updState $ \s -> { ndResult := f $ s -> ndResult | s }
+addNDAnalysis :: NDResult -> M ()
+addNDAnalysis newRes = updState $ \s -> { ndResult := newRes `plusFM` s -> ndResult | s }
 
 getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
@@ -328,8 +332,8 @@ getNDClass qn = getState `bindM` \st ->
   $ (flip lookupFM) qn $ (st -> ndResult)
 -- HOFunResult
 
-updHOFunAnalysis :: (HOResult -> HOResult) -> M ()
-updHOFunAnalysis f = updState$ \s -> { hoResultFun := f $ s -> hoResultFun | s }
+addHOFunAnalysis :: HOResult -> M ()
+addHOFunAnalysis newRes = updState$ \s -> { hoResultFun := newRes `plusFM` s -> hoResultFun | s }
 
 getFunHOClass :: QName -> M HOClass
 getFunHOClass qn = getState `bindM` \st ->
@@ -338,8 +342,8 @@ getFunHOClass qn = getState `bindM` \st ->
 
 -- HOConsResult
 
-updHOConsAnalysis :: (HOResult -> HOResult) -> M ()
-updHOConsAnalysis f = updState$ \s -> { hoResultCons := f $ s -> hoResultCons | s }
+addHOConsAnalysis :: HOResult -> M ()
+addHOConsAnalysis newRes = updState$ \s -> { hoResultCons := (newRes `plusFM` s -> hoResultCons) | s }
 
 getConsHOClass :: QName -> M HOClass
 getConsHOClass qn = getState `bindM` \st ->
@@ -400,26 +404,31 @@ getCompOption select = getCompOptions `bindM` (returnM . select)
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
-transProg :: Prog -> M Prog
+transProg :: Prog -> M (Prog, AnalysisResult)
 transProg p@(Prog m is ts fs _) =
-  updNDAnalysis     (analyseND     p) `bindM_`
-  updHOFunAnalysis  (analyseHOFunc p) `bindM_`
-  updHOConsAnalysis (analyseHOCons p) `bindM_`
-  -- register constructors
-  mapM registerCons ts `bindM_`
+  getState `bindM` \st ->
+  let modNDRes     = analyseND     p (st -> ndResult)
+      modHOResFun  = analyseHOFunc p (st -> hoResultFun)
+      modHOResCons = analyseHOCons p
+      modTypeMap   = getConsMap ts in
+  addNDAnalysis     modNDRes      `bindM_`
+  addHOFunAnalysis  modHOResFun  `bindM_`
+  addHOConsAnalysis modHOResCons `bindM_`
+  addTypeMap        modTypeMap   `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
-  returnM $ Prog m is [] (concat fss) []
+  returnM $ (Prog m is [] (concat fss) [], (modTypeMap, modNDRes, modHOResFun, modHOResCons))
 
 -- Register the types of constructors to be able to retrieve the types for
 -- constructors used in case patterns.
 -- TODO: This becomes needless if the type could be computed from the
 -- function's type expression, which in turn requires the case lifting to
 -- provide correct types for lifted case expressions instead of TVar (-42).
-registerCons :: TypeDecl -> M ()
-registerCons (Type qn _ _ cs) = mapM addToMap cs `bindM_` returnM ()
-  where addToMap c = updTypeMap (\fm -> addToFM fm (consName c) qn)
-registerCons (TypeSyn _ _ _ _) = returnM ()
+getConsMap :: [TypeDecl] -> TypeMap
+getConsMap ts = 
+  listToFM (<)
+  $ concatMap (\ (Type qn _ _ cs) -> map (\c -> (consName c,qn)) cs)
+  $ filter (not . isTypeSyn) ts
 
 -- ---------------------------------------------------------------------------
 -- Translation of Curry functions
@@ -525,7 +534,7 @@ transBody qn vs exp = case exp of
     -- translate branches
     mapM transBranch bs `bindM` \bs' ->
     -- create branches for non-deterministic constructors
-    let bs'' = addUnifIntegerRule bs bs'
+    let bs'' = addUnifIntCharRule bs bs'
         pConsName = consNameFromPattern $ head bs in
     newBranches qn vs i pConsName `bindM` \ns ->
     -- TODO: superfluous?
@@ -533,20 +542,26 @@ transBody qn vs exp = case exp of
     returnM $ Case ct e' (bs'' ++ ns)
   _ -> transCompleteExpr exp
 
-addUnifIntegerRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
-addUnifIntegerRule bs bs' =
+addUnifIntCharRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
+addUnifIntCharRule bs bs' =
   case bs of
-   (Branch (LPattern (Intc _)) _ :_) -> addRule bs bs' []
+   (Branch (LPattern (Intc  _)) _ :_) -> addRule True  bs bs' []
+   (Branch (LPattern (Charc _)) _ :_) -> addRule False bs bs' []
    _                                 -> bs'
   where
-    addRule bs1 bs2 rules = case (bs1, bs2) of
-      (Branch (LPattern (Intc i)) _ :nextBs, Branch p e:nextBs')
-        -> Branch p e : addRule nextBs nextBs' ((Lit (Intc i),e):rules)
+    addRule isInt bs1 bs2 rules = case (bs1, bs2) of
+      (Branch (LPattern lit) _ :nextBs, Branch p e:nextBs')
+        -> Branch p e : addRule isInt nextBs nextBs' ((Lit lit,e):rules)
+      
       -- TODO: magic number
-      _ -> Branch (Pattern (renameQName (prelude,"CurryInt")) [5000])
-                  (funcCall (basics,"matchInteger")
+      _ -> Branch (Pattern (constr isInt) [5000])
+                  (funcCall (matchFun isInt)
                     [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
           : bs2
+    matchFun True  = (basics,"matchInteger")
+    matchFun False = (basics,"matchChar")
+    constr   True  = renameQName (prelude,"CurryInt")
+    constr   False = (curryPrelude,"CurryChar")
 
 consNameFromPattern :: BranchExpr -> QName
 consNameFromPattern (Branch (Pattern p _) _) = p
@@ -861,9 +876,7 @@ primTypes :: [(QName, QName)]
 primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
                              , renameQName (prelude, y))) $
   [ ("True", "Bool"), ("False", "Bool")
-  , ("[]", "List")  , (":", "List")
-  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
-  ] ++ map (\n -> (tupleType n, 'T':show n)) [2 .. maxTupleArity]
+  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")]
 
 -- Return Nothing if type is no tuple and Just arity otherwise
 tupleArity :: String -> Maybe Int

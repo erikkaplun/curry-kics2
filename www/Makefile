@@ -4,11 +4,11 @@
 all: submitform Registry
 
 submitform: ../lib/HtmlCgi.curry ../lib/NamedSocket.curry ../lib/CPNS.curry
-	cd ../lib && ../bin/kics2 :l HtmlCgi :save :q
+	cd ../lib && ../bin/kics2 :set v2 :l HtmlCgi :save :q
 	mv ../lib/HtmlCgi submitform
 
 Registry: Registry.curry ../lib/HtmlCgi.curry
-	../bin/kics2 :l Registry :save :q
+	../bin/kics2 :set v2 :l Registry :save :q
 
 .PHONY: cleanServers
 cleanServers:

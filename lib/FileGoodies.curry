@@ -31,6 +31,7 @@ suffixSeparatorChar = '.'
 --- Is the argument an absolute name?
 isAbsolute :: String -> Bool
 isAbsolute (c:_) = c == separatorChar
+isAbsolute [] = False
 
 --- Extracts the directoy prefix of a given (Unix) file name.
 --- Returns "." if there is no prefix.
