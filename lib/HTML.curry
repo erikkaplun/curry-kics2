@@ -17,7 +17,7 @@
 --- is a shell script stored in <i>pakcshome</i>/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version January 2011
+--- @version June 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
@@ -1078,11 +1078,13 @@ serveCgiMessagesForForm servertimeout url cgikey portname
                    unregisterCgiServer portname
                    sClose socket )
                (\ (rhost,hdl) ->
-                  if rhost == "localhost" || take 8 rhost == "127.0.0."
+                  if rhost == "localhost" || take 8 rhost == "127.0.0." ||
+                     rhost == "localhost.localdomain"
                   then readCgiServerMsg hdl >>=
                        maybe (hClose hdl >> serveCgiMessages state)
                              (serveCgiMessage state hdl)
-                  else hClose hdl >> serveCgiMessages state )
+                  else putErrLn ("Ignored message from: "++rhost) >>
+                       hClose hdl >> serveCgiMessages state )
 
   -- Process the received CgiServerMsg:
   serveCgiMessage _ hdl StopCgiServer = do

@@ -4,6 +4,7 @@
 all: AddTypes GenInt ImportCalls CreateMakefile
 	@cd browser   ; ${MAKE}
 	@cd currydoc  ; ${MAKE}
+	@cd curry2js  ; ${MAKE}
 
 # generate saved state for addtypes program:
 AddTypes: AddTypes.curry
@@ -40,3 +41,4 @@ clean:
 	cd analysis  ; ../../bin/cleancurry
 	cd browser   ; ${MAKE} clean
 	cd currydoc  ; ${MAKE} clean
+	cd curry2js  ; ${MAKE} clean
