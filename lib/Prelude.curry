@@ -638,7 +638,7 @@ done              = return ()
 
 --- An action that puts its character argument on standard output.
 putChar           :: Char -> IO ()
-putChar c = prim_putChar $# c
+putChar c = prim_putChar $## c
 
 prim_putChar           :: Char -> IO ()
 prim_putChar external

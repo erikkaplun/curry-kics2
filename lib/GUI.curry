@@ -206,14 +206,9 @@ data CanvasItem = CLine [(Int,Int)] String
 ---       this widget used in Tk, and "type" is one of
 ---       button / canvas / checkbutton / entry / label / listbox /
 ---       message / scale / scrollbar / textedit
---data WidgetRef = WRefLabel String String
-data WidgetRef = WRefLabel [Int] [Int]
-ints2string = map chr
-string2ints = map ord
+data WidgetRef = WRefLabel String String
 
-wRef2Label :: WidgetRef -> String
 wRef2Label (WRefLabel var _)   = wRefname2Label var
-
 wRef2Wtype (WRefLabel _ wtype) = wtype
 
 --- The data type of possible text styles.
@@ -722,7 +717,7 @@ config2tcl wtype label (Menu l)
 
 -- references to widgets are bound to actual widget labels:
 config2tcl wtype label (WRef r)
- | r =:= WRefLabel (string2ints (wLabel2Refname label)) (string2ints wtype) = ""
+ | r =:= WRefLabel (wLabel2Refname label) wtype = ""
 
 -- initial text value of widgets:
 config2tcl wtype label (Text s)
@@ -835,7 +830,7 @@ showCoords ((x,y):cs) = show x++" "++show y++" "++showCoords cs
 wLabel2Refname l = map (\c -> if c=='.' then '_' else c) l
 
 -- translate a name into a widget label (replacing underscores by dots)
-wRefname2Label l = map (\c -> if c=='_' then '.' else c) (ints2string l)
+wRefname2Label l = map (\c -> if c=='_' then '.' else c) l
 
 
 -- translate a list of widgets into pair Tcl string / event list:
@@ -1212,7 +1207,7 @@ toIOHandler handler _ handle gport = handler handle gport >> return (Just [])
 --- Warning: does not work for Command options!
 setConfig :: WidgetRef -> ConfItem -> GuiPort -> IO ()
 setConfig (WRefLabel var wtype) confitem gport = do
-  send2tk (config2tcl (ints2string wtype) (wRefname2Label var) confitem) gport
+  send2tk (config2tcl wtype (wRefname2Label var) confitem) gport
 
 
 selectEvent evwidget evtype [] _ =
@@ -1289,12 +1284,12 @@ exitGUI gport = send2tk "exit" gport -- this also terminates the scheduler
 --- Gets the (String) value of a variable in a GUI.
 getValue :: WidgetRef -> GuiPort -> IO String
 getValue (WRefLabel var _) gport = 
-  getWidgetVar (ints2string var) gport
+  getWidgetVar var gport
 
 --- Sets the (String) value of a variable in a GUI.
 setValue :: WidgetRef -> String -> GuiPort -> IO ()
 setValue (WRefLabel var _) val gport = 
-  send2tk ("setvar"++ints2string var++" \""++escape_tcl val++"\"") gport
+  send2tk ("setvar"++var++" \""++escape_tcl val++"\"") gport
 
 --- Updates the (String) value of a variable w.r.t. to an update function.
 updateValue :: (String->String) -> WidgetRef -> GuiPort -> IO ()
@@ -1306,8 +1301,8 @@ updateValue upd wref gport = do
 --- adjust the view to the end of the TextEdit widget.
 appendValue :: WidgetRef -> String -> GuiPort -> IO ()
 appendValue (WRefLabel var wtype) val gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.appendValue ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.appendValue ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\"") gport >>
        send2tk (wRefname2Label var++" see end") gport
 
@@ -1320,8 +1315,8 @@ appendValue (WRefLabel var wtype) val gport =
 --- This is an experimental function and might be changed in the future.
 appendStyledValue :: WidgetRef -> String -> [Style] -> GuiPort -> IO ()
 appendStyledValue (WRefLabel var wtype) val styles gport =
-  if ints2string wtype/="textedit"
-   then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+   then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++wtype++"\"\n") done
    else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\""
                  ++" \""++showStyles styles++"\"") gport >>
         send2tk (wRefname2Label var++" see end") gport
@@ -1340,8 +1335,8 @@ appendStyledValue (WRefLabel var wtype) val styles gport =
 addRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                -> IO ()
 addRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" tag add "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
@@ -1353,8 +1348,8 @@ addRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
 removeRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                   -> IO ()
 removeRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" tag remove "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
@@ -1363,9 +1358,9 @@ removeRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
 --- widget. Lines are numbered from 1 and columns are numbered from 0.
 getCursorPosition :: WidgetRef -> GuiPort -> IO (Int,Int)
 getCursorPosition (WRefLabel var wtype) gport =
-  if ints2string wtype/="textedit"
+  if wtype/="textedit"
   then error ("GUI.getCursorPosition not applicable to widget type \""++
-              ints2string wtype++"\"")
+              wtype++"\"")
   else do send2tk ("puts [ "++wRefname2Label var++" index insert ]") gport
           line <- receiveFromTk gport
           let (ls,ps) = break (=='.') line
@@ -1377,8 +1372,8 @@ getCursorPosition (WRefLabel var wtype) gport =
 --- Lines are numbered from 1 and columns are numbered from 0.
 seeText :: WidgetRef -> (Int,Int) -> GuiPort -> IO ()
 seeText (WRefLabel var wtype) (line,column) gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.seeText ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.seeText ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" see "++show line++"."++show column) gport
 
 
@@ -1392,7 +1387,7 @@ focusInput (WRefLabel var _) gport = do
 --- Adds a list of canvas items to a canvas referred by the first argument.
 addCanvas :: WidgetRef -> [CanvasItem] -> GuiPort -> IO ()
 addCanvas (WRefLabel var wtype) items gport = do
-  send2tk (config2tcl (ints2string wtype) (wRefname2Label var) (CanvasItems items)) gport
+  send2tk (config2tcl wtype (wRefname2Label var) (CanvasItems items)) gport
 
 
 ----------------------------------------------------------------------------
