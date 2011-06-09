@@ -49,6 +49,7 @@ external_d_C_prim_getAssoc = fromHaskellIO1
 -- (and not the corresponding Haskell values) in the Haskell IORefs
 data C_IORef a
      = Choice_C_IORef ID (C_IORef a) (C_IORef a)
+     | Choices_C_IORef ID ([C_IORef a])
      | Fail_C_IORef
      | Guard_C_IORef [Constraint] (C_IORef a)
      | C_IORef (IORef a)
@@ -61,6 +62,7 @@ instance Read (C_IORef a) where
 
 instance NonDet (C_IORef a) where
   choiceCons = Choice_C_IORef
+  choicesCons = Choices_C_IORef
   failCons = Fail_C_IORef
   guardCons = Guard_C_IORef
   try (Choice_C_IORef i x y) = tryChoice i x y
@@ -74,6 +76,7 @@ instance Generable (C_IORef a) where
 instance NormalForm (C_IORef a) where
   cont $!! io@(C_IORef _) = cont io
   cont $!! Choice_C_IORef i io1 io2 = nfChoice cont i io1 io2
+  cont $!! Choices_C_IORef i ios = nfChoices cont i ios
   cont $!! Guard_C_IORef c io = guardCons c (cont $!! io)
   _    $!! Fail_C_IORef = failCons
 
@@ -82,8 +85,8 @@ instance Unifiable (C_IORef a) where
   bind i (Choice_C_IORef j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
-  (=?=) = error "(=?=) is undefined for IORefs"
-  (<?=) = error "(<?=) is undefined for IORefs"
+  (=?=) = error "(==) is undefined for IORefs"
+  (<?=) = error "(<=) is undefined for IORefs"
 
 instance ConvertCurryHaskell (C_IORef a) (IORef a) where
   fromCurry (C_IORef r) = r

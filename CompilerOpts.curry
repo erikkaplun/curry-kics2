@@ -92,7 +92,7 @@ options =
       "force recompilation"
   , Option ['i'] ["import-dir"]
       (ReqArg (\arg opts -> { optImportPaths :=
-        nub (splitPath arg ++ opts -> optImportPaths) | opts }) "DIR")
+        nub (opts -> optImportPaths ++ splitPath arg) | opts }) "DIR")
       "search for imports in DIR"
   , Option ['o'] ["output-subdir"]
       (ReqArg (\arg opts -> { optOutputSubdir := arg | opts }) "SUBDIR")

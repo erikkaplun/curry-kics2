@@ -7,7 +7,7 @@
 --- <a href="http://www.cs.kent.ac.uk/pubs/2006/2381/index.html">linear-time, bounded implementation</a> by Olaf Chitil.
 ---
 --- @author Sebastian Fischer
---- @version October 2006
+--- @version June 2011
 ------------------------------------------------------------------------------
 
 module Pretty (
@@ -16,7 +16,7 @@ module Pretty (
   pretty, Doc, 
 
   -- basic document combinators
-  empty, text, linesep, line, linebreak, group, softline, softbreak,
+  empty, isEmpty, text, linesep, line, linebreak, group, softline, softbreak,
 
   -- alignment combinators
   nest, hang, align, --indent??,
@@ -49,12 +49,16 @@ data Doc = Doc (Tokens -> Tokens)
 
 deDoc (Doc d) = d
 
---- The empty document is, indeed, empty. Allthough empty has no content,
+--- The empty document is, indeed, empty. Although empty has no content,
 --- it does have a 'height' of 1 and behaves exactly like (text "") 
 --- (and is therefore not a unit of <code>&lt;$&gt;</code>).
 --- @return an empty document
 empty :: Doc
 empty = text ""
+
+--- Is the document empty?
+isEmpty :: Doc -> Bool
+isEmpty (Doc d) = d Empty == Text "" Empty
 
 --- The document (text s) contains the literal string s. 
 --- The string shouldn't contain any newline ('\n') characters. 

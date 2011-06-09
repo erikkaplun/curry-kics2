@@ -17,17 +17,20 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 -- Curry types
 -- ---------------------------------------------------------------------------
 
--- Class for curry types
-class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a) => Curry a where
+-- Class for Curry types
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
+      => Curry a where
+  -- implementation of strict equalit (==) for a data type
   (=?=) :: a -> a -> C_Bool
-  (=?=) = error "(=?=) is undefined"
+  (=?=) = error "(==) is undefined"
 
+  -- implementation of less-or-equal (<=) for a data type
   (<?=) :: a -> a -> C_Bool
-  (<?=) = error "(<?=) is undefined"
+  (<?=) = error "(<=) is undefined"
 
 instance Curry (PrimData a) where
-  (=?=) = error "(=?=) is undefined for primitive data"
-  (<?=) = error "(<?=) is undefined for primitive data"
+  (=?=) = error "(==) is undefined for primitive data"
+  (<?=) = error "(<=) is undefined for primitive data"
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 instance Curry C_Success where
@@ -53,10 +56,16 @@ instance Curry C_Success where
 
 
 instance (Curry t0,Curry t1) => Curry (Func t0 t1) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 instance Curry t0 => Curry (C_IO t0) where
+  (=?=) = error "(==) is undefined for I/O actions"
+  (<?=) = error "(<=) is undefined for I/O actions"
 
 instance Curry (a -> b) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 
 -- ---------------------------------------------------------------------------
 -- Int
@@ -363,7 +372,7 @@ instance Unifiable C_Char where
   (=.<=) (CurryChar x1)    (CurryChar   x2) = x1 =:<= x2
   (=.<=) _                 _                = Fail_C_Success
   bind i (C_Char    x) = (i :=: ChooseN 0 1) : bind (leftID i) (primChar2CurryChar x)
-  bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x  
+  bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
@@ -679,7 +688,7 @@ external_d_C_return :: a -> C_IO a
 external_d_C_return a = fromIO (return a)
 
 external_d_C_prim_putChar :: C_Char -> C_IO OP_Unit
-external_d_C_prim_putChar = fromHaskellIO1 putChar 
+external_d_C_prim_putChar = fromHaskellIO1 putChar
 
 external_d_C_getChar :: C_IO C_Char
 external_d_C_getChar = fromHaskellIO0 getChar
@@ -698,8 +707,11 @@ external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
 external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail act err = fromIO $ catch (toIO act) handle
+external_d_C_catchFail act err = fromIO $ catch (toIOWithFailCheck act) handle
   where handle ioErr = print ioErr >> (toIO err)
+        toIOWithFailCheck act =
+          case act of Fail_C_IO -> ioError (userError "I/O action failed")
+                      _         -> toIO act
 
 external_d_C_prim_show :: Show a => a -> C_String
 external_d_C_prim_show a = toCurry (show a)
