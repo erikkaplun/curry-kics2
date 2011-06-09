@@ -483,8 +483,9 @@ prim_ord external
 
 --- Converts an Unicode value into a character, fails iff the value is out of bounds
 chr :: Int -> Char
-chr n | n < 0 || n > 1114111 = failed
-      | otherwise = prim_chr $# n
+chr n | n >= 0 = prim_chr $# n
+-- chr n | n < 0 || n > 1114111 = failed
+--       | otherwise = prim_chr $# n
 
 prim_chr :: Int -> Char
 prim_chr external
