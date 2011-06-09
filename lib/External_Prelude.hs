@@ -1,6 +1,7 @@
 {-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
 
-import GHC.IO.Exception (IOException (..))
+import qualified Control.Exception as C
+
 
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
@@ -707,8 +708,8 @@ external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
 external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail act err = fromIO $ catch (toIOWithFailCheck act) handle
-  where handle ioErr = print ioErr >> (toIO err)
+external_d_C_catchFail act err = fromIO $ C.catch (toIOWithFailCheck act) handle
+  where handle e = print (e :: C.SomeException) >> (toIO err)
         toIOWithFailCheck act =
           case act of Fail_C_IO -> ioError (userError "I/O action failed")
                       _         -> toIO act
@@ -759,12 +760,12 @@ external_nd_C_apply :: NonDet b => Func a b -> a -> IDSupply -> b
 external_nd_C_apply = nd_apply
 
 external_d_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_d_C_catch act cont = fromIO $ catch (toIO act) handle where
-  handle = toIO . cont . C_IOError . toCurry . ioe_description
+external_d_C_catch act cont = fromIO $ C.catch (toIO act) handle where
+  handle e = toIO $ cont $ C_IOError $ toCurry $ show (e :: C.SomeException)
 
 external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
-external_nd_C_catch act cont s = C_IO $ catch (toIO act) handle where
-  handle e = toIO (nd_apply cont (C_IOError (toCurry (ioe_description e))) s)
+external_nd_C_catch act cont s = fromIO $ C.catch (toIO act) handle where
+  handle e = toIO $ nd_apply cont (C_IOError $ toCurry $ show (e :: C.SomeException)) s
 
 -- TODO: Support non-deterministic IO ?
 external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1
