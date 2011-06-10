@@ -1495,7 +1495,7 @@ processLazyBind' i cont cs branches = do
   setChoice' i NoChoice
   searchMPlus' cont (guardCons cs (choicesCons i branches))
 ----------------------------------------------------------------------
--- Auxillary Functions
+-- Auxiliary Functions
 ----------------------------------------------------------------------
 
 -- Operation to print the result of the main goal with bindings of free

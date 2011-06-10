@@ -195,13 +195,13 @@ currynat2primint :: Nat -> Int#
 currynat2primint IHi   = 1#
 currynat2primint (O n) = 2# *# currynat2primint n
 currynat2primint (I n) = 2# *# currynat2primint n +# 1#
-currynat2primint _     = error "Prelude.currynat2primint: no ground term"
+currynat2primint _ = error "KiCS2 error: Prelude.currynat2primint: no ground term"
 
 curryint2primint :: BinInt -> Int#
 curryint2primint Zero    = 0#
 curryint2primint (Pos n) = currynat2primint n
 curryint2primint (Neg n) = negateInt# (currynat2primint n)
-curryint2primint x       = error "Prelude.curryint2primint: no ground term"
+curryint2primint _ = error "KiCS2 error: Prelude.curryint2primint: no ground term"
 
 
 
@@ -428,7 +428,7 @@ instance ConvertCurryHaskell C_Int Int where
 
   fromCurry (C_Int i)      = I# i
   fromCurry (C_CurryInt i) = I# (curryint2primint i)
-  fromCurry _              = error "Int data with no ground term"
+  fromCurry _              = error "KiCS2 error: Int data with no ground term"
 
 instance ConvertCurryHaskell C_Int Integer where
   toCurry i = int2C_Int (fromInteger i)
@@ -437,20 +437,20 @@ instance ConvertCurryHaskell C_Int Integer where
 
   fromCurry (C_Int i) = toInteger (I# i)
   fromCurry (C_CurryInt i) = toInteger (I# (curryint2primint i))
-  fromCurry _         = error "Int data with no ground term"
+  fromCurry _         = error "KiCS2 error: Int data with no ground term"
 
 instance ConvertCurryHaskell C_Float Float where
   toCurry (F# f) = C_Float f
 
   fromCurry (C_Float f) = F# f
-  fromCurry _           = error "Float data with no ground term"
+  fromCurry _           = error "KiCS2 error: Float data with no ground term"
 
 instance ConvertCurryHaskell C_Char Char where
   toCurry (C# c) = C_Char c
 
   fromCurry (C_Char c) = C# c
   fromCurry (CurryChar c) = C# (curryChar2primChar c)
-  fromCurry _          = error "Char data with no ground term"
+  fromCurry _          = error "KiCS2 error: Char data with no ground term"
 
 instance (ConvertCurryHaskell ct ht) =>
          ConvertCurryHaskell (OP_List ct) [ht] where
@@ -459,7 +459,7 @@ instance (ConvertCurryHaskell ct ht) =>
 
   fromCurry OP_List        = []
   fromCurry (OP_Cons c cs) = fromCurry c : fromCurry cs
-  fromCurry _              = error "List data with no ground term"
+  fromCurry _              = error "KiCS2 error: List data with no ground term"
 
 instance ConvertCurryHaskell C_Bool Bool where
   toCurry True  = C_True
@@ -467,20 +467,20 @@ instance ConvertCurryHaskell C_Bool Bool where
 
   fromCurry C_True  = True
   fromCurry C_False = False
-  fromCurry _       = error "Float data with no ground term"
+  fromCurry _       = error "KiCS2 error: Float data with no ground term"
 
 instance ConvertCurryHaskell OP_Unit () where
   toCurry ()  = OP_Unit
 
   fromCurry OP_Unit = ()
-  fromCurry _       = error "Unit data with no ground term"
+  fromCurry _       = error "KiCS2 error: Unit data with no ground term"
 
 instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2) =>
          ConvertCurryHaskell (OP_Tuple2 ct1 ct2) (ht1,ht2) where
   toCurry (x1,x2)  = OP_Tuple2 (toCurry x1) (toCurry x2)
 
   fromCurry (OP_Tuple2 x1 x2) = (fromCurry x1, fromCurry x2)
-  fromCurry _       = error "Pair data with no ground term"
+  fromCurry _       = error "KiCS2 error: Pair data with no ground term"
 
 instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2,
           ConvertCurryHaskell ct3 ht3) =>
@@ -488,7 +488,7 @@ instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2,
   toCurry (x1,x2,x3)  = OP_Tuple3 (toCurry x1) (toCurry x2) (toCurry x3)
 
   fromCurry (OP_Tuple3 x1 x2 x3) = (fromCurry x1, fromCurry x2, fromCurry x3)
-  fromCurry _       = error "Tuple3 data with no ground term occurred"
+  fromCurry _       = error "KiCS2 error: Tuple3 data with no ground term occurred"
 
 instance ConvertCurryHaskell ct ht =>
          ConvertCurryHaskell (C_Maybe ct) (Maybe ht) where
@@ -497,7 +497,7 @@ instance ConvertCurryHaskell ct ht =>
 
   fromCurry C_Nothing  = Nothing
   fromCurry (C_Just x) = Just (fromCurry x)
-  fromCurry _          = error "Maybe data with no ground term occurred"
+  fromCurry _          = error "KiCS2 error: Maybe data with no ground term occurred"
 
 --fromOrdering :: Ordering -> C_Ordering
 --fromOrdering LT = C_LT
