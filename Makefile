@@ -143,14 +143,24 @@ installhaskell:
 	cabal install parallel-tree-search
 
 .PHONY: clean
-clean:
-	bin/cleancurry -r
-	rm -f idc ${INSTALLHS} ${INSTALLCURRY} Compile.state Compile
-	rm -f REPL.state REPL
-	rm -f ./runtime/*.hi ./runtime/*.o ./runtime/*.hi-boot ./runtime/*.o-boot
-	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
-	rm -f ./runtime/idsupply*/*.hi ./runtime/idsupply*/*.o
-	rm -f ./examples/Curry_*.*
+clean: cleancurry cleanintermediate cleanbinary
+	rm -f idc REPLexec
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
+
+# clean all .curry dirs
+.PHONY: cleancurry
+cleancurry:
+	bin/cleancurry -r
+
+# clean all intermediate files of the compiler bootstrapping
+.PHONY: cleanintermediate
+cleanintermediate:
+	rm -f *.log
+	rm -f ${INSTALLHS} ${INSTALLCURRY}
+	rm -f *.hi *.o
+	cd runtime; rm -f *.hi *.o *.hi-boot *.o-boot
+	rm -f ./runtime/idsupply*/*.hi ./runtime/idsupply*/*.o
+	rm -f CompileBoot Compile.state idc.bak
+	rm -f REPLBoot REPL.state REPLexec.bak
