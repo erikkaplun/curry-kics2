@@ -16,6 +16,8 @@ import System (system,getArgs)
 import CurryStringClassifier
 import List
 import FileGoodies
+import AllSolutions -- TODO: Remove when free variable bug is
+                    --       found
 
 -- The tool is rather simple, it uses Curry's facilities for 
 -- meta-programming to read the program in the form defined 
@@ -56,8 +58,9 @@ addTypeSignatures fileName = do
    typedProg <- readCurry fileName
    untypedProg <- readUntypedCurry fileName
    progLines <- readFile (fileName++".curry")
-   let newprog = unscan (addTypes (scan progLines) 
-                                  (getTypes typedProg untypedProg))
+   -- TODO: remove capsule when free variable bug is found
+   (newprog:_) <- getAllValues $unscan (addTypes (scan progLines) 
+                                              (getTypes typedProg untypedProg))
    system $ "rm -f "++fileName++".acy "++fileName++".uacy"
    f newprog (return newprog) -- enforce reading of all files before returning
  where
