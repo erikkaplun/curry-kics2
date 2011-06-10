@@ -7,7 +7,7 @@
 
 import RCFile
 import System(system,getArgs,getEnviron,setEnviron,getPID)
-import Char(isDigit,isSpace,toLower)
+import Char(isAlpha,isDigit,isSpace,toLower)
 import IO
 import IOExts
 import FileGoodies
@@ -64,6 +64,7 @@ type ReplState =
   , showTime     :: Bool       -- show execution of main goal?
   , rtsOpts      :: String     -- run-time options for ghc
   , quit         :: Bool       -- terminate the REPL?
+  , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
   }
 
 -- Mode for non-deterministic evaluation of main goal
@@ -97,6 +98,7 @@ initReplState =
   , showTime     = True
   , rtsOpts      = ""
   , quit         = False
+  , sourceguis   = []
   }
 
 -- Show an info message for a given verbosity level
@@ -128,7 +130,7 @@ defaultImportPathsWith rst dirs = splitPath dirs ++ defaultImportPaths rst
 
 processArgsAndStart rst [] =
   if rst -> quit
-  then done
+  then cleanUpRepl rst
   else do writeVerboseInfo rst 1 banner
           writeVerboseInfo rst 1 "Type \":h\" for help"
           repl rst
@@ -147,16 +149,21 @@ repl rst = do
   putStr (unwords (rst->addMods ++ [rst-> mainMod]) ++ "> ")
   hFlush stdout
   eof <- isEOF
-  if eof then done
+  if eof then cleanUpRepl rst
    else do input <- getLine
            processInput rst (strip input)
+
+-- Clean resources of REPL before terminating it.
+cleanUpRepl :: ReplState -> IO ()
+cleanUpRepl rst = terminateSourceProgGUIs rst >> done
 
 processInput :: ReplState -> String -> IO ()
 processInput rst g
   | null g = repl rst
   | head g == ':' = do mbrst <- processCommand rst (strip (tail g))
                        maybe (repl rst)
-                             (\rst' -> if (rst'->quit) then done else repl rst')
+                             (\rst' -> if (rst'->quit) then cleanUpRepl rst'
+                                                       else repl rst')
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
                    unless (status==MainError) (execMain rst status >> done)
@@ -190,6 +197,23 @@ showTypeOfGoal rst goal = do
            putStrLn $ goal ++ " :: " ++ showMonoTypeExpr False False maintype
            return True)
         mbprog
+
+-- Get the module of a function visible in the main program:
+getModuleOfFunction :: ReplState -> String -> IO String
+getModuleOfFunction rst funname = do
+  writeMainGoalFile rst [] Nothing
+    (if isAlpha (head funname) then funname else '(':funname++")")
+  mbprog <- getAcyOfMainGoal rst
+  removeFile mainGoalFile
+  maybe (return "")
+        (\ (CurryProg _ _ _ [mfunc] _) -> do
+           let (CFunc _ _ _ _ mainrules) = mfunc
+           return (modOfMain mainrules))
+        mbprog
+ where
+  modOfMain r = case r of
+                  CRules _ [CRule [] [(_,CSymbol (mod,_))] []] -> mod
+                  _ -> ""
 
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> String -> IO MainCompile
@@ -401,8 +425,8 @@ execMain rst cmpstatus = do
 
 -- all the available commands:
 allCommands = ["quit","help","?","load","reload","add","browse","cd","fork",
-               "programs","edit","interface","show","set","save","type",
-               "usedimports"]
+               "programs","edit","interface","source","show","set","save",
+               "type","usedimports"]
 
 -- Process a command of the REPL.
 -- The result is either just a new ReplState or Nothing if an error occurred.
@@ -428,7 +452,8 @@ processThisCommand rst cmd args
         putStrLn "...or type any <expression> to evaluate\n"
         return (Just rst)
   | cmd=="load"
-   = do let dirmodname = stripSuffix args
+   = do rst' <- terminateSourceProgGUIs rst
+        let dirmodname = stripSuffix args
         if null dirmodname
          then writeErrorMsg "missing module name" >> return Nothing
          else do
@@ -437,8 +462,8 @@ processThisCommand rst cmd args
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
-                (\_ -> compileCurryProgram rst modname >>
-                     return (Just { mainMod := modname, addMods := [] | rst }))
+                (\_ -> compileCurryProgram rst' modname >>
+                     return (Just { mainMod := modname, addMods := [] | rst' }))
                 mbf
   | cmd=="reload"
    = if rst->mainMod == "Prelude"
@@ -479,6 +504,14 @@ processThisCommand rst cmd args
          else maybe (writeErrorMsg "source file not found" >> return Nothing)
                 (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
                 mbf
+  | cmd=="source"
+   = let (mod,dotfun) = break (=='.') args
+      in if null dotfun
+         then do m <- getModuleOfFunction rst args
+                 if null m
+                  then writeErrorMsg "function not found" >> return Nothing
+                  else showFunctionInModule rst m args
+         else showFunctionInModule rst mod (tail dotfun)
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
@@ -664,6 +697,8 @@ printHelpOnCommands = putStrLn $
   ":edit <mod>      - load source of module <m> into editor\n"++
   ":show            - show currently loaded source program\n"++
   ":show <mod>      - show source of module <m>\n"++
+  ":source <f>      - show source of (visible!) function <f>\n"++
+  ":source <m>.<f>  - show source of function <f> in module <m>\n"++
   ":browse          - browse program and its imported modules\n"++
   ":interface       - show currently loaded source program\n"++
   ":interface <mod> - show source of module <m>\n"++
@@ -695,6 +730,46 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
 errorMissingTool execfile = writeErrorMsg $
   Inst.installDir ++ '/' : execfile ++ " not found\n" ++
   "Possible solution: run \"cd "++Inst.installDir++" && make install\""
+
+-----------------------------------------------------------------------
+-- Showing source code of functions via SourcProgGUI tool.
+-- If necessary, open a new connection and remember it in the repl state.
+showFunctionInModule :: ReplState -> String -> String -> IO (Maybe ReplState)
+showFunctionInModule rst mod fun = do
+  let mbh      = lookup mod (rst->sourceguis)
+      toolexec = "tools/SourceProgGUI"
+      spgui    = rst->idcHome </> toolexec
+  spgexists <- doesFileExist spgui
+  if not spgexists
+   then errorMissingTool toolexec >> return Nothing
+   else do
+    (rst',h') <- maybe (do h <- connectToCommand (spgui++" "++mod)
+                           return ({sourceguis := (mod,(fun,h))
+                                              : rst->sourceguis | rst}, h))
+                       (\ (f,h) -> do
+                           hPutStrLn h ('-':f)
+                           hFlush h
+                           return ({sourceguis := updateFun (rst->sourceguis)
+                                                          mod fun | rst }, h))
+                       mbh
+    hPutStrLn h' ('+':fun)
+    hFlush h'
+    return (Just rst')
+ where
+   updateFun [] _ _ = []
+   updateFun ((m,(f,h)):sguis) md fn =
+     if m==md then (m,(fn,h)):sguis
+              else (m,(f,h)) : updateFun sguis md fn
+
+-- Terminate all open SourceProgGUIs
+terminateSourceProgGUIs rst = let sguis = rst -> sourceguis in
+  if null sguis
+  then return rst
+  else do
+   writeVerboseInfo rst 1 "Terminating source program GUIs..."
+   catch (mapIO_ (\ (_,(_,h)) -> hPutStrLn h "q" >> hFlush h >> hClose h) sguis)
+         (\_ -> done)
+   return { sourceguis := [] | rst }
 
 -----------------------------------------------------------------------
 -- Auxiliaries:

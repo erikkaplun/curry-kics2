@@ -1,7 +1,7 @@
 # generate various tools for handling Curry programs:
 
 .PHONY: all
-all: AddTypes GenInt ImportCalls CreateMakefile CurryTest
+all: AddTypes GenInt ImportCalls CreateMakefile CurryTest SourceProgGUI
 	@cd browser   ; ${MAKE}
 	@cd currydoc  ; ${MAKE}
 	@cd curry2js  ; ${MAKE}
@@ -31,6 +31,10 @@ CurryTest: CurryTest.curry
 	../bin/kics2 :set v2 :l CurryTest :save :q
 	(cd ../bin ; rm -f currytest ; \
 	             ln -s ../tools/CurryTest currytest)
+
+# generate executable for interface generator:
+SourceProgGUI: SourceProgGUI.curry
+	../bin/kics2 :set v2 :l SourceProgGUI :save :q
 
 .PHONY: clean
 clean: 
