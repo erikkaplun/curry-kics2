@@ -25,6 +25,7 @@ main = do
     ["kill"]     -> doForAllServers "Killing process of cgi server "
                               (\(pid,_,_) -> system ("kill -9 "++show pid)) >>
                     getAndCleanRegistry >> done
+    ["stopscript",scriptprog] -> stopActiveScriptServers scriptprog
     _            -> putStrLn $ "ERROR: Illegal arguments!"
 
 showAllActiveServers :: IO ()

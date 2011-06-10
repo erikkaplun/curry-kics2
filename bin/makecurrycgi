@@ -126,8 +126,7 @@ CGIKEY="$CGIFILEPATHNAME/$CGIPROG `date '+%m/%d/%y/%H/%M/%S'`"
 # stop old server, if necessary:
 if [ -f $CGISERVERFILE ] ; then
   echo "Stop old version of the server '$CGISERVERFILE'..."
-  echo "...not yet implemented..."
-  #$KICS2HOME/bin/pakcs -q -m "stopActiveScriptServers \"$CGISERVERFILE\"" -r $KICS2HOME/www/Registry
+  $KICS2HOME/www/Registry stopscript "$CGISERVERFILE"
 fi
 
 # generate cgi script:
@@ -161,13 +160,14 @@ fi
 
 # compile main module:
 echo "Generating saved state for initial expression: $MAIN"
-echo
 $KICS2HOME/bin/kics2 :l $MAINMOD :save $MAINCALL :q
 STATE=$MAINMOD
 
 # now the file $STATE should contain the executable computing the HTML form:
 if test ! -f $STATE ; then
-  echo "Error: sexecutable '$STATE' does not exist!"
+  echo "Error occurred, generation aborted."
+  $KICS2HOME/bin/cleancurry $MAINMOD
+  rm -f $MAINMOD.curry
   exit 1
 fi
 
