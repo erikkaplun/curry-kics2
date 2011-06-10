@@ -2,7 +2,7 @@ data Success = Success
 
 data Int
   = Int      IntPrim
-  | CurryInt Integer
+  | CurryInt BinInt
 data IntPrim
 
 data Float = Float FloatPrim
@@ -67,7 +67,7 @@ I x +^ O y = I (x +^ y)
 I x +^ I y = O (succ x +^ y)
 
 -- subtraction
-(-^) :: Nat -> Nat -> Integer
+(-^) :: Nat -> Nat -> BinInt
 IHi     -^ y     = inc (Neg y)           -- 1-n = 1+(-n)
 x@(O _) -^ IHi   = Pos (pred x)          --
 (O x)   -^ (O y) = mult2 (x -^ y)
@@ -76,7 +76,7 @@ x@(O _) -^ IHi   = Pos (pred x)          --
 (I x)   -^ (O y) = inc (mult2 (x -^ y))  -- 2*n+1 - 2*m = 1+2*(n-m)
 (I x)   -^ (I y) = mult2 (x -^ y)        -- 2*n+1 - (2*m+1) = 2*(n-m)
 
-mult2 :: Integer -> Integer
+mult2 :: BinInt -> BinInt
 mult2 (Pos n) = Pos (O n)
 mult2 Zero    = Zero
 mult2 (Neg n) = Neg (O n)
@@ -95,13 +95,13 @@ div2 IHi   = failed -- 1 div 2 is not defined for Nat
 div2 (O x) = x
 div2 (I x) = x
 
-mod2 :: Nat -> Integer
+mod2 :: Nat -> BinInt
 mod2 IHi   = Pos IHi
 mod2 (O _) = Zero
 mod2 (I _) = Pos IHi
 
 -- div and mod
-quotRemNat :: Nat -> Nat -> (Integer, Integer)
+quotRemNat :: Nat -> Nat -> (BinInt, BinInt)
 quotRemNat x y
   | y == IHi  = (Pos x, Zero ) -- quotRemNat x 1 = (x, 0)
   | x == IHi  = (Zero , Pos y) -- quotRemNat 1 y = (0, y)
@@ -123,14 +123,14 @@ quotRemNat x y
 -- ---------------------------------------------------------------------------
 
 -- Algebraic data type to represent integers
-data Integer = Neg Nat | Zero | Pos Nat
+data BinInt = Neg Nat | Zero | Pos Nat
 
 -- less-than-or-equal on Integers
-lteqInteger :: Integer -> Integer -> Bool
+lteqInteger :: BinInt -> BinInt -> Bool
 lteqInteger x y = cmpInteger x y /= GT
 
 -- comparison on Integers, O(min (m, n))
-cmpInteger :: Integer -> Integer -> Ordering
+cmpInteger :: BinInt -> BinInt -> Ordering
 cmpInteger Zero    Zero    = EQ
 cmpInteger Zero    (Pos _) = LT
 cmpInteger Zero    (Neg _) = GT
@@ -142,13 +142,13 @@ cmpInteger (Neg _) (Pos _) = LT
 cmpInteger (Neg x) (Neg y) = cmpNat y x
 
 --- Unary minus. Usually written as "- e".
-neg :: Integer -> Integer
+neg :: BinInt -> BinInt
 neg Zero    = Zero
 neg (Pos x) = Neg x
 neg (Neg x) = Pos x
 
 -- increment
-inc :: Integer -> Integer
+inc :: BinInt -> BinInt
 inc Zero        = Pos IHi
 inc (Pos n)     = Pos (succ n)
 inc (Neg IHi)   = Zero
@@ -156,7 +156,7 @@ inc (Neg (O n)) = Neg (pred (O n))
 inc (Neg (I n)) = Neg (O n)
 
 -- decrement
-dec :: Integer -> Integer
+dec :: BinInt -> BinInt
 dec Zero        = Neg IHi
 dec (Pos IHi)   = Zero
 dec (Pos (O n)) = Pos (pred (O n))
@@ -164,7 +164,7 @@ dec (Pos (I n)) = Pos (O n)
 dec (Neg n)     = Neg (succ n)
 
 --- Adds two integers.
-(+#)   :: Integer -> Integer -> Integer
+(+#)   :: BinInt -> BinInt -> BinInt
 Zero      +# x     = x
 x@(Pos _) +# Zero  = x
 Pos x     +# Pos y = Pos (x +^ y)
@@ -174,13 +174,13 @@ Neg x     +# Pos y = y -^ x
 Neg x     +# Neg y = Neg (x +^ y)
 
 --- Subtracts two integers.
-(-#)   :: Integer -> Integer -> Integer
+(-#)   :: BinInt -> BinInt -> BinInt
 x -# Zero  = x
 x -# Pos y = x +# Neg y
 x -# Neg y = x +# Pos y
 
 --- Multiplies two integers.
-(*#)   :: Integer -> Integer -> Integer
+(*#)   :: BinInt -> BinInt -> BinInt
 Zero  *# _     = Zero
 Pos _ *# Zero  = Zero
 Pos x *# Pos y = Pos (x *^ y)
@@ -189,7 +189,7 @@ Neg _ *# Zero  = Zero
 Neg x *# Pos y = Neg (x *^ y)
 Neg x *# Neg y = Pos (x *^ y)
 
-quotRemInteger :: Integer -> Integer -> (Integer, Integer)
+quotRemInteger :: BinInt -> BinInt -> (BinInt, BinInt)
 quotRemInteger _       Zero    = failed -- division by zero is not defined
 quotRemInteger Zero    (Pos _) = (Zero, Zero)
 quotRemInteger Zero    (Neg _) = (Zero, Zero)
@@ -198,7 +198,7 @@ quotRemInteger (Neg x) (Pos y) = let (d, m) = quotRemNat x y in (neg d, neg m)
 quotRemInteger (Pos x) (Neg y) = let (d, m) = quotRemNat x y in (neg d,     m)
 quotRemInteger (Neg x) (Neg y) = let (d, m) = quotRemNat x y in (d    , neg m)
 
-divModInteger :: Integer -> Integer -> (Integer, Integer)
+divModInteger :: BinInt -> BinInt -> (BinInt, BinInt)
 divModInteger _       Zero    = failed -- division by zero is not defined
 divModInteger Zero    (Pos _) = (Zero, Zero)
 divModInteger Zero    (Neg _) = (Zero, Zero)
@@ -215,18 +215,18 @@ divModInteger (Neg x) (Neg y) = let (d, m) = quotRemNat x y in (d, neg m)
 --- and always truncated towards negative infinity.
 --- Thus, the value of <code>13 `div` 5</code> is <code>2</code>,
 --- and the value of <code>-15 `div` 4</code> is <code>-4</code>.
-divInteger :: Integer -> Integer -> Integer
+divInteger :: BinInt -> BinInt -> BinInt
 x `divInteger` y = fst (x `divModInteger` y)
 
 --- Integer remainder. The value is the remainder of the integer division and
 --- it obeys the rule <code>x `mod` y = x - y * (x `div` y)</code>.
 --- Thus, the value of <code>13 `mod` 5</code> is <code>3</code>,
 --- and the value of <code>-15 `mod` 4</code> is <code>1</code>.
-modInteger :: Integer -> Integer -> Integer
+modInteger :: BinInt -> BinInt -> BinInt
 x `modInteger` y = snd (x `divModInteger` y)
 
-quotInteger :: Integer -> Integer -> Integer
+quotInteger :: BinInt -> BinInt -> BinInt
 x `quotInteger` y = fst (x `quotRemInteger` y)
 
-remInteger :: Integer -> Integer -> Integer
+remInteger :: BinInt -> BinInt -> BinInt
 x `remInteger` y = snd (x `quotRemInteger` y)
