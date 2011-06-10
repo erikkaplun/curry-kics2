@@ -3,21 +3,22 @@
 *.hi-boot
 *.o
 *.o-boot
+*.icurry
+.curry
 
 # intermediate files
-*.fcy
-*.ahs
-.curry
-C_*
+*.bak
 Installation.*
 
 # binaries
 *.state
-examples/comptest
+CompileBoot
+REPLBoot
 idc
+REPLexec
 cpns/CPNSD
-www/Registry
-www/submitform
+examples/comptest
 tools/GenInt
 tools/ImportCalls
-
+www/Registry
+www/submitform
