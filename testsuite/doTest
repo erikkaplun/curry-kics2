@@ -5,7 +5,7 @@ KICS2BIN=$KiCS2HOME/bin
 
 # test for basic language features
 #TESTLANG="testNarr testNonStrictUnif testFuncPattern"
-TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec"
+TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testUnification"
 
 # test for standard libraries
 #TESTLIBS="testCombinatorial testDatabase testDirectory testDynamic testFlatCurryGoodies testFlatCurryXML testGlobalVariable testSetFunctions testSort testTraversal testArray testDequeue testFiniteMap testRedBlackTree"

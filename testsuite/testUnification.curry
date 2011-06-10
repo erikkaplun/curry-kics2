@@ -45,7 +45,7 @@ test13 =   assertValues "test13" (x =:= y
        &> [x,y,z]) [[False,False,False]]   where x,y,z free
 
 test14 =  assertValues "test14" (x=:=y &> y=:=False &> x) [False] where x,y free
-test15 =  assertValues "test15" (x=:=(y?True) &> y=:=False &> x) [False?True] where x,y free
+test15 =  assertValues "test15" (x=:=(y?True) &> y=:=False &> x) [False,True] where x,y free
 
 -- complex types
 
