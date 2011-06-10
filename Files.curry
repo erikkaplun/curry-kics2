@@ -1,4 +1,19 @@
-module Files where
+-- ---------------------------------------------------------------------------
+-- A collection of operations for dealing with file names
+--
+-- @author  Bjoern Peemoeller
+-- @version June 2011
+-- ---------------------------------------------------------------------------
+module Files
+  ( -- File name modification
+    withComponents, withDirectory, withBaseName, withExtension
+    -- combination and segmentation
+  , (</>), (<.>), splitDirectories, dropTrailingPathSeparator
+    -- directory creation
+  , createDirectoryIfMissing
+    -- file creation
+  , writeFileInDir, writeQTermFileInDir
+  ) where
 
 import Directory (createDirectory, doesDirectoryExist)
 import FileGoodies
@@ -6,28 +21,42 @@ import List (last)
 import ReadShowTerm (writeQTermFile)
 import Utils
 
--- file utils
+-- Apply functions to all parts of a file name
+withComponents :: (String -> String) -- change path
+               -> (String -> String) -- change base name
+               -> (String -> String) -- change suffix
+               -> String -> String
+withComponents pf bf sf fn = pf path </> bf base <.> sf suffix
+  where (path, bassfx) = splitDirectoryBaseName fn
+        (base, suffix) = splitBaseName bassfx
+
+-- Apply a function to the directory component of a file path
+withDirectory :: (String -> String) -> String -> String
+withDirectory f fn = withComponents f id id fn
+
+-- Apply a function to the base name component of a file path
 withBaseName :: (String -> String) -> String -> String
-withBaseName f fn = dirName fn
-  ++ separatorChar : (f $ stripSuffix $ baseName fn)
-  ++ suffixSeparatorChar : fileSuffix fn
+withBaseName f fn = withComponents id f id fn
 
+-- Apply a function to the extension component of a file path
 withExtension :: (String -> String) -> String -> String
-withExtension f fn = stripSuffix fn ++ f (fileSuffix fn)
+withExtension f fn =withComponents id id f fn
 
-withPath :: (String -> String) -> String -> String
-withPath f fn = f path </> base where (path, base) = splitDirectoryBaseName fn
-
+-- Combine two paths
 (</>) :: String -> String -> String
-dir </> subdir = dropTrailingPathSeparator dir
-                 ++ separatorChar : dropWhile (== separatorChar) subdir
+dir </> subdir =  dropTrailing separatorChar dir
+               ++ separatorChar : dropLeading separatorChar subdir
+
+-- Combine a file name and an extension
+(<.>) :: String -> String -> String
+file <.> ext =  dropTrailing suffixSeparatorChar file
+             ++ suffixSeparatorChar : dropLeading suffixSeparatorChar ext
 
 dropTrailingPathSeparator :: String -> String
-dropTrailingPathSeparator = reverse . dropWhile (== separatorChar) . reverse
+dropTrailingPathSeparator fn = dropTrailing separatorChar fn
 
-(<.>) :: String -> String -> String
-file <.> extension = stripSuffix file ++ suffixSeparatorChar : extension
-
+-- Split a path into the list of directories and the base name as the last
+-- element
 splitDirectories :: String -> [String]
 splitDirectories [] = []
 splitDirectories (x:xs)
@@ -68,3 +97,12 @@ writeQTermFileInDir :: String -> a -> IO ()
 writeQTermFileInDir file content = do
   createDirectoryIfMissing True $ dirName file
   writeQTermFile file content
+
+
+-- helper
+
+dropTrailing :: Char -> String -> String
+dropTrailing c = reverse . dropWhile (== c) . reverse
+
+dropLeading :: Char -> String -> String
+dropLeading c = dropWhile (== c)
