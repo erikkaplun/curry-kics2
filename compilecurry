@@ -2,7 +2,7 @@
 
 # Compile a Curry program with idcompiler and ghc
 SYSDIR=`dirname "$0"`
-LIBDIR=$SYSDIR/lib
+LIBDIR=$SYSDIR/lib:$SYSDIR/lib/meta
 RTSDIR=$SYSDIR/runtime
 
 OPTIM=
