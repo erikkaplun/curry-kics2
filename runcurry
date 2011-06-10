@@ -4,7 +4,7 @@
 SYSDIR=`dirname "$0"`
 RTSDIR=$SYSDIR/runtime
 IDSUPPLYDIR=$RTSDIR/idsupplyinteger
-LIBDIR=$SYSDIR/lib
+LIBDIR=$SYSDIR/lib:$SYSDIR/lib/meta
 PROG=$1
 PROG=`expr $PROG : '\(.*\)\.lcurry' \| $PROG`
 PROG=`expr $PROG : '\(.*\)\.curry' \| $PROG`
