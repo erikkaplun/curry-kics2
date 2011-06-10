@@ -11,6 +11,8 @@
 --- http://en.wikipedia.org/wiki/Random_number_generation
 --- There is an assumption that all operations are implicitly
 --- executed mod 2^32 (unsigned 32-bit integers) !!!
+--- GHC computes between -2^29 and 2^29-1,  thus the sequence
+--- is NOT as random as one would like.
 ---
 --- m_w = <choose-initializer>;    /* must not be zero */
 --- m_z = <choose-initializer>;    /* must not be zero */
@@ -34,13 +36,12 @@ import System(getCPUTime)
 zfact = 36969
 wfact = 18000
 two16 = 65536
---two32 = 4294967296
-
+large = 536870911 -- 2^29 - 1
 ------------------------------------------------------------------
 --                       Public Operations
 ------------------------------------------------------------------
 
---- Returns a sequence of pseudorandom, integer values. 
+--- Returns a sequence of pseudorandom, integer values.
 --- 
 --- @param seed - The seed of the random sequence.
 
@@ -50,8 +51,9 @@ nextInt seed =
       next2 mw mz =
           let mza = zfact * (mz `mod` two16) + (mz * two16)
               mwa = wfact * (mw `mod` two16) + (mw * two16)
-              result = (mza `div` two16 + mwa) -- `mod` two32
-          in result : next2 mwa mza 
+              tmp = (mza `div` two16 + mwa)
+	      res = if tmp < 0 then tmp+large else tmp
+          in tmp : next2 mwa mza 
   in next2 ns ns
 
 --- Returns a pseudorandom sequence of values
