@@ -8,7 +8,7 @@
 --- @version April 2005
 ------------------------------------------------------------------------------
 
-import RandomInt
+import Random
 import Assertion
 import RedBlackTree
 

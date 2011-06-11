@@ -1,7 +1,7 @@
 -- A few auxiliary functions to formulate tests with random numbers.
 module RandomTest where
 
-import RandomInt
+import Random
 import Assertion
 
 --- generate a list of n random numbers
