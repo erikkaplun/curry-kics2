@@ -52,7 +52,7 @@ nextInt seed =
           let mza = zfact * (mz `mod` two16) + (mz * two16)
               mwa = wfact * (mw `mod` two16) + (mw * two16)
               tmp = (mza `div` two16 + mwa)
-	      res = if tmp < 0 then tmp+large else tmp
+              res = if tmp < 0 then tmp+large else tmp
           in tmp : next2 mwa mza 
   in next2 ns ns
 

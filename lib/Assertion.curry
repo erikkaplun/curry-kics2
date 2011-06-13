@@ -133,9 +133,6 @@ checkAssertValues name call results = do
 
 -- Checks all solutions of a constraint abstraction.
 checkAssertSolutions :: String -> (a->Success) -> [a] -> IO (String,Bool)
-checkAssertSolutions name _ _ =
-  return ("FAILURE of "++name++": assertSolution not yet implemented!\n",False)
-{-
 checkAssertSolutions name constr results = do
   rs <- getAllSolutions constr
   if null (rs \\ results) && null (results \\ rs)
@@ -143,7 +140,6 @@ checkAssertSolutions name constr results = do
    else return ("FAILURE of "++name++": solutions assertion not satisfied:\n"++
                 "Computed values: "++show rs++"\n"++
                 "Expected values: "++show results++"\n",False)
--}
 
 -- Checks an IO assertion.
 checkAssertIO :: String -> IO a -> a -> IO (String,Bool)

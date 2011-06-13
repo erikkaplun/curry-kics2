@@ -13,7 +13,8 @@
 --- in the old concept.
 ------------------------------------------------------------------------------
 
-module AllSolutions where
+module AllSolutions(getAllValues,getOneValue,getAllSolutions,getOneSolution,
+                    getAllFailures)  where
 
 import SearchTree
 
@@ -34,7 +35,6 @@ getOneValue x = do
   let vals = allValuesDFS st
   return (if null vals then Nothing else Just (head vals))
 
-{-
 --- Gets all solutions to a constraint (currently, via an incomplete
 --- depth-first left-to-right strategy). Conceptually, all solutions
 --- are computed on a copy of the constraint, i.e., the evaluation
@@ -42,15 +42,15 @@ getOneValue x = do
 --- evaluation suspends if the constraints contain unbound variables.
 --- Similar to Prolog's findall.
 getAllSolutions :: (a->Success) -> IO [a]
-getAllSolutions c = return (findall c)
+getAllSolutions c = getAllValues (let x free in (x,c x)) >>= return . map fst
 
 --- Gets one solution to a constraint (currently, via an incomplete
 --- left-to-right strategy). Returns Nothing if the search space
 --- is finitely failed.
 getOneSolution :: (a->Success) -> IO (Maybe a)
-getOneSolution c =
- do sols <- getAllSolutions c
-    return (if null sols then Nothing else Just (head sols))
+getOneSolution c = do
+  sols <- getAllSolutions c
+  return (if null sols then Nothing else Just (head sols))
 
 --- Returns a list of values that do not satisfy a given constraint.
 --- @param x - an expression (a generator evaluable to various values)
@@ -58,34 +58,18 @@ getOneSolution c =
 --- @return A list of all values of e such that (c e) is not provable
 getAllFailures :: a -> (a->Success) -> IO [a]
 getAllFailures generator test =
- do xs <- getAllSolutions (=:=generator)
+ do xs <- getAllValues generator
     failures <- mapIO (naf test) xs
     return $ concat failures
- where
-  -- (naf c x) returns [x] if (c x) fails, and [] otherwise.
-  naf :: (a->Success) -> a -> IO [a]
-  naf c x = getOneSolution (\_->c x) >>= \mbl->
-            return (maybe [x] (const []) mbl)
+
+-- (naf c x) returns [x] if (c x) fails, and [] otherwise.
+naf :: (a->Success) -> a -> IO [a]
+naf c x = getOneSolution (lambda c x) >>= returner x
+
+lambda :: (a->Success) -> a -> () -> Success
+lambda c x _ = c x
+
+returner :: a -> Maybe b -> IO [a]
+returner x mbl = return (maybe [x] (const []) mbl)
 
 
-
---- A search tree for representing search structures.
-data SearchTree a b = SearchBranch [(b,SearchTree a b)] | Solutions [a]
-
---- Computes a tree of solutions where the first argument determines
---- the branching level of the tree.
---- For each element in the list of the first argument,
---- the search tree contains a branch node with a child tree
---- for each value of this element. Moreover, evaluations of
---- elements in the branch list are shared within corresponding subtrees.
-getSearchTree :: [a] -> (b -> Success) -> IO (SearchTree b a)
-getSearchTree cs goal = return (getSearchTreeUnsafe cs goal)
-
-getSearchTreeUnsafe :: [a] -> (b -> Success) -> (SearchTree b a)
-getSearchTreeUnsafe [] goal = Solutions (findall goal)
-getSearchTreeUnsafe (c:cs) goal  =
-                                 SearchBranch (findall (=:=(solve c cs goal)))
-
-solve :: a -> [a] -> (b -> Success) -> (a,SearchTree b a)
-solve c cs goal | c=:=y = (y, getSearchTreeUnsafe cs goal) where y free
--}
