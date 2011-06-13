@@ -23,7 +23,16 @@ import SearchTree
 --- does not share any results. Moreover, the evaluation suspends
 --- as long as the expression contains unbound variables.
 getAllValues :: a -> IO [a]
-getAllValues e = searchTree e >>= return . allValuesDFS
+getAllValues e = getSearchTree e >>= return . allValuesDFS
+
+--- Gets one value of an expression (currently, via an incomplete
+--- left-to-right strategy). Returns Nothing if the search space
+--- is finitely failed.
+getOneValue :: a -> IO (Maybe a)
+getOneValue x = do
+  st <- getSearchTree x
+  let vals = allValuesDFS st
+  return (if null vals then Nothing else Just (head vals))
 
 {-
 --- Gets all solutions to a constraint (currently, via an incomplete
@@ -42,12 +51,6 @@ getOneSolution :: (a->Success) -> IO (Maybe a)
 getOneSolution c =
  do sols <- getAllSolutions c
     return (if null sols then Nothing else Just (head sols))
-
---- Gets one value of an expression (currently, via an incomplete
---- left-to-right strategy). Returns Nothing if the search space
---- is finitely failed.
-getOneValue :: a -> IO (Maybe a)
-getOneValue x = getOneSolution (x=:=)
 
 --- Returns a list of values that do not satisfy a given constraint.
 --- @param x - an expression (a generator evaluable to various values)

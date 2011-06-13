@@ -85,7 +85,7 @@ getRandomSeed =
   getClockTime >>= \time ->
   getCPUTime >>= \msecs ->
   let (CalendarTime y mo d h m s _) = toUTCTime time
-   in return ((y+mo+d+h+m*s*msecs) `mod` two16)
+   in return ((y+mo+d+h+m*s*(msecs+1)) `mod` two16)
                             
 {-     Simple tests and examples
 

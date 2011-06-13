@@ -12,11 +12,14 @@ import FlatCurry
 import FlatCurryXML
 import XML
 import Assertion
+import SearchTree
+
+someValue = head . allValuesDFS . someSearchTree
 
 -- Shows a program in XML format:
 showxml mod = do
   prog <- readFlatCurry mod
-  putStrLn (showXmlDoc (flatCurry2Xml prog))
+  putStrLn (someValue (showXmlDoc (flatCurry2Xml prog)))
 
 -- Store a program in XML format:
 store mod = do
@@ -29,7 +32,7 @@ testEqualFcy prog = prog == xml2FlatCurry (flatCurry2Xml prog)
 
 readAndTestEqualFcy mod = do
   prog <- readFlatCurry mod
-  return (testEqualFcy prog)
+  return (someValue (testEqualFcy prog))
 
 
 test1  = assertIO "XML test for rev" (readAndTestEqualFcy "rev") True

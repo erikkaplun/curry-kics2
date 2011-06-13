@@ -18,7 +18,7 @@ infixl 7 *, `div`, `mod`
 infixl 6 +, -
 -- infixr 5 :                          -- declared together with list
 infixr 5 ++
-infix  4 =:=, ==, /=, <, >, <=, >= -- , =:<=, =:<<=
+infix  4 =:=, ==, /=, <, >, <=, >=, =:<=, =:<<=
 infix  4  `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||

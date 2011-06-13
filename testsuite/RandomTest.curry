@@ -6,7 +6,7 @@ import Assertion
 
 --- generate a list of n random numbers
 rndList :: Int -> IO [Int]
-rndList n =  getRandomSeed >>= return . take n . nextInt
+rndList n =  getRandomSeed >>= return . take n . (flip nextIntRange 1000000)
 
 --- test a given predicate on lists
 test :: String -> ([Int]->Bool) -> Assertion Bool

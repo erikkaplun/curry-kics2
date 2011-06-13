@@ -18,10 +18,9 @@ test4 = eq "tail" (deqs (deqTail)) tail
 test5 = eq "snoc" (deqs (snoc 73)) (++[73])
 
 test6 = eq "init" (deqs deqInit) init
-
-init l | xs++[x]=:=l = xs where x,xs free
---init [x] = []
---init (x:y:ys) = x : init (y:ys)
+ where
+  init [x] = []
+  init (x:y:ys) = x : init (y:ys)
 
 test7 = eq "reverse" (deqs deqReverse) reverse
 
