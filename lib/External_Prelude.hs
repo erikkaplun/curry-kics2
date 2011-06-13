@@ -8,7 +8,7 @@ import qualified Control.Exception as C
 import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
 import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
 import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
-
+import System.IO
 
 -- ---------------------------------------------------------------------------
 -- Externals
@@ -709,7 +709,7 @@ external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
 external_d_C_catchFail act err = fromIO $ C.catch (toIOWithFailCheck act) handle
-  where handle e = print (e :: C.SomeException) >> (toIO err)
+  where handle e = hPutStrLn stderr (show (e :: C.SomeException)) >> (toIO err)
         toIOWithFailCheck act =
           case act of Fail_C_IO -> ioError (userError "I/O action failed")
                       _         -> toIO act
