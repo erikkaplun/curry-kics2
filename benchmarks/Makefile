@@ -3,12 +3,12 @@
 ########################################################################
 
 .PHONY: all
-all: Benchmarks.state
+all: Benchmarks
 
 # generate saved state for Curry->FLVM compiler:
-Benchmarks.state: Benchmarks.curry
+Benchmarks: Benchmarks.curry
 	cleancurry
-	pakcs -s Benchmarks
+	kics2 :l Benchmarks :save :q
 
 # publish all relevant benchmarks in the web:
 .PHONY: publish
