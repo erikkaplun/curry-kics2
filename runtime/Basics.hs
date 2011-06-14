@@ -11,7 +11,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Control.Parallel.TreeSearch
 import GHC.Exts (Int#, Char#, chr#)
-import System.IO (Handle) 
+import System.IO (Handle)
 
 import ID
 import MonadList
@@ -328,7 +328,7 @@ mapFst f (a,b) = (f a,b)
 ------------------------------------------------------------------------------
 
 matchChar :: NonDet a => [(Char,a)] -> BinInt -> a
-matchChar rules = matchInteger (map (mapFst ord) rules) 
+matchChar rules = matchInteger (map (mapFst ord) rules)
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -406,7 +406,19 @@ instance Unifiable C_Success where
 -- END GENERATED FROM PrimTypes.curry
 
 (&) :: C_Success -> C_Success -> C_Success
-x & y = const y $!! x
+(&) C_Success y = y
+(&) x@Fail_C_Success           _ = x
+(&) x@(Choice_C_Success i a b) y = maySwitch y x
+(&) x@(Choices_C_Success i xs) y = maySwitch y x
+(&) x@(Guard_C_Success cs e)   y = maySwitch y x
+
+maySwitch :: C_Success -> C_Success -> C_Success
+maySwitch C_Success        x = x
+maySwitch y@Fail_C_Success _ = y
+maySwitch (Guard_C_Success cs e) x = Guard_C_Success cs (x & e)
+maySwitch y (Choice_C_Success i a b) = Choice_C_Success i (a & y) (b & y)
+maySwitch y (Choices_C_Success i xs) = Choices_C_Success (narrowID i) (map (& y) xs)
+maySwitch y (Guard_C_Success cs e)   = Guard_C_Success cs (e & y)
 
 
 -- BinInt
