@@ -95,7 +95,7 @@ initReplState =
   , firstSol     = False
   , interactive  = False
   , showBindings = True
-  , showTime     = True
+  , showTime     = False
   , rtsOpts      = ""
   , quit         = False
   , sourceguis   = []
@@ -116,7 +116,8 @@ main = do
   let rst = { idcHome := Inst.installDir
             , rcvars := rcdefs 
             | initReplState }
-  processArgsAndStart { importPaths := defaultImportPaths rst | rst } args
+  processArgsAndStart { importPaths := defaultImportPaths rst | rst }
+    (map strip (words (rcValue (rst->rcvars) "defaultparams")) ++ args)
 
 -- The default import paths of KiCS2.
 defaultImportPaths :: ReplState -> [String]
@@ -166,7 +167,7 @@ processInput rst g
                                                        else repl rst')
                              mbrst
   | otherwise = do status <- compileProgramWithGoal rst g
-                   unless (status==MainError) (execMain rst status >> done)
+                   unless (status==MainError) (execMain rst status g >> done)
                    cleanMainGoalFile rst
                    repl rst
 
@@ -232,7 +233,7 @@ compileProgramWithGoal rst goal = do
     typeok <- makeMainGoalMonomorphic rst newprog newgoal
     if typeok
      then do
-      status <- compileCurryProgram rst mainGoalFile
+      status <- compileCurryProgram rst mainGoalFile True
       exinfo <- doesFileExist infoFile
       if status==0 && exinfo then createAndCompileMain rst goalstate
                              else return MainError
@@ -312,15 +313,18 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
                                  _               -> []
 
 -- Compile a Curry program with IDC compiler:
-compileCurryProgram :: ReplState -> String -> IO Int
-compileCurryProgram rst curryprog = do
+compileCurryProgram :: ReplState -> String -> Bool -> IO Int
+compileCurryProgram rst curryprog ismain = do
   let compileProg = (rst->idcHome)++"/idc"
       idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
-                    "-v " ++ show (rst->verbose) ++ " " ++
+                    "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))
       compileCmd  = unwords [compileProg,idcoptions,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
+ where
+  verbREPL2IDC v | v==1 && not ismain = 2 -- to get frontend messages
+                 | otherwise          = v
 
 readInfoFile :: ReplState -> IO [((String,String),Bool)]
 readInfoFile rst = do
@@ -397,8 +401,8 @@ createHaskellMain rst goalstate isdet isio =
 
 
 -- Execute main program and show run time:
-execMain :: ReplState -> MainCompile -> IO Int
-execMain rst cmpstatus = do
+execMain :: ReplState -> MainCompile -> String -> IO Int
+execMain rst cmpstatus mainexp = do
   isubuntu <- isUbuntu
   let timecmd =
         if isubuntu
@@ -416,6 +420,7 @@ execMain rst cmpstatus = do
       icmd    = if rst->interactive && cmpstatus==MainNonDet
                 then execInteractive rst tcmd
                 else tcmd
+  writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
   writeVerboseInfo rst 3 $ "Executing: " ++ icmd
   system icmd
  where
@@ -462,14 +467,14 @@ processThisCommand rst cmd args
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
-                (\_ -> compileCurryProgram rst' modname >>
+                (\_ -> compileCurryProgram rst' modname False >>
                      return (Just { mainMod := modname, addMods := [] | rst' }))
                 mbf
   | cmd=="reload"
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded!" >> return Nothing
      else if null (stripSuffix args)
-          then do compileCurryProgram rst (rst->mainMod)
+          then do compileCurryProgram rst (rst->mainMod) False
                   return (Just rst)
           else writeErrorMsg "superfluous argument" >> return Nothing
   | cmd=="add"

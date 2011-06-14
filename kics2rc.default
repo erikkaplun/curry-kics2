@@ -9,6 +9,10 @@
 #
 ############################################################################
 
+# Default parameters that are always passed as initial parameters to KiCS2
+# (e.g., ":set +time :set +interactive :set bfs")
+defaultparams=
+
 # Define path for searching modules in addition to standard KiCS2 libraries:
 # (this path is placed in front of the standard KiCS2 library path)
 libraries=

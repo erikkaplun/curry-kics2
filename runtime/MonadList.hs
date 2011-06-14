@@ -80,7 +80,7 @@ type IOList a = MList IO a
 
 -- Count and print the number of elements of a IO monad list:
 countVals :: IOList a -> IO ()
-countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
+countVals x = putStr "Number of values: " >> count 0 x >>= print
   where
     count :: Integer -> IOList a -> IO Integer
     count _ Abort = error "MonadList.countVals.count: Abort" -- TODO
@@ -93,14 +93,14 @@ countVals x = putStr "Number of Solutions: " >> count 0 x >>= print
 -- Print the first value of a IO monad list:
 printOneValue :: Show a => (a -> IO ()) -> IOList a -> IO ()
 printOneValue _   Abort           = error "MonadList.printOneValue: Abort" -- TODO
-printOneValue _   MNil            = putStrLn "No solution"
+printOneValue _   MNil            = putStrLn "No value"
 printOneValue prt (MCons x _)     = prt x
 printOneValue prt (WithReset l _) = l >>= printOneValue prt
 
 -- Print all values of a IO monad list:
 printAllValues :: Show a => (a -> IO ()) -> IOList a -> IO ()
 printAllValues _   Abort             = error "MonadList.printAllValues: Abort" -- TODO
-printAllValues _   MNil              = putStrLn "No more solutions"
+printAllValues _   MNil              = putStrLn "No more values"
 printAllValues prt (MCons x getRest) = prt x >> getRest >>= printAllValues prt
 printAllValues prt (WithReset l _)   = l >>= printAllValues prt
 
@@ -122,7 +122,7 @@ printValsOnDemand = printValsInteractive True
 printValsInteractive :: Show a => Bool -> MoreDefault
                                -> (a -> IO ()) -> IOList a -> IO ()
 printValsInteractive _ _ _ Abort = error "MonadList.printValsInteractive: Abort" -- TODO
-printValsInteractive _ _ _ MNil = putStrLn "No more solutions" >> askKey
+printValsInteractive _ _ _ MNil = putStrLn "No more values" >> askKey
 printValsInteractive st md prt (MCons x getRest) =
   prt x >> askMore st md prt getRest
 printValsInteractive st md prt (WithReset l _) =
@@ -133,7 +133,7 @@ askMore :: Show a => Bool -> MoreDefault
                   -> (a -> IO ()) -> IO (IOList a) -> IO ()
 askMore st md prt getrest =
     if not st then getrest >>= printValsInteractive st md prt else do
-  putStr $ "More solutions? ["++
+  putStr $ "More values? ["++
            (if md==MoreYes then 'Y' else 'y'):"(es)/"++
            (if md==MoreNo  then 'N' else 'n'):"(o)/"++
            (if md==MoreAll then 'A' else 'a'):"(ll)] "
