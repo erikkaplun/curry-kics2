@@ -166,10 +166,14 @@ processInput rst g
                              (\rst' -> if (rst'->quit) then cleanUpRepl rst'
                                                        else repl rst')
                              mbrst
-  | otherwise = do status <- compileProgramWithGoal rst g
-                   unless (status==MainError) (execMain rst status g >> done)
-                   cleanMainGoalFile rst
-                   repl rst
+  | otherwise = evalExpression rst g >> repl rst
+
+-- Evaluate an expression w.r.t. currently loaded modules
+evalExpression :: ReplState -> String -> IO ()
+evalExpression rst expr = do
+  status <- compileProgramWithGoal rst expr
+  unless (status==MainError) (execMain rst status expr >> done)
+  cleanMainGoalFile rst
 
 -- Generate, read, and delete .acy file of main goal file.
 -- Return Nothing if some error occurred during parsin.
@@ -429,7 +433,8 @@ execMain rst cmpstatus mainexp = do
     return ("Ubuntu" `isInfixOf` bsid)
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","browse","cd","fork",
+allCommands = ["quit","help","?","load","reload","add","eval",
+               "browse","cd","fork",
                "programs","edit","interface","source","show","set","save",
                "type","usedimports"]
 
@@ -488,6 +493,9 @@ processThisCommand rst cmd args
                  return Nothing)
                 (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
                 mbf
+  | cmd=="eval"
+   = do evalExpression rst args
+        return (Just rst)
   | cmd=="type"
    = do typeok <- showTypeOfGoal rst args
         return (if typeok then Just rst else Nothing)
@@ -695,6 +703,7 @@ printHelpOnCommands = putStrLn $
   ":load <prog>     - load program \"<prog>.[l]curry\" as main module\n"++
   ":add  <prog>     - add module \"<prog>\" to currently loaded modules\n"++
   ":reload          - recompile currently loaded modules\n"++
+  ":eval <expr>     - evaluate expression <expr>\n"++
   ":type <expr>     - show type of expression <expr>\n"++
   ":programs        - show names of all Curry programs available in load path\n"++
   ":cd <dir>        - change current directory to <dir>\n"++

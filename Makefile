@@ -7,19 +7,13 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=10/06/11
+COMPILERDATE=14/06/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
-INSTALLCURRY=Installation.curry
+INSTALLCURRY=src/Installation.curry
 # Logfile for make:
 MAKELOG=make.log
-# ghc options
-GHCOPTIONS=-O2 --make -v1
-# ghc language extensions for compiling translating Curry programs:
-GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
-# ghc includes for compiling translating Curry programs:
-GHCINCLUDES=-iruntime:runtime/idsupplyinteger:./.curry/kics2/:lib/.curry/kics2/:lib/meta/.curry/kics2/
 
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \
@@ -43,54 +37,6 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 all:
 	${MAKE} installwithlogging
 
-.PHONY: Compile
-Compile:
-	${MAKE} CompileBoot
-
-.PHONY: REPL
-REPL:
-	${MAKE} REPLBoot
-
-########################################################################
-# Compile
-########################################################################
-
-# generate executable for Curry->Haskell compiler via PAKCS:
-Compile.state: ${INSTALLCURRY} Compile.curry
-	pakcs -s Compile
-	-mv idc idc.bak
-	cp -p Compile.state idc
-
-# generate executable for Curry->Haskell compiler:
-CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
-	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	-mv idc idc.bak
-	cp -p CompileBoot idc
-
-# Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
-	./idc -v2 -ilib:lib/meta Compile.curry
-
-########################################################################
-# REPL
-########################################################################
-
-# generate executable for interactive compiler system via PAKCS:
-REPL.state: ${INSTALLCURRY} REPL.curry
-	pakcs -s REPL
-	-mv REPLexec REPLexec.bak
-	cp -p REPL.state REPLexec
-
-# generate executable for Curry->Haskell REPL:
-REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
-	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	-mv REPLexec REPLexec.bak
-	cp -p REPLBoot REPLexec
-
-# Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
-	./idc -v2 -ilib:lib/meta REPL.curry
-
 # install the complete system and log the installation process
 .PHONY: installwithlogging
 installwithlogging:
@@ -102,11 +48,19 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: REPL Compile
+install: ${INSTALLCURRY} REPL Compile
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
+
+.PHONY: Compile
+Compile:
+	cd src ; ${MAKE} CompileBoot
+
+.PHONY: REPL
+REPL:
+	cd src ; ${MAKE} REPLBoot
 
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
@@ -143,24 +97,16 @@ installhaskell:
 	cabal install parallel-tree-search
 
 .PHONY: clean
-clean: cleancurry cleanintermediate cleanbinary
-	rm -f idc REPLexec
+clean:
+	rm -f *.log
+	rm -f ${INSTALLHS} ${INSTALLCURRY}
+	cd src   ; ${MAKE} cleanintermediate
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
 
-# clean all .curry dirs
-.PHONY: cleancurry
-cleancurry:
+# clean everything (including compiler binaries)
+.PHONY: cleanall
+cleanall: clean
 	bin/cleancurry -r
-
-# clean all intermediate files of the compiler bootstrapping
-.PHONY: cleanintermediate
-cleanintermediate:
-	rm -f *.log
-	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	rm -f *.hi *.o
-	cd runtime; rm -f *.hi *.o *.hi-boot *.o-boot
-	rm -f ./runtime/idsupply*/*.hi ./runtime/idsupply*/*.o
-	rm -f CompileBoot Compile.state idc.bak
-	rm -f REPLBoot REPL.state REPLexec.bak
+	rm -f idc REPLexec
