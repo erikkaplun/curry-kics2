@@ -6,9 +6,16 @@
 *.icurry
 .curry
 
+# tex temporary files
+*.aux
+*.log
+*.out
+*.pdf
+
 # intermediate files
 *.bak
 Installation.*
+make.log
 
 # binaries
 *.state
@@ -20,5 +27,12 @@ cpns/CPNSD
 examples/comptest
 tools/GenInt
 tools/ImportCalls
+tools/AddTypes
+tools/CreateMakefile
+tools/CurryTest
+tools/browser/BrowserGUI
+tools/curry2js/Curry2JS
+tools/currydoc/CurryDoc
+tools/SourceProgGUi
 www/Registry
 www/submitform
