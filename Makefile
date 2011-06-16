@@ -16,28 +16,11 @@ INSTALLCURRY=src/Installation.curry
 MAKELOG=make.log
 BOOTLOG=boot.log
 
-# Source modules of the compiler (without standard libraries):
-COMPILERSOURCES = Compile.curry \
-	          AbstractHaskellPrinter.curry \
-	          FlatCurry2Types.curry \
-	          LiftCase.curry \
-	          Message.curry ModuleDeps.curry \
-	          SimpleMake.curry Splits.curry \
-	          Dependency2.curry GetOpt.curry \
-		  AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
-	          Names.curry Analysis.curry \
-	          FiniteMap.curry \
-	          SCC.curry Base.curry Files.curry \
-	          AbstractHaskell.curry \
-	          CompilerOpts.curry Utils.curry
-
-# Source modules of the REPL (without standard libraries):
-REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
-
 .PHONY: all
 all:
 	${MAKE} installwithlogging
 
+# bootstrap the compiler using PAKCS
 .PHONY: bootstrap
 bootstrap: ${INSTALLCURRY}
 	@rm -f ${BOOTLOG}
