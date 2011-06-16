@@ -8,7 +8,7 @@ all: Benchmarks
 # generate saved state for Curry->FLVM compiler:
 Benchmarks: Benchmarks.curry
 	cleancurry
-	kics2 :l Benchmarks :save :q
+	../bin/kics2 :l Benchmarks :save :q
 
 # publish all relevant benchmarks in the web:
 .PHONY: publish
