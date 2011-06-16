@@ -49,7 +49,7 @@ bootstrap:
 	${MAKE} CompileBoot
 	cp ../idc ../stage3
 	echo "Compiling REPL"
-	${MAKE} REPL
+	${MAKE} REPLBoot
 
 ########################################################################
 # Compile
