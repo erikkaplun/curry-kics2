@@ -29,10 +29,10 @@ COMPILERSOURCES = Compile.curry \
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
-# binary directory
-BINDIR=..
-
-COMP=../idc
+# binary directory and executables
+BINDIR=../bin
+COMP=${BINDIR}/idc
+REPL=${BINDIR}/idci
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -81,7 +81,7 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 # generate executable for Curry->Haskell REPL:
 REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	mv -b REPLBoot ${BINDIR}/REPLexec
+	mv -b REPLBoot ${REPL}
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
@@ -95,7 +95,7 @@ REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 .PHONY: clean
 clean:
 	cd .. ; rm -f stage1 stage2 stage3
-	cd ${BINDIR} ; rm -f idc~ REPLexec~
+	rm -f ${COMP}~ ${REPL}~
 	rm -f *.hi *.o
 	cd ../runtime; rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f ../runtime/idsupply*/*.hi ../runtime/idsupply*/*.o

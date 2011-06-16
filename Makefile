@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=14/06/11
+COMPILERDATE=16/06/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -118,4 +118,4 @@ clean:
 .PHONY: cleanall
 cleanall: clean
 	bin/cleancurry -r
-	rm -f idc REPLexec
+	rm -f bin/idc bin/idci

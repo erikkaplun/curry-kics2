@@ -21,4 +21,4 @@ export PATH
 
 # execute all unit tests:
 echo "Executing unit tests for back end $BACKEND..."
-$KiCS2HOME/bin/currytest --window $ALLTESTS
+$KICS2BIN/currytest --window $ALLTESTS

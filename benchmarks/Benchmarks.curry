@@ -116,7 +116,7 @@ readFloat s = if isFloatString s then readQTerm s
 -- arg3: idsupply implementation (integer or ioref)
 -- arg4: main (Haskell!) call
 idcCompile mod optim idsupply mainexp = do
-  let compileCmd = idcHome++"/idc -q -i "++idcHome++"/lib"++" "++mod
+  let compileCmd = idcHome++"/bin/idc -q -i "++idcHome++"/lib"++" "++mod
   putStrLn $ "Executing: "++compileCmd
   system compileCmd
   createHaskellMainAndCompile mod optim idsupply mainexp

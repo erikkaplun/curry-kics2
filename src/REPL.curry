@@ -319,7 +319,7 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> Bool -> IO Int
 compileCurryProgram rst curryprog ismain = do
-  let compileProg = (rst->idcHome)++"/idc"
+  let compileProg = (rst->idcHome) </> "bin" </> "idc"
       idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
                     "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))

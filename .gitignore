@@ -18,11 +18,8 @@ Installation.*
 make.log
 
 # binaries
-*.state
-CompileBoot
-REPLBoot
-idc
-REPLexec
+bin/idc
+bin/idci
 cpns/CPNSD
 examples/comptest
 tools/GenInt
