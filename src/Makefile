@@ -19,7 +19,7 @@ COMPILERSOURCES = Compile.curry \
 	          Message.curry ModuleDeps.curry \
 	          SimpleMake.curry Splits.curry \
 	          Dependency2.curry GetOpt.curry \
-		  AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
+	          AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
 	          Names.curry Analysis.curry \
 	          FiniteMap.curry \
 	          SCC.curry Base.curry Files.curry \
@@ -31,6 +31,25 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
 .PHONY: all
 all: CompileBoot REPLBoot
+
+.PHONY: bootstrap
+bootstrap:
+	${MAKE} clean
+	# Create kics2 via PAKCS (stage 1)
+	echo "Compiling stage 1"
+	${MAKE} Compile.state
+	cp ../idc ../stage1
+	# Create kics2 via kics2 (stage 2)
+	echo "Compiling stage 2"
+	${MAKE} CompileBoot
+	cp ../idc ../stage2
+	# Create kics2 via kics2 (stage 3)
+	${MAKE} clean
+	echo "Compiling stage 3"
+	${MAKE} CompileBoot
+	cp ../idc ../stage3
+	echo "Compiling REPL"
+	${MAKE} REPL
 
 ########################################################################
 # Compile
@@ -56,12 +75,6 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 # REPL
 ########################################################################
 
-# generate executable for interactive compiler system via PAKCS:
-REPL.state: ${INSTALLCURRY} REPL.curry
-	pakcs -s REPL
-	-mv ../REPLexec ../REPLexec.bak
-	cp -p REPL.state ../REPLexec
-
 # generate executable for Curry->Haskell REPL:
 REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
@@ -72,12 +85,14 @@ REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
 	../idc -v2 -i../lib:../lib/meta REPL.curry
 
+########################################################################
+# clean
+########################################################################
 
 # clean all intermediate files of the compiler bootstrapping
-.PHONY: cleanintermediate
-cleanintermediate:
+.PHONY: clean
+clean:
+	rm -f CompileBoot Compile.state REPLBoot
 	rm -f *.hi *.o
 	cd ../runtime; rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f ../runtime/idsupply*/*.hi ../runtime/idsupply*/*.o
-	rm -f CompileBoot Compile.state idc.bak
-	rm -f REPLBoot REPL.state REPLexec.bak

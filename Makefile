@@ -14,6 +14,7 @@ INSTALLHS=runtime/Installation.hs
 INSTALLCURRY=src/Installation.curry
 # Logfile for make:
 MAKELOG=make.log
+BOOTLOG=boot.log
 
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \
@@ -36,6 +37,14 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 .PHONY: all
 all:
 	${MAKE} installwithlogging
+
+.PHONY: bootstrap
+bootstrap: ${INSTALLCURRY}
+	@rm -f ${BOOTLOG}
+	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
+	cd src; ${MAKE} bootstrap 2>&1 | tee -a ${BOOTLOG}
+	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
+	@echo "Bootstrap process logged in file ${BOOTLOG}"
 
 # install the complete system and log the installation process
 .PHONY: installwithlogging
@@ -100,7 +109,7 @@ installhaskell:
 clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd src   ; ${MAKE} cleanintermediate
+	cd src   ; ${MAKE} clean
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
