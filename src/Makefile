@@ -29,6 +29,11 @@ COMPILERSOURCES = Compile.curry \
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
+# binary directory
+BINDIR=..
+
+COMP=../idc
+
 .PHONY: all
 all: CompileBoot REPLBoot
 
@@ -36,19 +41,19 @@ all: CompileBoot REPLBoot
 bootstrap:
 	${MAKE} clean
 	# Create kics2 via PAKCS (stage 1)
-	echo "Compiling stage 1"
+	@echo "Compiling stage 1"
 	${MAKE} Compile.state
-	cp ../idc ../stage1
+	cp ${COMP} ../stage1
 	# Create kics2 via kics2 (stage 2)
-	echo "Compiling stage 2"
+	@echo "Compiling stage 2"
 	${MAKE} CompileBoot
-	cp ../idc ../stage2
+	cp ${COMP} ../stage2
 	# Create kics2 via kics2 (stage 3)
-	${MAKE} clean
-	echo "Compiling stage 3"
+	cd .. ; bin/cleancurry -r
+	@echo "Compiling stage 3"
 	${MAKE} CompileBoot
-	cp ../idc ../stage3
-	echo "Compiling REPL"
+	cp ${COMP} ../stage3
+	@echo "Compiling REPL"
 	${MAKE} REPLBoot
 
 ########################################################################
@@ -58,18 +63,16 @@ bootstrap:
 # generate executable for Curry->Haskell compiler via PAKCS:
 Compile.state: ${INSTALLCURRY} Compile.curry
 	pakcs -s Compile
-	-mv ../idc ../idc.bak
-	cp -p Compile.state ../idc
+	mv -b Compile.state ${COMP}
 
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	-mv ../idc ../idc.bak
-	cp -p CompileBoot ../idc
+	mv -b CompileBoot ${COMP}
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
-	../idc -v2 -i../lib:../lib/meta Compile.curry
+	${COMP} -v2 -i../lib:../lib/meta Compile.curry
 
 ########################################################################
 # REPL
@@ -78,12 +81,11 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 # generate executable for Curry->Haskell REPL:
 REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	-mv ../REPLexec ../REPLexec.bak
-	cp -p REPLBoot ../REPLexec
+	mv -b REPLBoot ${BINDIR}/REPLexec
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
-	../idc -v2 -i../lib:../lib/meta REPL.curry
+	${COMP} -v2 -i../lib:../lib/meta REPL.curry
 
 ########################################################################
 # clean
@@ -92,7 +94,8 @@ REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
 # clean all intermediate files of the compiler bootstrapping
 .PHONY: clean
 clean:
-	rm -f CompileBoot Compile.state REPLBoot
+	cd .. ; rm -f stage1 stage2 stage3
+	cd ${BINDIR} ; rm -f idc~ REPLexec~
 	rm -f *.hi *.o
 	cd ../runtime; rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f ../runtime/idsupply*/*.hi ../runtime/idsupply*/*.o

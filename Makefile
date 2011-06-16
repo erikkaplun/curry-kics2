@@ -42,7 +42,7 @@ all:
 bootstrap: ${INSTALLCURRY}
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
-	cd src; ${MAKE} bootstrap 2>&1 | tee -a ${BOOTLOG}
+	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
 	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
 	@echo "Bootstrap process logged in file ${BOOTLOG}"
 
