@@ -47,11 +47,11 @@ install: ${INSTALLCURRY} REPL Compile
 	chmod -R go+rX .
 
 .PHONY: Compile
-Compile:
+Compile: ${INSTALLCURRY}
 	cd src ; ${MAKE} CompileBoot
 
 .PHONY: REPL
-REPL:
+REPL: ${INSTALLCURRY}
 	cd src ; ${MAKE} REPLBoot
 
 # generate module with basic installation information:

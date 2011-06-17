@@ -13,7 +13,7 @@
 *.pdf
 
 # intermediate files
-*.bak
+*~
 Installation.*
 make.log
 
