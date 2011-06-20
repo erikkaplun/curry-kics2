@@ -95,6 +95,7 @@ installhaskell:
 	cabal install parallel
 	cabal install tree-monad
 	cabal install parallel-tree-search
+	cabal install mtl
 
 .PHONY: clean
 clean:
