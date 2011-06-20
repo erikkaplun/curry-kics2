@@ -18,6 +18,7 @@ Installation.*
 make.log
 
 # binaries
+benchmarks/Benchmarks
 bin/idc
 bin/idci
 cpns/CPNSD
