@@ -406,6 +406,9 @@ getCompOptions = getState `bindM` \ st -> returnM (st -> compOptions)
 getCompOption :: (Options -> a) -> M a
 getCompOption select = getCompOptions `bindM` (returnM . select)
 
+strictSupply :: M Bool
+strictSupply = getCompOption $ \opts -> (opts -> optOptimization >= OptimStrictSupply)
+
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
@@ -626,11 +629,12 @@ newBranches qn' vs i pConsName =
 -- variables are already bound by nested let expressions
 transCompleteExpr :: Expr -> M Expr
 transCompleteExpr e =
+  strictSupply `bindM` \strict ->
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
               []  -> e'
-              [v] ->  letIdVar [(v, Var suppVarIdx)] e' in
+              [v] ->  letIdVar strict [(v, Var suppVarIdx)] e' in
   setNextID i `bindM_` -- and reset it variable id
   returnM e''
 
@@ -709,15 +713,17 @@ transExpr e@(Case _ _ _) = returnM ([], e)
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
 genIds ns@(_:_) expr =
+  strictSupply `bindM` \strict ->
   -- get next free variable id
   getNextID `bindM` \i ->
   -- create splitting of supply variables
-  let (vroot, v', vs) = mkSplits i ns in
-  setNextID v' `bindM_`
-  returnM ([vroot], foldr addSplit expr vs)
+  let (vroot, v', vs) = mkSplits i ns 
+      addSplit (v, v1, v2) e = letIdVar strict 
+        [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+  in 
+  setNextID v' `bindM_` returnM ([vroot], foldr addSplit expr vs)
   where
-    addSplit (v, v1, v2) e =
-      letIdVar [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+    
 {-
   case vs of
     -- no splitting necessary
@@ -764,13 +770,9 @@ wrapNX exprs = fun 2 (basics,"wrapNX") exprs
 funId = fun 1 (prelude,"id") []
 
 
--- ---------------------------------------------------------------------------
--- Configurations
--- ---------------------------------------------------------------------------
-
--- Chooce let-Type for IdSupply Variables
---letIdVar = lazyLet
-letIdVar = strictLet
+-- Strict or lazy computation of supplies
+letIdVar True  = strictLet
+letIdVar False = lazyLet
 
 -- ---------------------------------------------------------------------------
 

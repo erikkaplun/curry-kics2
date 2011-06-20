@@ -53,6 +53,7 @@ data DumpFormat
 data OptimLevel
   = OptimNone         -- no optimization
   | OptimHigherOrder  -- higher-order optimization
+  | OptimStrictSupply -- strict evaluation of supplies
 
 -- Known language extensions
 data Extension
@@ -71,7 +72,7 @@ defaultOptions =
   , optForce        = False
   , optImportPaths  = []
   , optOutputSubdir = "/.curry/kics2/"
-  , optOptimization = OptimHigherOrder
+  , optOptimization = OptimStrictSupply
   , optDump         = []
   , optExtensions   = []
   }
@@ -92,6 +93,7 @@ parseOptimization :: String -> OptimLevel -> OptimLevel
 parseOptimization s o = case s of
   "0" -> OptimNone
   "1" -> OptimHigherOrder
+  "2" -> OptimStrictSupply
   _   -> o
   
 parseExtension :: String -> Extension
