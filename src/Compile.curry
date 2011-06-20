@@ -2,7 +2,7 @@
 --- ID based curry compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version May 2011
+--- @version June 2011
 --- --------------------------------------------------------------------------
 module Compile where
 
@@ -198,8 +198,9 @@ compMessage curNum maxNum msg fn dest
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
-  | opts -> optXNoImplicitPrelude = Prog m (filter (/= prelude) imps) td fd od
-  | otherwise                     = p
+  | noPrelude = Prog m (filter (/= prelude) imps) td fd od
+  | otherwise = p
+  where noPrelude = ExtNoImplicitPrelude `elem` opts -> optExtensions
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
@@ -233,8 +234,8 @@ splitExternals content = se (lines content) ([], [], []) where
       where (pragmas, imps, decls) = se lns res
 
 -- Dump an intermediate result to a file
-dump :: DumpLevel -> Options -> String -> String -> IO ()
-dump level opts file src = when (level `elem` opts -> optDump) $ do
+dump :: DumpFormat -> Options -> String -> String -> IO ()
+dump format opts file src = when (format `elem` opts -> optDump) $ do
   showDetail opts $ "Dumping " ++ file
   writeFileInDir (withDirectory (</> opts -> optOutputSubdir) file) src
 
@@ -441,7 +442,7 @@ getConsMap ts =
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc f@(Func qn _ _ _ _) =
   getCompOptions `bindM` \opts ->
-  let opt = opts -> optDetOptimization in
+  let opt = (opts -> optOptimization > OptimNone) in
   case opt of
     -- translate all functions as non-deterministic by default
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
@@ -660,7 +661,7 @@ transExpr (Comb (ConsPartCall i) qn es) =
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
-  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
+  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
@@ -673,7 +674,7 @@ transExpr (Comb FuncCall qn es) =
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
-  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
+  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->

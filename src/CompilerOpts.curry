@@ -2,12 +2,14 @@
 --- Compiler options for the ID-based curry compiler
 ---
 --- @author Fabian Reck, Bjoern Peemoeller
---- @version May 2011
+--- @version June 2011
 ------------------------------------------------------------------------------
 module CompilerOpts
-  ( Options (..), Verbosity (..), DumpLevel (..), defaultOptions, compilerOpts, debugOptions
+  ( Options (..), Verbosity (..), OptimLevel (..), DumpFormat (..)
+  , Extension (..), defaultOptions, debugOptions, compilerOpts
   ) where
 
+import Char (toLower)
 import FileGoodies (splitPath)
 import IO (hPutStrLn, stderr)
 import List (nub)
@@ -17,18 +19,20 @@ import System (exitWith, getArgs, getProgName)
 import GetOpt
 import Installation (compilerName, majorVersion, minorVersion, compilerDate)
 
+-- |Compiler options
 type Options =
-  { optHelp               :: Bool        -- show usage and exit
-  , optVersion            :: Bool        -- show version and exit
-  , optVerbosity          :: Verbosity   -- verbosity level
-  , optForce              :: Bool        -- force recompilation
-  , optImportPaths        :: [String]    -- directories searched for imports
-  , optOutputSubdir       :: String      -- subdirectory for compiled modules
-  , optDetOptimization    :: Bool        -- optimization for deterministic functions
-  , optDump               :: [DumpLevel] -- dump intermediate results
-  , optXNoImplicitPrelude :: Bool        -- don't implicitly import Prelude
+  { optHelp               :: Bool         -- show usage and exit
+  , optVersion            :: Bool         -- show version and exit
+  , optVerbosity          :: Verbosity    -- verbosity level
+  , optForce              :: Bool         -- force recompilation
+  , optImportPaths        :: [String]     -- directories searched for imports
+  , optOutputSubdir       :: String       -- subdirectory for compiled modules
+  , optOptimization       :: OptimLevel   -- level of optimization
+  , optDump               :: [DumpFormat] -- dump intermediate results
+  , optExtensions         :: [Extension]  -- language extensions
   }
 
+-- |Verbosity levels of the compiler
 data Verbosity
   = VerbQuiet    -- be quiet
   | VerbStatus   -- show compilation status
@@ -36,7 +40,8 @@ data Verbosity
   | VerbAnalysis -- additionally show analysis infos
   | VerbDetails  -- additionally show details
 
-data DumpLevel
+-- |Dump formats of the compiler
+data DumpFormat
   = DumpFlat        -- dump flat curry
   | DumpLifted      -- dump flat curry after case lifting
   | DumpRenamed     -- dump renamed flat curry
@@ -44,24 +49,35 @@ data DumpLevel
   | DumpTypeDecls   -- dump transformed type declarations
   | DumpAbstractHs  -- dump abstract Haskell
 
-allDumps :: [DumpLevel]
+-- |Levels of optimization
+data OptimLevel
+  = OptimNone         -- no optimization
+  | OptimHigherOrder  -- higher-order optimization
+
+-- Known language extensions
+data Extension
+  = ExtNoImplicitPrelude
+  | ExtUnknown String
+
+allDumps :: [DumpFormat]
 allDumps = [ DumpFlat    , DumpLifted   , DumpRenamed
            , DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
 
 defaultOptions :: Options
 defaultOptions =
-  { optHelp               = False
-  , optVersion            = False
-  , optVerbosity          = VerbStatus
-  , optForce              = False
-  , optImportPaths        = []
-  , optOutputSubdir       = "/.curry/kics2/"
-  , optDetOptimization    = True
-  , optDump               = []
-  , optXNoImplicitPrelude = False
+  { optHelp         = False
+  , optVersion      = False
+  , optVerbosity    = VerbStatus
+  , optForce        = False
+  , optImportPaths  = []
+  , optOutputSubdir = "/.curry/kics2/"
+  , optOptimization = OptimHigherOrder
+  , optDump         = []
+  , optExtensions   = []
   }
 
-debugOptions = { optVerbosity := VerbDetails , optForce := True | defaultOptions }
+debugOptions = { optVerbosity := VerbDetails 
+               , optForce := True | defaultOptions }
 
 parseVerbosity :: String -> Verbosity -> Verbosity
 parseVerbosity s v = case s of
@@ -71,6 +87,17 @@ parseVerbosity s v = case s of
   "3" -> VerbAnalysis
   "4" -> VerbDetails
   _   -> v
+  
+parseOptimization :: String -> OptimLevel -> OptimLevel
+parseOptimization s o = case s of
+  "0" -> OptimNone
+  "1" -> OptimHigherOrder
+  _   -> o
+  
+parseExtension :: String -> Extension
+parseExtension s = case map toLower s of
+  "noimplicitprelude" -> ExtNoImplicitPrelude
+  _                   -> ExtUnknown s
 
 options :: [OptDescr (Options -> Options)]
 options =
@@ -83,7 +110,8 @@ options =
   , Option ['v'] ["verbosity"]
       (ReqArg (\arg opts -> { optVerbosity :=
         parseVerbosity arg (opts -> optVerbosity) | opts }) "<n>")
-      "set verbosity (0 = quiet, 1 = + status, 2 = + frontend, 3 = + nd-analysis, 4 = + dump-all)"
+      ("set verbosity (0 = quiet, 1 = + status, 2 = + frontend" ++
+       ", 3 = + nd-analysis, 4 = + dump-all)")
   , Option ['q'] ["quiet"]
       (NoArg (\opts -> { optVerbosity := VerbQuiet | opts }))
       "run in quiet mode"
@@ -97,9 +125,13 @@ options =
   , Option ['o'] ["output-subdir"]
       (ReqArg (\arg opts -> { optOutputSubdir := arg | opts }) "SUBDIR")
       "output compiled modules to SUBDIR"
+  , Option ['O'] ["optimization"]
+      (ReqArg (\arg opts -> { optOptimization :=
+        parseOptimization arg (opts -> optOptimization) | opts }) "<n>")
+      "set optimization level (0 = none, 1 = higher order)"      
   , Option [] ["no-opt"]
-      (NoArg (\opts -> { optDetOptimization := False | opts } ))
-      "disable optimization for deterministic functions"
+      (NoArg (\opts -> { optOptimization := OptimNone | opts } ))
+      "disable optimization"
   , Option [] ["dump-flat"]
       (NoArg (\opts -> { optDump :=
         nub (DumpFlat : opts -> optDump) | opts }))
@@ -127,9 +159,10 @@ options =
   , Option [] ["dump-all"]
       (NoArg (\opts -> { optDump := allDumps | opts }))
       "dump all intermediate results"
-  , Option ['x'] ["x-no-implicit-prelude"]
-      (NoArg (\opts -> { optXNoImplicitPrelude := True | opts }))
-      "do not implicitly import Prelude"
+  , Option ['X'] []
+      (ReqArg (\arg opts -> { optExtensions := 
+        nub (parseExtension arg : opts -> optExtensions) | opts }) "EXT")
+      "enable language extension EXT"
   ]
 
 versionString :: String
@@ -170,7 +203,8 @@ compilerOpts = do
   prog <- getProgName
   processOpts prog $ parseOpts args
 
-processOpts :: String -> (Options, [String], [String]) -> IO (Options, [String])
+processOpts :: String -> (Options, [String], [String]) 
+            -> IO (Options, [String])
 processOpts prog (opts, files, errs)
   | opts -> optHelp    = printUsage prog
   | opts -> optVersion = printVersion
