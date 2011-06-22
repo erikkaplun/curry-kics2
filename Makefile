@@ -40,11 +40,16 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: installhaskell ${INSTALLCURRY} Compile REPL
+install: ${INSTALLCURRY} frontend Compile REPL
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
+
+.PHONY: frontend
+frontend:
+	# install the mcc front-end if necessary:
+	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
 
 .PHONY: Compile
 Compile: ${INSTALLCURRY}
