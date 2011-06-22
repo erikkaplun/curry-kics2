@@ -3,21 +3,33 @@
 *.hi-boot
 *.o
 *.o-boot
+*.icurry
+.curry
+
+# tex temporary files
+*.aux
+*.log
+*.out
+*.pdf
 
 # intermediate files
-*.fcy
-*.ahs
-.curry
-C_*
+*~
 Installation.*
+make.log
 
 # binaries
-*.state
-examples/comptest
-idc
+bin/idc
+bin/idci
 cpns/CPNSD
-www/Registry
-www/submitform
+examples/comptest
 tools/GenInt
 tools/ImportCalls
-
+tools/AddTypes
+tools/CreateMakefile
+tools/CurryTest
+tools/browser/BrowserGUI
+tools/curry2js/Curry2JS
+tools/currydoc/CurryDoc
+tools/SourceProgGUi
+www/Registry
+www/submitform

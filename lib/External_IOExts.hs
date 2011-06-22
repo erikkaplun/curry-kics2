@@ -74,15 +74,34 @@ instance Generable (C_IORef a) where
   generate _ = error "ERROR: no generator for IORef"
 
 instance NormalForm (C_IORef a) where
-  cont $!! io@(C_IORef _) = cont io
+  cont $!! ioref@(C_IORef _) = cont ioref
   cont $!! Choice_C_IORef i io1 io2 = nfChoice cont i io1 io2
   cont $!! Choices_C_IORef i ios = nfChoices cont i ios
   cont $!! Guard_C_IORef c io = guardCons c (cont $!! io)
   _    $!! Fail_C_IORef = failCons
+  cont $## io@(C_IORef _) = cont io
+  cont $## Choice_C_IORef i io1 io2 = gnfChoice cont i io1 io2
+  cont $## Choices_C_IORef i ios = gnfChoices cont i ios
+  cont $## Guard_C_IORef c io = guardCons c (cont $## io)
+  _    $## Fail_C_IORef = failCons
+  ($!<) cont (Choice_C_IORef i x y) = nfChoiceIO cont i x y
+  ($!<) cont (Choices_C_IORef i xs) = nfChoicesIO cont i xs
+  ($!<) cont x = cont x
+  searchNF _ cont ioref@(C_IORef _) = cont ioref
 
 instance Unifiable (C_IORef a) where
   (=.=) _ _ = error "(=.=) for C_IORef"
-  bind i (Choice_C_IORef j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
+  (=.<=) _ _ = error "(=.<=) for C_IORef"
+  bind i (Choice_C_IORef j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_IORef j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_IORef = [Unsolvable]
+  bind i (Guard_C_IORef cs e) = cs ++ (bind i e)
+  lazyBind i (Choice_C_IORef j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_IORef j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ Fail_C_IORef = [Unsolvable]
+  lazyBind i (Guard_C_IORef cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
   (=?=) = error "(==) is undefined for IORefs"

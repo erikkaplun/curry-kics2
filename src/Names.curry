@@ -13,9 +13,30 @@ import Base
 import CompilerOpts
 import Files
 
--- Name of the module providing external function definitions.
-externalModule :: String
-externalModule = "External"
+-- ---------------------------------------------------------------------------
+-- File names
+-- ---------------------------------------------------------------------------
+
+renameFile :: String -> String
+renameFile = renameModule -- until hierarchical module names are supported
+
+externalFile :: String -> String
+externalFile = withComponents id ("External_" ++) (const "hs")
+
+destFile :: String-> String -> String
+destFile subdir = withComponents (</> subdir) renameFile (const "hs")
+
+analysisFile :: String -> String -> String
+analysisFile subdir = withComponents (</> subdir) renameFile (const "nda")
+
+-- Auxiliary file containing some basic information about functions
+-- (might become unnecessary in the future)
+funcInfoFile :: String -> String -> String
+funcInfoFile subdir = withComponents (</> subdir) renameFile (const "info")
+
+-- ---------------------------------------------------------------------------
+-- Constructors
+-- ---------------------------------------------------------------------------
 
 -- Generating Names for introduced constructors
 mkChoiceName  (q, n) = (q, "Choice"  +|+ n)
@@ -92,26 +113,6 @@ consPrefix False HO = "HO_"
 -- rename modules
 mkModName :: String -> String
 mkModName = ("Curry_" ++)
-
-renameFile :: String -> String
-renameFile = renameModule -- until hierarchical module names are supported
-
-destFile :: String-> String -> String
-destFile subdir = withPath (</> subdir)        -- apply subdir
-                . withExtension (const ".hs")  -- .hs extension
-                . withBaseName renameFile      -- renaming
-
-analysisFile :: String -> String -> String
-analysisFile subdir = withPath (</> subdir) -- apply subdir
-                    . withExtension (const ".nda")
-                    . withBaseName renameFile
-
--- Auxiliary file containing some basic information about functions
--- (might become unnecessary in the future)
-funcInfoFile :: String -> String -> String
-funcInfoFile subdir = withPath (</> subdir) -- apply subdir
-                    . withExtension (const ".info")
-                    . withBaseName renameFile
 
 isInfixName :: String -> Bool
 isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")

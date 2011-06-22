@@ -8,7 +8,7 @@
 --- The latter might not be supported in the future.
 ---
 --- @authors Michael Hanus, Bernd Brassel
---- @version November 2006
+--- @version August 2007
 ------------------------------------------------------------------------------
 
 module GUI(GuiPort,Widget(..),Button,ConfigButton,
@@ -20,7 +20,7 @@ module GUI(GuiPort,Widget(..),Button,ConfigButton,
            runGUI,runGUIwithParams,runInitGUI,runInitGUIwithParams,
            runPassiveGUI,
            runControlledGUI,runConfigControlledGUI,runInitControlledGUI,
-           --runHandlesControlledGUI,runInitHandlesControlledGUI,
+           runHandlesControlledGUI,runInitHandlesControlledGUI,
            exitGUI,getValue,setValue,updateValue,appendValue,
            appendStyledValue,addRegionStyle,removeRegionStyle,
            getCursorPosition,seeText,
@@ -206,14 +206,9 @@ data CanvasItem = CLine [(Int,Int)] String
 ---       this widget used in Tk, and "type" is one of
 ---       button / canvas / checkbutton / entry / label / listbox /
 ---       message / scale / scrollbar / textedit
---data WidgetRef = WRefLabel String String
-data WidgetRef = WRefLabel [Int] [Int]
-ints2string = map chr
-string2ints = map ord
+data WidgetRef = WRefLabel String String
 
-wRef2Label :: WidgetRef -> String
 wRef2Label (WRefLabel var _)   = wRefname2Label var
-
 wRef2Wtype (WRefLabel _ wtype) = wtype
 
 --- The data type of possible text styles.
@@ -722,7 +717,7 @@ config2tcl wtype label (Menu l)
 
 -- references to widgets are bound to actual widget labels:
 config2tcl wtype label (WRef r)
- | r =:= WRefLabel (string2ints (wLabel2Refname label)) (string2ints wtype) = ""
+ | r =:= WRefLabel (wLabel2Refname label) wtype = ""
 
 -- initial text value of widgets:
 config2tcl wtype label (Text s)
@@ -835,7 +830,7 @@ showCoords ((x,y):cs) = show x++" "++show y++" "++showCoords cs
 wLabel2Refname l = map (\c -> if c=='.' then '_' else c) l
 
 -- translate a name into a widget label (replacing underscores by dots)
-wRefname2Label l = map (\c -> if c=='_' then '.' else c) (ints2string l)
+wRefname2Label l = map (\c -> if c=='_' then '.' else c) l
 
 
 -- translate a list of widgets into pair Tcl string / event list:
@@ -897,11 +892,13 @@ receiveFromTk (GuiPort tclhdl) = do
   reportTclTk ("GUI RECEIVED: "++s)
   return s
 
+{-
 -- Choice over the output of the wish process and a stream of external messages
 choiceOverHandlesMsgs :: [Handle] -> [msg] -> IO (Either (Int,Handle) [msg])
 choiceOverHandlesMsgs hdls msgs = do
   iormsgs <- hWaitForInputsOrMsg hdls msgs
   return (either (\i -> Left (i,hdls!!i)) Right iormsgs)
+-}
 
 -- Choice over the output of the wish process and handles to input streams:
 choiceOverHandles :: [Handle] -> IO (Int,Handle)
@@ -947,7 +944,7 @@ runPassiveGUI title widget = do
 --- @param title - the title of the main window containing the widget
 --- @param widget - the widget shown in the new window
 runGUI :: String -> Widget -> IO ()
-runGUI title widget = runInitGUIwithParams title "" widget (const done)
+runGUI title widget = runInitGUIwithParams title "" widget (\_->return [])
 
 --- IO action to run a Widget in a new window.
 --- @param title - the title of the main window containing the widget
@@ -955,18 +952,17 @@ runGUI title widget = runInitGUIwithParams title "" widget (const done)
 --- @param widget - the widget shown in the new window
 runGUIwithParams :: String -> String -> Widget -> IO ()
 runGUIwithParams title params widget =
-  runInitGUIwithParams title params widget (const done)
+  runInitGUIwithParams title params widget (\_->return [])
 
 --- IO action to run a Widget in a new window. The GUI events
 --- are processed after executing an initial action on the GUI.
 --- @param title - the title of the main GUI window
 --- @param widget - the widget shown in the new GUI window
 --- @param initcmd - the initial command executed before activating the GUI
-runInitGUI :: String -> Widget -> (GuiPort -> IO ()) -> IO ()
+runInitGUI :: String -> Widget -> (GuiPort -> IO [ReconfigureItem]) -> IO ()
 runInitGUI title widget initcmd = do
   gport <- openWish (escape_tcl title) ""
-  --initSchedule widget gport [] [] initcmd
-  initSchedule widget gport [] emptyUnitList initcmd
+  initSchedule widget gport [] initcmd
 
 --- IO action to run a Widget in a new window. The GUI events
 --- are processed after executing an initial action on the GUI.
@@ -974,11 +970,10 @@ runInitGUI title widget initcmd = do
 --- @param params - parameter string passed to the initial wish command
 --- @param widget - the widget shown in the new GUI window
 --- @param initcmd - the initial command executed before activating the GUI
-runInitGUIwithParams :: String -> String -> Widget -> (GuiPort -> IO ()) -> IO ()
+runInitGUIwithParams :: String -> String -> Widget -> (GuiPort -> IO [ReconfigureItem]) -> IO ()
 runInitGUIwithParams title params widget initcmd = do
   gport <- openWish (escape_tcl title) params
-  --initSchedule widget gport [] [] initcmd
-  initSchedule widget gport [] emptyUnitList initcmd
+  initSchedule widget gport [] initcmd
 
 
 --- Runs a Widget in a new GUI window and process GUI events.
@@ -991,9 +986,9 @@ runInitGUIwithParams title params widget initcmd = do
 ---             new window and exth is the event handler for external messages
 --- @param msgs - the stream of external messages (usually coming from
 ---               an external port)
-runControlledGUI :: String -> (Widget, msg -> GuiPort -> IO ()) -> [msg] -> IO ()
-runControlledGUI title (widget,exth) msgs =
-  runInitControlledGUI title (widget,exth) (const done) msgs
+runControlledGUI :: String -> (Widget, String -> GuiPort -> IO ()) -> Handle -> IO ()
+runControlledGUI title (widget,exth) hdl =
+  runInitControlledGUI title (widget,exth) (\_->return []) hdl
 
 
 --- Runs a Widget in a new GUI window and process GUI events.
@@ -1010,10 +1005,10 @@ runControlledGUI title (widget,exth) msgs =
 --- @param msgs - the stream of external messages (usually coming from
 ---               an external port)
 runConfigControlledGUI :: String ->
-       (Widget, msg -> GuiPort -> IO [ReconfigureItem]) -> [msg] -> IO ()
-runConfigControlledGUI title (widget,exth) msgs = do
+       (Widget, String -> GuiPort -> IO [ReconfigureItem]) -> Handle -> IO ()
+runConfigControlledGUI title (widget,exth) hdl = do
   gport <- openWish (escape_tcl title) ""
-  initSchedule widget gport [PortMsgHandler exth] msgs (\_->done)
+  initSchedule widget gport [msgToIOHandler exth hdl] (\_->return [])
 
 --- Runs a Widget in a new GUI window and process GUI events
 --- after executing an initial action on the GUI window.
@@ -1027,15 +1022,21 @@ runConfigControlledGUI title (widget,exth) msgs = do
 --- @param initcmd - the initial command executed before starting the GUI
 --- @param msgs - the stream of external messages (usually coming from
 ---               an external port)
-runInitControlledGUI :: String -> (Widget, msg -> GuiPort -> IO ()) ->
-                        (GuiPort -> IO ()) -> [msg] -> IO ()
-runInitControlledGUI title (widget,exth) initcmd msgs = do
+runInitControlledGUI :: String -> (Widget, String -> GuiPort -> IO ()) ->
+                        (GuiPort -> IO [ReconfigureItem]) -> Handle -> IO ()
+runInitControlledGUI title (widget,exth) initcmd hdl = do
   gport <- openWish (escape_tcl title) ""
   initSchedule widget gport
-               [PortMsgHandler (\msg wp -> exth msg wp >> return [])]
-               msgs initcmd
+               [msgToIOHandler (\ x y -> exth x y >> return []) hdl]
+               initcmd
 
-{-
+
+msgToIOHandler :: (String -> GuiPort -> IO [ReconfigureItem]) -> Handle -> ExternalHandler
+msgToIOHandler hdler hdl = IOHandler (hdl,\ _ hd gp -> do
+                                      l <- hGetLine hd
+                                      cfs <- hdler l gp
+                                      return (Just cfs))
+
 --- Runs a Widget in a new GUI window and process GUI events.
 --- In addition, a list of event handlers is provided that process
 --- inputs received from a corresponding list of handles to input streams.
@@ -1048,10 +1049,10 @@ runInitControlledGUI title (widget,exth) initcmd msgs = do
 ---             new window and handlers is a list of event handler for external inputs
 --- @param handles - a list of handles to the external input streams for the
 ---                  corresponding event handlers
-runHandlesControlledGUI :: String -> (Widget,[Handle -> GuiPort -> IO ()])
+runHandlesControlledGUI :: String -> (Widget,[Handle -> GuiPort -> IO [ReconfigureItem]])
                            -> [Handle] -> IO ()
 runHandlesControlledGUI title widgethandlers handles =
-  runInitHandlesControlledGUI title widgethandlers (const done) handles
+  runInitHandlesControlledGUI title widgethandlers (\_->return []) handles
 
 
 --- Runs a Widget in a new GUI window and process GUI events
@@ -1068,38 +1069,34 @@ runHandlesControlledGUI title widgethandlers handles =
 --- @param initcmd - the initial command executed before starting the GUI
 --- @param handles - a list of handles to the external input streams for the
 ---                  corresponding event handlers
-runInitHandlesControlledGUI :: String -> (Widget,[Handle -> GuiPort -> IO ()])
-                               -> (GuiPort -> IO ()) -> [Handle] -> IO ()
+runInitHandlesControlledGUI :: String -> (Widget,[Handle -> GuiPort -> IO [ReconfigureItem]])
+                               -> (GuiPort -> IO [ReconfigureItem]) -> [Handle] -> IO ()
 runInitHandlesControlledGUI title (widget,handlers) initcmd handles =
  do gport <- openWish (escape_tcl title) ""
     initSchedule widget gport
                  (map IOHandler (zip handles (map toIOHandler handlers)))
-                 [] initcmd
--}
+                 initcmd
 
 -- The type of external event handlers currently supported.
 -- It is either a handler processing messages from an external port
 -- or a handler processing input from various IO streams
-data ExternalHandler msg =
-   PortMsgHandler (msg -> GuiPort -> IO [ReconfigureItem])
- | IOHandler (Handle,
+data ExternalHandler =
+  IOHandler (Handle,
        [EventHandler] -> Handle -> GuiPort -> IO (Maybe [ReconfigureItem]))
-
--- An empty list of unit type. Used to avoid typing problems in kics2 back end.
-emptyUnitList :: [()]
-emptyUnitList = [] --tail [()]
 
 -- start the scheduler (see below) with a given Widget on a wish port
 -- and an initial command:
-initSchedule :: Widget -> GuiPort -> [ExternalHandler msg] ->
-                [msg] -> (GuiPort -> IO ()) -> IO ()
-initSchedule widget gport exths msgs initcmd = do
-  let (tcl,evs) = mainWidget2tcl widget
+initSchedule :: Widget -> GuiPort -> [ExternalHandler] ->
+                (GuiPort -> IO [ReconfigureItem]) -> IO ()
+initSchedule widget gport exths initcmd = do
   send2tk tcl gport
-  initcmd gport
+  confs <- initcmd gport
   -- add handler on wish connection as first handler:
-  scheduleTkEvents evs gport
-                   (IOHandler (handleOf gport,processTkEvent) : exths) msgs
+  configAndProceedScheduler evs gport
+                   (IOHandler (handleOf gport,processTkEvent) : exths) 
+                   (Just confs)
+ where
+  (tcl,evs) = mainWidget2tcl widget
 
 -- Scheduler for Tcl/Tk events:
 --
@@ -1108,36 +1105,15 @@ initSchedule widget gport exths msgs initcmd = do
 -- gport: port to a wish
 -- exth: handler for external messages
 -- msgs: list of external messages
-scheduleTkEvents :: [EventHandler] -> GuiPort -> [ExternalHandler msg]
-                    -> [msg] -> IO ()
+scheduleTkEvents :: [EventHandler] -> GuiPort -> [ExternalHandler] -> IO ()
 -- schedule GUI with handler for external port:
-scheduleTkEvents evs gport exthds msgs = do
-  (newmsgs,newconfigs) <- processEvent evs gport (splitHandlers exthds) msgs
-  configAndProceedScheduler evs gport exthds newmsgs newconfigs
- where
-  -- split ExternalHandlers into list of PortMsgHandler and list of IOHandler:
-  splitHandlers [] = ([],[])
-  splitHandlers (PortMsgHandler ph : exths) =
-    let (phs,iohs) = splitHandlers exths in (ph : phs, iohs)
-  splitHandlers (IOHandler ioh : exths) =
-    let (phs,iohs) = splitHandlers exths in (phs, ioh : iohs)
-
-
-processEvent evs gport (portmsghandler:_,iohandlers) msgs = do
-  -- for implementation reasons, we take only the first PortMsgHandler
-  -- (more than one should not occur)
-  answer <- choiceOverHandlesMsgs (map fst iohandlers) msgs
-  either (\ (i,hdl) -> do confs <- (snd (iohandlers!!i)) evs hdl gport
-                          return (msgs,confs))
-         (\ (newmsg:newmsgs) -> do configs <- portmsghandler newmsg gport
-                                   return (newmsgs, Just configs) )
-         answer
--- schedule GUI with handlers for external streams:
-processEvent evs gport ([],iohandlers) msgs = do
+scheduleTkEvents evs gport exthds = do
   (i,hdl) <- choiceOverHandles (map fst iohandlers)
-  mbconfigs <- (snd (iohandlers!!i)) evs hdl gport
-  return (msgs,mbconfigs)
-
+  if i <0 then done
+          else snd (iohandlers!!i) evs hdl gport >>=
+               configAndProceedScheduler evs gport exthds 
+    where
+      iohandlers = map (\ (IOHandler x) -> x) exthds
 
 -- process an event from the wish and return the new configuration items:
 processTkEvent :: [EventHandler] -> Handle -> GuiPort
@@ -1160,12 +1136,11 @@ processTkEvent evs str gport =
 -- Reconfigure scheduler with new configurations and proceed.
 -- If the configs are Nothing, then terminate the scheduler
 -- (this case occurs of the connection is closed by wish)
-configAndProceedScheduler _ gport _ _ Nothing = closeGuiPort gport
-configAndProceedScheduler evs gport exths msgs (Just configs) = do
+configAndProceedScheduler _ gport _ Nothing = closeGuiPort gport
+configAndProceedScheduler evs gport exths (Just configs) = do
   mapIO_ reconfigureGUI configs
   scheduleTkEvents (configEventHandlers evs configs) gport
                    (configStreamHandlers exths configs)
-                   msgs
  where
   reconfigureGUI (WidgetConf r ci) = setConfig r ci gport
   reconfigureGUI (StreamHandler _ _) = done
@@ -1197,22 +1172,20 @@ configStreamHandlers exths (RemoveStreamHandler handle : confitems) =
   configStreamHandlers (removeHandler handle exths) confitems
  where
   removeHandler _ [] = []
-  removeHandler h (PortMsgHandler hr : ehs) =
-    PortMsgHandler hr : removeHandler h ehs
   removeHandler h (IOHandler (h',hr) : ehs) =
     if h==h' then removeHandler h ehs
              else IOHandler (h',hr) : removeHandler h ehs
 
 -- transform external handler into an IO Handler used in the scheduler
 -- which alwaus returns empty configurations:
-toIOHandler handler _ handle gport = handler handle gport >> return (Just [])
+toIOHandler handler _ handle gport = handler handle gport >>= return . Just
 
 --- Changes the current configuration of a widget
 --- (deprecated operation, only included for backward compatibility).
 --- Warning: does not work for Command options!
 setConfig :: WidgetRef -> ConfItem -> GuiPort -> IO ()
-setConfig (WRefLabel var wtype) confitem gport = do
-  send2tk (config2tcl (ints2string wtype) (wRefname2Label var) confitem) gport
+setConfig (WRefLabel var wtype) confitem gport = 
+  send2tk (config2tcl wtype (wRefname2Label var) confitem) gport
 
 
 selectEvent evwidget evtype [] _ =
@@ -1262,14 +1235,6 @@ getWidgetVarRemValue len gport =
           return valmsg
 
 
--- Check consistency of access to widget variables via GUI ports, i.e.,
--- check whether the accessed variable really belongs to the GUI referenced
--- by the GUI port.
-checkWishConsistency wp1 wp2 =
- if wp1==wp2 then done else
-  trace "Inconsistent use of Tk ports during access to Tk variables\n" failed
-
-
 -- escape some Tcl special characters (brackets, dollars):
 escape_tcl [] = []
 escape_tcl (c:s) = if c=='[' || c==']' || c=='$' || c=='"' || c=='\\'
@@ -1289,12 +1254,12 @@ exitGUI gport = send2tk "exit" gport -- this also terminates the scheduler
 --- Gets the (String) value of a variable in a GUI.
 getValue :: WidgetRef -> GuiPort -> IO String
 getValue (WRefLabel var _) gport = 
-  getWidgetVar (ints2string var) gport
+  getWidgetVar var gport
 
 --- Sets the (String) value of a variable in a GUI.
 setValue :: WidgetRef -> String -> GuiPort -> IO ()
 setValue (WRefLabel var _) val gport = 
-  send2tk ("setvar"++ints2string var++" \""++escape_tcl val++"\"") gport
+  send2tk ("setvar"++var++" \""++escape_tcl val++"\"") gport
 
 --- Updates the (String) value of a variable w.r.t. to an update function.
 updateValue :: (String->String) -> WidgetRef -> GuiPort -> IO ()
@@ -1306,8 +1271,8 @@ updateValue upd wref gport = do
 --- adjust the view to the end of the TextEdit widget.
 appendValue :: WidgetRef -> String -> GuiPort -> IO ()
 appendValue (WRefLabel var wtype) val gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.appendValue ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.appendValue ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\"") gport >>
        send2tk (wRefname2Label var++" see end") gport
 
@@ -1320,8 +1285,8 @@ appendValue (WRefLabel var wtype) val gport =
 --- This is an experimental function and might be changed in the future.
 appendStyledValue :: WidgetRef -> String -> [Style] -> GuiPort -> IO ()
 appendStyledValue (WRefLabel var wtype) val styles gport =
-  if ints2string wtype/="textedit"
-   then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+   then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++wtype++"\"\n") done
    else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\""
                  ++" \""++showStyles styles++"\"") gport >>
         send2tk (wRefname2Label var++" see end") gport
@@ -1340,8 +1305,8 @@ appendStyledValue (WRefLabel var wtype) val styles gport =
 addRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                -> IO ()
 addRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" tag add "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
@@ -1353,8 +1318,8 @@ addRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
 removeRegionStyle :: WidgetRef -> (Int,Int) -> (Int,Int) -> Style -> GuiPort
                   -> IO ()
 removeRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.setRegionStyle ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" tag remove "++showStyle style++" "++
                 show l1++"."++show c1++" "++show l2++"."++show c2) gport
 
@@ -1363,9 +1328,9 @@ removeRegionStyle (WRefLabel var wtype) (l1,c1) (l2,c2) style gport =
 --- widget. Lines are numbered from 1 and columns are numbered from 0.
 getCursorPosition :: WidgetRef -> GuiPort -> IO (Int,Int)
 getCursorPosition (WRefLabel var wtype) gport =
-  if ints2string wtype/="textedit"
+  if wtype/="textedit"
   then error ("GUI.getCursorPosition not applicable to widget type \""++
-              ints2string wtype++"\"")
+              wtype++"\"")
   else do send2tk ("puts [ "++wRefname2Label var++" index insert ]") gport
           line <- receiveFromTk gport
           let (ls,ps) = break (=='.') line
@@ -1377,8 +1342,8 @@ getCursorPosition (WRefLabel var wtype) gport =
 --- Lines are numbered from 1 and columns are numbered from 0.
 seeText :: WidgetRef -> (Int,Int) -> GuiPort -> IO ()
 seeText (WRefLabel var wtype) (line,column) gport =
-  if ints2string wtype/="textedit"
-  then trace ("WARNING: GUI.seeText ignored for widget type \""++ints2string wtype++"\"\n") done
+  if wtype/="textedit"
+  then trace ("WARNING: GUI.seeText ignored for widget type \""++wtype++"\"\n") done
   else send2tk (wRefname2Label var++" see "++show line++"."++show column) gport
 
 
@@ -1392,7 +1357,7 @@ focusInput (WRefLabel var _) gport = do
 --- Adds a list of canvas items to a canvas referred by the first argument.
 addCanvas :: WidgetRef -> [CanvasItem] -> GuiPort -> IO ()
 addCanvas (WRefLabel var wtype) items gport = do
-  send2tk (config2tcl (ints2string wtype) (wRefname2Label var) (CanvasItems items)) gport
+  send2tk (config2tcl wtype (wRefname2Label var) (CanvasItems items)) gport
 
 
 ----------------------------------------------------------------------------

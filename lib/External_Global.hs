@@ -40,10 +40,37 @@ instance NormalForm (C_Global a) where
   cont $!! Choices_C_Global i gs = nfChoices cont i gs
   cont $!! Guard_C_Global c g = guardCons c (cont $!! g)
   _    $!! Fail_C_Global = failCons
+  cont $## g@(C_Global_Temp _) = cont g
+  cont $## g@(C_Global_Pers _) = cont g
+  cont $## Choice_C_Global i g1 g2 = gnfChoice cont i g1 g2
+  cont $## Choices_C_Global i gs = gnfChoices cont i gs
+  cont $## Guard_C_Global c g = guardCons c (cont $## g)
+  _    $## Fail_C_Global = failCons
+  cont $!< Choice_C_Global i g1 g2 = nfChoiceIO cont i g1 g2
+  cont $!< Choices_C_Global i gs   = nfChoicesIO cont i gs
+  cont $!< x = cont x
+  searchNF _ cont g@(C_Global_Temp _) = cont g
+  searchNF _ cont g@(C_Global_Pers _) = cont g
 
 instance Unifiable (C_Global a) where
-  (=.=) _ _ = error "(=.=) for C_Global"
-  bind i (Choice_C_Global j@(FreeID _ _) _ _) = [i :=: (BindTo j)]
+  (=.=) (C_Global_Temp ref1) (C_Global_Temp ref2)
+    | ref1 == ref2 = C_Success
+    | otherwise    = Fail_C_Success
+  (=.=) (C_Global_Pers f1) (C_Global_Pers f2)
+    | f1 == f2  = C_Success
+    | otherwise = Fail_C_Success
+  (=.=) _ _ = Fail_C_Success
+  (=.<=) = (=.=)
+  bind i (Choice_C_Global j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
+  bind i (Choices_C_Global j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Global j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ Fail_C_Global = [Unsolvable]
+  bind i (Guard_C_Global cs e) = cs ++ (bind i e)
+  lazyBind i (Choice_C_Global j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_Global j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Global j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ Fail_C_Global = [Unsolvable]
+  lazyBind i (Guard_C_Global cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance CP.Curry a => CP.Curry (C_Global a) where
   (=?=) = error "(==) is undefined for Globals"

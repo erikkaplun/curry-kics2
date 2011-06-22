@@ -1,13 +1,14 @@
 {-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
 
-import GHC.IO.Exception (IOException (..))
+import qualified Control.Exception as C
+
 
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
 import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
 import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
 import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
-
+import System.IO
 
 -- ---------------------------------------------------------------------------
 -- Externals
@@ -194,13 +195,13 @@ currynat2primint :: Nat -> Int#
 currynat2primint IHi   = 1#
 currynat2primint (O n) = 2# *# currynat2primint n
 currynat2primint (I n) = 2# *# currynat2primint n +# 1#
-currynat2primint _     = error "Prelude.currynat2primint: no ground term"
+currynat2primint _ = error "KiCS2 error: Prelude.currynat2primint: no ground term"
 
 curryint2primint :: BinInt -> Int#
 curryint2primint Zero    = 0#
 curryint2primint (Pos n) = currynat2primint n
 curryint2primint (Neg n) = negateInt# (currynat2primint n)
-curryint2primint x       = error "Prelude.curryint2primint: no ground term"
+curryint2primint _ = error "KiCS2 error: Prelude.curryint2primint: no ground term"
 
 
 
@@ -427,7 +428,7 @@ instance ConvertCurryHaskell C_Int Int where
 
   fromCurry (C_Int i)      = I# i
   fromCurry (C_CurryInt i) = I# (curryint2primint i)
-  fromCurry _              = error "Int data with no ground term"
+  fromCurry _              = error "KiCS2 error: Int data with no ground term"
 
 instance ConvertCurryHaskell C_Int Integer where
   toCurry i = int2C_Int (fromInteger i)
@@ -436,20 +437,20 @@ instance ConvertCurryHaskell C_Int Integer where
 
   fromCurry (C_Int i) = toInteger (I# i)
   fromCurry (C_CurryInt i) = toInteger (I# (curryint2primint i))
-  fromCurry _         = error "Int data with no ground term"
+  fromCurry _         = error "KiCS2 error: Int data with no ground term"
 
 instance ConvertCurryHaskell C_Float Float where
   toCurry (F# f) = C_Float f
 
   fromCurry (C_Float f) = F# f
-  fromCurry _           = error "Float data with no ground term"
+  fromCurry _           = error "KiCS2 error: Float data with no ground term"
 
 instance ConvertCurryHaskell C_Char Char where
   toCurry (C# c) = C_Char c
 
   fromCurry (C_Char c) = C# c
   fromCurry (CurryChar c) = C# (curryChar2primChar c)
-  fromCurry _          = error "Char data with no ground term"
+  fromCurry _          = error "KiCS2 error: Char data with no ground term"
 
 instance (ConvertCurryHaskell ct ht) =>
          ConvertCurryHaskell (OP_List ct) [ht] where
@@ -458,7 +459,7 @@ instance (ConvertCurryHaskell ct ht) =>
 
   fromCurry OP_List        = []
   fromCurry (OP_Cons c cs) = fromCurry c : fromCurry cs
-  fromCurry _              = error "List data with no ground term"
+  fromCurry _              = error "KiCS2 error: List data with no ground term"
 
 instance ConvertCurryHaskell C_Bool Bool where
   toCurry True  = C_True
@@ -466,20 +467,20 @@ instance ConvertCurryHaskell C_Bool Bool where
 
   fromCurry C_True  = True
   fromCurry C_False = False
-  fromCurry _       = error "Float data with no ground term"
+  fromCurry _       = error "KiCS2 error: Float data with no ground term"
 
 instance ConvertCurryHaskell OP_Unit () where
   toCurry ()  = OP_Unit
 
   fromCurry OP_Unit = ()
-  fromCurry _       = error "Unit data with no ground term"
+  fromCurry _       = error "KiCS2 error: Unit data with no ground term"
 
 instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2) =>
          ConvertCurryHaskell (OP_Tuple2 ct1 ct2) (ht1,ht2) where
   toCurry (x1,x2)  = OP_Tuple2 (toCurry x1) (toCurry x2)
 
   fromCurry (OP_Tuple2 x1 x2) = (fromCurry x1, fromCurry x2)
-  fromCurry _       = error "Pair data with no ground term"
+  fromCurry _       = error "KiCS2 error: Pair data with no ground term"
 
 instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2,
           ConvertCurryHaskell ct3 ht3) =>
@@ -487,7 +488,7 @@ instance (ConvertCurryHaskell ct1 ht1, ConvertCurryHaskell ct2 ht2,
   toCurry (x1,x2,x3)  = OP_Tuple3 (toCurry x1) (toCurry x2) (toCurry x3)
 
   fromCurry (OP_Tuple3 x1 x2 x3) = (fromCurry x1, fromCurry x2, fromCurry x3)
-  fromCurry _       = error "Tuple3 data with no ground term occurred"
+  fromCurry _       = error "KiCS2 error: Tuple3 data with no ground term occurred"
 
 instance ConvertCurryHaskell ct ht =>
          ConvertCurryHaskell (C_Maybe ct) (Maybe ht) where
@@ -496,7 +497,7 @@ instance ConvertCurryHaskell ct ht =>
 
   fromCurry C_Nothing  = Nothing
   fromCurry (C_Just x) = Just (fromCurry x)
-  fromCurry _          = error "Maybe data with no ground term occurred"
+  fromCurry _          = error "KiCS2 error: Maybe data with no ground term occurred"
 
 --fromOrdering :: Ordering -> C_Ordering
 --fromOrdering LT = C_LT
@@ -707,8 +708,8 @@ external_d_C_prim_appendFile :: C_String -> C_String -> C_IO OP_Unit
 external_d_C_prim_appendFile = fromHaskellIO2 appendFile
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> C_IO a
-external_d_C_catchFail act err = fromIO $ catch (toIOWithFailCheck act) handle
-  where handle ioErr = print ioErr >> (toIO err)
+external_d_C_catchFail act err = fromIO $ C.catch (toIOWithFailCheck act) handle
+  where handle e = hPutStrLn stderr (show (e :: C.SomeException)) >> (toIO err)
         toIOWithFailCheck act =
           case act of Fail_C_IO -> ioError (userError "I/O action failed")
                       _         -> toIO act
@@ -759,12 +760,12 @@ external_nd_C_apply :: NonDet b => Func a b -> a -> IDSupply -> b
 external_nd_C_apply = nd_apply
 
 external_d_C_catch :: C_IO a -> (C_IOError -> C_IO a) -> C_IO a
-external_d_C_catch act cont = fromIO $ catch (toIO act) handle where
-  handle = toIO . cont . C_IOError . toCurry . ioe_description
+external_d_C_catch act cont = fromIO $ C.catch (toIO act) handle where
+  handle e = toIO $ cont $ C_IOError $ toCurry $ show (e :: C.SomeException)
 
 external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> C_IO a
-external_nd_C_catch act cont s = C_IO $ catch (toIO act) handle where
-  handle e = toIO (nd_apply cont (C_IOError (toCurry (ioe_description e))) s)
+external_nd_C_catch act cont s = fromIO $ C.catch (toIO act) handle where
+  handle e = toIO $ nd_apply cont (C_IOError $ toCurry $ show (e :: C.SomeException)) s
 
 -- TODO: Support non-deterministic IO ?
 external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> C_IO t1) -> C_IO t1

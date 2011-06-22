@@ -4,12 +4,11 @@ KiCS2HOME=..
 KICS2BIN=$KiCS2HOME/bin
 
 # test for basic language features
-#TESTLANG="testNarr testNonStrictUnif testFuncPattern"
-TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec"
+TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonStrictUnif testFuncPattern"
 
 # test for standard libraries
-#TESTLIBS="testCombinatorial testDatabase testDirectory testDynamic testFlatCurryGoodies testFlatCurryXML testGlobalVariable testSetFunctions testSort testTraversal testArray testDequeue testFiniteMap testRedBlackTree"
-TESTLIBS="testPrelude testGlobal testInteger testIO testIOExts testList testSystem"
+#TESTLIBS="testDatabase testDynamic testGlobalVariable testSetFunctions"
+TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testFlatCurryXML testGlobal testInteger testIO testIOExts testList testRedBlackTree testSort testSystem testTraversal"
 
 ALLTESTS="$TESTLANG $TESTLIBS"
 
@@ -22,4 +21,4 @@ export PATH
 
 # execute all unit tests:
 echo "Executing unit tests for back end $BACKEND..."
-$KiCS2HOME/bin/currytestkics --window $ALLTESTS
+$KICS2BIN/currytest --window $ALLTESTS

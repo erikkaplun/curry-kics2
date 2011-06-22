@@ -5,7 +5,7 @@
 -- and summarizes the results in a GUI.
 --
 -- @author Michael Hanus
--- @version May 2011
+-- @version June 2011
 ---------------------------------------------------------------------
 
 import Socket
@@ -64,8 +64,7 @@ terminateForwardMessages portnum = do
 
 startGUI modnames = do
   (guiportnum,socket) <- listenOnFresh
-  --system (installDir++"/bin/currytest -f "++show guiportnum++" &")
-  system ("currytestkics -f "++show guiportnum++" &")
+  system (installDir++"/bin/currytest -f "++show guiportnum++" &")
   (_,inhandle) <- socketAccept socket
   portnums <- hGetLine inhandle
   let portnum = readNat portnums
@@ -200,6 +199,7 @@ protocolGUI portnum initmods stateref =
    ext_handler h gp = do
      msgstring <- hGetLine h
      processTestMsg (readUnqualifiedTerm ["Assertion","Prelude"] msgstring) gp
+     return []
 
    processTestMsg (TestModule m) gp =
       appendValue rprot

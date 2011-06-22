@@ -1,21 +1,25 @@
 #!/bin/bash
 
 SRC=PrimTypes.curry
-DEST=.curry/kics2/Curry_PrimTypes.hs
+DEST=./.curry/kics2/Curry_PrimTypes.hs
 
 function replace ()
 {
    cat $1 | sed -e "s/C_IntPrim/Int#/" \
   | sed "s/\(showsPrec d (C_Int x1) = \).*$/\1shows (I# x1)/" \
+  | sed "s/\(showsPrec d (C_CurryInt x1) = \).*$/\1(\\x -> shows (I# (curryint2primint x))) \$!! x1/" \
   | sed "s/\(readsPrec d s = \).*C_Int.*$/\1map readInt (readsPrec d s) where readInt (I# i, s) = (C_Int i, s)/" \
-  | sed 's/generate s = Choices_C_Int.*$/generate _ = error "No generator for C_Int"/' \
+  | sed 's/\(generate s = Choices_C_Int \).*$/\1 (freeID [1] s) [C_CurryInt (generate (leftSupply s))]/' \
   | sed "s/(\$!!) cont (C_Int x1).*$/(\$!!) cont x@(C_Int _) = cont x/" \
   | sed "s/(\$##) cont (C_Int x1).*$/(\$##) cont x@(C_Int _) = cont x/" \
   | sed "/(\$!<) cont (C_Int x1)/d" \
-  | sed "/(=\.=) (C_Int x1) (C_Int y1)/d" \
+  | sed "s/\(searchNF search cont \)(C_Int x1) = .*$/\1x@(C_Int _) = cont x/" \
+  | sed "s/(=\.=) (C_Int x1) (C_Int y1) =.*/(=.=) (C_Int      x1) (C_Int      y1) = if (x1 ==# y1) then C_Success else Fail_C_Success/" \
+  | sed "s/\((=\.=) (C_CurryInt x1) (C_CurryInt y1).*\)$/\1\n  (=\.=) (C_Int x1) x2 = (int2integer x1) =\.= x2\n  (=\.=) x1 (C_Int x2) = x1 =\.= (int2integer x2)/" \
   | sed "/(=\.<=) (C_Int x1) (C_Int y1)/d" \
-  | sed "/bind i (C_Int x2) =/d" \
-  | sed "/lazyBind i (C_Int x2) =/d" \
+  | sed "s/\((=\.<=) (C_CurryInt x1) (C_CurryInt y1).*\)$/\1\n  (=\.<=) (C_Int x1) x2 = (int2integer x1) =\.<= x2\n  (=\.<=) x1 (C_Int x2) = x1 =\.<= (int2integer x2)/" \
+  | sed "s/\(bind i (C_Int x2) = \).*$/\1bind i (int2integer x2)/" \
+  | sed "s/\(lazyBind i (C_Int x2) = \).*$/\1lazyBind i (int2integer x2)/" \
   | sed "s/\((=?=) (C_Int x1) (C_Int y1) = \).*$/\1toCurry (x1 ==# y1)/" \
   | sed "s/\((<?=) (C_Int x1) (C_Int y1) = \).*$/\1toCurry (x1 <=# y1)/" \
   | sed "s/C_FloatPrim/Float#/" \
@@ -102,4 +106,4 @@ function replace ()
 }
 
 rm -f $DEST
-./compilecurry $SRC || replace $DEST
+../bin/idc -i./lib $SRC && replace $DEST

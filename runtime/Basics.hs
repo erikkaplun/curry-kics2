@@ -328,7 +328,7 @@ mapFst f (a,b) = (f a,b)
 ------------------------------------------------------------------------------
 
 matchChar :: NonDet a => [(Char,a)] -> BinInt -> a
-matchChar rules = matchInteger (map (mapFst ord) rules) 
+matchChar rules = matchInteger (map (mapFst ord) rules)
 
 -- ---------------------------------------------------------------------------
 -- Built-in types
@@ -406,7 +406,19 @@ instance Unifiable C_Success where
 -- END GENERATED FROM PrimTypes.curry
 
 (&) :: C_Success -> C_Success -> C_Success
-x & y = const y $!! x
+(&) C_Success y = y
+(&) x@Fail_C_Success           _ = x
+(&) x@(Choice_C_Success i a b) y = maySwitch y x
+(&) x@(Choices_C_Success i xs) y = maySwitch y x
+(&) x@(Guard_C_Success cs e)   y = maySwitch y x
+
+maySwitch :: C_Success -> C_Success -> C_Success
+maySwitch C_Success        x = x
+maySwitch y@Fail_C_Success _ = y
+maySwitch (Guard_C_Success cs e) x = Guard_C_Success cs (x & e)
+maySwitch y (Choice_C_Success i a b) = Choice_C_Success i (a & y) (b & y)
+maySwitch y (Choices_C_Success i xs) = Choices_C_Success (narrowID i) (map (& y) xs)
+maySwitch y (Guard_C_Success cs e)   = Guard_C_Success cs (e & y)
 
 
 -- BinInt
@@ -1369,7 +1381,7 @@ lookupChoiceID' r = do
      case cj of
        ChooseN n pn -> do
           propagateBind' r j pn
-          return ((ChooseN n pn),k)
+          return (cj,k)
        c            -> return (c,k)
    c        -> return (c,r)
 
@@ -1378,7 +1390,7 @@ setChoiceRaw' r c = modify (Data.Map.insert (mkInt r) c)
 
 setChoice' :: Monad m => ID -> Choice -> StateT SetOfChoices m ()
 setChoice' r (BindTo j) | mkInt r == mkInt j = return ()
-setChoice' r c =  lookupChoice' r >>= unchain
+setChoice' r c =  lookupChoiceRaw' r >>= unchain
  where
    unchain (BindTo k) = do
      setChoice' k c
@@ -1397,7 +1409,7 @@ setChoice' r c =  lookupChoice' r >>= unchain
        _ -> setChoiceRaw' r c
 
 propagateBind' i j pn = do
-  zipWithM_ (\childr childj -> setChoice' childr (BindTo j))
+  zipWithM_ (\childr childj -> setChoice' childr (BindTo childj))
             (nextNIDs i pn) (nextNIDs j pn)
   setChoiceRaw' i (BoundTo j pn)
 
@@ -1435,9 +1447,9 @@ solves' (c:cs) = solve c >> solves' cs
    where
     chooseCC ChooseLeft  = solves' lcs
     chooseCC ChooseRight = solves' rcs
-    chooseCC NoChoice    = setChoice' i ChooseLeft >> solves' lcs
+    chooseCC NoChoice    = (setChoice' i ChooseLeft >> solves' lcs)
                            `mplus`
-                           setChoice' i ChooseRight >> solves' rcs
+                           (setChoice' i ChooseRight >> solves' rcs)
     chooseCC c           = error $ "solves'.solve.chooseCC: " ++ show c
   solve (ConstraintChoices i css) = lookupChoice' i >>= chooseCCs
    where
@@ -1469,8 +1481,8 @@ searchMPlus'' _   Fail           = mzero
 searchMPlus'' cont (Val v)        = searchNF searchMPlus' cont v
 searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
   where
-    choose ChooseLeft  = searchMPlus'' cont (try x)
-    choose ChooseRight = searchMPlus'' cont (try y)
+    choose ChooseLeft  = searchMPlus' cont x
+    choose ChooseRight = searchMPlus' cont y
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
@@ -1495,7 +1507,7 @@ processLazyBind' i cont cs branches = do
   setChoice' i NoChoice
   searchMPlus' cont (guardCons cs (choicesCons i branches))
 ----------------------------------------------------------------------
--- Auxillary Functions
+-- Auxiliary Functions
 ----------------------------------------------------------------------
 
 -- Operation to print the result of the main goal with bindings of free

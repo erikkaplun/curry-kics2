@@ -8,7 +8,8 @@
 -- The human-readable presentation is (almost) Curry source code
 -- generated from a FlatCurry file.
 --
--- Michael Hanus, September 2003
+-- @author Michael Hanus
+-- @version June 2011
 ------------------------------------------------------------------------------
 
 import FlatCurry
@@ -170,18 +171,21 @@ writeCurryMod targetfile progname =
 
 genCurryMod :: String -> IO String
 genCurryMod progname = do
-  (Prog mod imports types funcs ops)
-                         <- readFlatCurryFile (flatCurryFileName progname)
-  return $ "module "++mod++"("++showTypeExports types++
-           showFuncExports funcs++") where\n\n"++
-           concatMap genIntImport imports ++ "\n" ++
-           concatMap genIntOpDecl ops ++
-           (if null ops then "" else "\n") ++
-           concatMap (showCurryDataDecl (showQNameInModule mod)) types
-           ++ "\n" ++
-           concatMap (showCurryFuncDecl (showQNameInModule mod)
-                                        (showQNameInModule mod)) funcs
-           ++ "\n-- end of module " ++ progname ++ "\n"
+  prog <- readFlatCurryFile (flatCurryFileName progname)
+  return $ showCurryProgram prog
+
+showCurryProgram :: Prog -> String
+showCurryProgram (Prog mod imports types funcs ops) =
+  "module "++mod++"("++showTypeExports types++
+  showFuncExports funcs++") where\n\n"++
+  concatMap genIntImport imports ++ "\n" ++
+  concatMap genIntOpDecl ops ++
+  (if null ops then "" else "\n") ++
+  concatMap (showCurryDataDecl (showQNameInModule mod)) types
+  ++ "\n" ++
+  concatMap (showCurryFuncDecl (showQNameInModule mod)
+                               (showQNameInModule mod)) funcs
+  ++ "\n-- end of module " ++ mod ++ "\n"
 
 showTypeExports types = concatMap (++",") (concatMap exptype types)
  where

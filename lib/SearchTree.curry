@@ -3,8 +3,8 @@
 --- a tree and search strategies on this tree.
 ------------------------------------------------------------------
 
-module SearchTree(SearchTree(..),searchTree, isDefined,
-                  showSearchTree, searchTreeSize,
+module SearchTree(SearchTree(..),someSearchTree, getSearchTree,
+                  isDefined, showSearchTree, searchTreeSize,
                   allValuesDFS, allValuesBFS)
   where
 
@@ -14,16 +14,16 @@ data SearchTree a = Value a
                   | Or (SearchTree a) (SearchTree a)
 
 --- Returns the search tree for some expression.
-searchTree :: a -> IO (SearchTree a)
-searchTree x = return (getSearchTree x)
+getSearchTree :: a -> IO (SearchTree a)
+getSearchTree x = return (someSearchTree x)
 
 --- Internal operation to eturn the search tree for some expression.
-getSearchTree :: a -> SearchTree a
-getSearchTree external
+someSearchTree :: a -> SearchTree a
+someSearchTree external
 
 --- Returns True iff the argument is is defined, i.e., has a value.
 isDefined :: a -> Bool
-isDefined x = hasValue (getSearchTree x)
+isDefined x = hasValue (someSearchTree x)
  where hasValue x = case x of Value _  -> True
                               Fail     -> False
                               Or t1 t2 -> hasValue t1 || hasValue t2

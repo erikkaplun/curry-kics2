@@ -1,4 +1,28 @@
 #!/bin/sh
 # call cymake of PAKCS (for the moment...)
 PAKCSBINDIR=$(dirname `which pakcs`)
-$PAKCSBINDIR/../mccparser/bin/cymake ${1+"$@"}
+
+# define KICS2RC
+KICS2RC=$HOME/.kics2rc
+
+# Prepare flags for MCC parser:
+MCCEXTENDED=
+MCCOVERLAPWARN=
+if [ -f "$KICS2RC" ] ; then
+  # check flag "curryextensions" in kics2rc:
+  for i in `sed -n '/^curryextensions=/p' < "$KICS2RC"`
+  do 
+    if [ xx`expr $i : '.*=\(.*\)'` = xxyes ] ; then
+      MCCEXTENDED="--extended"
+    fi
+  done
+  # check flag "warnoverlapping" in kics2rc:
+  for i in `sed -n '/^warnoverlapping=/p' < "$KICS2RC"`
+  do 
+    if [ xx`expr $i : '.*=\(.*\)'` = xxno ] ; then
+      MCCOVERLAPWARN="--no-overlap-warn"
+    fi
+  done
+  fi
+
+"$PAKCSBINDIR/../mccparser/bin/cymake" $MCCEXTENDED $MCCOVERLAPWARN ${1+"$@"}

@@ -14,6 +14,6 @@ instance MonadPlus C_SearchTree where
   mzero = C_Fail
   mplus = C_Or
 
-external_d_C_getSearchTree :: (NormalForm a,NonDet a) => a -> C_SearchTree a 
-external_d_C_getSearchTree = searchMPlus
+external_d_C_someSearchTree :: (NormalForm a,NonDet a) => a -> C_SearchTree a 
+external_d_C_someSearchTree = searchMPlus
 

@@ -2,13 +2,17 @@ Things we have to do
 ====================
 
 - $! still uses try which is highly inefficient
-
 - generate instances for match and get rid of try
-
 - Replace the generic <= in PermSort with a specialiced lt_int
   for a benchmark
-
 - Literal pattern like f 'a' = 'b' are not fully tested, especially for exotic
   characters (e.g., characters above (chr 127)).
-
-- Functions in data structures
+- repair automatic bootstrapping
+- set functions
+- test function patterns
+- IO
+- repair --no-opt compiler option
+- sharing of non-determinism is less efficient than in KiCS
+- sharing of non-determinism and free vars is less efficient than in KiCS
+- repair search strategies bfs, iterative deepening
+- eta-expansion of deterministic functions (optimizing)

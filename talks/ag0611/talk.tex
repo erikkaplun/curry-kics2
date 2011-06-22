@@ -1,0 +1,378 @@
+\documentclass[utf8]{beamer}
+
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{listings}
+\usetheme{Boadilla}
+
+\setbeamertemplate{footline}%{infolines theme}
+{
+\leavevmode%
+\hbox{%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+\usebeamerfont{author in head/foot}\insertshortauthor%~~(\insertshortinstitute)
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+\usebeamerfont{title in head/foot}\insertshorttitle
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+\usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+\end{beamercolorbox}}%
+\vskip0pt%
+}
+
+\newenvironment{program}{\begin{semiverbatim}\small}{\end{semiverbatim}}
+
+\begin{document}
+
+
+\title[KiCS2]{Implementation of Advanced Features in KiCS2}
+
+\date{June 22, 2011}
+
+\author[B. Braßel, M. Hanus, B. Peemöller,  \underline{F. Reck}]
+ {Bernd Braßel \and Michael Hanus \\
+   Björn Peemöller \and \underline{Fabian Reck}\\
+  \texttt{\{bbr, mh, bjp, fre\}@informatik.uni-kiel.de}}
+
+\institute{Kiel University}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Previously on KiCS2}
+\begin{itemize}
+\item KiCS2 is a compiler from Curry to Haskell
+\item Non-determinism is explicitly represented in
+      the data structures
+\item Unique identifiers are used to obtain
+      call-time choice semantics
+\item Deterministic and non-deterministc versions
+      of higher order functions are generated to
+      improve performance
+\end{itemize}
+
+\begin{block}{Haskell}
+\begin{program}
+data Bool = False | True | Choice ID Bool Bool | Fail
+\end{program}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Search}
+
+\begin{itemize}
+ \item Different search strategies traverse the search tree
+ \item Decissions for choices have to be managed
+ \item Strategies: depth-first-search, breadth-first-search,
+       iterative deepening, parallel search
+\end{itemize}
+
+\begin{block}{Haskell}
+\begin{program}
+data Choice = ChooseLeft
+            | ChooseRight
+            | NoChoice
+
+data Try a = Val a
+           | Fail
+           | Choice ID a a
+
+try :: a -> Try a
+\end{program}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Depth-First-Search}
+
+\begin{block}{Haskell}
+\begin{program}
+printAll :: a -> IO ()
+printAll a = dfs (try (normalForm a))
+
+dfs :: Try a -> IO ()
+dfs (Val a)        = print a
+dfs Fail           = return ()
+dfs (Choice i l r) = lookupChoice i >>= choose
+ where choose ChooseLeft  = dfs (try l)
+       choose ChooseRight = dfs (try r)
+       choose NoChoice    = do setChoice i ChooseLeft
+                               dfs (try l)
+                               setChoice i ChooseRight
+                               dfs (try r)
+                               setChoice i NoChoice
+\end{program}
+\end{block}
+
+%If no choice has been made for the current identifyer, both alternatives
+%are taken. The choice has to be undone in the end.
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Free Variables as Generators}
+
+Idea: Free Variables non-deterministically generate every value
+of the variables type:
+
+\begin{block}{Curry}
+\begin{program}
+aBool :: Bool
+aBool = x where x free
+
+aList :: [Bool]
+aList = xs where xs free 
+\end{program}
+\end{block}
+
+\begin{block}{Haskell}
+\begin{program}
+aBool :: ID -> Bool
+aBool i = Choice i True False
+
+aList :: ID -> [Bool]
+aList i = Choice i [] (aBool (left i) : aList (right i))
+\end{program}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Unification}
+\begin{block}{Haskell}
+\begin{program}
+(=:=) :: a -> a -> Success
+
+[]           =:= []           = Success
+(x:xs)       =:= (y:ys)       = x =:= y \& xs =:= ys
+Choice i l r =:= ys           = Choice i (l =:= ys) (r =:= ys)
+xs           =:= Choice i l r = Choice i (xs =:= l) (xs =:= r)
+_            =:= _            = Fail
+
+Success      \& s = s
+Choice i l r \& s = Choice i (l \& s) (r \& s)
+_            \& _ = Fail
+\end{program}
+\end{block}
+\begin{itemize}
+ \item  \verb!aList 1 =:= [True]! unnecessarily creates search space
+ \item Even infinite search space when unifying two variables
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Improved Unification}
+
+\begin{itemize}
+\item Distinguish free variables from normal choices  
+\item Represent necessary decisions in data type as constraint
+\end{itemize}
+
+\begin{block}{Representation of free variables}
+\begin{program}
+data ID = ID Integer | FreeID Integer
+
+aList i = Choice (free i) [] (aBool (left i) : aList (right i))
+\end{program}
+\end{block}
+
+\begin{block}{Representation of search constraints}
+\begin{program}
+data [a] = ... | Guard [Constraint] [a]
+
+data Constraint = ID :=: Choice
+\end{program}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example of Improved Unification}
+\begin{block}{Unification with variables}
+\begin{program}
+Choice (FreeID i) _ _ =:= [True] 
+-> Guard [ i       :=: ChooseRight      
+         , left i  :=: ChooseRight
+         , right i :=: ChooseLeft
+         ] Success
+\end{program}
+\end{block}
+\pause
+\begin{block}{Unification of two variables}
+\begin{program}
+data Choice = ... | BindTo ID
+
+Choice (FreeID i) _ _ =:= Choice (FreeID j) _ _
+-> Guard [i :=: BindTo j] Success
+\end{program}
+\end{block}
+\begin{itemize}
+\item Information that a variable is bound to another is stored
+\item Search has to be modified
+\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+
+\frametitle{Search}
+
+\begin{block}{Modification}
+\begin{program}
+
+data Try a = ... | Guard [Constraint] a | Free ID a a
+
+dfs (Guard constraints x) = solve constraints (dfs (try x))
+
+dfs (Free i l r) = lookupChoice i >>= choose
+   where choose ChooseLeft  = dfs (try l)
+         choose ChooseRight = dfs (try r)
+         choose NoChoice    = printFreeVar i
+\end{program}
+\end{block}
+
+\begin{itemize}
+\item \verb!BindTo! is handled transparently by
+      \verb!lookupChoice! and \verb!setChoice!
+\item \verb!solve! checks if the constraints are satisfiable,
+      stores the decisions, continues the search and resets the choices
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Function Patterns}
+\begin{block}{Curry}
+\begin{program}
+last (xs ++ [x]) = x
+\end{program}
+\end{block}
+\begin{block}{Desugared Curry}
+\begin{program}
+last ys = (xs ++ [x]) =:= ys &> x where x,xs free
+\pause
+> last [error, True]
+error
+\pause
+last ys = (xs ++ [x]) =:<= ys  &> x where x,xs free 
+
+> last [error,True]
+True
+\end{program}
+\end{block}
+
+With \verb!(=:<=)! variables are bound to expressions
+rather than values.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Lazy Unification}
+
+{\bf Idea:} Delay the unification until the variable is used
+
+\begin{block}{Haskell}
+\begin{program}
+data Choice = ChooseLeft | .. | LazyBind [Constraint]
+
+(=:<=) :: a -> a -> Success
+Choice (FreeID i) _ _ =:<= x 
+  = Guard [i :=: LazyBind (lazyBind i x)] Success 
+
+lazyBind :: ID -> a -> [Constraint]
+lazyBind i True  = [i :=: ChooseRight]
+lazyBind i False = [i :=: ChooseLeft ] 
+\end{program}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Lazy Unification}
+\begin{block}{Example}
+\begin{program}
+
+(&>) :: Success -> a -> a
+
+>  aList 2 ++ [aBool 3] =:<= [error,True] &> aBool 3
+
+-- Branches failing due to unification omitted
+
+-> [aBool 4, aBool 3] =:<= [error, True] &> aBool 3
+
+-> aBool 4 =:<= error & aBool 3 =:<= True & [] =:<= [] &> aBool 3
+
+-> Guard [ 4 :=: LazyBind (lazyBind 4 error)
+         , 3 :=: LazyBind (lazyBind 3 True)] Success &> aBool 3
+
+-> aBool 3 
+
+-> True
+\end{program}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Higher Order}
+
+For Higher Order we use the Haskell features:
+
+\begin{block}{Simple Higher Order}
+\begin{program}
+-- Curry
+map :: (a -> b) -> [a] -> [b]
+
+-- Haskell
+d_map   :: (a -> b) -> [a] -> [b]
+nd_map  :: (a -> ID -> b) -> [a] -> ID -> [b]
+\end{program}
+\end{block}
+
+{\bf Problem:} \verb!map (id ? not) [True,False]!
+
+
+\pause
+
+\begin{block}{Non-Deterministic Higher Order}
+\begin{program}
+data Func a b = Func (a -> ID -> b)
+              | Choice ... | Guard  ... | Fail 
+
+nd_map :: Func a b -> [a] -> ID -> [b]
+\end{program}
+\end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Higher Order Datastructures}
+\begin{block}{Curry}
+\begin{program}
+data Map k v = Map (k -> k -> Bool) ...
+
+empty :: (k -> k -> Bool) -> Map k v
+\end{program}
+\end{block}
+
+\begin{block}{Haskell}
+\begin{program}
+d_empty  :: (k -> k -> Bool) -> Map k v
+nd_empty :: Func k (Func k Bool) -> ID -> Map k v
+\pause
+data Map k v = D_Map  (k -> k -> Bool) ...
+             | ND_Map (Func k (Func k Bool)) ...
+             | Choice ...
+\end{program}
+\end{block}
+\begin{itemize}
+\item Use deterministic constructor in deterministic context
+      and non-deterministic constructor in non-deterministic context
+\item Consider functions that use data types with higher order constructors
+      as higher order functions
+\end{itemize}
+\end{frame}
+\end{document}

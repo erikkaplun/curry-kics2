@@ -7,89 +7,27 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=06/06/11
+COMPILERDATE=16/06/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
-INSTALLCURRY=Installation.curry
+INSTALLCURRY=src/Installation.curry
 # Logfile for make:
 MAKELOG=make.log
-# ghc options
-GHCOPTIONS=-O2 --make -v1
-# ghc language extensions for compiling translating Curry programs:
-GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
-# ghc includes for compiling translating Curry programs:
-GHCINCLUDES=-iruntime:runtime/idsupplyinteger:./.curry/kics2/:lib/.curry/kics2/:lib/meta/.curry/kics2/
-
-# Source modules of the compiler (without standard libraries):
-COMPILERSOURCES = Compile.curry \
-	          AbstractHaskellPrinter.curry \
-	          FlatCurry2Types.curry \
-	          LiftCase.curry \
-	          Message.curry ModuleDeps.curry \
-	          SimpleMake.curry Splits.curry \
-	          Dependency2.curry GetOpt.curry \
-		  AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
-	          Names.curry Analysis.curry \
-	          FiniteMap.curry \
-	          SCC.curry Base.curry Files.curry \
-	          AbstractHaskell.curry \
-	          CompilerOpts.curry Utils.curry
-
-# Source modules of the REPL (without standard libraries):
-REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
+BOOTLOG=boot.log
 
 .PHONY: all
 all:
 	${MAKE} installwithlogging
 
-.PHONY: Compile
-Compile:
-	${MAKE} CompileBoot
-
-.PHONY: REPL
-REPL:
-	${MAKE} REPLBoot
-
-########################################################################
-# Compile
-########################################################################
-
-# generate executable for Curry->Haskell compiler via PAKCS:
-Compile.state: ${INSTALLCURRY} Compile.curry
-	pakcs -s Compile
-	-mv idc idc.bak
-	cp -p Compile.state idc
-
-# generate executable for Curry->Haskell compiler:
-CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
-	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	-mv idc idc.bak
-	cp -p CompileBoot idc
-
-# Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
-	./idc -v2 -ilib:lib/meta Compile.curry
-
-########################################################################
-# REPL
-########################################################################
-
-# generate executable for interactive compiler system via PAKCS:
-REPL.state: ${INSTALLCURRY} REPL.curry
-	pakcs -s REPL
-	-mv REPLexec REPLexec.bak
-	cp -p REPL.state REPLexec
-
-# generate executable for Curry->Haskell REPL:
-REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
-	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	-mv REPLexec REPLexec.bak
-	cp -p REPLBoot REPLexec
-
-# Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
-	./idc -v2 -ilib:lib/meta REPL.curry
+# bootstrap the compiler using PAKCS
+.PHONY: bootstrap
+bootstrap: ${INSTALLCURRY}
+	@rm -f ${BOOTLOG}
+	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
+	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
+	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
+	@echo "Bootstrap process logged in file ${BOOTLOG}"
 
 # install the complete system and log the installation process
 .PHONY: installwithlogging
@@ -102,11 +40,19 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: REPL Compile
+install: ${INSTALLCURRY} REPL Compile
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
+
+.PHONY: Compile
+Compile: ${INSTALLCURRY}
+	cd src ; ${MAKE} CompileBoot
+
+.PHONY: REPL
+REPL: ${INSTALLCURRY}
+	cd src ; ${MAKE} REPLBoot
 
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
@@ -144,13 +90,15 @@ installhaskell:
 
 .PHONY: clean
 clean:
-	bin/cleancurry -r
-	rm -f idc ${INSTALLHS} ${INSTALLCURRY} Compile.state Compile
-	rm -f REPL.state REPL
-	rm -f ./runtime/*.hi ./runtime/*.o ./runtime/*.hi-boot ./runtime/*.o-boot
-	rm -f lib/*.hi lib/*.o lib/*.nda lib/*.info lib/Curry_*.hs
-	rm -f ./runtime/idsupply*/*.hi ./runtime/idsupply*/*.o
-	rm -f ./examples/Curry_*.*
+	rm -f *.log
+	rm -f ${INSTALLHS} ${INSTALLCURRY}
+	cd src   ; ${MAKE} clean
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
+
+# clean everything (including compiler binaries)
+.PHONY: cleanall
+cleanall: clean
+	bin/cleancurry -r
+	rm -f bin/idc bin/idci

@@ -31,7 +31,7 @@ import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, consPrefix, funcPrefix
   , mkChoiceName, mkChoicesName, mkGuardName
-  , externalFunc, externalModule, destFile, analysisFile, funcInfoFile )
+  , externalFunc, externalFile, destFile, analysisFile, funcInfoFile )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate, unless, when)
@@ -63,13 +63,20 @@ makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State
 makeModule mods state mod@((_, (fn, fcy)), _)
   | opts -> optForce  = compileModule modCnt state mod
-  | otherwise         = smake (destFile (opts -> optOutputSubdir) fn)
+  | otherwise         = do
+                        depFiles <- getDepFiles
+                        smake (destFile (opts -> optOutputSubdir) fn)
                               depFiles
                               (compileModule modCnt state mod)
                               (loadAnalysis modCnt state mod)
   where
-    depFiles = fn : map (\i -> destFile (opts -> optOutputSubdir)
+    getDepFiles = do
+      hasExternals <- doesFileExist extFile
+      let ownModule = fn : if hasExternals then [extFile] else []
+      let imported  = map (\i -> destFile (opts -> optOutputSubdir)
                                $ fst $ fromJust $ lookup i mods) imps
+      return $ ownModule ++ imported
+    extFile = externalFile fn
     (Prog _ imps _ _ _) = fcy
     modCnt = length mods
     opts = state -> compOptions
@@ -207,14 +214,11 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
 -- empty String
 lookupExternals :: Options -> String -> IO String
 lookupExternals opts fn = do
-  showDetail opts $ "Looking for external file: " ++ extName
   exists <- doesFileExist extName
   if exists
     then showDetail opts "External file found" >> readFile extName
     else showDetail opts "No External file found" >> return ""
-    where extName = path </> externalModule ++ '_' : bareName <.> "hs"
-          (path, file) = splitDirectoryBaseName fn
-          bareName = stripSuffix file
+    where extName = externalFile fn
 
 -- Split an external file into a pragma String, a list of imports and the rest
 -- TODO: This is a bloody hack
@@ -232,7 +236,7 @@ splitExternals content = se (lines content) ([], [], []) where
 dump :: DumpLevel -> Options -> String -> String -> IO ()
 dump level opts file src = when (level `elem` opts -> optDump) $ do
   showDetail opts $ "Dumping " ++ file
-  writeFileInDir (withPath (</> opts -> optOutputSubdir) file) src
+  writeFileInDir (withDirectory (</> opts -> optOutputSubdir) file) src
 
 rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
@@ -312,9 +316,9 @@ type M a = Mo State a
 -- type map
 
 addTypeMap :: TypeMap -> M ()
-addTypeMap newTypes = 
+addTypeMap newTypes =
  updState (\st -> { typeMap :=  st -> typeMap `plusFM` newTypes  | st })
- 
+
 
 getType :: QName -> M QName
 getType qn = getState `bindM` \st ->
@@ -425,7 +429,7 @@ transProg p@(Prog m is ts fs _) =
 -- function's type expression, which in turn requires the case lifting to
 -- provide correct types for lifted case expressions instead of TVar (-42).
 getConsMap :: [TypeDecl] -> TypeMap
-getConsMap ts = 
+getConsMap ts =
   listToFM (<)
   $ concatMap (\ (Type qn _ _ cs) -> map (\c -> (consName c,qn)) cs)
   $ filter (not . isTypeSyn) ts
@@ -552,7 +556,7 @@ addUnifIntCharRule bs bs' =
     addRule isInt bs1 bs2 rules = case (bs1, bs2) of
       (Branch (LPattern lit) _ :nextBs, Branch p e:nextBs')
         -> Branch p e : addRule isInt nextBs nextBs' ((Lit lit,e):rules)
-      
+
       -- TODO: magic number
       _ -> Branch (Pattern (constr isInt) [5000])
                   (funcCall (matchFun isInt)

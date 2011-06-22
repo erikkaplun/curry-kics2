@@ -281,7 +281,7 @@ callFrontendWithParams target params progname = do
                    return ("\""++installDir++"/bin/parsecurry\""++
                            concatMap (" -i"++) path)
      "kics2"  -> do path <- maybe getLoadPath return (fullPath params)
-                    return ("\""++installDir++"/bin/cymake\" -e"++
+                    return ("\""++installDir++"/bin/cymake\""++
                             concatMap (\d->" -i\""++d++"\"") path)
      _ -> error "Distribution.callFrontend: unknown curryCompiler"
 

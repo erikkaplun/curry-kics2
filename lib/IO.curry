@@ -187,7 +187,7 @@ getContents = hGetContents stdin
 
 --- Puts a character to an output handle.
 hPutChar    :: Handle -> Char -> IO ()
-hPutChar h c = (prim_hPutChar $# h)  $# c
+hPutChar h c = (prim_hPutChar $# h)  $## c
 
 prim_hPutChar :: Handle -> Char -> IO ()
 prim_hPutChar external

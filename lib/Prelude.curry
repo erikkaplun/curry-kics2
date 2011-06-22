@@ -18,7 +18,7 @@ infixl 7 *, `div`, `mod`
 infixl 6 +, -
 -- infixr 5 :                          -- declared together with list
 infixr 5 ++
-infix  4 =:=, ==, /=, <, >, <=, >= -- , =:<=, =:<<=
+infix  4 =:=, ==, /=, <, >, <=, >=, =:<=, =:<<=
 infix  4  `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||
@@ -483,8 +483,9 @@ prim_ord external
 
 --- Converts an Unicode value into a character, fails iff the value is out of bounds
 chr :: Int -> Char
-chr n | n < 0 || n > 1114111 = failed
-      | otherwise = prim_chr $# n
+chr n | n >= 0 = prim_chr $# n
+-- chr n | n < 0 || n > 1114111 = failed
+--       | otherwise = prim_chr $# n
 
 prim_chr :: Int -> Char
 prim_chr external
@@ -637,7 +638,7 @@ done              = return ()
 
 --- An action that puts its character argument on standard output.
 putChar           :: Char -> IO ()
-putChar c = prim_putChar $# c
+putChar c = prim_putChar $## c
 
 prim_putChar           :: Char -> IO ()
 prim_putChar external

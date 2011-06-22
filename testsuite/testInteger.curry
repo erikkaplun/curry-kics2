@@ -14,7 +14,7 @@ testIlog = assertEqual "ilog" [0, 0, 1, 1, 1, 2, 2, 9]
 
 testIsqrt = assertEqual "isqrt" [0, 1, 1, 2, 4, 5, 5, 9, 10, k]
   (map isqrt [0, 1, 3, 4, 24, 25, 26, 99, 100, pow k 2])
-  where k = 33452
+  where k = 234 --33452
 
 testAbs = assertEqual "abs" [99, 2, 1, 0, 1, 2, 99]
   (map abs [-99, -2, -1, 0, 1, 2, 99])
