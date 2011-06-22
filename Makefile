@@ -40,7 +40,7 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: ${INSTALLCURRY} REPL Compile
+install: installhaskell ${INSTALLCURRY} Compile REPL
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
@@ -84,6 +84,7 @@ ${INSTALLHS}: Makefile
 
 .PHONY: installhaskell
 installhaskell:
+	cabal install network
 	cabal install parallel
 	cabal install tree-monad
 	cabal install parallel-tree-search
@@ -106,8 +107,8 @@ cleanall: clean
 	rm -f bin/idc bin/idci
 
 
-################################################################################
-# Create distribution versions of the complete system as tar files kics2.tar.gz:
+###############################################################################
+# Create distribution versions of the complete system as tar file kics2.tar.gz:
 
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
@@ -128,7 +129,6 @@ dist:
 	cd ${MCCPARSERHOME} && ${MAKE} dist  # make mcc frontend distribution
 	rm -rf kics2.tar.gz ${KICS2DIST}     # remove old distribution
 	git clone . ${KICS2DIST}             # create copy of git version
-	cp Makefile ${KICS2DIST}/Makefile  # temporary
 	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
 	cd ${KICS2DIST} && ${MAKE} installmcc # install front-end sources
 	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
@@ -150,5 +150,5 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
-	rm -rf benchmarks papers talks tests
+	rm -rf benchmarks papers talks tests examples
 	rm -f TODO compilerdoc.wiki
