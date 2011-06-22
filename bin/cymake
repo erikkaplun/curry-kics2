@@ -1,6 +1,18 @@
 #!/bin/sh
-# call cymake of PAKCS (for the moment...)
-PAKCSBINDIR=$(dirname `which pakcs`)
+# shell script to call the front end for Curry
+
+# Compute the installation directory of the system
+PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
+KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
+CYMAKE="$KICS2HOME/mccparser/bin/cymake"
+if [ ! -x "$CYMAKE" ] ; then
+  # try cymake of PAKCS
+  CYMAKE="$(dirname `which pakcs`)/../mccparser/bin/cymake"
+fi
+if [ ! -x "$CYMAKE" ] ; then
+  echo "ERROR: Curry parser not found!" >&2
+  exit 1
+fi
 
 # define KICS2RC
 KICS2RC=$HOME/.kics2rc
@@ -25,4 +37,4 @@ if [ -f "$KICS2RC" ] ; then
   done
   fi
 
-"$PAKCSBINDIR/../mccparser/bin/cymake" $MCCEXTENDED $MCCOVERLAPWARN ${1+"$@"}
+"$CYMAKE" $MCCEXTENDED $MCCOVERLAPWARN ${1+"$@"}

@@ -94,6 +94,7 @@ clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd src   ; ${MAKE} clean
+	cd lib/.curry/kics2 && rm -f *.hi *.o
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
@@ -103,3 +104,51 @@ clean:
 cleanall: clean
 	bin/cleancurry -r
 	rm -f bin/idc bin/idci
+
+
+################################################################################
+# Create distribution versions of the complete system as tar files kics2.tar.gz:
+
+# temporary directory to create distribution version
+KICS2DIST=/tmp/kics2
+# directory with distribution of mcc front-end:
+MCCPARSERHOME=/home/mh/lehrstuhl/frontend/mcc
+MCCPARSERDIST=${MCCPARSERHOME}/dist
+MCCSRCDIST=${MCCPARSERDIST}/mcc_for_pakcs_src.tar.gz
+
+# install mcc parser sources (without make) from current distribution:
+.PHONY: installmcc
+installmcc:
+	rm -rf mccparser
+	gunzip -c ${MCCSRCDIST} | tar xf -
+
+# generate a source distribution of KICS2:
+.PHONY: dist
+dist:
+	cd ${MCCPARSERHOME} && ${MAKE} dist  # make mcc frontend distribution
+	rm -rf kics2.tar.gz ${KICS2DIST}     # remove old distribution
+	git clone . ${KICS2DIST}             # create copy of git version
+	cp Makefile ${KICS2DIST}/Makefile  # temporary
+	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
+	cd ${KICS2DIST} && ${MAKE} installmcc # install front-end sources
+	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
+	cd ${KICS2DIST} && ${MAKE} Compile   # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL      # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean     # clean object files
+	cd ${KICS2DIST}/bin && rm idc idci   # clean executables
+	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
+	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
+	mv /tmp/kics2.tar.gz .
+	chmod 644 kics2.tar.gz
+	rm -rf ${KICS2DIST}
+	@echo "----------------------------------------------------------------"
+	@echo "Distribution kics2.tar.gz generated."
+
+#
+# Clean all files that should not be included in a distribution
+#
+.PHONY: cleandist
+cleandist:
+	rm -rf .git .gitignore bin/.gitignore
+	rm -rf benchmarks papers talks tests
+	rm -f TODO compilerdoc.wiki
