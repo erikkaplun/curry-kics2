@@ -63,12 +63,14 @@ bootstrap:
 # generate executable for Curry->Haskell compiler via PAKCS:
 Compile.state: ${INSTALLCURRY} Compile.curry
 	pakcs -s Compile
-	mv -b Compile.state ${COMP}
+	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mv Compile.state ${COMP}
 
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	mv -b CompileBoot ${COMP}
+	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mv CompileBoot ${COMP}
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES}
@@ -82,7 +84,8 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 REPLBoot: .curry/kics2/Curry_REPL.hs \
 	  .curry/kics2/Curry_Installation.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	mv -b REPLBoot ${REPL}
+	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
+	mv REPLBoot ${REPL}
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES}

@@ -99,7 +99,6 @@ installhaskell:
 .PHONY: clean
 clean:
 	rm -f *.log
-	bin/cleancurry ${INSTALLCURRY}
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd src   ; ${MAKE} clean
 	cd lib/.curry/kics2 && rm -f *.hi *.o
