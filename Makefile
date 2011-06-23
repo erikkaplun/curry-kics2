@@ -89,6 +89,7 @@ ${INSTALLHS}: Makefile
 
 .PHONY: installhaskell
 installhaskell:
+	cabal update
 	cabal install network
 	cabal install parallel
 	cabal install tree-monad
@@ -98,6 +99,7 @@ installhaskell:
 .PHONY: clean
 clean:
 	rm -f *.log
+	bin/cleancurry ${INSTALLCURRY}
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd src   ; ${MAKE} clean
 	cd lib/.curry/kics2 && rm -f *.hi *.o
@@ -131,16 +133,16 @@ installmcc:
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	cd ${MCCPARSERHOME} && ${MAKE} dist  # make mcc frontend distribution
-	rm -rf kics2.tar.gz ${KICS2DIST}     # remove old distribution
-	git clone . ${KICS2DIST}             # create copy of git version
-	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
-	cd ${KICS2DIST} && ${MAKE} installmcc # install front-end sources
+	cd ${MCCPARSERHOME} && ${MAKE} dist    # make mcc frontend distribution
+	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
+	git clone . ${KICS2DIST}               # create copy of git version
+	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
+	cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
 	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile   # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL      # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean     # clean object files
-	cd ${KICS2DIST}/bin && rm idc idci   # clean executables
+	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
+	cd ${KICS2DIST}/bin && rm idc idci     # clean executables
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
