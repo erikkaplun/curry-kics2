@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=16/06/11
+COMPILERDATE=23/06/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -159,3 +159,11 @@ cleandist:
 	rm -rf .git .gitignore bin/.gitignore
 	rm -rf benchmarks papers talks tests examples
 	rm -f TODO compilerdoc.wiki
+
+# publish the distribution files in the local web pages
+HTMLDIR=${HOME}/public_html/kics2/download
+.PHONY: publish
+publish:
+	cp kics2.tar.gz INSTALL.html ${HTMLDIR}
+	chmod -R go+rX ${HTMLDIR}
+	@echo "Don't forget to run 'update-kics2' to make the update visible!"
