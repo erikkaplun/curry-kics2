@@ -141,7 +141,7 @@ dist:
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
-	cd ${KICS2DIST}/bin && rm idc idci     # clean executables
+	cd ${KICS2DIST}/bin && rm -f idc idc.bak idci idci.bak # clean execs
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
