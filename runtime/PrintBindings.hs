@@ -7,65 +7,40 @@
 
 module PrintBindings where
 
+import Data.List (intercalate)
+
 import Curry_Prelude
 import Basics(fromCurry)
+
+printWithBindings :: Show a => [(String, String)] -> a -> IO ()
+printWithBindings []       result = print result
+printWithBindings bindings result = putStrLn $
+  "{" ++ intercalate ", " (map (\(n, v) -> n ++ " = " ++ v) bindings) ++ "} "
+  ++ show result
 
 printWithBindings1 :: (Show a, Show b) =>
   (OP_Tuple3 a (OP_List C_String) b) -> IO ()
 printWithBindings1 (OP_Tuple3 result names v1) =
-  let [n1] = fromCurry names in
-  putStrLn (concat ["{",
-                    n1," = ",show v1,
-                    "} ",show result])
+  printWithBindings (zip (fromCurry names) [show v1]) result
 
 printWithBindings2 :: (Show a, Show b, Show c) =>
   (OP_Tuple4 a (OP_List C_String) b c) -> IO ()
 printWithBindings2 (OP_Tuple4 result names v1 v2) =
-  let [n1,n2] = fromCurry names in
-  putStrLn (concat ["{",
-                    n1," = ",show v1,
-                    ", ",
-                    n2," = ",show v2,
-                    "} ",show result])
+  printWithBindings (zip (fromCurry names) [show v1, show v2]) result
 
 printWithBindings3 :: (Show a, Show b, Show c, Show d) =>
   (OP_Tuple5 a (OP_List C_String) b c d) -> IO ()
 printWithBindings3 (OP_Tuple5 result names v1 v2 v3) =
-  let [n1,n2,n3] = fromCurry names in
-  putStrLn (concat ["{",
-                    n1," = ",show v1,
-                    ", ",
-                    n2," = ",show v2,
-                    ", ",
-                    n3," = ",show v3,
-                    "} ",show result])
+  printWithBindings (zip (fromCurry names) [show v1, show v2, show v3]) result
 
 printWithBindings4 :: (Show a, Show b, Show c, Show d, Show e) =>
   (OP_Tuple6 a (OP_List C_String) b c d e) -> IO ()
 printWithBindings4 (OP_Tuple6 result names v1 v2 v3 v4) =
-  let [n1,n2,n3,n4] = fromCurry names in
-  putStrLn (concat ["{",
-                    n1," = ",show v1,
-                    ", ",
-                    n2," = ",show v2,
-                    ", ",
-                    n3," = ",show v3,
-                    ", ",
-                    n4," = ",show v4,
-                    "} ",show result])
+  printWithBindings
+  (zip (fromCurry names) [show v1, show v2, show v3, show v4]) result
 
 printWithBindings5 :: (Show a, Show b, Show c, Show d, Show e, Show f) =>
   (OP_Tuple7 a (OP_List C_String) b c d e f) -> IO ()
 printWithBindings5 (OP_Tuple7 result names v1 v2 v3 v4 v5) =
-  let [n1,n2,n3,n4,n5] = fromCurry names in
-  putStrLn (concat ["{",
-                    n1," = ",show v1,
-                    ", ",
-                    n2," = ",show v2,
-                    ", ",
-                    n3," = ",show v3,
-                    ", ",
-                    n4," = ",show v4,
-                    ", ",
-                    n5," = ",show v5,
-                    "} ",show result])
+  printWithBindings
+  (zip (fromCurry names) [show v1, show v2, show v3, show v4, show v5]) result
