@@ -1,4 +1,0 @@
-#!/bin/sh
-# call parsecurry of PAKCS (for the moment...)
-PAKCSLIB=$(dirname `which pakcs`)
-$PAKCSLIB/parsecurry ${1+"$@"}
