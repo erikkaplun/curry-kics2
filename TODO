@@ -7,7 +7,6 @@ Things we have to do
   for a benchmark
 - Literal pattern like f 'a' = 'b' are not fully tested, especially for exotic
   characters (e.g., characters above (chr 127)).
-- repair automatic bootstrapping
 - set functions
 - test function patterns
 - IO
