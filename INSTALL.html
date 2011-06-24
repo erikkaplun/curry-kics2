@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+   <title>KiCS2 Installation</title>
+</head>
+
+<body bgcolor="#ffffff">
+
+<h1>KiCS2: The Kiel Curry System (Version 2)</h1>
+<h2>Installation Instructions</h2>
+<p>
+KiCS2 compiles
+<a href="http://www.curry-language.org" target="_blank">Curry programs</a>
+into <a href="http://www.haskell.org/" target="_blank">Haskell programs</a>.
+This distribution runs on Unix-based platforms
+and has been developed and tested under Linux (Ubuntu).
+However, it should also run under similar platforms like SunOS or Mac OS X.
+If you want to install and run the complete system
+on your computer, you need a Haskell implementation,
+in particular the
+<a href="http://www.haskell.org/ghc/" target="_blank">Glasgow Haskell Compiler</a> and
+<a href="http://www.haskell.org/cabal/" target="_blank">Cabal</a>,
+a Haskell package management system.
+For instance, if you run Ubuntu Linux, you can easily install
+these packages by
+</p>
+<pre>
+  sudo apt-get install ghc6 cabal-install
+</pre>
+<p>
+After unpacking the distribution file, go into the main directory
+of the distribution (which is denoted by <tt><em>kics2home</em></tt>
+in the following):
+</p>
+<pre>
+  tar xvzf kics2.tar.gz
+  cd kics2
+</pre>
+<p>
+If you install KiCS2 for the first time, you need to install
+some Haskell packages via Cabal, i.e., run the command
+</p>
+<pre>
+  make installhaskell
+</pre>
+<p>
+Now you are ready to install KiCS2 with all its components by
+</p>
+<pre>
+  make
+</pre>
+<p>
+When the installation is finished (it will take some time),
+the commands to use KiCS2 are installed in the local
+directory <tt>bin</tt>.
+In order to use the system easily,
+add the directory "<tt><em>kics2home/</em>bin</tt>"
+to your path, e.g., by the command
+"<tt>export PATH=$PATH:<em>kics2home</em>/bin</tt>"
+in the <tt>bash</tt>.
+Now you can start KiCS2 via the command <tt>kics2</tt>.
+</p>
+
+<h2>Notes</h2>
+<ol>
+<li>
+The current distribution is designed as a local user installation
+since some system libraries are re-compiled according to the current options.
+Thus, it is not a good idea to install this distribution globally
+where users have no write permission.
+</li>
+<li>
+You can configure the behavior of KiCS2 by various settings
+in the file <tt>~/.kics2rc</tt> which is created when you use
+KiCS2 for the first time.
+</li>
+<li>
+  If you like to have support for <em>line editing or history functionality</em>
+  in the KiCS2 interactive environment (as supported by the readline
+  library), you should have the Unix/Linux command "rlwrap" installed
+  on your local machine (e.g., by "<tt>sudo apt-get install rlwrap</tt>").
+  KiCS2 uses "rlwrap" if called on a terminal
+  without the parameter "--noreadline".
+</li>
+<li>
+If you want to use the <b>library for GUI programming in Curry</b>
+(<em>kics2home/</em><tt>lib/GUI.curry</tt>), you need also a
+Tcl/Tk implementation (including the windowing shell <tt>wish</tt>)
+which can be downloaded
+<a href="http://www.scriptics.com/software/tcltk/">here</a> or
+installed in a Ubuntu distribution by
+"<tt>sudo apt-get install tk tcl</tt>".
+In this case, the windowing shell <tt>wish</tt> must be
+in your path (or you can also modify the definition of the
+operation <tt>openGuiPort</tt> in the library <tt>GUI.curry</tt>).
+</li>
+</ol>
+
+
+<h3>Changing system constants:</h3>
+
+The distribution of KiCS2 is configured with a
+<b>maximal tuple arity of 15</b>, i.e., Curry programs containing larger
+tuple sizes cannot be compiled. If you want to increase this size
+(usually, it is preferable to change your program), you have to change
+(in a source distribution of KiCS2)
+two system files and install your system as follows:
+<ol>
+<li>
+Change the definition of the constant <code>maxTupleArity</code>
+in the files <tt><em>kics2home/</em>mccparser/src/PatchPrelude.hs</tt>
+according to your required maximal arity.
+</li>
+<li>
+Delete the file <tt><em>kics2home/</em>lib/.curry/Prelude.fcy</tt>.
+</li>
+<li>
+Re-install KiCS2 by running <tt>make</tt>.
+</li>
+</ol>
+
+
+<hr/>
+
+<address>
+ <a href="http://www.informatik.uni-kiel.de/~mh/">Michael Hanus</a>
+</address>
+
+<p>
+  <a href="http://validator.w3.org/check?uri=referer">
+   <img src="http://www.w3.org/Icons/valid-xhtml10"
+        alt="Valid XHTML 1.0 Transitional" height="31" width="88" /></a>
+</p>
+
+</body>
+</html>
