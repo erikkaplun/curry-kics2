@@ -16,3 +16,5 @@ Things we have to do
 - sharing of non-determinism and free vars is less efficient than in KiCS
 - repair search strategies bfs, iterative deepening
 - eta-expansion of deterministic functions (optimizing)
+  Update: It seems like this functionality has been included in the frontend
+  but disabled for PAKCS. Maybe we can reactivate it.
