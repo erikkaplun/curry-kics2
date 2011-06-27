@@ -17,7 +17,11 @@
 Installation.*
 make.log
 
+# ignore front end since it is managed in another repository
+mccparser
+
 # binaries
+benchmarks/Benchmarks
 bin/idc
 bin/idci
 cpns/CPNSD

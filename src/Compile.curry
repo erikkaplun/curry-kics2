@@ -2,7 +2,7 @@
 --- ID based curry compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version May 2011
+--- @version June 2011
 --- --------------------------------------------------------------------------
 module Compile where
 
@@ -198,8 +198,9 @@ compMessage curNum maxNum msg fn dest
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
-  | opts -> optXNoImplicitPrelude = Prog m (filter (/= prelude) imps) td fd od
-  | otherwise                     = p
+  | noPrelude = Prog m (filter (/= prelude) imps) td fd od
+  | otherwise = p
+  where noPrelude = ExtNoImplicitPrelude `elem` opts -> optExtensions
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
@@ -233,8 +234,8 @@ splitExternals content = se (lines content) ([], [], []) where
       where (pragmas, imps, decls) = se lns res
 
 -- Dump an intermediate result to a file
-dump :: DumpLevel -> Options -> String -> String -> IO ()
-dump level opts file src = when (level `elem` opts -> optDump) $ do
+dump :: DumpFormat -> Options -> String -> String -> IO ()
+dump format opts file src = when (format `elem` opts -> optDump) $ do
   showDetail opts $ "Dumping " ++ file
   writeFileInDir (withDirectory (</> opts -> optOutputSubdir) file) src
 
@@ -405,6 +406,9 @@ getCompOptions = getState `bindM` \ st -> returnM (st -> compOptions)
 getCompOption :: (Options -> a) -> M a
 getCompOption select = getCompOptions `bindM` (returnM . select)
 
+strictSupply :: M Bool
+strictSupply = getCompOption $ \opts -> (opts -> optOptimization >= OptimStrictSupply)
+
 -- ---------------------------------------------------------------------------
 -- Program transformation
 -- ---------------------------------------------------------------------------
@@ -441,7 +445,7 @@ getConsMap ts =
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc f@(Func qn _ _ _ _) =
   getCompOptions `bindM` \opts ->
-  let opt = opts -> optDetOptimization in
+  let opt = (opts -> optOptimization > OptimNone) in
   case opt of
     -- translate all functions as non-deterministic by default
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
@@ -625,11 +629,12 @@ newBranches qn' vs i pConsName =
 -- variables are already bound by nested let expressions
 transCompleteExpr :: Expr -> M Expr
 transCompleteExpr e =
+  strictSupply `bindM` \strict ->
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
               []  -> e'
-              [v] ->  letIdVar [(v, Var suppVarIdx)] e' in
+              [v] ->  letIdVar strict [(v, Var suppVarIdx)] e' in
   setNextID i `bindM_` -- and reset it variable id
   returnM e''
 
@@ -660,7 +665,7 @@ transExpr (Comb (ConsPartCall i) qn es) =
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
-  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
+  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
@@ -673,7 +678,7 @@ transExpr (Comb FuncCall qn es) =
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
-  getCompOption (\opts -> opts -> optDetOptimization) `bindM` \opt ->
+  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
@@ -708,15 +713,17 @@ transExpr e@(Case _ _ _) = returnM ([], e)
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
 genIds ns@(_:_) expr =
+  strictSupply `bindM` \strict ->
   -- get next free variable id
   getNextID `bindM` \i ->
   -- create splitting of supply variables
-  let (vroot, v', vs) = mkSplits i ns in
-  setNextID v' `bindM_`
-  returnM ([vroot], foldr addSplit expr vs)
+  let (vroot, v', vs) = mkSplits i ns 
+      addSplit (v, v1, v2) e = letIdVar strict 
+        [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+  in 
+  setNextID v' `bindM_` returnM ([vroot], foldr addSplit expr vs)
   where
-    addSplit (v, v1, v2) e =
-      letIdVar [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
+    
 {-
   case vs of
     -- no splitting necessary
@@ -763,13 +770,9 @@ wrapNX exprs = fun 2 (basics,"wrapNX") exprs
 funId = fun 1 (prelude,"id") []
 
 
--- ---------------------------------------------------------------------------
--- Configurations
--- ---------------------------------------------------------------------------
-
--- Chooce let-Type for IdSupply Variables
---letIdVar = lazyLet
-letIdVar = strictLet
+-- Strict or lazy computation of supplies
+letIdVar True  = strictLet
+letIdVar False = lazyLet
 
 -- ---------------------------------------------------------------------------
 
