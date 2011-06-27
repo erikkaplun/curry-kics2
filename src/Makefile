@@ -63,15 +63,17 @@ bootstrap:
 # generate executable for Curry->Haskell compiler via PAKCS:
 Compile.state: ${INSTALLCURRY} Compile.curry
 	pakcs -s Compile
-	mv -b Compile.state ${COMP}
+	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mv Compile.state ${COMP}
 
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	mv -b CompileBoot ${COMP}
+	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mv CompileBoot ${COMP}
 
 # Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES} ${INSTALLCURRY}
+.curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES}
 	${COMP} -v2 -i../lib:../lib/meta Compile.curry
 
 ########################################################################
@@ -79,13 +81,19 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 ########################################################################
 
 # generate executable for Curry->Haskell REPL:
-REPLBoot: .curry/kics2/Curry_REPL.hs REPLBoot.hs
+REPLBoot: .curry/kics2/Curry_REPL.hs \
+	  .curry/kics2/Curry_Installation.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
-	mv -b REPLBoot ${REPL}
+	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
+	mv REPLBoot ${REPL}
 
 # Translate Curry->Haskell compiler into Haskell:
-.curry/kics2/Curry_REPL.hs: ${REPLSOURCES} ${INSTALLCURRY}
+.curry/kics2/Curry_REPL.hs: ${REPLSOURCES}
 	${COMP} -v2 -i../lib:../lib/meta REPL.curry
+
+# Translate Curry->Haskell compiler into Haskell:
+.curry/kics2/Curry_Installation.hs: Installation.curry
+	${COMP} -v2 -i../lib Installation.curry
 
 ########################################################################
 # clean
@@ -97,5 +105,6 @@ clean:
 	cd .. ; rm -f stage1 stage2 stage3
 	rm -f ${COMP}~ ${REPL}~
 	rm -f *.hi *.o
+	cd .curry/kics2 && rm -f *.hi *.o
 	cd ../runtime; rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f ../runtime/idsupply*/*.hi ../runtime/idsupply*/*.o

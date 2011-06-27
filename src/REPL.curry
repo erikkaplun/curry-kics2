@@ -407,20 +407,15 @@ createHaskellMain rst goalstate isdet isio =
 -- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO Int
 execMain rst cmpstatus mainexp = do
-  isubuntu <- isUbuntu
-  let timecmd =
-        if isubuntu
-        then "time --format=\"Execution time: %Us / elapsed: %E\" "
-        else -- for Debian-PCs:
-          "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "
-      paropts = case rst->ndMode of
+  timecmd <- getTimeCmd
+  let paropts = case rst->ndMode of
                   Par n -> "-N" ++ (if n==0 then "" else show n)
                   _     -> ""
       maincmd = ("." </> rst -> outputSubdir </> "Main") ++
                 (if null (rst->rtsOpts) && null paropts
                  then " "
                  else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
-      tcmd    = (if rst->showTime then timecmd else "") ++ maincmd
+      tcmd    = timecmd ++ maincmd
       icmd    = if rst->interactive && cmpstatus==MainNonDet
                 then execInteractive rst tcmd
                 else tcmd
@@ -428,9 +423,26 @@ execMain rst cmpstatus mainexp = do
   writeVerboseInfo rst 3 $ "Executing: " ++ icmd
   system icmd
  where
-  isUbuntu = do
-    bsid <- connectToCommand "lsb_release -i" >>= hGetContents
-    return ("Ubuntu" `isInfixOf` bsid)
+  getTimeCmd = if rst->showTime
+               then getDistribution >>= return . getTimeCmdForDist
+               else return ""
+
+  -- Time command for specific distributions. It might be necessary
+  -- to adapt this command.
+  getTimeCmdForDist dist
+    | "Ubuntu" `isInfixOf` dist
+     = "time --format=\"Execution time: %Us / elapsed: %E\" "
+    | "Debian" `isInfixOf` dist
+      = "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "
+    | otherwise = "time "
+
+  getDistribution = do
+    (hin,hout,herr) <- execCmd "lsb_release -i"
+    dist <- hGetContents hout
+    hClose hin
+    hClose hout
+    hClose herr
+    return dist
 
 -- all the available commands:
 allCommands = ["quit","help","?","load","reload","add","eval",

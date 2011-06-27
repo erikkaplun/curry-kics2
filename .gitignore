@@ -13,9 +13,12 @@
 *.pdf
 
 # intermediate files
-*~
+*.bak
 Installation.*
 make.log
+
+# ignore front end since it is managed in another repository
+mccparser
 
 # binaries
 benchmarks/Benchmarks
