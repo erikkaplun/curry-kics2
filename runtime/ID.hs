@@ -150,11 +150,11 @@ ensureNotID (ID _)           = error "ensureNotID: ID"
 ensureNotID x@(FreeID _ _)   = x
 ensureNotID x@(Narrowed _ _) = x
 
--- |Ensure that an 'ID' is an 'ID' for a free variable
-ensureFreeID :: ID -> ID
-ensureFreeID (ID _)         = error "ensureFreeID: ID"
-ensureFreeID x@(FreeID _ _) = x
-ensureFreeID (Narrowed _ _) = error "ensureFreeID: Narrowed"
+-- -- |Ensure that an 'ID' is an 'ID' for a free variable
+-- ensureFreeID :: ID -> ID
+-- ensureFreeID (ID _)         = error "ensureFreeID: ID"
+-- ensureFreeID x@(FreeID _ _) = x
+-- ensureFreeID (Narrowed _ _) = error "ensureFreeID: Narrowed"
 
 -- ---------------------------------------------------------------------------
 -- Choice Management
@@ -185,24 +185,24 @@ lookupChoiceID i = do
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
     -- to the last ID in the chain.
     unchain (BindTo j) = do
-      retVal@(c, lastId) <- lookupChoiceID j
+      retVal@(c, _lastId) <- lookupChoiceID j
       case c of
         NoChoice      -> return () --shortenTo lastId
         ChooseN _ num -> propagateBind i j num -- lastId num
         LazyBind _    -> return () --shortenTo lastId
         _             -> error $ "ID.lookupChoiceID: " ++ show c
       return retVal
-      where
-        shortenTo lastId = when (j /= lastId) $ do
-          trace $ "shorten " ++ show i ++ " to " ++ show lastId
-          setChoiceRaw i (BindTo lastId)
+--       where
+--         shortenTo lastId = when (j /= lastId) $ do
+--           trace $ "shorten " ++ show i ++ " to " ++ show lastId
+--           setChoiceRaw i (BindTo lastId)
 
     -- For BoundTo, the chains should already be shortened since the Choice
     -- "BoundTo j" is only set if the variable j has been set to a "ChooseN"
     -- and therefore could not have been changed in between.
     -- TODO: check if the previous statement is correct
     unchain (BoundTo j num) = do
-      retVal@(c, lastId) <- lookupChoiceID j
+      retVal@(c, _) <- lookupChoiceID j
       case c of
         NoChoice       -> return ()
         ChooseN _ num' -> checkPropagation i j num num'

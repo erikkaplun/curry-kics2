@@ -15,7 +15,7 @@ import System.IO (Handle)
 
 import ID
 import MonadList
-import Solver (Solution, SolutionTree (..), solves)
+import Solver (SolutionTree (..), solves)
 import Debug
 
 
@@ -293,7 +293,7 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
 
 -- TODO: use unboxed int
 
-matchInteger :: NonDet a => [(Int,a)] -> BinInt -> a
+matchInteger :: NonDet a => [(Int, a)] -> BinInt -> a
 matchInteger rules (Neg nat)              =
   matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat
 matchInteger rules Zero                   = maybe failCons id $ lookup 0 rules
@@ -302,10 +302,11 @@ matchInteger rules (Choice_BinInt i l r) =
   narrow i (matchInteger rules l) (matchInteger rules r)
 matchInteger rules (Choices_BinInt i cs) =
   narrows i $ map (matchInteger rules) cs
-matchInteger rules Fail_BinInt           = failCons
+matchInteger _     Fail_BinInt           = failCons
 matchInteger rules (Guard_BinInt cs int) = guardCons cs (matchInteger rules int)
 
-matchNat []    _                    = failCons
+matchNat :: forall a. NonDet a => [(Int, a)] -> Nat -> a
+matchNat []    _                  = failCons
 matchNat rules IHi                = maybe failCons id $ lookup 1 rules
 matchNat rules (O nat)            = matchNat (map halfKey $ filter (evenPos.fst) rules) nat
   where
@@ -313,6 +314,7 @@ matchNat rules (O nat)            = matchNat (map halfKey $ filter (evenPos.fst)
 matchNat rules (I nat)            = matchNat (map halfKey $ filter (odd.fst) rules) nat
 matchNat rules (Choice_Nat i l r) = narrow i (matchNat rules l) (matchNat rules r)
 matchNat rules (Choices_Nat i cs) = narrows i $ map (matchNat rules) cs
+matchNat _     Fail_Nat           = failCons
 matchNat rules (Guard_Nat cs nat) = guardCons cs $ matchNat rules nat
 
 
@@ -906,10 +908,12 @@ showsChoice _ _ _ _ = error "showsChoice with no ID"
 showsChoices :: Show a => Int -> ID -> [a] -> ShowS
 showsChoices d i@(ID _) _        = error "showsChoices with ID"
 showsChoices d i@(FreeID _ _) _  = shows i
-showsChoices d i@(Narrowed _ _) xs =
-  showString "[?" . shows i .
-  foldr (.) id (zipWith (\n x -> showString ", " . shows n . showString "->" . showsPrec d x) [0 ..] xs) .
-  showChar ']'
+showsChoices d i@(Narrowed _ _) xs
+  = showString "[?" . shows i
+  . foldr (.) id (zipWith showNarrowing [(0 :: Int) ..] xs)
+  . showChar ']'
+  where showNarrowing n x = showString ", " . shows n
+                          . showString "->" . showsPrec d x
 
 showsGuard :: (Show a, Show b) => Int -> a -> b -> ShowS
 showsGuard d c e = showsPrec d c . showString " &> " . showsPrec d e
