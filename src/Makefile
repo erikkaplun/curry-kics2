@@ -105,6 +105,6 @@ clean:
 	cd .. ; rm -f stage1 stage2 stage3
 	rm -f ${COMP}~ ${REPL}~
 	rm -f *.hi *.o
-	cd .curry/kics2 && rm -f *.hi *.o
+	@if [ -d .curry/kics2 ] ; then cd .curry/kics2 && rm -f *.hi *.o ; fi
 	cd ../runtime; rm -f *.hi *.o *.hi-boot *.o-boot
 	rm -f ../runtime/idsupply*/*.hi ../runtime/idsupply*/*.o
