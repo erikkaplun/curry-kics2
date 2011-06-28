@@ -157,7 +157,7 @@ printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
       mapM_ (>>= traverse True) cs
       reset
     traverse False (ChoicesST _     cs) = do
-      mapM_ (>>= traverse True) cs -- TODO: do not reset at last alternative
+      mapMButLast_ (>>= traverse True) (>>= traverse False) cs
 
 --     traverse Nothing = return ()
 --     traverse (Just reset) =  if fb then (printValsDFS fb . try) $!< e >> reset
@@ -180,6 +180,14 @@ zipWithButLast3 _ lastf (a:[]) (b:_ ) (c:_)  = lastf a b c : []
 zipWithButLast3 _ lastf (a:_ ) (b:[]) (c:_)  = lastf a b c : []
 zipWithButLast3 _ lastf (a:_ ) (b:_ ) (c:[]) = lastf a b c : []
 zipWithButLast3 f lastf (a:as) (b:bs) (c:cs) = f a b c : zipWithButLast3 f lastf as bs cs
+
+mapMButLast_ :: (a -> IO b) -> (a -> IO b) -> [a] -> IO ()
+mapMButLast_ f lastf = sequence_ . mapButLast f lastf
+
+mapButLast :: (a -> b) -> (a -> b) -> [a] -> [b]
+mapButLast _ _     []     = []
+mapButLast _ lastf [x]    = [lastf x]
+mapButLast f lastf (x:xs) = f x : mapButLast f lastf xs
 
 -- Attempt to gain more abstraction during search
 
