@@ -101,7 +101,7 @@ clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd src   ; ${MAKE} clean
-	cd lib/.curry/kics2 && rm -f *.hi *.o
+	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
 	cd cpns  ; ${MAKE} clean
 	cd tools ; ${MAKE} clean
 	cd www   ; ${MAKE} clean
