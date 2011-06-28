@@ -1,0 +1,579 @@
+\documentclass{llncs}
+
+\usepackage{times}
+\usepackage{url}
+\def\UrlFont{\tt}
+\usepackage{latexsym}
+\usepackage{xspace}
+\usepackage{hyperref}
+\usepackage{color}
+
+\usepackage{listings}
+\lstset{aboveskip=1.0ex,
+        belowskip=1.0ex,
+        showstringspaces=false, % no special string space
+        mathescape=true,
+        flexiblecolumns=false,
+        basewidth=0.52em,
+        basicstyle=\small\ttfamily}
+
+\lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
+       }
+
+\lstnewenvironment{curry}{\lstset{backgroundcolor=\color[rgb]{0.9,0.9,0.9}}}{}
+\lstnewenvironment{haskell}{}{}
+\newcommand{\listline}{\vrule width0pt depth1.75ex}
+
+\newcommand{\code}[1]{\mbox{\small\texttt{#1}}}
+\newcommand{\ccode}[1]{``\code{#1}''}
+\newcommand{\bs}{\char92\xspace} % backslash
+\newcommand{\us}{\char95\xspace} % underscore
+\newcommand{\dollar}{\code{\char36}} % dollar in programs
+\newcommand{\Choice}[2]{#1 \mathop{?} #2}
+\newcommand{\funset}{\ensuremath{_{\cal S}}}
+
+\begin{document}
+\pagestyle{plain}
+\sloppy
+
+\title{Implementing Equational Constraints\\ in a Functional Language}
+
+\author{
+Bernd Bra{\ss}el
+\kern1em
+Michael Hanus
+\kern1em
+Bj{\"o}rn Peem{\"o}ller
+\kern1em
+Fabian Reck
+}
+\institute{
+Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
+\email{\{bbr|mh|bjp|fre\}@informatik.uni-kiel.de}
+}
+
+\maketitle
+
+\begin{abstract}
+KiCS2 is a new system
+to compile functional logic programs of the source language Curry
+into purely functional Haskell programs.
+The implementation is based on the idea to represent
+the search space as a data structure and logic variables
+as operations that generate their values.
+This has the advantage that one can apply various,
+in particular, complete search strategies to compute solutions.
+However, the generation of all values for logic variables
+might be inefficient for applications that
+exploit constraints on partial values.
+To overcome this drawback, we propose new techniques
+to implement equational constraints in this framework.
+In particular, we show how unification modulo function evaluation
+and functional patterns can be added without sacrificing
+the efficiency of the kernel implementation.
+\end{abstract}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:Introduction}
+
+Functional logic languages combine the most important
+features of functional and logic programming in a single language
+(see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
+In particular, they provide higher-order functions and demand-driven
+evaluation from functional programming together with logic programming features
+like non-deterministic search and computing with partial information
+(logic variables).
+This combination
+has led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
+and better abstractions for application programming,
+but it put new demands on the implementation side.
+
+Previous implementations of functional logic languages
+can be classified into three categories:
+(1) designing new abstract machines appropriately supporting
+these operational features and implementing them in some (typically,
+imperative) language, like C \cite{Lux99FLOPS}
+or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP},
+(2) compilation into logic languages (Prolog) and reuse
+the existing backtracking implementation for non-deterministic
+search as well as logic variables and unification for computing with partial
+information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}, or
+(3) compilation into non-strict functional languages like Haskell
+and reuse the implementation
+of lazy evaluation and higher-order functions
+\cite{BrasselHuch07,BrasselHuch09}.
+The latter approach requires the implementation
+of non-deterministic evaluations but has the advantage
+that the explicit handling of non-determinism provides for
+various search strategies like depth-first, breadth-first, parallel,
+or iterative deepening instead of committing to a fixed (incomplete)
+strategy like backtracking \cite{BrasselHuch07}.
+
+In this paper we consider KiCS2 \cite{BrasselFischerHanusReck11},
+a new system that compiles functional logic programs of the
+source language Curry \cite{Hanus06Curry}
+into purely functional Haskell programs.
+We have shown in \cite{BrasselFischerHanusReck11}
+that this implementation can compete with or outperform
+other existing implementations of Curry.
+KiCS2 is based on the idea to represent
+the search space, i.e., all non-deterministic results of a computation,
+as a data structure that can be traversed by operations
+implementing various strategies.
+Furthermore, logic variables are replaced by generators,
+i.e., operations that non-deterministically evaluate to
+all possible ground values of the type of the logic variable.
+Actually, it has been shown \cite{AntoyHanus06ICLP}
+that computing with logic variables by narrowing \cite{Reddy85,Slagle74}
+or computing with generators by rewriting
+are equivalent, i.e., compute the same results.
+Although this implementation technique is correct \cite{Brassel11Thesis},
+the generation of all values for logic variables
+might be inefficient for applications that
+exploit constraints on partial values.
+For instance, in Prolog the equality constraint \ccode{X=c(a)}
+is solved by instantiating the variable \code{X} to \code{c(a)},
+but the equality constraint \ccode{X=Y} is solved by binding \code{X}
+to \code{Y} without enumerating any values for \code{X} or \code{Y}.
+Therefore, we propose in this paper new techniques
+to implement equational constraints in the framework of KiCS2
+(note that, in contrast to Prolog, unification is performed
+modulo function evaluation in functional logic languages).
+Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
+i.e., patterns containing evaluable operations providing
+for more powerful pattern matching than in logic or functional languages,
+can be implemented in this framework.
+We show that both extensions lead to efficiency improvement
+without sacrificing the efficiency of the kernel implementation.
+
+In the next section, we review the source language Curry
+and the features that are considered in this paper.
+Section~\ref{sec:Compilation} sketches the implementation scheme
+of KiCS2.
+Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
+discuss the extensions to implement unification modulo
+functional evaluation and functional patterns, respectively.
+Benchmarks demonstrating the usefulness of this scheme
+are presented in Section~\ref{sec:Benchmarks}
+before we conclude in Section~\ref{sec:Conclusions}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Curry Programs}
+\label{sec:Curry}
+
+The syntax of the functional logic language Curry \cite{Hanus06Curry}
+is close to Haskell \cite{PeytonJones03Haskell},
+i.e., type variables and names of defined operations usually
+start with lowercase letters and the names of type and data constructors
+start with an uppercase letter. The application of $f$
+to $e$ is denoted by juxtaposition (``$f~e$'').
+In addition to Haskell, Curry allows free (logic)
+variables in conditions and right-hand sides of defining rules.
+Hence, an operation is defined by conditional rewrite rules of the form:
+%
+\begin{equation}
+\label{rule}
+f~t_1 \ldots t_n \code{~|~} c \code{~=~} e \code{~~where~} vs \code{~free}
+\end{equation}
+where the \emph{condition} $c$ is optional and
+$vs$ is the list of variables occurring in $c$ or $e$ but not in the
+\emph{left-hand side} $f~t_1 \ldots t_n$.
+
+In contrast to functional programming and similarly to logic programming,
+operations can be defined by overlapping rules so that
+they might yield more than one result on the same input.
+Such operations are also called \emph{non-deterministic}.
+For instance, Curry offers a \emph{choice} operation that is predefined by
+the following rules:
+%
+\begin{curry}
+  x ? _ = x
+  _ ? y = y
+\end{curry}
+%
+Thus, we can define a non-deterministic operation \code{aBool} by
+\label{ex:aBool}
+%
+\begin{curry}
+  aBool = True ? False
+\end{curry}
+%
+so that the expression \ccode{aBool} has two values:
+\code{True} and \code{False}.
+
+If non-deterministic operations are used as arguments in other operations,
+a semantical ambiguity might occur. Consider the operations
+%
+\begin{curry}
+  xor True  False = True
+  xor True  True  = False
+  xor False x     = x
+
+  xorSelf x = xor x x
+\end{curry}
+%
+and the expression \ccode{xorSelf aBool}.
+If we interpret this program as a term rewriting system,
+we could have the reduction
+\begin{haskell}
+  xorSelf aBool  $\to~$  xor aBool aBool     $\to~$  xor True aBool
+                 $\to~$  xor True False      $\to~$  True
+\end{haskell}
+leading to the unintended result \code{True}.
+Note that this result cannot be obtained if we use a strict strategy
+where arguments are evaluated before the function calls.
+In order to avoid dependencies on the evaluation strategies
+and exclude such unintended results,
+Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
+the rewriting logic CRWL as a logical
+(execution- and strategy-independent) foundation for declarative
+programming with non-strict and non-deterministic operations.  This
+logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
+\label{ctc-semantics}
+where values of the arguments of an operation are determined before the
+operation is evaluated. Note that this does not necessarily require
+an eager evaluation of arguments.
+Actually, \cite{AlbertHanusHuchOliverVidal05,LopezRodriguezSanchez07}
+define lazy evaluation strategies for functional logic programs
+with call-time choice semantics where actual arguments passed to
+operations are shared. Hence, we can evaluate the expression above
+lazily, provided that all occurrences of \code{aBool}
+are shared so that all of them reduce either to \code{True} or to \code{False}.
+The requirements of this call-time choice semantics are the
+reason why it is not simply possible to use list comprehensions
+or non-determinism monads for a straightforward implementation
+of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
+
+The condition $c$ in rule (\ref{rule}) is typically a
+conjunction of \emph{equational constraints}
+of the form \code{$e_1$\,=:=\,$e_2$}.
+Such a constraint is satisfiable if
+both sides $e_1$ and $e_2$ are evaluable to unifiable data terms.
+For instance, if the symbol ``\code{++}'' denotes the usual list
+concatenation operation, we can define an operation \code{last}
+that computes the last element \code{e} of a non-empty list \code{xs}
+as follows:
+%
+\begin{curry}
+  last xs | ys++[e]=:=xs = e   where ys,e free  
+\end{curry}
+%
+As in Haskell, the rules defining most functions are
+\emph{constructor-based} \cite{ODonnell85}, in (\ref{rule}) $t_1
+\ldots t_n$ are made of variables and/or data constructor symbols
+only.  However, Curry also allows \emph{functional pattern}
+\cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might contain calls to
+defined operations.  For instance, we can define \code{last} also
+as:
+%
+\begin{curry}
+  last (xs++[e]) = e 
+\end{curry}
+%
+Here, the functional pattern \code{(xs++[e])}
+states that \code{last} is reducible
+to \code{e} provided that the argument can be matched against
+some value of \code{(xs++[e])} where \code{xs} and \code{e} are
+free variables.
+By instantiating \code{xs} to arbitrary lists, the value
+of \code{(xs++[e])} is any list having \code{e} as its last element.
+Functional patterns are
+a powerful feature to express arbitrary selections in term structures.
+For instance, functional patterns supports a straightforward
+processing of XML data with incompletely specified
+or evolving formats \cite{Hanus11ICLP}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The Compilation of Scheme of KiCS2}
+\label{sec:Compilation}
+
+In this section we sketch the translation of Curry programs
+into Haskell programs as performed by KiCS2,
+since this is necessary to understand the extensions
+described in the subsequent sections.
+More details about this translation scheme can be found in
+\cite{BrasselFischer08IFL,BrasselFischerHanusReck11}.
+
+
+As mentioned in the introduction, the KiCS2 implementation
+is based on the explicit representation of non-deterministic results
+in a data structure.
+This is achieved by extending each data type of the source program
+by constructors to represent a choice between two values
+and a failure, respectively.
+For instance, the data type for Boolean values defined in a Curry program by
+\begin{curry}
+  data Bool = False | True
+\end{curry}
+is translated into the Haskell data type\footnote{Actually,
+our compiler performs some renamings to avoid conflicts with
+predefined Haskell entities and introduces type classes
+to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
+\begin{haskell}
+  data Bool = False | True | Choice ID Bool Bool | Fail
+\end{haskell}
+The first argument of each \code{Choice} constructor of type \code{ID}
+is used to implement the call-time choice semantics
+discussed in Section~\ref{sec:Curry}.
+Since the evaluation of \code{xorSelf aBool} duplicates
+the argument operation \code{aBool}, we have to ensure
+that both duplicates, which later evaluate to a non-deterministic
+choice between two values, are either \code{True} or \code{False}.
+This is obtained by assigning a unique identifier (of type \code{ID})
+to each \code{Choice}. The difficulty is to get a unique identifier
+when needed, i.e., when some operation evaluates to a \code{Choice}.
+Since we want to compile into \code{purely} functional programs
+(in order to enable powerful program optimizations),
+we cannot use unsafe features with side effects to generate
+such identifiers.
+Hence, we pass a (conceptually infinite) set of identifiers,
+also called \emph{identifier supply},
+to each operation so that a \code{Choice} can pick an identifier from
+this set.
+For this purpose, we assume a type \code{IDSupply},
+representing an infinite set of identifiers,
+with operations
+\begin{haskell}
+  initSupply  :: IO IDSupply
+  thisID      :: IDSupply -> ID
+  leftSupply  :: IDSupply -> IDSupply
+  rightSupply :: IDSupply -> IDSupply
+\end{haskell}
+The operation \code{initSupply} creates such a set (at the beginning
+of an execution),
+the operation \code{thisID} takes some identifier from this set, and
+\code{leftSupply} and \code{rightSupply} split this set
+into two disjoint subsets without the identifier
+obtained by \code{thisID}.
+There are different implementations available \cite{AugustssonRittriSynek94}
+(see below for a simple implementation) and our implementation
+is parametric over concrete implementations of \code{IDSupply}.
+
+When translating Curry to Haskell, KiCS2 adds to each operation
+an additional argument of type \code{IDSupply}.
+For instance, the operation \code{aBool}
+defined in Section~\ref{ex:aBool} is translated into:
+\begin{haskell}
+  aBool :: IDSupply -> Bool
+  aBool s = Choice (thisID s) True False
+\end{haskell}
+Similarly, the operation
+\begin{curry}
+  main :: Bool
+  main = xorSelf aBool
+\end{curry}
+is translated into
+\begin{haskell}
+  main :: IDSupply -> Bool
+  main s = xorSelf (aBool (leftSupply s)) (rightSupply s)
+\end{haskell}
+so that the set \code{s} is split into a set \code{(leftSupply s)}
+containing identifier for the evaluation of \code{aBool}
+and a set \code{(rightSupply s)} containing identifiers
+for the evaluation of operation \code{xorSelf}.
+
+Since all data types are extended by additional constructors,
+we must also extend the definition of operations performing
+pattern matching. For instance, consider the definition of lists
+\begin{curry}
+  data List a = Nil | Cons a (List a)
+\end{curry}
+and an operation to extract the first element of a non-empty list:
+\begin{curry}
+  head :: List a -> a
+  head (Cons x xs) = x
+\end{curry}
+The type definition is extended as follows:
+\begin{haskell}
+  data List a = Nil | Cons a (List a) | Choice ID (List a) (List a) | Fail
+\end{haskell}
+The operation \code{head} is extended by an identifier supply
+and further matching rules:
+\begin{haskell}
+  head :: List a -> IDSupply -> a
+  head (Cons x xs)      s = x
+  head (Choice i x1 x2) s = Choice i (head x1 s) (head x2 s)
+  head _                s = Fail
+\end{haskell}
+The second rule transforms a non-deterministic argument
+into a non-deterministic result and
+the final rule returns \code{Fail} in all other cases,
+i.e., if \code{head} is
+applied to the empty list as well as if the matching argument
+is already a failed computation (failure propagation).
+
+To show a concrete example, we use the following implementation
+of \code{IDSupply} based on unbounded integers:
+%
+\begin{haskell}
+  type IDSupply = Integer
+  initSupply    = return 1
+  thisID      n = n
+  leftSupply  n = 2*n
+  rightSupply n = 2*n+1
+\end{haskell}
+%
+If we apply the same transformation to the rules defining \code{xor}
+(actually, \code{xor} performs pattern matching on two arguments
+which is avoided in KiCS2 by introducing an intermediate operation,
+see \cite{BrasselFischerHanusReck11}) and evaluate the main expression
+\code{(main 1)},
+we obtain the result
+\begin{haskell}
+  Choice 2 (Choice 2 False True) (Choice 2 True False)
+\end{haskell}
+Thus, the result is non-deterministic and contains several choices,
+but all of them have the same identifier.
+This identifier is used when the values contained in this result
+are shown: one has to make \emph{consistent} selections in choices with
+same identifiers. Thus, if we select the left branch as the value
+of the outermost \code{Choice}, we also have to select the left branch
+in the selected argument \code{(Choice 2 False True)} so that only
+the value \code{False} is possible here.
+Similarly, if we select the right branch as the value of the outermost
+\code{Choice}, we also have to select the right branch in
+its selected argument \code{(Choice 2 True False)} which yields the only
+value \code{False}.
+Thus, unintended value \code{True} is not produced.
+
+In order to extract values from a \code{Choice} structure,
+we have to traverse it, compute all possible choices
+but consider the choice identifiers to make consistent (left/right) choices.
+The latter requirement can be implemented by storing
+the choices already made during the traversal.
+For this purpose, we use the type
+\begin{haskell}
+  data Choice = NoChoice | ChooseLeft | ChooseRight
+\end{haskell}
+where \code{NoChoice} represents the fact that a choice has not yet been made.
+Furthermore, we assume operations to lookup the current choice
+for a given identifier or change its choice (depending on the implementation
+of \code{IDSupply}, KiCS2 supports various implementations
+based on memory cells or finite maps):
+\begin{haskell}
+  lookupChoice :: ID -> IO Choice
+  setChoice    :: ID -> Choice -> IO ()
+\end{haskell}
+%
+Now we can print all values contained in a choice structure
+in a depth-first manner by the following operation:\footnote{%
+Note that this code has been simplified for readability
+since the type system of Haskell does not
+allow this direct definition.}
+\label{sec:printValsDFS}
+\begin{haskell}
+  printValsDFS :: a -> IO ()
+  printValsDFS Fail             = return ()
+  printValsDFS (Choice i x1 x2) = lookupChoice i >>= choose
+  printValsDFS v                = print v
+   where
+    choose ChooseLeft  = printValsDFS (try x1)
+    choose ChooseRight = printValsDFS (try x2)
+    choose NoChoice    = do newChoice ChooseLeft  x1
+                            newChoice ChooseRight x2
+
+    newChoice ch x = do setChoice i ch
+                        printValsDFS (try x)
+                        setChoice i NoChoice
+\end{haskell}
+This operation prints ignores failures and prints values
+that are not a \code{Choice}. For a \code{Choice},
+it checks whether a choice for
+this identifier has already been made (note that the initial value
+for all identifiers is \code{NoChoice}).
+If a choice has been made, it follows this choice.
+Otherwise, the left choice is made and stored. After printing
+all the values w.r.t.\ this choice, the choice is undone (like in backtracking)
+and the right choice is made and stored.
+
+In general, this operation is applied to the normal form
+of the main expression (where \code{initSupply} is used to
+compute an initial identifier supply passed to this expression).
+The normal form computation is necessary for structured data like lists
+so that a failure or choice in some part of the data is moved to
+the root. Other search strategies, like
+breadth-first search, iterative deepening, or parallel search,
+can be obtained by different implementations of this main operation
+to print all values. Instead of printing all values,
+one can also collect all values in a tree-like data structure
+so that the programmer can implement his own search strategies
+(this corresponds to encapsulating search \cite{BrasselHanusHuch04JFLP}).
+Finally, one can also have other options rather than printing all values
+of the main expression.
+For instance, one can easily define operations
+to prints only the first solution or one by one upon user requests.
+Due to the lazy evaluation strategy of Haskell,
+such operations can also be applied to infinite choice structures.
+
+An important optimization, performed by our compiler,
+is a \emph{determinism analysis}.
+If an operation does not call, neither directly nor indirectly through
+other operations, the choice operation \ccode{?},
+then it is not necessary to pass an identifier supply
+so that the generated code is nearly identical to a corresponding
+functional program.
+Actually, the benchmarks presented in \cite{BrasselFischerHanusReck11}
+show that this implementation outperforms all other Curry implementations
+for deterministic operations,
+and, for non-deterministic operations, outperforms Prolog-based
+implementations of Curry and can compete with MCC \cite{Lux99FLOPS},
+a Curry implementation that compiles to C.
+
+As mentioned in the introduction,
+our compiler translates occurrences of logic variables
+into generators. For instance, each Boolean logic variable
+is replaced by a generator defined like \code{aBool}.
+Since such generators are standard
+non-deterministic operations, they are translated like any other operation.
+However, if equational constraints should be solved,
+there are methods which are more efficient than generating all values.
+These methods and their implementation are discussed in the
+next section.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Unification}
+\label{sec:Unification}
+
+Motivate: discuss == vs. =:=
+
+infinite search space for variable unification
+
+distinguish free variables from choices
+
+extend unification
+
+add binding constraints
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Functional Patterns}
+\label{sec:FuncPatterns}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Benchmarks}
+\label{sec:Benchmarks}
+
+Benchmarks for Last with ==, =:= and func. patterns
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions and Related Work}
+\label{sec:Conclusions}
+
+
+
+\bibliographystyle{plain}
+\bibliography{mh}
+
+\end{document}
+
+% LocalWords:  Curry KiCS
+
