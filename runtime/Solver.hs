@@ -51,6 +51,7 @@ solves (c:cs) = do
 
 solve :: Constraint -> Solution
 solve Unsolvable = unsolvable
+
 solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= chooseCC
   where
     chooseCC ChooseLeft  = solves lcs
@@ -59,15 +60,19 @@ solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= chooseCC
       (return ())
       (mkSolution (setUnsetChoice i ChooseLeft ) >>> solves lcs)
       (mkSolution (setUnsetChoice i ChooseRight) >>> solves rcs)
-    chooseCC c           = error $ "ID.solve.chooseCC: " ++ show c
-solve (ConstraintChoices i@(Narrowed pns _) css) = lookupChoice i >>= chooseCCs
+    chooseCC c           = error $ "Solver.solve.chooseCC: " ++ show c
+
+solve cc@(ConstraintChoices i@(Narrowed pns _) css) = lookupChoice i >>= chooseCCs
   where
     chooseCCs (ChooseN c _) = solves (css !! c)
     chooseCCs NoChoice      = return $
       ChoicesST (return ()) $ zipWith3 mkChoice [0 ..] css pns
-    chooseCCs c           = error $ "ID.solve.chooseCCs: " ++ show c
+    chooseCCs (LazyBind cs) = solves cs >>> solve cc 
+    chooseCCs c           = error $ "Solver.solve.chooseCCs: " ++ show c
 
     mkChoice n cs pn = mkSolution (setUnsetChoice i (ChooseN n pn)) >>> solves cs
+solve ccs@(ConstraintChoices _ _) = error $ "Solver.solve: " ++ show ccs
+
 solve (i :=: cc) = lookupChoice i >>= choose cc
   where
   -- 1st param: the Choice which should be stored for i

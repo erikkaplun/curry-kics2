@@ -7,7 +7,6 @@ Things we have to do
   for a benchmark
 - Literal pattern like f 'a' = 'b' are not fully tested, especially for exotic
   characters (e.g., characters above (chr 127)).
-- repair automatic bootstrapping
 - set functions
 - test function patterns
 - IO
@@ -16,3 +15,5 @@ Things we have to do
 - sharing of non-determinism and free vars is less efficient than in KiCS
 - repair search strategies bfs, iterative deepening
 - eta-expansion of deterministic functions (optimizing)
+  Update: It seems like this functionality has been included in the frontend
+  but disabled for PAKCS. Maybe we can reactivate it.
