@@ -264,19 +264,20 @@ as follows:
 \end{curry}
 %
 As in Haskell, the rules defining most functions are
-\emph{constructor-based} \cite{ODonnell85}, in (\ref{rule}) $t_1
-\ldots t_n$ are made of variables and/or data constructor symbols
+\emph{constructor-based} \cite{ODonnell85}, in (\ref{rule})
+$t_1,\ldots,t_n$ are made of variables and/or data constructor symbols
 only.  However, Curry also allows \emph{functional pattern}
 \cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might contain calls to
-defined operations.  For instance, we can define \code{last} also
+defined operations.  For instance, we can define the last element
+of a list also by
 as:
 %
 \begin{curry}
-  last (xs++[e]) = e 
+  last' (xs++[e]) = e 
 \end{curry}
 %
 Here, the functional pattern \code{(xs++[e])}
-states that \code{last} is reducible
+states that \code{last'} is reducible
 to \code{e} provided that the argument can be matched against
 some value of \code{(xs++[e])} where \code{xs} and \code{e} are
 free variables.
@@ -567,7 +568,7 @@ in a non-deterministic computation.
 Apart from user-defined predicates,
 equational constraints of the form \code{$e_1$\,=:=\,$e_2$}
 are the most important kind of constraints.
-We have already seen in the first rule defining operation
+We have already seen in the operation
 \code{last} in Section~\ref{ex:last} a typical application
 of an equational constraint.
 
@@ -765,7 +766,7 @@ are extended to deal with decisions of type \code{BindTo},
 i.e., they follow chains of variable bindings.
 
 Due to the extensions described in this section,
-we obtain the implementation of a unification procedure
+we obtain an implementation of a unification procedure
 that integrates the demand-driven evaluation of operations
 occurring in the arguments.
 Benchmarks evaluating the efficiency of this approach are
@@ -779,7 +780,96 @@ shown in Section~\ref{sec:Benchmarks}.
 \section{Functional Patterns}
 \label{sec:FuncPatterns}
 
+A well-known disadvantage of equational constraints
+is the fact that \ccode{=:=} is interpreted as strict equality.
+Thus, if one uses equational constraints to express
+requirements on arguments, the resulting operations might be too strict.
+For instance, the equational constraint in the condition
+defining \code{last} (see Section~\ref{ex:last})
+requires that \code{ys++[e]} as well as \code{xs}
+must be reducible to identical values so that the input list \code{xs}
+is completely evaluated.
+Hence, if \code{failed} denotes an operation whose evaluation fails,
+the evaluation of \code{last [failed,2]} has no result.
+On the other hand, the evaluation of \code{last' [failed,2]} yields
+the value \code{2}, i.e., the definition of \code{last'} is less strict.
+This is due to the fact that a functional pattern like
+\code{(xs++[e])} abbreviates all values to which it can be evaluated
+(by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]} etc.
+Conceptually, the rule defining \code{last'}
+abbreviates the following (infinite) set of rules:
+\begin{curry}
+  last' [e] = e
+  last' [x1,e] = e
+  last' [x1,x2,e] = e
+  $\ldots$
+\end{curry}
+As a further example,
+consider an operation that returns the first duplicated element in
+a list.
+Using equational constraint, we can define it as follows:
+\begin{curry}
+  fstDup xs | xs =:= ys++[e]++zs & elem e ys =:= True & nub ys =:= ys
+            = e    where ys,zs,e free
+\end{curry}
+The first equational constraint is used to split the input list \code{xs}
+into three sublists.
+The last constraint ensures that the first sublist
+\code{ys} does not contain duplicated elements
+(the library operation removes all duplicates from a list)
+and the second constraint ensures that the first element after \code{ys}
+occurs in \code{ys}.
+Although this implementation is concise, it cannot be applied
+to infinite lists due to the strict interpretation of \ccode{=:=}.
+This is not the case if we define this operation by a functional pattern:
+\begin{curry}
+  fstDup' (ys++[e]++zs) | elem e ys =:= True & nub ys =:= ys
+                        = e
+\end{curry}
+%
+Functional patterns are quite useful in situations
+where one wants to select parts of some structure
+at arbitrary positions. For instance,
+functional patterns have been applied to support
+the high-level programming of querying or transforming
+XML data \cite{Hanus11ICLP}.
 
+Obviously, one cannot implement functional patterns by
+a transformation into an infinite set of rules.
+Fortunately, functional patterns can be implemented by
+a specific \emph{lazy unification} procedure \ccode{=:<=}
+\cite{AntoyHanus05LOPSTR}.
+For instance, the definition of \code{last'} is transformed into
+\begin{curry}
+  last' ys | (xs++[e]) =:<= ys
+           = e   where xs,e free
+\end{curry}
+The behavior of \ccode{=:<=} is similar to \ccode{=:=}
+except for the case that a variable in the left argument
+should be bound to some expression: instead of evaluating
+the expression to some value and bind the variable to it,
+the variable is bound to the \emph{unevaluated} expression
+(see \cite{AntoyHanus05LOPSTR} for more details).
+Due to this slight change, failures or infinite structures
+in actual arguments do not cause problems in the matching
+of functional patterns.
+
+This discussion shows the requirements on an implementation
+of functional patterns. The general structure
+is quite similar to equational constraints
+with the exception that variables could be also bound
+to unevaluated expressions. If such variables are later
+accessed, they are evaluated.
+This can be achieved by adding a further alternative
+to the type of decisions:
+\begin{haskell}
+data Decision = $\ldots$ | LazyBind [Constraint]
+\end{haskell}
+%
+The implementation of the lazy unification \ccode{=:<=}
+is almost identical to the strict unification \ccode{=:=}
+
+         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:Benchmarks}
