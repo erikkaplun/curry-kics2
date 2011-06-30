@@ -62,11 +62,12 @@ solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= chooseCC
       (mkSolution (setUnsetChoice i ChooseRight) >>> solves rcs)
     chooseCC c           = error $ "Solver.solve.chooseCC: " ++ show c
 
-solve (ConstraintChoices i@(Narrowed pns _) css) = lookupChoice i >>= chooseCCs
+solve cc@(ConstraintChoices i@(Narrowed pns _) css) = lookupChoice i >>= chooseCCs
   where
     chooseCCs (ChooseN c _) = solves (css !! c)
     chooseCCs NoChoice      = return $
       ChoicesST (return ()) $ zipWith3 mkChoice [0 ..] css pns
+    chooseCCs (LazyBind cs) = solves cs >>> solve cc 
     chooseCCs c           = error $ "Solver.solve.chooseCCs: " ++ show c
 
     mkChoice n cs pn = mkSolution (setUnsetChoice i (ChooseN n pn)) >>> solves cs
