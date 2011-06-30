@@ -62,10 +62,10 @@ The implementation is based on the idea to represent
 the search space as a data structure and logic variables
 as operations that generate their values.
 This has the advantage that one can apply various,
-in particular, complete search strategies to compute solutions.
+and in particular, complete search strategies to compute solutions.
 However, the generation of all values for logic variables
 might be inefficient for applications that
-exploit constraints on partial values.
+exploit constraints on partially known values.
 To overcome this drawback, we propose new techniques
 to implement equational constraints in this framework.
 In particular, we show how unification modulo function evaluation
@@ -87,26 +87,31 @@ like non-deterministic search and computing with partial information
 (logic variables).
 This combination
 has led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
-and better abstractions for application programming,
-but it put new demands on the implementation side.
+and better abstractions for application programming, but it also gave rise
+to new challenges of implementation.
 
 Previous implementations of functional logic languages
 can be classified into three categories:
-(1) designing new abstract machines appropriately supporting
+\begin{enumerate}
+ \item designing new abstract machines appropriately supporting
 these operational features and implementing them in some (typically,
 imperative) language, like C \cite{Lux99FLOPS}
 or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP},
-(2) compilation into logic languages (Prolog) and reuse
+
+ \item compilation into logic languages (Prolog) and reusing
 the existing backtracking implementation for non-deterministic
 search as well as logic variables and unification for computing with partial
 information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}, or
-(3) compilation into non-strict functional languages like Haskell
-and reuse the implementation
+
+ \item compilation into non-strict functional languages like Haskell
+and reusing the implementation
 of lazy evaluation and higher-order functions
 \cite{BrasselHuch07,BrasselHuch09}.
+\end{enumerate}
+
 The latter approach requires the implementation
 of non-deterministic evaluations but has the advantage
-that the explicit handling of non-determinism provides for
+that the explicit handling of non-determinism allows for
 various search strategies like depth-first, breadth-first, parallel,
 or iterative deepening instead of committing to a fixed (incomplete)
 strategy like backtracking \cite{BrasselHuch07}.
@@ -125,7 +130,7 @@ implementing various strategies.
 Furthermore, logic variables are replaced by generators,
 i.e., operations that non-deterministically evaluate to
 all possible ground values of the type of the logic variable.
-Actually, it has been shown \cite{AntoyHanus06ICLP}
+It has been shown \cite{AntoyHanus06ICLP}
 that computing with logic variables by narrowing \cite{Reddy85,Slagle74}
 or computing with generators by rewriting
 are equivalent, i.e., compute the same results.
@@ -145,7 +150,7 @@ Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
 i.e., patterns containing evaluable operations providing
 for more powerful pattern matching than in logic or functional languages,
 can be implemented in this framework.
-We show that both extensions lead to efficiency improvement
+We show that both extensions lead to efficiency improvements
 without sacrificing the efficiency of the kernel implementation.
 
 In the next section, we review the source language Curry
@@ -225,7 +230,7 @@ we could have the reduction
 \end{haskell}
 leading to the unintended result \code{True}.
 Note that this result cannot be obtained if we use a strict strategy
-where arguments are evaluated before the function calls.
+where arguments are evaluated prior to the function calls.
 In order to avoid dependencies on the evaluation strategies
 and exclude such unintended results,
 Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
@@ -242,8 +247,8 @@ define lazy evaluation strategies for functional logic programs
 with call-time choice semantics where actual arguments passed to
 operations are shared. Hence, we can evaluate the expression above
 lazily, provided that all occurrences of \code{aBool}
-are shared so that all of them reduce either to \code{True} or to \code{False}.
-The requirements of this call-time choice semantics are the
+are shared so that all of them reduce either to \code{True} or to \code{False}
+consistently. The requirements of this call-time choice semantics are the
 reason why it is not simply possible to use list comprehensions
 or non-determinism monads for a straightforward implementation
 of functional logic programs in Haskell \cite{FischerKiselyovShan09}.
@@ -252,7 +257,7 @@ The condition $c$ in rule (\ref{rule}) is typically a
 conjunction of \emph{equational constraints}
 of the form \code{$e_1$\,=:=\,$e_2$}.
 Such a constraint is satisfiable if
-both sides $e_1$ and $e_2$ are evaluable to unifiable data terms.
+both sides $e_1$ and $e_2$ are reducible to unifiable data terms.
 For instance, if the symbol ``\code{++}'' denotes the usual list
 concatenation operation, we can define an operation \code{last}
 that computes the last element \code{e} of a non-empty list \code{xs}
@@ -260,20 +265,19 @@ as follows:
 %
 \label{ex:last}
 \begin{curry}
-  last xs | ys++[e]=:=xs = e   where ys,e free  
+  last xs | ys++[e] =:= xs = e   where ys, e free
 \end{curry}
 %
-As in Haskell, the rules defining most functions are
-\emph{constructor-based} \cite{ODonnell85}, in (\ref{rule})
-$t_1,\ldots,t_n$ are made of variables and/or data constructor symbols
-only.  However, Curry also allows \emph{functional pattern}
-\cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might contain calls to
-defined operations.  For instance, we can define the last element
-of a list also by
-as:
+Like in Haskell, most rules defining functions are \emph{constructor-based} 
+\cite{ODonnell85}, i.e., in (\ref{rule})
+$t_1,\ldots,t_n$ consist of variables and/or data constructor symbols
+only.  However, Curry also allows \emph{functional patterns}
+\cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might additionally contain calls to
+defined operations. For instance, we can define the last element
+of a list also by:
 %
 \begin{curry}
-  last' (xs++[e]) = e 
+  last' (xs++[e]) = e
 \end{curry}
 %
 Here, the functional pattern \code{(xs++[e])}
@@ -292,7 +296,7 @@ or evolving formats \cite{Hanus11ICLP}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{The Compilation of Scheme of KiCS2}
+\section{The Compilation Scheme of KiCS2}
 \label{sec:Compilation}
 
 In this section we sketch the translation of Curry programs
@@ -326,11 +330,11 @@ discussed in Section~\ref{sec:Curry}.
 Since the evaluation of \code{xorSelf aBool} duplicates
 the argument operation \code{aBool}, we have to ensure
 that both duplicates, which later evaluate to a non-deterministic
-choice between two values, are either \code{True} or \code{False}.
+choice between two values, yield either \code{True} or \code{False}.
 This is obtained by assigning a unique identifier (of type \code{ID})
 to each \code{Choice}. The difficulty is to get a unique identifier
 when needed, i.e., when some operation evaluates to a \code{Choice}.
-Since we want to compile into \code{purely} functional programs
+Since we want to compile into \emph{purely} functional programs
 (in order to enable powerful program optimizations),
 we cannot use unsafe features with side effects to generate
 such identifiers.
@@ -376,9 +380,9 @@ is translated into
   main s = xorSelf (aBool (leftSupply s)) (rightSupply s)
 \end{haskell}
 so that the set \code{s} is split into a set \code{(leftSupply s)}
-containing identifier for the evaluation of \code{aBool}
+containing identifiers for the evaluation of \code{aBool}
 and a set \code{(rightSupply s)} containing identifiers
-for the evaluation of operation \code{xorSelf}.
+for the evaluation of the operation \code{xorSelf}.
 
 Since all data types are extended by additional constructors,
 we must also extend the definition of operations performing
@@ -391,7 +395,7 @@ and an operation to extract the first element of a non-empty list:
   head :: List a -> a
   head (Cons x xs) = x
 \end{curry}
-The type definition is extended as follows:
+The type definition is then extended as follows:
 \begin{haskell}
   data List a = Nil | Cons a (List a) | Choice ID (List a) (List a) | Fail
 \end{haskell}
@@ -417,8 +421,8 @@ of \code{IDSupply} based on unbounded integers:
   type IDSupply = Integer
   initSupply    = return 1
   thisID      n = n
-  leftSupply  n = 2*n
-  rightSupply n = 2*n+1
+  leftSupply  n = 2 * n
+  rightSupply n = 2 * n + 1
 \end{haskell}
 %
 If we apply the same transformation to the rules defining \code{xor}
@@ -433,7 +437,7 @@ we obtain the result
 Thus, the result is non-deterministic and contains several choices,
 but all of them have the same identifier.
 This identifier is used when the values contained in this result
-are shown: one has to make \emph{consistent} selections in choices with
+are searched for: one has to make \emph{consistent} selections in choices with
 same identifiers. Thus, if we select the left branch as the value
 of the outermost \code{Choice}, we also have to select the left branch
 in the selected argument \code{(Choice 2 False True)} so that only
@@ -442,15 +446,15 @@ Similarly, if we select the right branch as the value of the outermost
 \code{Choice}, we also have to select the right branch in
 its selected argument \code{(Choice 2 True False)} which yields the only
 value \code{False}.
-Thus, unintended value \code{True} is not produced.
+Thus, the unintended value \code{True} is not produced.
 
-In order to extract values from a \code{Choice} structure,
+In general, to extract all values from a \code{Choice} structure,
 we have to traverse it, compute all possible choices
 but consider the choice identifiers to make consistent (left/right)
 decisions.
 The latter requirement can be implemented by storing
-the decision already made for some choices during the traversal.
-For this purpose, we use the type
+the decisions already made for some choices during the traversal.
+For this purpose, we introduce the type
 \begin{haskell}
   data Decision = NoDecision | ChooseLeft | ChooseRight
 \end{haskell}
@@ -461,8 +465,8 @@ for a given identifier or change its decision (depending on the implementation
 of \code{IDSupply}, KiCS2 supports various implementations
 based on memory cells or finite maps):
 \begin{haskell}
-  lookupChoice :: ID -> IO Decision
-  setChoice    :: ID -> Decision -> IO ()
+  lookupDecision :: ID -> IO Decision
+  setDecision    :: ID -> Decision -> IO ()
 \end{haskell}
 %
 Now we can print all values contained in a choice structure
@@ -474,21 +478,20 @@ allow this direct definition.}
 \begin{haskell}
   printValsDFS :: a -> IO ()
   printValsDFS Fail             = return ()
-  printValsDFS (Choice i x1 x2) = lookupChoice i >>= choose
+  printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
   printValsDFS v                = print v
    where
-    choose ChooseLeft  = printValsDFS (try x1)
-    choose ChooseRight = printValsDFS (try x2)
-    choose NoDecision  = do newDecision ChooseLeft  x1
+    follow ChooseLeft  = printValsDFS x1
+    follow ChooseRight = printValsDFS x2
+    follow NoDecision  = do newDecision ChooseLeft  x1
                             newDecision ChooseRight x2
 
-    newDecision ch x = do setChoice i ch
-                          printValsDFS (try x)
-                          setChoice i NoDecision
+    newDecision d x = do setDecision i d
+                         printValsDFS x
+                         setDecision i NoDecision
 \end{haskell}
-This operation prints ignores failures and prints values
-that are not a \code{Choice}. For a \code{Choice},
-it checks whether a decision for
+This operation ignores failures and prints values that are no \code{Choice}.
+For a \code{Choice}, it checks whether a decision for
 this identifier has already been made (note that the initial value
 for all identifiers is \code{NoDecision}).
 If a decision has been made for this choice, it follows this decision.
@@ -513,17 +516,21 @@ so that the programmer can implement his own search strategies
 Finally, one can also have other options rather than printing all values
 of the main expression.
 For instance, one can easily define operations
-to prints only the first solution or one by one upon user requests.
+to print either the first solution only or one by one upon user request.
 Due to the lazy evaluation strategy of Haskell,
 such operations can also be applied to infinite choice structures.
 
-An important optimization, performed by our compiler,
-is a \emph{determinism analysis}.
-If an operation does not call, neither directly nor indirectly through
-other operations, the choice operation \ccode{?},
-then it is not necessary to pass an identifier supply
-so that the generated code is nearly identical to a corresponding
-functional program.
+To avoid an unnecessary growth of the search space represented by
+\code{Choice} constructors, out compiler performs an optimization for
+deterministic operations. If an operation does not call, 
+neither directly nor indirectly through
+other operations, the choice operation \ccode{?},\footnote{%
+Note that before applying this compilation scheme, overlapping rules in
+user-defined operations are transformed into calls of the choice operation
+\ccode{?}.}
+then it is not necessary to pass an identifier supply to the operation.
+In consequence, only the matching rules are extended so that the generated code
+is nearly identical to a corresponding functional program.
 Actually, the benchmarks presented in \cite{BrasselFischerHanusReck11}
 show that this implementation outperforms all other Curry implementations
 for deterministic operations,
@@ -540,15 +547,15 @@ defined by the rules:
   not False = True
 \end{curry}
 Then the expression \ccode{not x}, where \code{x} is a logic variable,
-is translated into \ccode{not aBool} (we omit the \code{IDSupply} arguments
+is translated into \ccode{not aBool} (we omit the \code{IDSupply} argument
 here). The latter expression is evaluated by reducing the
 argument \code{aBool} to a choice between \code{True} or \code{False}
 followed by applying \code{not} to this choice.
 This is similar to a narrowing step on \ccode{not x}
 that instantiates the variable \code{x} to \code{True} or \code{False}.
-Actually, it has been shown in \cite{AntoyHanus06ICLP}
-that narrowing expressions with logic variables
-is equivalent to rewriting with generators.
+% Actually, it has been shown in \cite{AntoyHanus06ICLP}
+% that narrowing expressions with logic variables
+% is equivalent to rewriting with generators.
 Since such generators are standard
 non-deterministic operations, they are translated like any other operation
 so that one does not need additional run-time support for them.
@@ -568,9 +575,9 @@ in a non-deterministic computation.
 Apart from user-defined predicates,
 equational constraints of the form \code{$e_1$\,=:=\,$e_2$}
 are the most important kind of constraints.
-We have already seen in the operation
-\code{last} in Section~\ref{ex:last} a typical application
-of an equational constraint.
+We have already seen a typical application
+of an equational constraint in the operation
+\code{last} in Section~\ref{ex:last}.
 
 Due to the presence of non-terminating operations
 and infinite data structures,
@@ -594,6 +601,7 @@ of the type \code{Success} of constraints):
 \begin{curry}
   True   =:= True    =  Success
   False  =:= False   =  Success
+
   []     =:= []      =  Success
   (x:xs) =:= (y:ys)  =  x =:= y & xs =:= ys
 
@@ -605,12 +613,16 @@ shown in Section~\ref{sec:Compilation},
 the following rules are added to these rules
 in order to propagate choices and failures:
 \begin{haskell}
+  Fail         =:= _             =  Fail
+  _            =:= Fail          =  Fail
   Choice i l r =:= y             =  Choice i (l =:= y) (r =:= y)
   x            =:= Choice i l r  =  Choice i (x =:= l) (x =:= r)
   _            =:= _             =  Fail
 
-  Choice i l r & c  =  Choice i (l & c) (r & c)
-  _            & _  =  Fail
+  Fail         & _     =  Fail
+  _            & Fail  =  Fail
+  Choice i l r & c     =  Choice i (l & c) (r & c)
+  _            & _     =  Fail
 
 \end{haskell}
 %
@@ -619,23 +631,23 @@ it might lead to an unnecessarily large search space
 when it is applied to generators representing logic variables.
 For instance, consider the following generator for Boolean lists:
 \begin{curry}
-  aBList = [] ? (aBool : aBList)
+  aBoolList = [] ? (aBool : aBoolList)
 \end{curry}
 This is translated into Haskell as follows:
 \begin{haskell}
-  aBList :: IDSupply -> [Bool]
-  aBList s = Choice (thisID s) [] (aBool (leftSupply s)
-                                   : aBList (rightSupply s))
+  aBoolList :: IDSupply -> [Bool]
+  aBoolList s = Choice (thisID s) [] (aBool (leftSupply s)
+                                      : aBoolList (rightSupply s))
 \end{haskell}
 Now consider the equational constraint \ccode{x =:= [True]}.
 If the logic variable \code{x} is replaced by \code{aBList},
-the translated expression \ccode{aBList s =:= [True]}
+the translated expression \ccode{aBoolList s =:= [True]}
 creates a search space when evaluating its first argument,
 although there is no search required since there is only one possible
 binding for \code{x}.
 Furthermore and even worse, there is an infinite search space
 when unifying two logic variables. For instance,
-the expression \ccode{xs=:=ys \& xs++ys=:=[True]}
+the expression \ccode{xs =:= ys \& xs++ys =:= [True]}
 results in an infinite search space when the logic variables
 \code{xs} and \code{ys} are replaced by generators.
 
@@ -648,14 +660,14 @@ Since we compile into a purely functional language,
 the binding cannot be performed by some side effect.
 Instead, we add binding constraints to the computed results.
 
-To implement this idea, we have to distinguish free variables
-from ``standard choices'' (corresponding to occurrences of \ccode{?})
+To implement unification, we have to distinguish free variables
+from ``standard choices'' (introduced by the operation \ccode{?})
 in the target code. For this purpose, we refine the definition
 of the type \code{ID} as follows:\footnote{For the sake
 of simplicity, we consider in the following the
 implementation of \code{IDSupply} as unbounded integers.}
 \begin{haskell}
-  data ID = ID Integer | FreeID Integer
+  data ID = ChoiceID Integer | FreeID Integer
 \end{haskell}
 The new constructor \code{FreeID} marks a choice corresponding to
 a free variable, e.g., the generator for Boolean variables is
@@ -670,7 +682,7 @@ For this purpose, we define a simple operation to perform
 this transformation:
 \begin{haskell}
   narrow :: ID -> ID
-  narrow (FreeID i) = ID i
+  narrow (FreeID i) = ChoiceID i
   narrow x          = x
 \end{haskell}
 Furthermore, we use this operation in narrowing steps,
@@ -685,7 +697,7 @@ by the rule
   not (Choice i x1 x2) s = Choice (narrow i) (not x1 s) (not x2 s)
 \end{haskell}
 With this small change, the run-time system can distinguish
-free variables (choices with an identifier of the form \code{(FreeID$\ldots$)})
+free variables (choices with an identifier of the form \code{(FreeID $\ldots$)})
 from other values. This is quite useful at the top-level
 to print values containing logic variables in a specific form
 rather than enumerating all values, similarly to logic programming systems.
@@ -698,33 +710,32 @@ to an unknown list as follows:
 Thus, free variables are prefixed by \code{\us{}x}.
 
 As mentioned above, the consideration of free variables
-is relevant in equational constraints where binding constraints are
+is relevant in equational constraints where \emph{binding constraints} are
 generated. For this purpose, we introduce a type to represent
-a \emph{binding constraints} as pair of a choice identifier
+a binding constraint as a pair of a choice identifier
 and a decision for this choice:
 \begin{haskell}
   data Constraint = ID :=: Decision
 \end{haskell}
 Furthermore, we extend each data type by the possibility to
-add some constraints:
+add such a constraint:
 \begin{haskell}
-  data Bool   = $\ldots$ | Guard [Constraint] Bool
-  data List a = $\ldots$ | Guard [Constraint] (List a)
+  data Bool   = $\ldots$ | Guard Constraint Bool
+  data List a = $\ldots$ | Guard Constraint (List a)
 \end{haskell}
-Thus, \code{(Guard $cs$ $v$)} represents a \code{constrained value},
-i.e., the value $v$ is only valid if the constraints $cs$ are
-consistent. The consistency is checked when a value is extracted
-from a choice structure, e.g., by the operation \code{printValsDFS},
-whereas the binding constraints are created by
-equational constraints: if a free variable
-should be bound to a constructor, we create the same
-decision as it would be done by the (successful) branch
-of the generator. In case of the Boolean values,
+Thus, \code{(Guard $c$ $v$)} represents a \emph{constrained value},
+i.e., the value $v$ is only valid if the constraint $c$ is
+consistent with the decisions previously made during search.
+The binding constraints are created by the
+equational constraint operation \ccode{=:=}: if a free variable
+should be bound to a constructor, we make the same
+decision as it would be done in the successful branch
+of the generator. In case of Boolean values,
 this can be implemented by the following additional rules
 for \ccode{=:=}:
 \begin{haskell}
-  Choice (FreeID i) _ _ =:= True   =  Guard [i :=: ChooseLeft ] Success
-  Choice (FreeID i) _ _ =:= False  =  Guard [i :=: ChooseRight] Success
+  Choice (FreeID i) _ _ =:= True   =  Guard (i :=: ChooseLeft ) Success
+  Choice (FreeID i) _ _ =:= False  =  Guard (i :=: ChooseRight) Success
 \end{haskell}
 Hence, the binding of a variable to some known value
 is implemented as a binding constraint for the choice identifier
@@ -732,7 +743,7 @@ for this variable. However, if we want to bind a variable
 to another variable, we cannot store a concrete decision.
 Instead, we store the information that the decisions for
 both variables, when they are made to extract values,
-must be identical. For this purpose we extend the decision
+must be identical. For this purpose, we extend the \code{Decision}
 type to cover this information:
 \begin{haskell}
   data Decision = $\ldots$ | BindTo ID
@@ -741,29 +752,32 @@ Furthermore, we add the rule that an equational constraint
 between two variables yields a binding for these variables:
 \begin{haskell}
   Choice (FreeID i) _ _ =:= Choice (FreeID j) _ _
-    =  Guard [i :=: BindTo j] Success
+    =  Guard (i :=: BindTo j) Success
 \end{haskell}
 %
-As mentioned above, the checking of constraints
-for consistency is done when values are extracted.
-For this purpose, we extend the definition of the corresponding
+
+The consistency of constraints is checked when values are extracted
+from a choice structure, e.g., by the operation \code{printValsDFS}.
+For this purpose, we extend the definition of the corresponding search
 operations by calling a constraint solver for the constraints.
 For instance, the definition of \code{printValsDFS} is extended by
 a rule handling constrained values:
 %
 \begin{haskell}
   $\ldots$
-  printValsDFS (Guard constraints x) = solve constraints (printValsDFS x)
+  printValsDFS (Guard c x) = do consistent <- add c
+                                if consistent then do printValsDFS x
+                                                      remove c
+                                              else return ()
   $\ldots$
 \end{haskell}
-The operation \code{solve} checks the consistency of the constraints
-given in the first arguments,
-stores further decisions made by the constraints, e.g.,
-if variables are bound together,
-and evaluates its second argument.
-Furthermore, the operations \code{lookupChoice} and \code{setChoice}
-are extended to deal with decisions of type \code{BindTo},
-i.e., they follow chains of variable bindings.
+The operation \code{add} checks the consistency of the constraint \code{c}
+with the decisions made so far and stores the decision made by the constraint
+if consistency is sustained. In this case, the constrained value is evaluated
+before the contstraint is removed to allow backtracking.
+Furthermore, the operations \code{lookupDecision} and \code{setDecision}
+are extended to deal with bindings between two variables,
+i.e., they follow variable chains in case of \code{BindTo} constructors.
 
 Due to the extensions described in this section,
 we obtain an implementation of a unification procedure
@@ -771,9 +785,6 @@ that integrates the demand-driven evaluation of operations
 occurring in the arguments.
 Benchmarks evaluating the efficiency of this approach are
 shown in Section~\ref{sec:Benchmarks}.
-
-\todo{Mention accumulation of constraints in \&?}
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
