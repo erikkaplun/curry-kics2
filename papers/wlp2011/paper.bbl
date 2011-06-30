@@ -1,0 +1,187 @@
+\begin{thebibliography}{10}
+
+\bibitem{AlbertHanusHuchOliverVidal05}
+E.~Albert, M.~Hanus, F.~Huch, J.~Oliver, and G.~Vidal.
+\newblock Operational semantics for declarative multi-paradigm languages.
+\newblock {\em Journal of Symbolic Computation}, 40(1):795--829, 2005.
+
+\bibitem{AntoyHanus00FROCOS}
+S.~Antoy and M.~Hanus.
+\newblock Compiling multi-paradigm declarative programs into {Prolog}.
+\newblock In {\em Proc. International Workshop on Frontiers of Combining
+  Systems (FroCoS'2000)}, pages 171--185. Springer LNCS 1794, 2000.
+
+\bibitem{AntoyHanus02FLOPS}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic design patterns.
+\newblock In {\em Proc.\ of the 6th International Symposium on Functional and
+  Logic Programming (FLOPS 2002)}, pages 67--87. Springer LNCS 2441, 2002.
+
+\bibitem{AntoyHanus05LOPSTR}
+S.~Antoy and M.~Hanus.
+\newblock Declarative programming with function patterns.
+\newblock In {\em Proceedings of the International Symposium on Logic-based
+  Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
+  3901, 2005.
+
+\bibitem{AntoyHanus06ICLP}
+S.~Antoy and M.~Hanus.
+\newblock Overlapping rules and logic variables in functional logic programs.
+\newblock In {\em Proceedings of the 22nd International Conference on Logic
+  Programming (ICLP 2006)}, pages 87--101. Springer LNCS 4079, 2006.
+
+\bibitem{AntoyHanus10CACM}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic programming.
+\newblock {\em Communications of the ACM}, 53(4):74--85, 2010.
+
+\bibitem{AntoyHanus11WFLP}
+S.~Antoy and M.~Hanus.
+\newblock New functional logic design patterns.
+\newblock In {\em Proc.\ of the 20th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS (to appear), 2011.
+
+\bibitem{AntoyHanusLiuTolmach05}
+S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
+\newblock A virtual machine for functional logic computations.
+\newblock In {\em Proc.\ of the 16th International Workshop on Implementation
+  and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
+  LNCS 3474, 2005.
+
+\bibitem{AugustssonRittriSynek94}
+L.~Augustsson, M.~Rittri, and D.~Synek.
+\newblock On generating unique names.
+\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
+\bibitem{Brassel11Thesis}
+B.~Bra{\ss}el.
+\newblock {\em Implementing Functional Logic Programs by Translation into
+  Purely Functional Programs}.
+\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
+
+\bibitem{BrasselFischer08IFL}
+B.~Bra{\ss}el and S.~Fischer.
+\newblock From functional logic programs to purely functional programs
+  preserving laziness.
+\newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
+  Application of Functional Languages (IFL 2008)}, 2008.
+
+\bibitem{BrasselFischerHanusReck11}
+B.~Bra{\ss}el, S.~Fischer, M.~Hanus, and F.~Reck.
+\newblock Transforming functional logic programs into monadic functional
+  programs.
+\newblock In {\em Proc. of the 19th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2010)}, pages 30--47. Springer LNCS
+  6559, 2011.
+
+\bibitem{BrasselHanusHuch04JFLP}
+B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
+\newblock Encapsulating non-determinism in functional logic computations.
+\newblock {\em Journal of Functional and Logic Programming}, 2004(6), 2004.
+
+\bibitem{BrasselHuch07}
+B.~Bra{\ss}el and F.~Huch.
+\newblock On a tighter integration of functional and logic programming.
+\newblock In {\em Proc. APLAS 2007}, pages 122--138. Springer LNCS 4807, 2007.
+
+\bibitem{BrasselHuch09}
+B.~Bra{\ss}el and F.~Huch.
+\newblock The {Kiel} {Curry} {System} {KiCS}.
+\newblock In {\em Applications of Declarative Programming and Knowledge
+  Management}, pages 195--205. Springer LNAI 5437, 2009.
+
+\bibitem{FischerKiselyovShan09}
+S.~Fischer, O.~Kiselyov, and C.~Shan.
+\newblock Purely functional lazy non-deterministic programming.
+\newblock In {\em Proceeding of the 14th ACM SIGPLAN International Conference
+  on Functional Programming (ICFP 2009)}, pages 11--22. ACM, 2009.
+
+\bibitem{GiovannettiLeviMoisoPalamidessi91}
+E.~Giovannetti, G.~Levi, C.~Moiso, and C.~Palamidessi.
+\newblock Kernel leaf: A logic plus functional language.
+\newblock {\em Journal of Computer and System Sciences}, 42(2):139--185, 1991.
+
+\bibitem{GonzalezEtAl99}
+J.C. Gonz{\'a}lez-Moreno, M.T. Hortal{\'a}-Gonz{\'a}lez, F.J.
+  L{\'o}pez-Fraguas, and M.~Rodr{\'\i}guez-Artalejo.
+\newblock An approach to declarative programming based on a rewriting logic.
+\newblock {\em Journal of Logic Programming}, 40:47--87, 1999.
+
+\bibitem{Hanus07ICLP}
+M.~Hanus.
+\newblock Multi-paradigm declarative languages.
+\newblock In {\em Proceedings of the International Conference on Logic
+  Programming (ICLP 2007)}, pages 45--75. Springer LNCS 4670, 2007.
+
+\bibitem{Hanus11ICLP}
+M.~Hanus.
+\newblock Declarative processing of semistructured web data.
+\newblock In {\em Technical Communications of the 27th International Conference
+  on Logic Programming}. To appear in Leibniz International Proceedings in
+  Informatics (LIPIcs), 2011.
+
+\bibitem{HanusSadre99JFLP}
+M.~Hanus and R.~Sadre.
+\newblock An abstract machine for curry and its concurrent implementation in
+  java.
+\newblock {\em Journal of Functional and Logic Programming}, 1999(6), 1999.
+
+\bibitem{Hanus06Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
+\newblock Available at \url{http://www.curry-language.org}, 2006.
+
+\bibitem{Hussmann92}
+H.~Hussmann.
+\newblock Nondeterministic algebraic specifications and nonconfluent term
+  rewriting.
+\newblock {\em Journal of Logic Programming}, 12:237--255, 1992.
+
+\bibitem{Lopez-FraguasSanchez-Hernandez99}
+F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
+\newblock {TOY}: A multiparadigm declarative system.
+\newblock In {\em Proc. of RTA'99}, pages 244--247. Springer LNCS 1631, 1999.
+
+\bibitem{LopezRodriguezSanchez07}
+F.J. L{\'o}pez-Fraguas, J.~Rodr{\'\i}guez-Hortal{\'a}, and
+  J.~S{\'a}nchez-Hern{\'a}ndez.
+\newblock A simple rewrite notion for call-time choice semantics.
+\newblock In {\em Proceedings of the 9th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'07)}, pages
+  197--208. ACM Press, 2007.
+
+\bibitem{Lux99FLOPS}
+W.~Lux.
+\newblock Implementing encapsulated search for a lazy functional logic
+  language.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
+
+\bibitem{ODonnell85}
+M.J. O'Donnell.
+\newblock {\em Equational Logic as a Programming Language}.
+\newblock MIT Press, 1985.
+
+\bibitem{PeytonJones03Haskell}
+S.~Peyton~Jones, editor.
+\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
+\newblock Cambridge University Press, 2003.
+
+\bibitem{Reddy85}
+U.S. Reddy.
+\newblock Narrowing as the operational semantics of functional languages.
+\newblock In {\em Proc. IEEE Internat. Symposium on Logic Programming}, pages
+  138--151, Boston, 1985.
+
+\bibitem{Robinson65}
+J.A. Robinson.
+\newblock A machine-oriented logic based on the resolution principle.
+\newblock {\em Journal of the ACM}, 12(1):23--41, 1965.
+
+\bibitem{Slagle74}
+J.R. Slagle.
+\newblock Automated theorem-proving for theories with simplifiers,
+  commutativity, and associativity.
+\newblock {\em Journal of the ACM}, 21(4):622--642, 1974.
+
+\end{thebibliography}
