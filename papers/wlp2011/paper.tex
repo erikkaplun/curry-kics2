@@ -790,9 +790,9 @@ requires that \code{ys++[e]} as well as \code{xs}
 must be reducible to identical values so that the input list \code{xs}
 is completely evaluated.
 Hence, if \code{failed} denotes an operation whose evaluation fails,
-the evaluation of \code{last [failed,2]} has no result.
-On the other hand, the evaluation of \code{last' [failed,2]} yields
-the value \code{2}, i.e., the definition of \code{last'} is less strict.
+the evaluation of \code{last [failed,True]} has no result.
+On the other hand, the evaluation of \code{last' [failed,True]} yields
+the value \code{True}, i.e., the definition of \code{last'} is less strict.
 This is due to the fact that a functional pattern like
 \code{(xs++[e])} abbreviates all values to which it can be evaluated
 (by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]} etc.
@@ -841,8 +841,7 @@ a specific \emph{lazy unification} procedure \ccode{=:<=}
 \cite{AntoyHanus05LOPSTR}.
 For instance, the definition of \code{last'} is transformed into
 \begin{curry}
-  last' ys | (xs++[e]) =:<= ys
-           = e   where xs,e free
+  last' ys | (xs++[e]) =:<= ys  = e   where xs,e free
 \end{curry}
 The behavior of \ccode{=:<=} is similar to \ccode{=:=}
 except for the case that a variable in the left argument
@@ -863,11 +862,59 @@ accessed, they are evaluated.
 This can be achieved by adding a further alternative
 to the type of decisions:
 \begin{haskell}
-data Decision = $\ldots$ | LazyBind [Constraint]
+  data Decision = $\ldots$ | LazyBind [Constraint]
 \end{haskell}
 %
-The implementation of the lazy unification \ccode{=:<=}
-is almost identical to the strict unification \ccode{=:=}
+The implementation of the lazy unification operation \ccode{=:<=}
+is almost identical to the strict unification operation \ccode{=:=}
+as shown in Section~\ref{sec:Unification}.
+The only change is in the rules where a free variable occurs
+in the left argument. All these rules are replaced by the single
+rule
+\begin{haskell}
+  Choice (FreeID i) _ _ =:<= x
+    = Guard [i :=: LazyBind (lazyBind i x)] Success
+\end{haskell}
+where the auxiliary operation \code{lazyBind}
+implements the demand-driven evaluation of the right argument \code{x}:
+\begin{haskell}
+  lazyBind :: ID -> a -> [Constraint]
+  lazyBind i True  = [i :=: ChooseLeft ]
+  lazyBind i False = [i :=: ChooseRight]
+\end{haskell}
+This has the effect that the argument \code{x} is stored
+without evaluation (due to the lazy evaluation strategy of the
+target language Haskell) as a binding constraint.
+However, it is evaluated by \code{lazyBind} when its binding
+is required by another part of the computation.
+Similarly to equational constraints,
+lazy bindings are processed by a solver when values are extracted.
+In particular, if a variable has more than one lazy binding constraint
+(which is possible if a functional pattern evaluates to a non-linear term),
+the corresponding expressions are evaluated and unified
+according to the semantics of functional patterns
+\cite{AntoyHanus05LOPSTR}.
+
+In order to demonstrate the operational behavior of our implementation,
+we sketch the evaluation of the lazy unification constraint
+\code{xs++[e]=:<=[failed,True]} that occurs when the expression
+\code{last' [failed,True]} is evaluated (here we omit failed branches
+and some other details; note that logic variables are replaced
+by generators):
+\begin{haskell}
+  aBList 2 ++ [aBool 3] =:<= [failed,True]
+  $\leadsto$ [aBool 4, aBool 3] =:<= [failed, True]
+  $\leadsto$ aBool 4 =:<= failed & aBool 3 =:<= True & [] =:<= []
+  $\leadsto$ Guard [ 4 :=: LazyBind (lazyBind 4 failed)
+           , 3 :=: LazyBind (lazyBind 3 True)] Success
+\end{haskell}
+If the binding of identifier \code{3} is later required,
+\code{(lazyBind 3 True)} is evaluated to \code{[3 :=: ChooseLeft]}
+which corresponds to the value \code{True} of the generator \code{aBool}.
+Note that the variable with identifier \code{4} does not occur
+anywhere else so that the binding \code{(lazyBind 4 failed)}
+will never be evaluated, as intended.
+
 
          
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
