@@ -821,13 +821,13 @@ a list.
 Using equational constraint, we can define it as follows:
 \begin{curry}
   fstDup xs | xs =:= ys++[e]++zs & elem e ys =:= True & nub ys =:= ys
-            = e    where ys,zs,e free
+            = e    where ys, zs, e free
 \end{curry}
 The first equational constraint is used to split the input list \code{xs}
 into three sublists.
 The last constraint ensures that the first sublist
 \code{ys} does not contain duplicated elements
-(the library operation removes all duplicates from a list)
+(the library operation \code{nub} removes all duplicates from a list)
 and the second constraint ensures that the first element after \code{ys}
 occurs in \code{ys}.
 Although this implementation is concise, it cannot be applied
@@ -846,56 +846,57 @@ the high-level programming of querying or transforming
 XML data \cite{Hanus11ICLP}.
 
 Obviously, one cannot implement functional patterns by
-a transformation into an infinite set of rules.
-Fortunately, functional patterns can be implemented by
-a specific \emph{lazy unification} procedure \ccode{=:<=}
+a transformation into an infinite set of rules. Instead, they are
+implemented by a specific \emph{lazy unification} procedure \ccode{=:<=}
 \cite{AntoyHanus05LOPSTR}.
 For instance, the definition of \code{last'} is transformed into
 \begin{curry}
-  last' ys | (xs++[e]) =:<= ys  = e   where xs,e free
+  last' ys | (xs++[e]) =:<= ys  = e   where xs, e free
 \end{curry}
 The behavior of \ccode{=:<=} is similar to \ccode{=:=}
 except for the case that a variable in the left argument
 should be bound to some expression: instead of evaluating
-the expression to some value and bind the variable to it,
+the expression to some value and binding the variable to the value,
 the variable is bound to the \emph{unevaluated} expression
 (see \cite{AntoyHanus05LOPSTR} for more details).
 Due to this slight change, failures or infinite structures
 in actual arguments do not cause problems in the matching
 of functional patterns.
 
-This discussion shows the requirements on an implementation
-of functional patterns. The general structure
+The following discussion shows the requirements on an 
+implementation of functional patterns.
+The general structure
 is quite similar to equational constraints
 with the exception that variables could be also bound
-to unevaluated expressions. If such variables are later
-accessed, they are evaluated.
+to unevaluated expressions. Only if such variables are later
+accessed, the expressions they are bound to are evaluated.
 This can be achieved by adding a further alternative
 to the type of decisions:
 \begin{haskell}
-  data Decision = $\ldots$ | LazyBind [Constraint]
+  data Decision = $\ldots$ | LazyBind Constraint
 \end{haskell}
 %
 The implementation of the lazy unification operation \ccode{=:<=}
 is almost identical to the strict unification operation \ccode{=:=}
 as shown in Section~\ref{sec:Unification}.
-The only change is in the rules where a free variable occurs
+The only difference is in the rules where a free variable occurs
 in the left argument. All these rules are replaced by the single
 rule
 \begin{haskell}
   Choice (FreeID i) _ _ =:<= x
-    = Guard [i :=: LazyBind (lazyBind i x)] Success
+    = Guard (i :=: LazyBind (lazyBind i x)) Success
 \end{haskell}
 where the auxiliary operation \code{lazyBind}
 implements the demand-driven evaluation of the right argument \code{x}:
 \begin{haskell}
-  lazyBind :: ID -> a -> [Constraint]
-  lazyBind i True  = [i :=: ChooseLeft ]
-  lazyBind i False = [i :=: ChooseRight]
+  lazyBind :: ID -> a -> Constraint
+  lazyBind i True  = i :=: ChooseLeft
+  lazyBind i False = i :=: ChooseRight
 \end{haskell}
-This has the effect that the argument \code{x} is stored
-without evaluation (due to the lazy evaluation strategy of the
-target language Haskell) as a binding constraint.
+The use of the additional \code{LazyBind} constructor allows the argument 
+\code{x} to be stored in a binding constraint without evaluation 
+(due to the lazy evaluation strategy of the
+target language Haskell).
 However, it is evaluated by \code{lazyBind} when its binding
 is required by another part of the computation.
 Similarly to equational constraints,
@@ -908,16 +909,16 @@ according to the semantics of functional patterns
 
 In order to demonstrate the operational behavior of our implementation,
 we sketch the evaluation of the lazy unification constraint
-\code{xs++[e]=:<=[failed,True]} that occurs when the expression
+\code{xs++[e] =:<= [failed,True]} that occurs when the expression
 \code{last' [failed,True]} is evaluated (here we omit failed branches
 and some other details; note that logic variables are replaced
 by generators):
 \begin{haskell}
-  aBList 2 ++ [aBool 3] =:<= [failed,True]
-  $\leadsto$ [aBool 4, aBool 3] =:<= [failed, True]
+  aBoolList 2 ++ [aBool 3] =:<= [failed,True]
+  $\leadsto$ [aBool 4,aBool 3] =:<= [failed,True]
   $\leadsto$ aBool 4 =:<= failed & aBool 3 =:<= True & [] =:<= []
-  $\leadsto$ Guard [ 4 :=: LazyBind (lazyBind 4 failed)
-           , 3 :=: LazyBind (lazyBind 3 True)] Success
+  $\leadsto$ Guard (4 :=: LazyBind (lazyBind 4 failed))
+           (Guard (3 :=: LazyBind (lazyBind 3 True)) Success)
 \end{haskell}
 If the binding of identifier \code{3} is later required,
 \code{(lazyBind 3 True)} is evaluated to \code{[3 :=: ChooseLeft]}
