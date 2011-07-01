@@ -934,8 +934,8 @@ will never be evaluated, as intended.
 
 Unlike the Curry implementations PAKCS and MCC our approach does
 not manipulate a global state to unify a logic variable. Nevertheless,
-our benchmarks show that it can compete or even outperform these 
-implementations.
+our benchmarks show that it can in most cases
+compete or even outperform these implementations.
 The programs used for the benchmarks are primarily the same as in \cite{AntoyHanus05LOPSTR}.
 
 \begin{tabular}{l l}
@@ -955,24 +955,29 @@ strict equality (\code{=:=}) is used for unification:
 \begin{tabular}{|l|c|c|c|}
 \hline
 Expression: & KiCS2 & PAKCS & MCC \\
-\code{last (map (inc 0) [1..100000])} & &  & \\
-\code{simplify}                       &&&\\
-\code{varsInExp} & &  &\\
-\code{toPeano 5000 == halfS (toPeano 10000)} & &  &\\
+\code{last (map (inc 0) [1..100000])} &0.52 & 4.27&0.15 \\
+\code{grep} & 0.13& 2.83& 0.15\\
+\code{simplify} &10.33&0.15&0.01\\
+\code{varsInExp} & 86.27 & 0.35  & 0.03\\
+\code{fromPeano (half (toPeano 10000))} & &  & \\
+\code{palindrom} & 13.45 &32.82 & 1.04\\
+\code{horseman} & & &\\
 \hline
 \end{tabular}
 
-All of our examples can also be defined with function patterns, i.e.,
+Some of our examples can also be defined with function patterns, i.e.,
 the lazy equality operator \code{=:<=} is used. The sole other
 Curry system featuring function patterns is PAKCS:
 
 \begin{tabular}{|l|c|c|c|}
 \hline
 Expression: & KiCS2 & PAKCS \\
-\code{last (map (inc 0) [1..100000])} & &  & \\
-\code{simplify}                       &&&\\
-\code{varsInExp} & &  &\\
-\code{toPeano 5000 == halfS (toPeano 10000)} & &  &\\
+\code{last (map (inc 0) [1..100000])} & 0.20& 3.93\\
+\code{simplify}  &7.09&0.26&\\
+\code{varsInExp} & 0.14 & 0.69\\
+\code{fromPeano (half (toPeano 10000))} & &  \\
+\code{palindrom} & 17.55 & $\infty$\\
+\code{horseman} & & \\
 \hline
 \end{tabular}
 
@@ -989,10 +994,13 @@ produces such a search space:
 \hline
 Expression: &\code{==} & \code{=:=} & \code{=:<=}\\
 \hline 
-\code{last (map (inc 0) [1..100000])} & stack overflow & 0.45 & 0.13\\
-\code{simplify}                       &10.34&10.33&7.27\\
-\code{varsInExp} & 0.49& 84.92 & 0.09\\
-\code{toPeano 5000 == halfS (toPeano 10000)} & 23.3 & 1.81 & no Fun Pat\\
+\code{last (map (inc 0) [1..100000])} & 118.33 & 0.52 & 1.40 \\
+\code{grep} & 0.94 & 0.13 &\\
+\code{simplify} & 9.18& 10.33 & 7.09\\
+\code{varsInExp} & 0.50& 86.27 & 0.14\\
+\code{fromPeano (half (toPeano 10000))} &  &  & \\
+\code{palindrom} & 31.12&13.45 & 17.55\\
+\code{horseman} & & & \\
 \hline
 \end{tabular}
 
