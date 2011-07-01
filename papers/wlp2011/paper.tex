@@ -32,6 +32,13 @@
 \newcommand{\Choice}[2]{#1 \mathop{?} #2}
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
 
+% Redefine description env as equation list to gain key alignment
+\usepackage{eqlist}
+\let\description=\eqlist
+\let\enddescription=\endeqlist
+\let\eqlistlabel\descriptionlabel
+
+
 \begin{document}
 \pagestyle{plain}
 \sloppy
@@ -928,85 +935,123 @@ anywhere else so that the binding \code{(lazyBind 4 failed)}
 will never be evaluated, as intended.
 
 
-         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:Benchmarks}
 
-Unlike the Curry implementations PAKCS and MCC our approach does
-not manipulate a global state to unify a logic variable. Nevertheless,
-our benchmarks show that it can in most cases
-compete or even outperform these implementations.
-The programs used for the benchmarks are primarily the same as in \cite{AntoyHanus05LOPSTR}.
-
-\begin{tabular}{l l}
-\bf{last}& Computes the last element of a list using strict equality\\
-\bf{simplify}& Simplification of symbolic arithmetic expressions\\
-\bf{varInExp}& Nondeterministically returns a variable occuring
-                in a symbolic arithmetic expression \\
-\bf{half}& Computes the half of a peano number using logic variables\\
-\end{tabular}
-
-The table below shows a comparison of the curry systems where
-strict equality (\code{=:=}) is used for unification:
-\footnote{\ccode{inc x n} is a naive addition that adds 1 \code{n} times
-          to its argument x }
- 
-
-\begin{tabular}{|l|c|c|c|}
-\hline
-Expression: & KiCS2 & PAKCS & MCC \\
-\code{last (map (inc 0) [1..100000])} &0.52 & 4.27&0.15 \\
-\code{grep} & 0.13& 2.83& 0.15\\
-\code{simplify} &10.33&0.15&0.01\\
-\code{varsInExp} & 86.27 & 0.35  & 0.03\\
-\code{fromPeano (half (toPeano 10000))} & &  & \\
-\code{palindrom} & 13.45 &32.82 & 1.04\\
-\code{horseman} & & &\\
-\hline
-\end{tabular}
-
-Some of our examples can also be defined with function patterns, i.e.,
-the lazy equality operator \code{=:<=} is used. The sole other
-Curry system featuring function patterns is PAKCS:
-
-\begin{tabular}{|l|c|c|c|}
-\hline
-Expression: & KiCS2 & PAKCS \\
-\code{last (map (inc 0) [1..100000])} & 0.20& 3.93\\
-\code{simplify}  &7.09&0.26&\\
-\code{varsInExp} & 0.14 & 0.69\\
-\code{fromPeano (half (toPeano 10000))} & &  \\
-\code{palindrom} & 17.55 & $\infty$\\
-\code{horseman} & & \\
-\hline
-\end{tabular}
-
 In Section \ref{sec:Unification} we stated that equational
-constraits can be implemented using ordinary pattern matching.
-We also mentioned that such an implementation would lead to
-a large search space that has to be traversed to extract
-the results of a computation. To show the benificial effects
-of our equality constraint implementations we compare them to
+constraints could also be implemented using pattern matching, but that
+this implementation would increase the search space that has to be traversed 
+to extract the values of a computation. To show the benificial effects
+of our equality constraint implementations, we compare them to
 the results using the equality operator \code{==} that
-produces such a search space:
+produces such a search space. The programs used for the benchmarks 
+are partially taken from \cite{AntoyHanus05LOPSTR}.
+%
+\begin{quote}
+\begin{description}
+ \item[last]      Computes the last element of a list
+ \item[simplify]  Simplification of symbolic arithmetic expressions
+ \item[varInExp]  Nondeterministically returns a variable occuring
+                  in a symbolic arithmetic expression
+ \item[half]      Computes the half of a peano number using logic variables
+ \item[palindrom] Checks if a list is a palindrom
+%  \item[grep]
+%  \item[horseman]
+\end{description}
+\end{quote}
 
+Our benchmarks are executed on a Linux machine running Debian 5.0.7 with
+an Intel Core 2 Duo (3.0GHz) processor. Our compiler has been executed with
+the Glasgow Haskell Compiler (GHC 7.0.4, option -O2). For later comparison with
+other systems we considered PAKCS (Version 1.9.2, based on a SICStus-Prolog
+4.1.2 backend) and MCC (Version 0.9.10). The timings were performed with the
+time command measuring the execution time (in seconds) of a compiled
+executable for each benchmark as a mean of three runs.
+
+\begin{figure}
+\centering
 \begin{tabular}{|l|c|c|c|}
 \hline
-Expression: &\code{==} & \code{=:=} & \code{=:<=}\\
-\hline 
-\code{last (map (inc 0) [1..100000])} & 118.33 & 0.52 & 1.40 \\
-\code{grep} & 0.94 & 0.13 &\\
-\code{simplify} & 9.18& 10.33 & 7.09\\
-\code{varsInExp} & 0.50& 86.27 & 0.14\\
-\code{fromPeano (half (toPeano 10000))} &  &  & \\
-\code{palindrom} & 31.12&13.45 & 17.55\\
-\code{horseman} & & & \\
+Expression                              & \code{==} & \code{=:=} & \code{=:<=} \\
+\hline
+\code{last (map (inc 0) [1..100000])}   & 118.33    & 0.52       & 0.20        \\
+% \code{grep}                             & 0.94      & 0.13       &             \\
+\code{simplify}                         & 9.18      & 10.33      & 7.09        \\
+\code{varInExp}                         & 0.50      & 86.27      & 0.14        \\
+\code{fromPeano (half (toPeano 10000))} & 26.49     & 6.26       & 11.58       \\
+\code{palindrom}                        & 31.12     & 13.45      & 17.55       \\
+% \code{horseman}                         & 3.88      & 4.93       &             \\
 \hline
 \end{tabular}
+\caption{Benchmarks: comparing different types of equation}
+ \label{fig:search-strategies}
+\end{figure}
 
- 
+\todo{Results from comparing, ==, =:=, =:<=}
 
+As expected, the creation and traversal of a large search space introduced
+by \code{==} in most cases is much slower than our presented approach for
+unification. In addition, the \code{last} example shows that the lazy 
+unification operator \code{=:<=} improves performance when unifying an
+expression which has to be evaluted only partially. Using strict unification,
+all elements of the list are (unnecessarily) evaluated. Interestingly, in the
+\code{varInExp} example the strict unification performs significantly worse
+than the other equality operators. \todo{Explain why}
+
+In contrast to the Curry implementations PAKCS and MCC, out approach is based
+upon an explicit representation of the search space and does not manipulate
+a global state for unifying logic variables.
+Nevertheless, our benchmarks show that it can in most cases
+compete or even outperform these implementations.
+Figure~\ref{fig:unification} shows a comparison of the curry systems where
+strict equality (\ccode{=:=}) is used for unification.\footnote{%
+\ccode{inc x n} is a naive addition that \code{n} times
+increases its argument \code{x} by 1.} We can deduce from the results
+that the unification of the MCC performs best. However, we can in most cases
+outperform the Prolog based PAKCS but for some examples where further
+research and optimization is necessary.
+
+\begin{figure}
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+Expression                              & KiCS2 & PAKCS & MCC  \\
+\hline
+\code{last (map (inc 0) [1..100000])}   & 0.52  & 4.27   & 0.15 \\
+% \code{grep}                             & 0.13  & 2.83   & 0.15 \\
+\code{simplify}                         & 10.33 & 0.15   & 0.01 \\
+\code{varInExp}                         & 86.27 & 0.35   & 0.03 \\
+\code{fromPeano (half (toPeano 10000))} & 6.26  & 109.71 & 3.17 \\
+\code{palindrom}                        & 13.45 & 32.82  & 1.04 \\
+% \code{horseman}                         & 4.93  & 8.85   & 0.42 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: strict equational constraints}
+ \label{fig:unification}
+\end{figure}
+
+As the MCC does not support functional patterns, the performance of lazy
+unification is compared with PAKCS only (Fig.~\ref{fig:functional-patterns}).
+Again, our compiler performs well against PAKCS
+and outperforms it in most cases. \todo{extend}
+
+\begin{figure}
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+Expression                              & KiCS2 & PAKCS    \\
+\hline
+\code{last (map (inc 0) [1..100000])}   & 0.20  & 3.93     \\
+\code{simplify}                         & 7.09  & 0.26     \\
+\code{varInExp}                         & 0.14  & 0.69     \\
+\code{fromPeano (half (toPeano 10000))} & 11.57 & $\infty$ \\
+\code{palindrom}                        & 17.55 & $\infty$ \\
+\hline
+\end{tabular}
+\caption{Benchmarks: functional patterns}
+ \label{fig:functional-patterns}
+\end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
