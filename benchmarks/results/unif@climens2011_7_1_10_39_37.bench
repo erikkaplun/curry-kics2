@@ -1,0 +1,28 @@
+Benchmarks at Linux climens 2.6.26-2-686 #1 SMP Thu Nov 25 01:53:57 UTC 2010 i686 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal5L|  1.00 | 11.52 | 11.53 | 11.55 | 11.47 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal5L  |  1.00 | 11.57 | 11.55 | 11.60 | 11.56 
+UnificationBenchFunPat@PAKCS                  | 43.09 |496.23 |1408.56 | 60.74 | 19.39 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal5S|  1.96 |  6.23 |  6.23 |  6.22 |  6.23 
+UnificationBench@IDC+_DFS_IORef:goal5S  |  1.97 |  6.26 |  6.30 |  6.23 |  6.24 
+UnificationBench@PAKCS                  | 34.61 |109.71 |110.31 |110.09 |108.73 
+UnificationBench@MCC                    |  1.00 |  3.17 |  3.18 |  3.16 |  3.17 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal5Eq| 10.26 | 26.62 | 26.63 | 26.56 | 26.67 
+UnificationBench@IDC+_DFS_IORef:goal5Eq  | 10.21 | 26.49 | 26.37 | 26.56 | 26.53 
+UnificationBench@PAKCS                   | 45.29 |117.44 |118.74 |116.79 |116.80 
+UnificationBench@MCC                     |  1.00 |  2.59 |  2.59 |  2.59 |  2.60 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal9S| 11.69 |  4.87 |  4.90 |  4.90 |  4.81 
+UnificationBench@IDC+_DFS_IORef:goal9S  | 11.82 |  4.93 |  4.92 |  4.94 |  4.92 
+UnificationBench@PAKCS                  | 21.25 |  8.85 |  8.71 |  8.85 |  9.00 
+UnificationBench@MCC                    |  1.00 |  0.42 |  0.41 |  0.42 |  0.42 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal9Eq|36966.67 |  3.70 |  3.68 |  3.70 |  3.71 
+UnificationBench@IDC+_DFS_IORef:goal9Eq  |38766.67 |  3.88 |  3.79 |  3.95 |  3.89 
+UnificationBench@PAKCS                   |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2 |  1.0e-2 
+UnificationBench@MCC                     |  0.00 |  0.00 |  0.00 |  0.00 |  0.00 

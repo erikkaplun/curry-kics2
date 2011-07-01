@@ -300,6 +300,14 @@ benchFLPCompleteSearch prog =
  ,idcBenchmark "IDC+IDS_IOREF" prog True "ioref" "printIDS1 100 print nd_C_main"
  ]
 
+-- Benchmarking =:<=, =:= and ==
+benchFLPDFSKiCS2WithMain prog name mcc =
+ [idcBenchmark ("IDC+_PrDFS_IORef:"++name)
+               prog True  "ioref" ("prdfs print nd_C_"++name)
+ ,idcBenchmark ("IDC+_DFS_IORef:"++name)
+               prog True  "ioref" ("printDFS print nd_C_"++name)
+ ,pakcsBenchmark ("-m \"print "++name++"\"") prog ]
+ ++ if mcc then [mccBenchmark ("-e\""++name++"\"") prog]  else []
 
 allBenchmarks =
   [ benchFPpl "ReverseUser"     True
@@ -331,6 +339,30 @@ allBenchmarks =
   , benchFunPats "PaliFunPats"
   ]
 
+unif = 
+     [
+--       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal1L" False
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal2L"  False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal2S"  True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal2Eq" True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal4S"  True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal4Eq" True
+       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal5L"  False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal5S"  True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal5Eq" True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal6L"  False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal6S"  True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal6Eq" True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal7L"  False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal7S"  True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal7Eq" True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal8L"  False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal8S"  True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal8Eq" True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal9S"  True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal9Eq" True
+     ]
+
 -- Run all benchmarks and show results
 run num benchmarks = do
   args <- getArgs
@@ -353,7 +385,7 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 3 allBenchmarks
+--main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
@@ -365,3 +397,4 @@ main = run 3 allBenchmarks
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
+--main = run 3 unif
