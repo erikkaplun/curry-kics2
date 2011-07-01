@@ -95,7 +95,7 @@ like non-deterministic search and computing with partial information
 This combination
 has led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
 and better abstractions for application programming, but it also gave rise
-to new challenges of implementation.
+to new implementation challenges.
 
 Previous implementations of functional logic languages
 can be classified into three categories:
@@ -115,9 +115,10 @@ and reusing the implementation
 of lazy evaluation and higher-order functions
 \cite{BrasselHuch07,BrasselHuch09}.
 \end{enumerate}
-
+%
 The latter approach requires the implementation
-of non-deterministic evaluations but has the advantage
+of non-deterministic computations in a deterministic language
+but has the advantage
 that the explicit handling of non-determinism allows for
 various search strategies like depth-first, breadth-first, parallel,
 or iterative deepening instead of committing to a fixed (incomplete)
@@ -152,7 +153,7 @@ to \code{Y} without enumerating any values for \code{X} or \code{Y}.
 Therefore, we propose in this paper new techniques
 to implement equational constraints in the framework of KiCS2
 (note that, in contrast to Prolog, unification is performed
-modulo function evaluation in functional logic languages).
+modulo function evaluation).
 Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
 i.e., patterns containing evaluable operations providing
 for more powerful pattern matching than in logic or functional languages,
@@ -272,7 +273,7 @@ as follows:
 %
 \label{ex:last}
 \begin{curry}
-  last xs | ys++[e] =:= xs = e   where ys, e free
+  last xs | ys++[e] =:= xs  = e   where ys, e free
 \end{curry}
 %
 Like in Haskell, most rules defining functions are \emph{constructor-based} 
@@ -296,7 +297,7 @@ By instantiating \code{xs} to arbitrary lists, the value
 of \code{(xs++[e])} is any list having \code{e} as its last element.
 Functional patterns are
 a powerful feature to express arbitrary selections in term structures.
-For instance, functional patterns supports a straightforward
+For instance, functional patterns support a straightforward
 processing of XML data with incompletely specified
 or evolving formats \cite{Hanus11ICLP}.
 
@@ -393,7 +394,7 @@ for the evaluation of the operation \code{xorSelf}.
 
 Since all data types are extended by additional constructors,
 we must also extend the definition of operations performing
-pattern matching. For instance, consider the definition of lists
+pattern matching. For instance, consider the definition of polymorphic lists
 \begin{curry}
   data List a = Nil | Cons a (List a)
 \end{curry}
@@ -939,41 +940,42 @@ will never be evaluated, as intended.
 \section{Benchmarks}
 \label{sec:Benchmarks}
 
-In Section \ref{sec:Unification} we stated that equational
-constraints could also be implemented using pattern matching, but that
-this implementation would increase the search space that has to be traversed 
-to extract the values of a computation. To show the benificial effects
-of our equality constraint implementations, we compare them to
-the results using the equality operator \code{==} that
-produces such a search space. The programs used for the benchmarks 
-are partially taken from \cite{AntoyHanus05LOPSTR}.
-%
-\begin{quote}
-\begin{description}
- \item[last]      Computes the last element of a list
- \item[simplify]  Simplification of symbolic arithmetic expressions
- \item[varInExp]  Nondeterministically returns a variable occuring
-                  in a symbolic arithmetic expression
- \item[half]      Computes the half of a peano number using logic variables
- \item[palindrom] Checks if a list is a palindrom
-%  \item[grep]
-%  \item[horseman]
-\end{description}
-\end{quote}
-
-Our benchmarks are executed on a Linux machine running Debian 5.0.7 with
-an Intel Core 2 Duo (3.0GHz) processor. Our compiler has been executed with
-the Glasgow Haskell Compiler (GHC 7.0.4, option -O2). For later comparison with
-other systems we considered PAKCS (Version 1.9.2, based on a SICStus-Prolog
-4.1.2 backend) and MCC (Version 0.9.10). The timings were performed with the
+In this section we evaluate our implementation by a set of benchmarks.
+They were executed on a Linux machine running Debian 5.0.7 with
+an Intel Core 2 Duo (3.0GHz) processor.
+KiCS2 has been executed with
+the Glasgow Haskell Compiler (GHC 7.0.4, option -O2).
+For a comparison with other mature implementations of Curry,
+we considered PAKCS \cite{Hanus10PAKCS}
+(Version 1.9.2, based on a SICStus-Prolog 4.1.2)
+and MCC \cite{Lux99FLOPS} (Version 0.9.10). The timings were performed with the
 time command measuring the execution time (in seconds) of a compiled
 executable for each benchmark as a mean of three runs.
+The programs used for the benchmarks,
+partially taken from \cite{AntoyHanus05LOPSTR},
+are \code{last} (compute the last element of a list),
+\code{simplify} (simplify a symbolic arithmetic expression),
+\code{varInExp} (non-deterministically return a variable occuring
+                  in a symbolic arithmetic expression),
+\code{half} (compute the half of a peano number using logic variables),
+and
+\code{palindrom} (check whether a list is a palindrom).
+
+In Section \ref{sec:Unification} we discussed that equational
+constraints could also be solved by generators without variable bindings,
+but this technique might increase the search space due to the
+possibly superfluous generation of all values.
+To show the beneficial effects of our implementation
+of equational constraints with variable bindings,
+we compare the results of equational constraints to results
+where the Boolean equality operator \code{==} is used (which
+does not perform bindings but enumerate all values):
 
 \begin{figure}
 \centering
-\begin{tabular}{|l|c|c|c|}
+\begin{tabular}{|l|r|r|r|}
 \hline
-Expression                              & \code{==} & \code{=:=} & \code{=:<=} \\
+Expression                              & \code{==~}& \code{=:=} & \code{=:<=} \\
 \hline
 \code{last (map (inc 0) [1..100000])}   & 118.33    & 0.52       & 0.20        \\
 % \code{grep}                             & 0.94      & 0.13       &             \\
@@ -988,33 +990,34 @@ Expression                              & \code{==} & \code{=:=} & \code{=:<=} \
  \label{fig:search-strategies}
 \end{figure}
 
-\todo{Results from comparing, ==, =:=, =:<=}
-
+\noindent
 As expected, the creation and traversal of a large search space introduced
-by \code{==} in most cases is much slower than our presented approach for
-unification. In addition, the \code{last} example shows that the lazy 
+by \code{==} is in most cases much slower than our presented approach
+with variable bindings.
+In addition, the example \code{last} shows that the lazy 
 unification operator \code{=:<=} improves performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
 all elements of the list are (unnecessarily) evaluated. Interestingly, in the
 \code{varInExp} example the strict unification performs significantly worse
 than the other equality operators. \todo{Explain why}
 
-In contrast to the Curry implementations PAKCS and MCC, out approach is based
-upon an explicit representation of the search space and does not manipulate
-a global state for unifying logic variables.
+In contrast to the Curry implementations PAKCS and MCC, our approach is based
+on an explicit representation of the search space instead of manipulating
+a global state containing bindings for logic variables.
 Nevertheless, our benchmarks show that it can in most cases
-compete or even outperform these implementations.
-Figure~\ref{fig:unification} shows a comparison of the curry systems where
-strict equality (\ccode{=:=}) is used for unification.\footnote{%
+compete with or even outperform these implementations.
+Figure~\ref{fig:unification} shows a comparison of the Curry systems where
+equational constraints are used in the examples.\footnote{%
 \ccode{inc x n} is a naive addition that \code{n} times
 increases its argument \code{x} by 1.} We can deduce from the results
-that the unification of the MCC performs best. However, we can in most cases
-outperform the Prolog based PAKCS but for some examples where further
-research and optimization is necessary.
+that the unification of MCC performs best. However, in most cases
+our implementation outperforms the Prolog-based PAKCS implementation,
+except for some examples where further investigations
+and optimizations are necessary.
 
 \begin{figure}
 \centering
-\begin{tabular}{|l|c|c|c|}
+\begin{tabular}{|l|l|l|l|}
 \hline
 Expression                              & KiCS2 & PAKCS & MCC  \\
 \hline
@@ -1031,7 +1034,8 @@ Expression                              & KiCS2 & PAKCS & MCC  \\
  \label{fig:unification}
 \end{figure}
 
-As the MCC does not support functional patterns, the performance of lazy
+\noindent
+As MCC does not support functional patterns, the performance of lazy
 unification is compared with PAKCS only (Fig.~\ref{fig:functional-patterns}).
 Again, our compiler performs well against PAKCS
 and outperforms it in most cases. \todo{extend}
@@ -1058,10 +1062,35 @@ Expression                              & KiCS2 & PAKCS    \\
 \section{Conclusions and Related Work}
 \label{sec:Conclusions}
 
-Future work: adding other constraint systems
+We have presented an implementation of equational constraints
+and functional patterns in a purely functional implementation
+of Curry. Our implementation is based on adding binding constraints
+to computed values and processing them when values are extracted
+at the top level of a computation.
+Since we have added only additional constructors and rules
+for these constructors, our implementation does not cause
+additional work if these features are not used, i.e.,
+our implementation does not sacrifice the high efficiency
+of the kernel implementation as described in
+\cite{BrasselFischerHanusReck11}.
+However, if these features are used, they usually lead
+to a more efficient execution, as shown by our benchmarks.
+
+Other implementations of equational constraints in functional logic
+languages use side effects for their implementation.
+For instance, PAKCS \cite{Hanus10PAKCS}
+exploits the implementation of logic variables in Prolog,
+which are implemented on the primitive level by side effects.
+MCC \cite{Lux99FLOPS} compiles into C where a specific
+abstract machine implements the handling of logic variables.
+We have shown that our implementation is competitive to those.
+In contrast to those systems, our implementation supports
+a variety of search strategies like breadth-first or parallel search.
+
+\todo{Future work: adding other constraint systems}
 
 
-\bibliographystyle{plain}
+\bibliographystyle{mhnumber} %plain}
 \bibliography{mh}
 
 \end{document}
