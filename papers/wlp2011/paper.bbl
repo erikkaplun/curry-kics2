@@ -1,11 +1,5 @@
 \begin{thebibliography}{10}
 
-\bibitem{AlbertHanusHuchOliverVidal05}
-E.~Albert, M.~Hanus, F.~Huch, J.~Oliver, and G.~Vidal.
-\newblock Operational Semantics for Declarative Multi-Paradigm Languages.
-\newblock {\em Journal of Symbolic Computation}, Vol.~40, No.~1, pp. 795--829,
-  2005.
-
 \bibitem{AntoyHanus00FROCOS}
 S.~Antoy and M.~Hanus.
 \newblock Compiling Multi-Paradigm Declarative Programs into {Prolog}.
@@ -51,7 +45,7 @@ S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
 
 \bibitem{AugustssonRittriSynek94}
 L.~Augustsson, M.~Rittri, and D.~Synek.
-\newblock On Generating unique Names.
+\newblock On generating unique names.
 \newblock {\em Journal of Functional Programming}, Vol.~4, No.~1, pp. 117--123,
   1994.
 
@@ -92,12 +86,6 @@ B.~Bra{\ss}el and F.~Huch.
 \newblock The {Kiel} {Curry} {System} {KiCS}.
 \newblock In {\em Applications of Declarative Programming and Knowledge
   Management}, pp. 195--205. Springer LNAI 5437, 2009.
-
-\bibitem{FischerKiselyovShan09}
-S.~Fischer, O.~Kiselyov, and C.~Shan.
-\newblock Purely functional lazy non-deterministic programming.
-\newblock In {\em Proceeding of the 14th ACM SIGPLAN International Conference
-  on Functional Programming (ICFP 2009)}, pp. 11--22. ACM, 2009.
 
 \bibitem{GiovannettiLeviMoisoPalamidessi91}
 E.~Giovannetti, G.~Levi, C.~Moiso, and C.~Palamidessi.
@@ -153,14 +141,6 @@ F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
 \newblock {TOY}: A Multiparadigm Declarative System.
 \newblock In {\em Proc. of RTA'99}, pp. 244--247. Springer LNCS 1631, 1999.
 
-\bibitem{LopezRodriguezSanchez07}
-F.J. L{\'o}pez-Fraguas, J.~Rodr{\'\i}guez-Hortal{\'a}, and
-  J.~S{\'a}nchez-Hern{\'a}ndez.
-\newblock A Simple Rewrite Notion for Call-time Choice Semantics.
-\newblock In {\em Proceedings of the 9th ACM SIGPLAN International Conference
-  on Principles and Practice of Declarative Programming (PPDP'07)}, pp.
-  197--208. ACM Press, 2007.
-
 \bibitem{Lux99FLOPS}
 W.~Lux.
 \newblock Implementing Encapsulated Search for a Lazy Functional Logic
@@ -188,6 +168,12 @@ U.S. Reddy.
 J.A. Robinson.
 \newblock A Machine-Oriented Logic Based on the Resolution Principle.
 \newblock {\em Journal of the ACM}, Vol.~12, No.~1, pp. 23--41, 1965.
+
+\bibitem{SchrijversStuckeyWadler09}
+T.~Schrijvers, P.~Stuckey, and P.~Wadler.
+\newblock Monadic Constraint Programming.
+\newblock {\em Journal of Functional Programming}, Vol.~19, No.~6, pp.
+  663--697, 2009.
 
 \bibitem{Slagle74}
 J.R. Slagle.
