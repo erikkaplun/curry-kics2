@@ -147,14 +147,14 @@ instance Unifiable C_Int where
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Int j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = cs ++ (bind i e)
   lazyBind i (C_Int      x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primint2curryint x2))]
   lazyBind i (C_CurryInt x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x2)]
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Int j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -273,12 +273,12 @@ instance Unifiable C_Float where
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Float j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Float = [Unsolvable]
   bind i (Guard_C_Float cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Float j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -387,14 +387,14 @@ instance Unifiable C_Char where
   bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Char = [Unsolvable]
   bind i (Guard_C_Char cs e) = cs ++ (bind i e)
   lazyBind i (C_Char    x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primChar2CurryChar x))]
   lazyBind i (CurryChar x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x)]
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Char j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 

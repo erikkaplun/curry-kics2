@@ -26,10 +26,12 @@ data Constraint
   -- |Unsolvable constraint
   | Unsolvable
   -- |Non-deterministic choice between two lists of constraints
-  | ConstraintChoice ID [Constraint] [Constraint]
+  | ConstraintChoice ID Constraints Constraints
   -- |Non-deterministic choice between a list of lists of constraints
-  | ConstraintChoices ID [[Constraint]]
+  | ConstraintChoices ID [Constraints]
     deriving (Eq, Show)
+
+type Constraints = [Constraint]
 
 -- ---------------------------------------------------------------------------
 -- Choice
@@ -55,7 +57,7 @@ data Choice
   | BoundTo ID Int
     -- |A free variable is lazily bound to an expression by a function
    --   pattern
-  | LazyBind [Constraint]
+  | LazyBind Constraints
     deriving Show
 
 -- TODO: Idea: Split ChooseN Int Int into two cases
@@ -92,17 +94,17 @@ isDefaultChoice _        = False
 -- Type to identify different Choice structures in a non-deterministic result
 data ID
     -- |Identifier for a choice introduced by the use of the (?) operator
-  = ID Ref
+  = ChoiceID Ref
     -- |Identifier for a choice for a free variable
   | FreeID [Int] IDSupply
     -- |Identifier for a choice for a narrowed variable (free before)
-  | Narrowed [Int] IDSupply
+  | NarrowedID [Int] IDSupply
     deriving Eq
 
 instance Show ID where
-  show (ID i)       = "?" ++ show i
-  show (FreeID _ i) = "_x" ++ show i
-  show (Narrowed _ i) = "Narrowed" ++ show i
+  show (ChoiceID     i) = "?" ++ show i
+  show (FreeID     _ i) = "_x" ++ show i
+  show (NarrowedID _ i) = "Narrowed" ++ show i
 
 -- |Construct an 'ID' for a free variable from an 'IDSupply'
 freeID :: [Int] -> IDSupply -> ID
@@ -110,19 +112,19 @@ freeID = FreeID
 
 -- |Construct an 'ID' for a binary choice from an 'IDSupply'
 thisID :: IDSupply -> ID
-thisID s = ID (thisRef s)
+thisID s = ChoiceID (thisRef s)
 
 -- |Retrieve the 'Ref' from an 'ID'
 ref :: ID -> Ref
-ref (ID       r)   = r
-ref (FreeID _ s)   = thisRef s
-ref (Narrowed _ s) = thisRef s
+ref (ChoiceID     r) = r
+ref (FreeID     _ s) = thisRef s
+ref (NarrowedID _ s) = thisRef s
 
 -- |Retrieve the 'IDSupply' from an free or narrowed 'ID'
 supply :: ID -> IDSupply
-supply (ID       _)   = error "ID.supply: ID"
-supply (FreeID _ s)   = s
-supply (Narrowed _ s) = s
+supply (ChoiceID     _) = error "ID.supply: ChoiceID"
+supply (FreeID     _ s) = s
+supply (NarrowedID _ s) = s
 
 -- |Retrieve the left child 'ID' from an free 'ID'
 leftID :: ID -> ID
@@ -136,25 +138,18 @@ rightID  _           = error "ID.rightID: no FreeID"
 
 -- |Convert a free or narrowed 'ID' into a narrowed one
 narrowID :: ID -> ID
-narrowID (ID _)           = error "ID.narrowID: ID"
-narrowID (FreeID pns s)   = Narrowed pns s
-narrowID n@(Narrowed _ _) = n
+narrowID (ChoiceID _) = error "ID.narrowID: ID"
+narrowID (FreeID p s) = NarrowedID p s
+narrowID narrowedID   = narrowedID
 
 -- |Conversion of ID into integer for monadic search operators
 mkInt :: ID -> Integer
 mkInt = mkIntRef . ref
 
--- |Ensure that an 'ID' is not an 'ID' for a binary choice
-ensureNotID :: ID -> ID
-ensureNotID (ID _)           = error "ensureNotID: ID"
-ensureNotID x@(FreeID _ _)   = x
-ensureNotID x@(Narrowed _ _) = x
-
--- -- |Ensure that an 'ID' is an 'ID' for a free variable
--- ensureFreeID :: ID -> ID
--- ensureFreeID (ID _)         = error "ensureFreeID: ID"
--- ensureFreeID x@(FreeID _ _) = x
--- ensureFreeID (Narrowed _ _) = error "ensureFreeID: Narrowed"
+-- |Ensure that an 'ID' is not an 'ChoiceID' for a binary choice
+ensureNotChoiceID :: ID -> ID
+ensureNotChoiceID (ChoiceID _) = error "ID.ensureNotChoiceID: ChoiceID"
+ensureNotChoiceID x            = x
 
 -- ---------------------------------------------------------------------------
 -- Choice Management
@@ -304,10 +299,10 @@ propagateBind x y cnt = do
   setChoiceRaw x (BoundTo y cnt)
   -- propagate the binding to the children
   zipWithM_ (\a b -> setChoice a (BindTo b))
-    (nextNIDs xFreeNarrowed cnt) (nextNIDs yFree cnt)
+    (nextNIDs xFreeNarrowed cnt) (nextNIDs yFreeNarrowed cnt)
   where
-    xFreeNarrowed = ensureNotID x
-    yFree = ensureNotID y
+    xFreeNarrowed = ensureNotChoiceID x
+    yFreeNarrowed = ensureNotChoiceID y
 
 -- |Reset a free variable to its former 'Choice' and reset its children if
 --  the binding has already been propagated

@@ -87,7 +87,7 @@ instance Unifiable BinInt where
   bind i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_BinInt j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_BinInt j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_BinInt j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_BinInt j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_BinInt = [Unsolvable]
   bind i (Guard_BinInt cs e) = cs ++ (bind i e)
   lazyBind i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
@@ -95,7 +95,7 @@ instance Unifiable BinInt where
   lazyBind i (Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_BinInt j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_BinInt j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_BinInt j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_BinInt j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_BinInt = [Unsolvable]
   lazyBind i (Guard_BinInt cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -180,7 +180,7 @@ instance Unifiable Nat where
   bind i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_Nat j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_Nat j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_Nat j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_Nat = [Unsolvable]
   bind i (Guard_Nat cs e) = cs ++ (bind i e)
   lazyBind i IHi = [(i :=: (ChooseN 0 0))]
@@ -188,7 +188,7 @@ instance Unifiable Nat where
   lazyBind i (I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_Nat j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_Nat j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_Nat j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_Nat = [Unsolvable]
   lazyBind i (Guard_Nat cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -240,12 +240,12 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_Func j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_Func j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_Func j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_Func = [Unsolvable]
   bind i (Guard_Func cs e) = cs ++ (bind i e)
   lazyBind i (Choice_Func j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_Func j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_Func j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_Func = [Unsolvable]
   lazyBind i (Guard_Func cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -296,12 +296,12 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_C_IO j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_IO j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_IO j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_IO = [Unsolvable]
   bind i (Guard_C_IO cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_IO j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_IO j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_IO j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -357,12 +357,12 @@ instance Unifiable (PrimData t0) where
   (=.<=) _ _ = Fail_C_Success
   bind i (Choice_PrimData j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_PrimData j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_PrimData j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_PrimData = [Unsolvable]
   bind i (Guard_PrimData cs e) = cs ++ (bind i e)
   lazyBind i (Choice_PrimData j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_PrimData j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_PrimData j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_PrimData = [Unsolvable]
   lazyBind i (Guard_PrimData cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry

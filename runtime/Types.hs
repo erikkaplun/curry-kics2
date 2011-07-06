@@ -65,13 +65,13 @@ instance Unifiable C_Success where
   bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
   bind i (Choice_C_Success j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Success j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Success = [Unsolvable]
   bind i (Guard_C_Success cs e) = cs ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Success j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Success = [Unsolvable]
   lazyBind i (Guard_C_Success cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -123,13 +123,13 @@ data Try a
     deriving Show
 
 tryChoice :: ID -> a -> a -> Try a
-tryChoice i@(ID _) = Choice i
-tryChoice _        = error "Basics.tryChoice: no ID"
+tryChoice i@(ChoiceID _) = Choice i
+tryChoice _              = error "Basics.tryChoice: no ChoiceID"
 
 tryChoices :: ID -> [a] -> Try a
-tryChoices (ID _)         = error "Basics.tryChoices: ID"
-tryChoices i@(FreeID _ _) = Frees   i
-tryChoices i@(Narrowed _ _) = Choices i
+tryChoices (ChoiceID       _) = error "Basics.tryChoices: Choice"
+tryChoices i@(FreeID     _ _) = Frees   i
+tryChoices i@(NarrowedID _ _) = Choices i
 
 -- ---------------------------------------------------------------------------
 -- Non-determinism
@@ -163,8 +163,8 @@ class NonDet a where
   match = error "match not implemented"
 
 narrow :: NonDet a => ID -> a -> a -> a
-narrow i@(ID _) = choiceCons i
-narrow _        = error "Basics.narrow: no ID"
+narrow i@(ChoiceID _) = choiceCons i
+narrow _              = error "Basics.narrow: no ChoiceID"
 
 -- |Convert a n-ary choice of a free variable into one with a narrowed variable
 narrows :: NonDet a => ID -> [a] -> a
@@ -194,22 +194,22 @@ class (Show a, NonDet a) => NormalForm a where
 -- Auxiliary function to create a binary Choice and apply a continuation to
 -- the normal forms of its two alternatives
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
-nfChoice cont i@(ID _) x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
+nfChoice cont i@(ChoiceID _) x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 nfChoice _ _ _ _ = error "Basics.nfChoice: no ID"
 -- nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
 
 -- Auxiliary function to create a n-ary Choice and apply a continuation to
 -- the normal forms of its alternatives
 nfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
-nfChoices _      (ID _)       _  = error "Basics.nfChoices: ID"
-nfChoices cont i@(FreeID _ _)   xs = cont (choicesCons i xs)
-nfChoices cont i@(Narrowed _ _) xs = choicesCons i (map (cont $!!) xs)
+nfChoices _      (ChoiceID _)     _  = error "Basics.nfChoices: ID"
+nfChoices cont i@(FreeID _ _)     xs = cont (choicesCons i xs)
+nfChoices cont i@(NarrowedID _ _) xs = choicesCons i (map (cont $!!) xs)
 
 
 -- Auxiliaries for $##
 
 gnfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
-gnfChoice cont i@(ID _) x1 x2 = choiceCons i (cont $## x1) (cont $## x2)
+gnfChoice cont i@(ChoiceID _) x1 x2 = choiceCons i (cont $## x1) (cont $## x2)
 gnfChoice _ _ _ _ = error "Basics.gnfChoice: no ID"
 
 gnfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
@@ -219,7 +219,7 @@ gnfChoices cont i xs = narrows i (map (cont $##) xs)
 -- Auxiliaries for $!<
 
 nfChoiceIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
-nfChoiceIO cont i@(ID _) x1 x2 = cont $ choiceCons i x1 x2
+nfChoiceIO cont i@(ChoiceID _) x1 x2 = cont $ choiceCons i x1 x2
 nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ID"
 -- nfChoiceIO cont i@(ID _) x1 x2 = do
 --   x1' <- return $!< x1
@@ -228,7 +228,7 @@ nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ID"
 
 
 nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
-nfChoicesIO _      (ID _)     _  = error "Basics.nfChoicesIO: ID"
+nfChoicesIO _      (ChoiceID _)     _  = error "Basics.nfChoicesIO: ID"
 nfChoicesIO cont i@(FreeID _ _) xs = lookupChoiceID i >>= choose
   where
   choose (ChooseN c _, _) = cont $!< (xs !! c)
@@ -237,7 +237,7 @@ nfChoicesIO cont i@(FreeID _ _) xs = lookupChoiceID i >>= choose
     cont (guardCons cs (choicesCons i xs))
   choose (NoChoice   , _) = cont (choicesCons i xs) -- TODO replace i with j?
   choose c                = error $ "Basics.nfChoicesIO.choose: " ++ show c
-nfChoicesIO cont i@(Narrowed  _ _) xs = cont (choicesCons i xs)
+nfChoicesIO cont i@(NarrowedID  _ _) xs = cont (choicesCons i xs)
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs
 --   cont (choicesCons i xs)
@@ -341,7 +341,7 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
-showsChoice d i@(ID _) x1 x2 =
+showsChoice d i@(ChoiceID _) x1 x2 =
   showChar '(' .
   showsPrec d x1 .
   showString " ?" . shows i . showChar ' ' .
@@ -350,9 +350,9 @@ showsChoice d i@(ID _) x1 x2 =
 showsChoice _ _ _ _ = error "showsChoice with no ID"
 
 showsChoices :: Show a => Int -> ID -> [a] -> ShowS
-showsChoices d i@(ID _) _        = error "showsChoices with ID"
+showsChoices d i@(ChoiceID _) _  = error "showsChoices with ID"
 showsChoices d i@(FreeID _ _) _  = shows i
-showsChoices d i@(Narrowed _ _) xs
+showsChoices d i@(NarrowedID _ _) xs
   = showString "[?" . shows i
   . foldr (.) id (zipWith showNarrowing [(0 :: Int) ..] xs)
   . showChar ']'

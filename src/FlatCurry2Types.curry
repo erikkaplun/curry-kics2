@@ -5,7 +5,7 @@
 --- program with instance declarations that can be easily pretty printed
 ---
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version April 2011
+--- @version July 2011
 -- ---------------------------------------------------------------------------
 module FlatCurry2Types (fcyTypes2abs) where
 
@@ -474,12 +474,12 @@ genTypeDefinitions hores (FC.Type (mn,tc) vis tnums cdecls) = if null cdecls
                 ]
       ))
 
-  -- bind i (Choices_TYPENAME j@(Narrowed _) xs) = [ConstraintChoices j (map (bind i) xs)]
-  -- lazyBind i (Choices_TYPENAME j@(Narrowed _) xs) = [ConstraintChoices j (map (lazyBind i) xs)]
+  -- bind i (Choices_TYPENAME j@(NarrowedID _) xs) = [ConstraintChoices j (map (bind i) xs)]
+  -- lazyBind i (Choices_TYPENAME j@(NarrowedID _) xs) = [ConstraintChoices j (map (lazyBind i) xs)]
   bindNarrowedRule funcName = (funcName,
     simpleRule
       [ PVar (1,"i")
-      , PComb choicesConsName [PAs (2,"j") (PComb (basics "Narrowed") [PVar (3,"_"), PVar (4,"_")])
+      , PComb choicesConsName [PAs (2,"j") (PComb (basics "NarrowedID") [PVar (3,"_"), PVar (4,"_")])
       , PVar (5,"xs")]
       ]
       ( list2ac [ applyF (basics "ConstraintChoices")

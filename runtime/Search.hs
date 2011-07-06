@@ -118,7 +118,7 @@ printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
     choose (NoChoice   , j) = cont $ choicesCons j xs
 
-printValsDFS' fb cont (Choices i@(Narrowed pns _) xs) = lookupChoiceID i >>= choose
+printValsDFS' fb cont (Choices i@(NarrowedID pns _) xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
@@ -270,7 +270,7 @@ searchDFS' cont (Frees i xs) = lookupChoiceID i >>= choose
       reset <- setUnsetChoice i NoChoice
       searchDFS cont (guardCons cs $ choicesCons i xs) |< reset
 
-searchDFS' cont (Choices i@(Narrowed pns _) xs) = lookupChoice i >>= choose
+searchDFS' cont (Choices i@(NarrowedID pns _) xs) = lookupChoice i >>= choose
   where
     choose (LazyBind cs) = processLB cs
     choose (ChooseN c _) = searchDFS cont (xs !! c)
@@ -583,7 +583,7 @@ searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
-searchMPlus'' cont (Choices i@(Narrowed pns _)  branches) =
+searchMPlus'' cont (Choices i@(NarrowedID pns _)  branches) =
    lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
