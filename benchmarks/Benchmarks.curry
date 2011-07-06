@@ -301,13 +301,14 @@ benchFLPCompleteSearch prog =
  ]
 
 -- Benchmarking =:<=, =:= and ==
-benchFLPDFSKiCS2WithMain prog name mcc =
+benchFLPDFSKiCS2WithMain prog name pakcs mcc =
  [idcBenchmark ("IDC+_PrDFS_IORef:"++name)
                prog True  "ioref" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_DFS_IORef:"++name)
                prog True  "ioref" ("printDFS print nd_C_"++name)
- ,pakcsBenchmark ("-m \"print "++name++"\"") prog ]
- ++ if mcc then [mccBenchmark ("-e\""++name++"\"") prog]  else []
+ ]
+ ++ (if pakcs then [pakcsBenchmark ("-m \"print "++name++"\"") prog] else [])
+ ++ (if mcc then [mccBenchmark ("-e\""++name++"\"") prog]  else [])
 
 allBenchmarks =
   [ benchFPpl "ReverseUser"     True
@@ -341,26 +342,47 @@ allBenchmarks =
 
 unif = 
      [
---       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal1L" False
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal2L"  False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal2S"  True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal2Eq" True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal4S"  True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal4Eq" True
-       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal5L"  False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal5S"  True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal5Eq" True
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal6L"  False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal6S"  True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal6Eq" True
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal7L"  False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal7S"  True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal7Eq" True
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal8L"  False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal8S"  True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal8Eq" True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal9S"  True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal9Eq" True
+       -- mcc does not support function pattern
+       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
+       -- mcc does not support function pattern
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_2L" True False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2S" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2Eq" False False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
+       -- mcc does not support function pattern, pakcs runs very long (\infty?)
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_half_L" False False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
+       -- mcc does not support function pattern
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L" True False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S" True True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq" True True
+       -- mcc does not support function pattern
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L'" True False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S'" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq'" False False
+       -- mcc does not support function pattern
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L''" True False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S''" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq''" False False
+       -- mcc does not support function pattern
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_Eq" False False
+       -- mcc does not support function pattern, pakcs runs very long (\infty?)
+     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_pali_L" False False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_S" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_Eq" False False
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_S" True True
+       -- pakcs and mcc suspend on this goal
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
      ]
 
 -- Run all benchmarks and show results
@@ -397,4 +419,4 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
---main = run 3 unif
+main = run 3 unif

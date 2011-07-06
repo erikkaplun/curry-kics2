@@ -938,6 +938,8 @@ will never be evaluated, as intended.
 \section{Benchmarks}
 \label{sec:Benchmarks}
 
+% The benchmark results are from unif@climens2011_7_5_20_38_47.bench
+
 In this section we evaluate our implementation by some benchmarks.
 They were executed on a Linux machine running Debian 5.0.7 with
 an Intel Core 2 Duo (3.0GHz) processor.
@@ -967,13 +969,15 @@ and
 \hline
 Expression                              & \code{==~}& \code{=:=} & \code{=:<=} \\
 \hline
-\code{last (map (inc 0) [1..100000])}   & 118.33    & 0.52       & 0.20        \\
-% \code{grep}                             & 0.94      & 0.13       &             \\
-\code{simplify}                         & 9.18      & 10.33      & 7.09        \\
-\code{varInExp}                         & 0.50      & 86.27      & 0.14        \\
-\code{fromPeano (half (toPeano 10000))} & 26.49     & 6.26       & 11.58       \\
-\code{palindrome}                       & 31.12     & 13.45      & 17.55       \\
-% \code{horseman}                         & 3.88      & 4.93       &             \\
+\code{last (map (inc 0) [1..100000])}   & 134.23    & 0.83      & 0.26        \\
+% \code{grep}                             & 1.06      & 0.19      &             \\
+\code{simplify}                         & 8.50      & 7.15      & 7.34        \\
+\code{varInExp}                         & 11.72     & 1.50      & 0.14        \\
+% \code{varInExp2}                        & 423.01    & 10.50     & 1.04        \\
+% \code{varInExp3}                        & 399.68    & 16.70     & 11.28       \\
+\code{fromPeano (half (toPeano 10000))} & 32.92     & 6.35      & 11.88       \\
+\code{palindrome}                       & 28.59     & 15.58     & 23.21       \\
+% \code{horseman}                         & 3.58      & 3.13      &             \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different equation solving methods}
@@ -997,9 +1001,7 @@ with variable bindings.
 In addition, the example \code{last} shows that the lazy 
 unification operator (\code{=:<=}) improves performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
-all elements of the list are (unnecessarily) evaluated. Interestingly, in the
-\code{varInExp} example equational constraints perform significantly worse
-than the other equality operators. \todo{Explain why}
+all elements of the list are (unnecessarily) evaluated.
 
 \begin{figure}[t]
 \centering
@@ -1007,13 +1009,15 @@ than the other equality operators. \todo{Explain why}
 \hline
 Expression                              & KiCS2 & PAKCS & MCC  \\
 \hline
-\code{last (map (inc 0) [1..100000])}   & 0.52  & 4.27   & 0.15 \\
-% \code{grep}                             & 0.13  & 2.83   & 0.15 \\
-\code{simplify}                         & 10.33 & 0.15   & 0.01 \\
-\code{varInExp}                         & 86.27 & 0.35   & 0.03 \\
-\code{fromPeano (half (toPeano 10000))} & 6.26  & 109.71 & 3.17 \\
-\code{palindrome}                       & 13.45 & 32.82  & 1.04 \\
-% \code{horseman}                         & 4.93  & 8.85   & 0.42 \\
+\code{last (map (inc 0) [1..100000])}   & 0.83  & 4.25   & 0.14 \\
+% \code{grep}                             & 0.19  & 2.88   & 0.14 \\
+\code{simplify}                         & 7.15  & 0.15   & 0.00 \\
+\code{varInExp}                         & 1.50  & 3.89   & 0.30 \\
+% \code{varInExp2}                        & 10.50 & 3.48   & stckOflw \\
+% \code{varInExp3}                        & 16.70 & 19.22  & 1.18 \\
+\code{fromPeano (half (toPeano 10000))} & 6.35  & 108.88 & 3.22 \\
+\code{palindrome}                       & 15.58 & 32.56  & 1.07 \\
+% \code{horseman}                         & 3.13  & 8.70   & 0.42 \\
 \hline
 \end{tabular}
 \caption{Benchmarks: equational constraints in different Curry implementations}
@@ -1039,11 +1043,13 @@ and optimizations are necessary.
 \hline
 Expression                              & KiCS2 & PAKCS    \\
 \hline
-\code{last (map (inc 0) [1..100000])}   & 0.20  & 3.93     \\
-\code{simplify}                         & 7.09  & 0.26     \\
-\code{varInExp}                         & 0.14  & 0.69     \\
-\code{fromPeano (half (toPeano 10000))} & 11.57 & $\infty$ \\
-\code{palindrome}                       & 17.55 & $\infty$ \\
+\code{last (map (inc 0) [1..100000])}   & 0.26  & 3.97     \\
+\code{simplify}                         & 7.34  & 0.27     \\
+\code{varInExp}                         & 1.40  & 8.88     \\
+% \code{varInExp2}                         & 1.04  & 0.08    \\
+% \code{varInExp3}                         & 11.28 & 16.62   \\
+\code{fromPeano (half (toPeano 10000))} & 11.88 & $\infty$ \\
+\code{palindrome}                       & 23.21 & $\infty$ \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different implementations of functional patterns}

@@ -1,0 +1,110 @@
+Benchmarks at Linux climens 2.6.26-2-686 #1 SMP Thu Nov 25 01:53:57 UTC 2010 i686 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_last_1L|  1.00 |  0.14 |  0.14 |  0.14 |  0.14 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_last_1L  |  1.79 |  0.25 |  0.25 |  0.25 |  0.25 
+UnificationBenchFunPat@PAKCS                        | 28.74 |  4.02 |  3.91 |  4.24 |  3.92 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_last_2L|  1.00 |  0.14 |  0.14 |  0.15 |  0.14 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_last_2L  |  1.81 |  0.26 |  0.26 |  0.26 |  0.26 
+UnificationBenchFunPat@PAKCS                        | 27.67 |  3.97 |  3.99 |  3.95 |  3.96 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_last_2S|  4.88 |  0.70 |  0.70 |  0.70 |  0.70 
+UnificationBench@IDC+_DFS_IORef:goal_last_2S  |  5.77 |  0.83 |  0.83 |  0.82 |  0.83 
+UnificationBench@PAKCS                        | 29.65 |  4.25 |  4.24 |  4.25 |  4.26 
+UnificationBench@MCC                          |  1.00 |  0.14 |  0.14 |  0.15 |  0.14 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_last_2Eq|  1.00 |  5.18 |  5.19 |  5.21 |  5.14 stckOflw
+UnificationBench@IDC+_DFS_IORef:goal_last_2Eq  | 25.91 |134.23 |133.98 |134.06 |134.66 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_grep_S|  1.00 |  0.10 |  0.10 |  0.10 |  0.10 
+UnificationBench@IDC+_DFS_IORef:goal_grep_S  |  1.90 |  0.19 |  0.19 |  0.19 |  0.19 
+UnificationBench@PAKCS                       | 28.77 |  2.88 |  2.80 |  2.99 |  2.84 
+UnificationBench@MCC                         |  1.43 |  0.14 |  0.14 |  0.15 |  0.14 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_grep_Eq|  1.00 |  1.06 |  1.05 |  1.07 |  1.06 
+UnificationBench@IDC+_DFS_IORef:goal_grep_Eq  |  1.00 |  1.06 |  1.08 |  1.05 |  1.04 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_half_L|  1.00 | 11.19 | 11.33 | 11.15 | 11.08 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_half_L  |  1.06 | 11.88 | 11.92 | 11.90 | 11.83 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_half_S|  1.85 |  5.95 |  5.93 |  5.96 |  5.96 
+UnificationBench@IDC+_DFS_IORef:goal_half_S  |  1.97 |  6.35 |  6.33 |  6.38 |  6.34 
+UnificationBench@PAKCS                       | 33.85 |108.88 |107.63 |110.12 |108.90 
+UnificationBench@MCC                         |  1.00 |  3.22 |  3.23 |  3.21 |  3.21 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_half_Eq|  9.55 | 26.67 | 26.89 | 26.55 | 26.57 
+UnificationBench@IDC+_DFS_IORef:goal_half_Eq  | 11.79 | 32.92 | 32.83 | 32.96 | 32.97 
+UnificationBench@PAKCS                        | 42.64 |119.10 |118.62 |118.49 |120.18 
+UnificationBench@MCC                          |  1.00 |  2.79 |  2.82 |  2.78 |  2.78 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_expVar_L|  1.00 |  0.84 |  0.84 |  0.84 |  0.84 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_expVar_L  |  1.67 |  1.40 |  1.40 |  1.40 |  1.40 
+UnificationBenchFunPat@PAKCS                         | 10.57 |  8.88 |  8.92 |  8.90 |  8.81 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_S|  3.28 |  0.97 |  0.97 |  0.98 |  0.97 
+UnificationBench@IDC+_DFS_IORef:goal_expVar_S  |  5.06 |  1.50 |  1.50 |  1.50 |  1.50 
+UnificationBench@PAKCS                         | 13.10 |  3.89 |  3.90 |  3.93 |  3.83 
+UnificationBench@MCC                           |  1.00 |  0.30 |  0.29 |  0.30 |  0.30 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_Eq|49600.01 |  4.96 |  4.94 |  4.93 |  5.01 stckOflw
+UnificationBench@IDC+_DFS_IORef:goal_expVar_Eq  |117233.34 | 11.72 | 11.70 | 11.68 | 11.79 
+UnificationBench@PAKCS                          |133.33 |  1.0e-2 |  1.0e-2 |  1.0e-2 |  2.0e-2 suspend
+UnificationBench@MCC                            |  0.00 |  0.00 |  0.00 |  0.00 |  0.00 suspend
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_expVar_L'| 13.54 |  1.08 |  1.08 |  1.09 |  1.08 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_expVar_L'  | 12.96 |  1.04 |  1.04 |  1.02 |  1.05 
+UnificationBenchFunPat@PAKCS                          |  1.00 |  8.0e-2 |  8.0e-2 |  7.0e-2 |  9.0e-2 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_S'|113433.34 | 11.34 | 11.34 | 11.34 | 11.35 
+UnificationBench@IDC+_DFS_IORef:goal_expVar_S'  |105033.34 | 10.50 | 10.60 | 10.45 | 10.46 
+UnificationBench@PAKCS                          |34766.67 |  3.48 |  3.49 |  3.51 |  3.43 
+UnificationBench@MCC                            |  0.00 |  0.00 |  0.00 |  0.00 |  0.00 stckOflw
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_Eq'|  1.04 |439.80 |441.70 |439.92 |437.79 
+UnificationBench@IDC+_DFS_IORef:goal_expVar_Eq'  |  1.00 |423.01 |424.66 |422.13 |422.23 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_expVar_L''|  1.00 |  9.79 |  9.80 |  9.80 |  9.77 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_expVar_L''  |  1.15 | 11.28 | 11.26 | 11.30 | 11.28 
+UnificationBenchFunPat@PAKCS                           |  1.70 | 16.62 | 16.50 | 16.76 | 16.60 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_S''| 12.92 | 15.29 | 15.30 | 15.25 | 15.32 
+UnificationBench@IDC+_DFS_IORef:goal_expVar_S''  | 14.11 | 16.70 | 16.67 | 16.79 | 16.64 
+UnificationBench@PAKCS                           | 16.24 | 19.22 | 19.30 | 19.21 | 19.15 
+UnificationBench@MCC                             |  1.00 |  1.18 |  1.18 |  1.19 |  1.18 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_expVar_Eq''|  1.00 | 75.18 | 75.21 | 75.01 | 75.31 stckOflw
+UnificationBench@IDC+_DFS_IORef:goal_expVar_Eq''  |  5.32 |399.68 |399.84 |400.25 |398.95 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_simplify_L| 26.51 |  7.07 |  7.00 |  7.11 |  7.10 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_simplify_L  | 27.52 |  7.34 |  7.32 |  7.32 |  7.38 
+UnificationBenchFunPat@PAKCS                           |  1.00 |  0.27 |  0.26 |  0.27 |  0.27 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_simplify_S|2030.00 |  6.77 |  6.74 |  6.82 |  6.74 
+UnificationBench@IDC+_DFS_IORef:goal_simplify_S  |2144.00 |  7.15 |  7.16 |  7.14 |  7.14 
+UnificationBench@PAKCS                           | 45.00 |  0.15 |  0.15 |  0.15 |  0.15 
+UnificationBench@MCC                             |  1.00 |  0.00 |  0.00 |  0.00 |  1.0e-2 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_simplify_Eq|  1.21 | 10.30 | 10.32 | 10.32 | 10.27 
+UnificationBench@IDC+_DFS_IORef:goal_simplify_Eq  |  1.00 |  8.50 |  8.54 |  8.46 |  8.49 
+--------
+UnificationBenchFunPat@IDC+_PrDFS_IORef:goal_pali_L|  1.00 | 20.26 | 20.25 | 20.19 | 20.35 
+UnificationBenchFunPat@IDC+_DFS_IORef:goal_pali_L  |  1.15 | 23.21 | 23.43 | 23.17 | 23.02 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_pali_S| 13.09 | 14.05 | 14.14 | 14.02 | 13.99 
+UnificationBench@IDC+_DFS_IORef:goal_pali_S  | 14.52 | 15.58 | 15.66 | 15.54 | 15.55 
+UnificationBench@PAKCS                       | 30.34 | 32.56 | 32.85 | 32.33 | 32.51 
+UnificationBench@MCC                         |  1.00 |  1.07 |  1.07 |  1.08 |  1.07 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_pali_Eq|  1.08 | 30.86 | 30.78 | 30.85 | 30.95 
+UnificationBench@IDC+_DFS_IORef:goal_pali_Eq  |  1.00 | 28.59 | 28.47 | 28.54 | 28.77 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_horseMan_S|  7.87 |  3.31 |  3.29 |  3.33 |  3.30 
+UnificationBench@IDC+_DFS_IORef:goal_horseMan_S  |  7.46 |  3.13 |  3.14 |  3.10 |  3.16 
+UnificationBench@PAKCS                           | 20.72 |  8.70 |  8.78 |  8.98 |  8.35 
+UnificationBench@MCC                             |  1.00 |  0.42 |  0.42 |  0.42 |  0.42 
+--------
+UnificationBench@IDC+_PrDFS_IORef:goal_horseMan_Eq|  1.00 |  3.24 |  3.23 |  3.22 |  3.26 
+UnificationBench@IDC+_DFS_IORef:goal_horseMan_Eq  |  1.11 |  3.58 |  3.58 |  3.57 |  3.60 
