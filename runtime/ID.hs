@@ -2,7 +2,7 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( Constraint (..), Choice (..), defaultChoice, isDefaultChoice
+  ( Constraint (..), Constraints, Choice (..), defaultChoice, isDefaultChoice
   , ID (..), IDSupply
   , mkInt, leftID, rightID, narrowID
   , initSupply, leftSupply, rightSupply, thisID, freeID

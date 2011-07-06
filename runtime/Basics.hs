@@ -23,24 +23,24 @@ nonAsciiChr i = chr# i
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
 d_dollar_bang f x = hnf (try x)
   where
-   hnf (Val v)        = f v -- inlined d_apply f v
-   hnf Fail           = failCons
-   hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
-   hnf (Choices i xs) = choicesCons i (map (hnf . try) xs)
-   hnf (Frees i xs)   = f (choicesCons i xs)
-   hnf (Guard c e)    = guardCons c (hnf (try e))
+   hnf (Val v)         = f v -- inlined d_apply f v
+   hnf Fail            = failCons
+   hnf (Choice i a b)  = choiceCons i (hnf (try a)) (hnf (try b))
+   hnf (Narrowed i xs) = choicesCons i (map (hnf . try) xs)
+   hnf (Free i xs)     = f (choicesCons i xs)
+   hnf (Guard c e)     = guardCons c (hnf (try e))
 
 -- Apply a non-deterministic function to the head normal form
 nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
 nd_dollar_bang f x s = hnf (try x)
   where
-   hnf (Val v)        = nd_apply f v s
-   hnf Fail           = failCons
+   hnf (Val v)         = nd_apply f v s
+   hnf Fail            = failCons
    -- TODO Do we better use leftSupply and rightSupply?
-   hnf (Choice i a b) = choiceCons i (hnf (try a)) (hnf (try b))
-   hnf (Choices i xs) = choicesCons i (map (hnf . try) xs)
-   hnf (Frees i xs)   = nd_apply f (choicesCons i xs) s
-   hnf (Guard c e)    = guardCons c (hnf (try e))
+   hnf (Choice i a b)  = choiceCons i (hnf (try a)) (hnf (try b))
+   hnf (Narrowed i xs) = choicesCons i (map (hnf . try) xs)
+   hnf (Free i xs)     = nd_apply f (choicesCons i xs) s
+   hnf (Guard c e)     = guardCons c (hnf (try e))
 
 -- TODO: test implementation for $! replace if more efficient
 -- d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b

@@ -112,13 +112,13 @@ printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
 
 
 
-printValsDFS' fb cont (Frees i xs)   = lookupChoiceID i >>= choose
+printValsDFS' fb cont (Free i xs)   = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
     choose (NoChoice   , j) = cont $ choicesCons j xs
 
-printValsDFS' fb cont (Choices i@(NarrowedID pns _) xs) = lookupChoiceID i >>= choose
+printValsDFS' fb cont (Narrowed i@(NarrowedID pns _) xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
     choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
@@ -259,7 +259,7 @@ searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
       reset <- setUnsetChoice i c
       searchDFS cont x |< reset
 
-searchDFS' cont (Frees i xs) = lookupChoiceID i >>= choose
+searchDFS' cont (Free i xs) = lookupChoiceID i >>= choose
   where
     choose (LazyBind cs, _) = processLB cs
     choose (ChooseN c _, _) = searchDFS cont (xs !! c)
@@ -270,7 +270,7 @@ searchDFS' cont (Frees i xs) = lookupChoiceID i >>= choose
       reset <- setUnsetChoice i NoChoice
       searchDFS cont (guardCons cs $ choicesCons i xs) |< reset
 
-searchDFS' cont (Choices i@(NarrowedID pns _) xs) = lookupChoice i >>= choose
+searchDFS' cont (Narrowed i@(NarrowedID pns _) xs) = lookupChoice i >>= choose
   where
     choose (LazyBind cs) = processLB cs
     choose (ChooseN c _) = searchDFS cont (xs !! c)
@@ -347,7 +347,7 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
         newSet c = set   >> setChoice i c
         newReset = reset >> setChoice i NoChoice
 
-    bfs xs ys set reset (Choices i cs) = set   >> lookupChoice i >>= choose
+    bfs xs ys set reset (Narrowed i cs) = set   >> lookupChoice i >>= choose
 
      where
         choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
@@ -359,7 +359,7 @@ searchBFS x = bfs [] [] (return ()) (return ()) x
         newReset = reset >> setChoice i NoChoice
         errChoice = error "propagation number used within non-free Choice"
 
-    bfs xs ys set reset (Frees i cs) = lookupChoice i >>= choose
+    bfs xs ys set reset (Free i cs) = lookupChoice i >>= choose
       where
         choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
         choose NoChoice      = reset >> mcons (choicesCons i cs) (next xs ys)
@@ -583,7 +583,7 @@ searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
     choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
                          (setChoice' i ChooseRight >> searchMPlus' cont y)
-searchMPlus'' cont (Choices i@(NarrowedID pns _)  branches) =
+searchMPlus'' cont (Narrowed i@(NarrowedID pns _)  branches) =
    lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
@@ -591,11 +591,13 @@ searchMPlus'' cont (Choices i@(NarrowedID pns _)  branches) =
       msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] branches pns
     choose (LazyBind cs) = processLazyBind' i cont cs branches
     pick c pn = setChoice' i (ChooseN c pn)
-searchMPlus'' cont (Frees i branches) = lookupChoice' i >>= choose
+
+searchMPlus'' cont (Free i branches) = lookupChoice' i >>= choose
   where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
     choose NoChoice      = cont $ choicesCons i branches
     choose (LazyBind cs) = processLazyBind' i cont cs branches
+
 searchMPlus'' cont  (Guard cs e) =
   solves' cs >> searchMPlus' cont e
 
