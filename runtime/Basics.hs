@@ -97,6 +97,14 @@ matchChar rules = matchInteger (map (mapFst ord) rules)
 
 
 (&) :: C_Success -> C_Success -> C_Success
+(&) C_Success                s = s
+(&) x@Fail_C_Success         _ = x
+(&) (Guard_C_Success cs e)   s = Guard_C_Success cs (e & s)
+(&) (Choice_C_Success i a b) s = Choice_C_Success i (a & s) (b & s)
+(&) (Choices_C_Success i xs) s = Choices_C_Success (narrowID i) (map (& s) xs)
+
+{- parallel & from Bernd
+(&) :: C_Success -> C_Success -> C_Success
 (&) C_Success        y = y
 (&) x@Fail_C_Success _ = x
 (&) x                y = maySwitch y x
@@ -109,7 +117,7 @@ maySwitch y (Choice_C_Success i a b) = Choice_C_Success i (a & y) (b & y)
 maySwitch y (Choices_C_Success i xs) = Choices_C_Success (narrowID i) (map (& y) xs)
 maySwitch y (Guard_C_Success cs e)   = Guard_C_Success cs (e & y)
 maySwitch y x                        = error $ "maySwitch: " ++ show y ++ " " ++ show x
-
+-}
 -- Use a Haskell IO action to implement a Curry IO action:
 fromHaskellIO0 :: (ConvertCurryHaskell ca ha) => IO ha -> C_IO ca
 fromHaskellIO0 hact = fromIO (hact >>= return . toCurry)
