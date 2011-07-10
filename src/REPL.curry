@@ -68,7 +68,7 @@ type ReplState =
   }
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS
+data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices
 
 -- Result of compiling main goal
 data MainGoalCompile =
@@ -382,7 +382,8 @@ createHaskellMain rst goalstate isdet isio =
       mainOperation =
         if isio then (if isdet then "evalDIO" else "evalIO" ) else
         if isdet then "evalD" else
-        if rst->ndMode == PrDFS then "prdfs "++printOperation
+        if rst->ndMode == PrDFS then "prdfs "++printOperation else
+        if rst->ndMode == PrtChoices then "prtChoices"
         else let moreDefault = case rcValue (rst->rcvars) "moresolutions" of
                                  "yes" -> "MoreYes"
                                  "no"  -> "MoreNo"
@@ -617,7 +618,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","ids","par","paths","supply","rts",
+allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply","rts",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
@@ -632,6 +633,7 @@ processThisOption rst option args
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
+  | option=="choices" = return (Just { ndMode := PrtChoices | rst })
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -676,6 +678,7 @@ printOptions rst = putStrLn $
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
+  "choices        - set search mode to print the raw choice structure\n"++
   "supply <I>     - set idsupply implementation (integer or ioref)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
@@ -693,11 +696,12 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
      concat (intersperse ":" ("." : rst->importPaths)) ++ "\n" ++
   "search mode      : " ++
       (case (rst->ndMode) of
-         PrDFS -> "primitive non-monadic depth-first search"
-         DFS -> "depth-first search"
-         BFS -> "breadth-first search"
-         IDS d -> "iterative deepening (initial depth: "++show d++")"
-         Par s -> "parallel search with "++show s++" threads"
+         PrDFS      -> "primitive non-monadic depth-first search"
+         PrtChoices -> "show choice structure"
+         DFS        -> "depth-first search"
+         BFS        -> "breadth-first search"
+         IDS d      -> "iterative deepening (initial depth: "++show d++")"
+         Par s      -> "parallel search with "++show s++" threads"
       ) ++ "\n" ++
   "idsupply         : " ++ rst->idSupply ++ "\n" ++
   "run-time options : " ++ rst->rtsOpts ++ "\n" ++

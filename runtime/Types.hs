@@ -341,10 +341,17 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
 -- ---------------------------------------------------------------------------
 
 showsChoice :: Show a => Int -> ID -> a -> a -> ShowS
+{-
 showsChoice d i@(ID _) x1 x2 =
   showChar '(' .
   showsPrec d x1 .
   showString " ?" . shows i . showChar ' ' .
+  showsPrec d x2 .
+  showChar ')'
+-}
+showsChoice d i@(ID _) x1 x2 =
+  showString "(?" . shows i . showChar ' ' .
+  showsPrec d x1 . showChar ' ' .
   showsPrec d x2 .
   showChar ')'
 showsChoice _ _ _ _ = error "showsChoice with no ID"
