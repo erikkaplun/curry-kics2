@@ -57,6 +57,16 @@ execIOList (MCons xact getRest) = toIO xact >> getRest >>= execIOList
 execIOList (WithReset l _)      = l >>= execIOList
 
 -- ---------------------------------------------------------------------------
+-- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
+-- and print the choice structure of all results.
+
+prtChoices :: (Show a, NormalForm a) => (IDSupply -> a) -> IO ()
+prtChoices mainexp = do
+  s <- initSupply
+  let ndvalue = id $!! (mainexp s)
+  putStrLn (show ndvalue)
+
+-- ---------------------------------------------------------------------------
 -- Printing all results of a computation in a depth-first manner
 -- ---------------------------------------------------------------------------
 
