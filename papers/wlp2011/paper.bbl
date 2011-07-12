@@ -34,7 +34,8 @@ S.~Antoy and M.~Hanus.
 S.~Antoy and M.~Hanus.
 \newblock New Functional Logic Design Patterns.
 \newblock In {\em Proc.\ of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS (to appear), 2011.
+  (Constraint) Logic Programming (WFLP 2011)}, pp. 19--34. Springer LNCS 6816,
+  2011.
 
 \bibitem{AntoyHanusLiuTolmach05}
 S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
@@ -62,19 +63,17 @@ B.~Bra{\ss}el and S.~Fischer.
 \newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
   Application of Functional Languages (IFL 2008)}, 2008.
 
-\bibitem{BrasselFischerHanusReck11}
-B.~Bra{\ss}el, S.~Fischer, M.~Hanus, and F.~Reck.
-\newblock Transforming Functional Logic Programs into Monadic Functional
-  Programs.
-\newblock In {\em Proc. of the 19th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2010)}, pp. 30--47. Springer LNCS 6559,
-  2011.
-
 \bibitem{BrasselHanusHuch04JFLP}
 B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
 \newblock Encapsulating Non-Determinism in Functional Logic Computations.
 \newblock {\em Journal of Functional and Logic Programming}, Vol.~2004, No.~6,
   2004.
+
+\bibitem{BrasselHanusPeemoellerReck11}
+B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
+\newblock KiCS2: A New Compiler from Curry to Haskell.
+\newblock In {\em Proc. of the 20th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS 6816, 2011.
 
 \bibitem{BrasselHuch07}
 B.~Bra{\ss}el and F.~Huch.
@@ -109,8 +108,8 @@ M.~Hanus.
 M.~Hanus.
 \newblock Declarative Processing of Semistructured Web Data.
 \newblock In {\em Technical Communications of the 27th International Conference
-  on Logic Programming}. To appear in Leibniz International Proceedings in
-  Informatics (LIPIcs), 2011.
+  on Logic Programming}, volume~11, pp. 198--208. Leibniz International
+  Proceedings in Informatics (LIPIcs), 2011.
 
 \bibitem{Hanus10PAKCS}
 M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
