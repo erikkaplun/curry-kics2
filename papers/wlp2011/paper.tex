@@ -111,7 +111,7 @@ these operational features and implementing them in some (typically,
 imperative) language, like C \cite{Lux99FLOPS}
 or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP},
 
- \item compilation into logic languages (Prolog) and reusing
+ \item compilation into logic languages like Prolog and reusing
 the existing backtracking implementation for non-deterministic
 search as well as logic variables and unification for computing with partial
 information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}, or
@@ -146,7 +146,7 @@ i.e., operations that non-deterministically evaluate to
 all possible ground values of the type of the logic variable.
 It has been shown \cite{AntoyHanus06ICLP}
 that computing with logic variables by narrowing \cite{Reddy85,Slagle74}
-or computing with generators by rewriting
+and computing with generators by rewriting
 are equivalent, i.e., compute the same values.
 Although this implementation technique is correct \cite{Brassel11Thesis},
 the generation of all values for logic variables
@@ -161,14 +161,14 @@ to implement equational constraints in the framework of KiCS2
 (note that, in contrast to Prolog, unification is performed
 modulo function evaluation).
 Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
-i.e., patterns containing evaluable operations providing
-for more powerful pattern matching than in logic or functional languages,
+i.e., patterns containing evaluable operations for more powerful pattern 
+matching than in logic or functional languages,
 can be implemented in this framework.
 We show that both extensions lead to efficiency improvements
 without sacrificing the efficiency of the kernel implementation.
 
 In the next section, we review the source language Curry
-and the features that are considered in this paper.
+and the features considered in this paper.
 Section~\ref{sec:Compilation} sketches the implementation scheme
 of KiCS2.
 Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
@@ -251,7 +251,7 @@ the rewriting logic CRWL as a logical
 (execution- and strategy-independent) foundation for declarative
 programming with non-strict and non-deterministic operations.  This
 logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
-\label{ctc-semantics}
+\label{ctc-semantics},
 where values of the arguments of an operation are determined before the
 operation is evaluated. This can be enforced in a lazy strategy
 by sharing actual arguments.
@@ -260,7 +260,7 @@ provided that all occurrences of \code{aBool}
 are shared so that all of them reduce either to \code{True} or to \code{False}
 consistently.
 
-The condition $c$ in rule (\ref{rule}) is typically a
+The condition $c$ in rule (\ref{rule}) typically is a
 conjunction of \emph{equational constraints}
 of the form \code{$e_1$\,=:=\,$e_2$}.
 Such a constraint is satisfiable if
@@ -280,8 +280,8 @@ Like in Haskell, most rules defining functions are \emph{constructor-based}
 $t_1,\ldots,t_n$ consist of variables and/or data constructor symbols
 only.  However, Curry also allows \emph{functional patterns}
 \cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might additionally contain calls to
-defined operations. For instance, we can define the last element
-of a list also by:
+defined operations. For instance, we can also define the last element
+of a list by:
 %
 \begin{curry}
   last' (xs++[e]) = e
@@ -294,9 +294,8 @@ some value of \code{(xs++[e])} where \code{xs} and \code{e} are
 free variables.
 By instantiating \code{xs} to arbitrary lists, the value
 of \code{(xs++[e])} is any list having \code{e} as its last element.
-Functional patterns are
-a powerful feature to express arbitrary selections in term structures.
-For instance, functional patterns support a straightforward
+Functional patterns are a powerful feature to express arbitrary 
+selections in term structures. For instance, they support a straightforward
 processing of XML data with incompletely specified
 or evolving formats \cite{Hanus11ICLP}.
 
@@ -339,14 +338,14 @@ that both duplicates, which later evaluate to a non-deterministic
 choice between two values, yield either \code{True} or \code{False}.
 This is obtained by assigning a unique identifier (of type \code{ID})
 to each \code{Choice}. The difficulty is to get a unique identifier
-when needed, i.e., when some operation evaluates to a \code{Choice}.
+on demand, i.e., when some operation evaluates to a \code{Choice}.
 Since we want to compile into \emph{purely} functional programs
 (in order to enable powerful program optimizations),
 we cannot use unsafe features with side effects to generate
 such identifiers.
 Hence, we pass a (conceptually infinite) set of identifiers,
 also called \emph{identifier supply},
-to each operation so that a \code{Choice} can pick an identifier from
+to each operation so that a \code{Choice} can pick its unique identifier from
 this set.
 For this purpose, we assume a type \code{IDSupply},
 representing an infinite set of identifiers,
@@ -364,7 +363,7 @@ the operation \code{thisID} takes some identifier from this set, and
 into two disjoint subsets without the identifier
 obtained by \code{thisID}.
 There are different implementations available \cite{AugustssonRittriSynek94}
-(see below for a simple implementation) and our implementation
+(see below for a simple implementation) and our system
 is parametric over concrete implementations of \code{IDSupply}.
 
 When translating Curry to Haskell, KiCS2 adds to each operation
@@ -440,35 +439,33 @@ we obtain the result
 \begin{haskell}
   Choice 2 (Choice 2 False True) (Choice 2 True False)
 \end{haskell}
-Thus, the result is non-deterministic and contains several choices,
-but all of them have the same identifier.
-This identifier is used when the values contained in this result
-are searched for: one has to make \emph{consistent} selections in choices with
-same identifiers. Thus, if we select the left branch as the value
-of the outermost \code{Choice}, we also have to select the left branch
-in the selected argument \code{(Choice 2 False True)} so that only
-the value \code{False} is possible here.
-Similarly, if we select the right branch as the value of the outermost
-\code{Choice}, we also have to select the right branch in
-its selected argument \code{(Choice 2 True False)} which yields the only
-value \code{False}.
-Thus, the unintended value \code{True} is not produced.
-
-In general, to extract all values from a \code{Choice} structure,
-we have to traverse it, compute all possible choices
+Thus, the result is non-deterministic and contains three choices,
+whereby all of them have the same identifier.
+To extract all values from such a \code{Choice} structure,
+we have to traverse it and  compute all possible choices,
 but consider the choice identifiers to make consistent (left/right)
 decisions.
-The latter requirement can be implemented by storing
+Thus, if we select the left branch as the value
+of the outermost \code{Choice}, we also have to select the left branch
+in the selected argument \code{(Choice 2 False True)} so that \code{False}
+is the only value possible for this branch.
+Similarly, if we select the right branch as the value of the outermost
+\code{Choice}, we also have to select the right branch in
+its selected argument \code{(Choice 2 True False)}, which again yields 
+\code{False} as the only possible value. In consequence, 
+the unintended value \code{True} is not produced.
+
+The requirement to make consistent decisions can be implemented by storing
 the decisions already made for some choices during the traversal.
 For this purpose, we introduce the type
 \begin{haskell}
   data Decision = NoDecision | ChooseLeft | ChooseRight
 \end{haskell}
-where \code{NoDecision} represents the fact that the value of a choice
-is yet undecided.
-Furthermore, we assume operations to lookup the current decision
-for a given identifier or change its decision (depending on the implementation
-of \code{IDSupply}, KiCS2 supports various implementations
+where \code{NoDecision} represents the fact that the value of a choice has
+not been decided yet. Furthermore, we assume operations to lookup the 
+current decision for a given identifier or change it
+(depending on the implementation
+of \code{IDSupply}, KiCS2 supports several implementations
 based on memory cells or finite maps):
 \begin{haskell}
   lookupDecision :: ID -> IO Decision
@@ -485,71 +482,69 @@ allow this direct definition.}
   printValsDFS :: a -> IO ()
   printValsDFS Fail             = return ()$\listline$
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
-   where
-    follow ChooseLeft  = printValsDFS x1
-    follow ChooseRight = printValsDFS x2
-    follow NoDecision  = do newDecision ChooseLeft  x1
-                            newDecision ChooseRight x2$\listline$
-    newDecision d x = do setDecision i d
-                         printValsDFS x
-                         setDecision i NoDecision$\listline$
+    where
+      follow ChooseLeft  = printValsDFS x1
+      follow ChooseRight = printValsDFS x2
+      follow NoDecision  = do newDecision ChooseLeft  x1
+                              newDecision ChooseRight x2$\listline$
+      newDecision d x = do setDecision i d
+                           printValsDFS x
+                           setDecision i NoDecision$\listline$
   printValsDFS v = print v
 \end{haskell}
-This operation ignores failures and prints values that are not a \code{Choice}.
-For a \code{Choice}, it checks whether a decision for
+This operation ignores failures and prints values that are not rooted by a
+\code{Choice} constructor. For a \code{Choice} constructor, 
+it checks whether a decision for
 this identifier has already been made (note that the initial value
 for all identifiers is \code{NoDecision}).
 If a decision has been made for this choice, it follows this decision.
 Otherwise, the left alternative is used and this decision is stored.
-After printing
-all the values w.r.t.\ this decision,
+After printing all values w.r.t.\ this decision,
 the decision is undone (like in backtracking)
 and the right alternative is used and stored.
 
 In general, this operation is applied to the normal form
 of the main expression (where \code{initSupply} is used to
 compute an initial identifier supply passed to this expression).
-The normal form computation is necessary for structured data like lists
+The normal form computation is necessary for structured data like lists,
 so that a failure or choice in some part of the data is moved to
-the root. Other search strategies, like
+the root.
+
+Other search strategies, like
 breadth-first search, iterative deepening, or parallel search,
 can be obtained by different implementations of this main operation
-to print all values. Instead of printing all values,
-one can also collect all values in a tree-like data structure
+to print all values.
+Furthermore, one can also collect all values in a tree-like data structure
 so that the programmer can implement his own search strategies
 (this corresponds to encapsulating search \cite{BrasselHanusHuch04JFLP}).
-Finally, one can also have other options rather than printing all values
-of the main expression.
-For instance, one can easily define operations
+Finally, instead of printing all values, one can easily define operations
 to print either the first solution only or one by one upon user request.
 Due to the lazy evaluation strategy of Haskell,
 such operations can also be applied to infinite choice structures.
 
 To avoid an unnecessary growth of the search space represented by
 \code{Choice} constructors, our compiler performs an optimization for
-deterministic operations. If an operation does not call, 
-neither directly nor indirectly through
-other operations, the choice operation \ccode{?},\footnote{%
-Note that before applying this compilation scheme, overlapping rules in
-user-defined operations are transformed into calls of the choice operation
-\ccode{?}.}
-then it is not necessary to pass an identifier supply to the operation.
-In consequence, only the matching rules are extended so that the generated code
+deterministic operations. If an operation is defined by non-overlapping
+rules and does not call, neither directly nor indirectly through
+other operations, a function defined by overlapping rules, it does not
+introduce non-determinism (like \code{xor} or \code{not}).
+Thus, it is not necessary to pass an identifier supply to the operation.
+In consequence, only the matching rules are extended, so that the generated code
 is nearly identical to a corresponding functional program.
 Actually, the benchmarks presented in \cite{BrasselHanusPeemoellerReck11}
-show that this implementation outperforms all other Curry implementations
-for deterministic operations,
+show that for deterministic operations this implementation outperforms 
+all other Curry implementations,
 and, for non-deterministic operations, outperforms Prolog-based
 implementations of Curry and can compete with MCC \cite{Lux99FLOPS},
 a Curry implementation that compiles to C.
 
-As mentioned in the introduction,
-KiCS2 translates occurrences of logic variables
-into generators.
+As mentioned in the introduction, occurrences of logic variables are
+translated into generators.
 For instance, the expression \ccode{not x}, where \code{x} is a logic variable,
-is translated into \ccode{not aBool} (we omit the \code{IDSupply} argument
-here). The latter expression is evaluated by reducing the
-argument \code{aBool} to a choice between \code{True} or \code{False}
+is translated into \ccode{not (aBool s)}, where s is an \code{IDSupply}
+provided by the context of the expression. The latter expression is 
+evaluated by reducing the
+argument \code{aBool s} to a choice between \code{True} or \code{False}
 followed by applying \code{not} to this choice.
 This is similar to a narrowing step on \ccode{not x}
 that instantiates the variable \code{x} to \code{True} or \code{False}.
@@ -558,8 +553,8 @@ that instantiates the variable \code{x} to \code{True} or \code{False}.
 % is equivalent to rewriting with generators.
 Since such generators are standard
 non-deterministic operations, they are translated like any other operation
-so that one does not need additional run-time support for them.
-However, if equational constraints should be solved,
+and therefore do not require any additional run-time support.
+However, in the presence of equational constraints,
 there are methods which are more efficient than generating all values.
 These methods and their implementation are discussed in the
 next section.
