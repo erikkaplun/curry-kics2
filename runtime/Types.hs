@@ -157,7 +157,7 @@ class NonDet a => Generable a where
 class NormalForm a => Unifiable a where
   -- |Unification on constructor-rooted terms
   (=.=)    :: a -> a -> C_Success
-  -- |Lazy unification on constructor-rooted terms, 
+  -- |Lazy unification on constructor-rooted terms,
   --  used for functional patterns
   (=.<=)   :: a -> a -> C_Success
   -- |Bind a free variable to a value
@@ -246,6 +246,7 @@ showsChoice d i@(ID _) x1 x2 =
   showString " ?" . shows i . showChar ' ' .
   showsPrec d x2 .
   showChar ')'
+showsChoice _ _ _ _ = error "showsChoice with no ID"
 -}
 
 showsChoices :: Show a => Int -> ID -> [a] -> ShowS
