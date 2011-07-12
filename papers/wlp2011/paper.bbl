@@ -34,7 +34,8 @@ S.~Antoy and M.~Hanus.
 S.~Antoy and M.~Hanus.
 \newblock New Functional Logic Design Patterns.
 \newblock In {\em Proc.\ of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS (to appear), 2011.
+  (Constraint) Logic Programming (WFLP 2011)}, pp. 19--34. Springer LNCS 6816,
+  2011.
 
 \bibitem{AntoyHanusLiuTolmach05}
 S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
@@ -72,7 +73,7 @@ B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
 B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
 \newblock KiCS2: A New Compiler from Curry to Haskell.
 \newblock In {\em Proc. of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS (to appear), 2011.
+  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS 6816, 2011.
 
 \bibitem{BrasselHuch07}
 B.~Bra{\ss}el and F.~Huch.
