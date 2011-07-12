@@ -2,13 +2,14 @@
 
 import qualified Control.Exception as C
 
-
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
 import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
 import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
 import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 import System.IO
+
+import PrimTypes
 
 -- ---------------------------------------------------------------------------
 -- Externals
@@ -87,7 +88,12 @@ instance Show C_Int where
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
   showsPrec _ Fail_C_Int = showChar '!'
   showsPrec d (C_Int x1) = shows (I# x1)
-  showsPrec d (C_CurryInt x1) = (\x -> shows (I# (curryint2primint x))) $!! x1
+  showsPrec d (C_CurryInt x1) = case id $## x1 of
+    Choice_BinInt _ _ _ -> shows x1
+    Choices_BinInt _ _  -> shows x1
+    Fail_BinInt         -> shows x1
+    Guard_BinInt _ _    -> shows x1
+    gnfBinInt           -> shows (I# (curryint2primint gnfBinInt))
 
 instance Read C_Int where
   readsPrec d s = map readInt (readsPrec d s) where readInt (I# i, s) = (C_Int i, s)
@@ -313,7 +319,12 @@ instance Show C_Char where
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
   showsPrec d Fail_C_Char = showChar '!'
   showsPrec d (C_Char x1) = showString (show (C# x1))
-  showsPrec d (CurryChar x1) = (\x-> shows (C# (curryChar2primChar x))) $!! x1
+  showsPrec d (CurryChar x1) = case id $## x1 of
+    Choice_BinInt _ _ _ -> showString "chr " . shows x1
+    Choices_BinInt _ _  -> showString "chr " . shows x1
+    Fail_BinInt         -> shows x1
+    Guard_BinInt _ _    -> shows x1
+    gnfBinInt           -> shows (C# (curryChar2primChar gnfBinInt))
 
   showList cs = showList (map convert cs)
    where
