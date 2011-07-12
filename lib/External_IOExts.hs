@@ -94,12 +94,12 @@ instance Unifiable (C_IORef a) where
   (=.<=) _ _ = error "(=.<=) for C_IORef"
   bind i (Choice_C_IORef j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_IORef j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_IORef j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_IORef = [Unsolvable]
   bind i (Guard_C_IORef cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_IORef j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_IORef j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_IORef j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_IORef = [Unsolvable]
   lazyBind i (Guard_C_IORef cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 

@@ -63,12 +63,12 @@ instance Unifiable (C_Global a) where
   (=.<=) = (=.=)
   bind i (Choice_C_Global j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Global j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Global j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Global j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ Fail_C_Global = [Unsolvable]
   bind i (Guard_C_Global cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Global j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Global j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Global j@(Narrowed _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Global j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ Fail_C_Global = [Unsolvable]
   lazyBind i (Guard_C_Global cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
