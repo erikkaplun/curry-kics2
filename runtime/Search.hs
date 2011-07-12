@@ -44,11 +44,11 @@ eval goal = initSupply >>= print . goal
 evalD :: Show a => a -> IO ()
 evalD goal = print goal
 
-evalIO :: (NormalForm a, Show a) => (IDSupply -> C_IO a) -> IO ()
+evalIO :: NormalForm a => (IDSupply -> C_IO a) -> IO ()
 -- evalIO goal = initSupply >>= toIO . goal >>= print
 evalIO goal = computeWithDFS goal >>= execIOList
 
-evalDIO :: (NormalForm a, Show a) => C_IO a -> IO ()
+evalDIO :: NormalForm a => C_IO a -> IO ()
 evalDIO goal = toIO goal >> return ()
 
 execIOList :: IOList (C_IO a) -> IO ()
@@ -73,17 +73,17 @@ prtChoices mainexp = do
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
 -- and print all results in depth-first order.
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-prdfs :: (Show a, NormalForm a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+prdfs :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 prdfs prt mainexp = do
   s <- initSupply
   printValsDFS False prt (id $!! (mainexp s))
 
-printValsDFS :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
   trace $ "\n\n-- \n\nprintValsDFS " ++ take 200 (show a)
   printValsDFS' fb cont (try a)
 
-printValsDFS' :: (Show a, NormalForm a) => Bool -> (a -> IO ()) -> Try a -> IO ()
+printValsDFS' :: NormalForm a => Bool -> (a -> IO ()) -> Try a -> IO ()
 printValsDFS' _  _    Fail           = return ()
 printValsDFS' fb cont (Val v)        = searchNF (printValsDFS fb) cont v
 printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
@@ -118,9 +118,6 @@ printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
         setChoice i c
         printValsDFS fbt cont a
     choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
-
-
-
 
 printValsDFS' fb cont (Free i xs)   = lookupChoiceID i >>= choose
   where
@@ -169,11 +166,8 @@ printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
     traverse False (ChoicesST _     cs) = do
       mapMButLast_ (>>= traverse True) (>>= traverse False) cs
 
---     traverse Nothing = return ()
---     traverse (Just reset) =  if fb then (printValsDFS fb . try) $!< e >> reset
---                                    else (printValsDFS fb . try) $!< e
 
-processLazyBind :: NonDet a => Bool -> [Constraint] -> ID -> [a] -> (a -> IO ()) -> IO ()
+processLazyBind :: NonDet a => Bool -> Constraints -> ID -> [a] -> (a -> IO ()) -> IO ()
 processLazyBind True cs i xs search = do
   reset <- setUnsetChoice i NoChoice
   search $ guardCons cs $ choicesCons i xs
@@ -181,6 +175,7 @@ processLazyBind True cs i xs search = do
 processLazyBind False cs i xs search = do
   setChoice i NoChoice
   search $ guardCons cs $ choicesCons i xs
+
 
 zipWithButLast3 :: (a -> b -> c -> d) -> (a -> b -> c -> d) -> [a] -> [b] -> [c] -> [d]
 zipWithButLast3 _ _     []     _      _      = []
@@ -199,64 +194,32 @@ mapButLast _ _     []     = []
 mapButLast _ lastf [x]    = [lastf x]
 mapButLast f lastf (x:xs) = f x : mapButLast f lastf xs
 
--- Attempt to gain more abstraction during search
-
--- doWithChoice :: Bool -> ID -> Choice -> IO a -> IO a
--- doWithChoice True i c act = do
---   reset <- setUnsetChoice i c
---   retVal <- act
---   reset
---   return retVal
--- doWithChoice False i c act = do
---   setChoice i c
---   act
-
--- doWithChoices :: Bool -> ID -> [(Choice, IO a)] -> IO [a]
--- doWithChoices _ _ []     = return []
--- doWithChoices True i ((c, act): cacts) = do
---   reset   <- setUnsetChoice i c
---   retVal  <- act
---   retVals <- mapM (uncurry (doWithChoice False i)) cacts
---   reset
---   return (retVal:retVals)
--- doWithChoices False i cacts = mapM1 (uncurry (doWithChoice False i)) cacts
-
--- doWithChoices_ :: Bool -> ID -> [(Choice, IO a)] -> IO ()
--- doWithChoices_ _ _ []     = return ()
--- doWithChoices_ True i ((c, act): cacts) = do
---   reset <- setUnsetChoice i c
---   _     <- act
---   mapM_ (uncurry (doWithChoice False i)) cacts
---   reset
--- doWithChoices_ False i cacts = mapM1_ (uncurry (doWithChoice False i)) cacts
-
 -- ---------------------------------------------------------------------------
 -- Depth-first search into a monadic list
 -- ---------------------------------------------------------------------------
 
 -- Print all values of an expression in a depth-first manner.
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-printDFS :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFS :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printDFS prt mainexp = computeWithDFS mainexp >>= printAllValues prt
 
 -- Print one value of an expression in a depth-first manner:
-printDFS1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFS1 :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printDFS1 prt mainexp = computeWithDFS mainexp >>= printOneValue prt
 
 -- Print all values on demand of an expression in a depth-first manner:
-printDFSi :: (NormalForm a, Show a) =>
-             MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printDFSi :: NormalForm a => MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printDFSi ud prt mainexp = computeWithDFS mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
-computeWithDFS :: (NormalForm a, Show a) => (IDSupply -> a) -> IO (IOList a)
+computeWithDFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithDFS mainexp = initSupply >>=
   \s -> searchDFS (`mcons` mnil) (id $!! (mainexp s))
 
-searchDFS :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> a -> IO (IOList b)
+searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchDFS cont a = searchDFS' cont (try a)
 
-searchDFS' :: (Show a, NormalForm a) => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
+searchDFS' :: NormalForm a => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
 searchDFS' cont Fail             = mnil
 searchDFS' cont (Val v)          = searchNF searchDFS cont v
 searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
@@ -304,85 +267,93 @@ searchDFS' cont (Guard cs e) = solves cs >>= traverse
     traverse (ChoicesST reset cs) =
       foldr1 (+++) (map (>>= traverse) cs) |< reset
 
--- searchDFS (Guard cs e) = do
---   mreset <- solves cs
---   case mreset of
---     Nothing    -> mnil
---     Just reset -> (searchDFS . try) $!< e |< reset
-
 -- ---------------------------------------------------------------------------
 -- Breadth-first search into a monadic list
 -- ---------------------------------------------------------------------------
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-printBFS :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFS :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printBFS prt mainexp = computeWithBFS mainexp >>= printAllValues prt
 
 -- Print first value of a non-deterministic goal in a breadth-first manner:
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-printBFS1 :: (NormalForm a, Show a) => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFS1 :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printBFS1 prt mainexp = computeWithBFS mainexp >>= printOneValue prt
 
 -- Print all values of a non-deterministic goal in a breadth-first manner:
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-printBFSi :: (NormalForm a, Show a) =>
-             MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
+printBFSi :: NormalForm a => MoreDefault -> (a -> IO ()) -> (IDSupply -> a) -> IO ()
 printBFSi ud prt mainexp = computeWithBFS mainexp >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => (IDSupply -> a) -> IO (IOList a)
 computeWithBFS mainexp =
-  initSupply >>= \s -> searchBFS (try (id $!! (mainexp s)))
+  initSupply >>= \s -> searchBFS (`mcons` mnil) (id $!! (mainexp s))
+  
+searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
+searchBFS cont x = searchBFS' cont (try x)
 
-searchBFS :: (NormalForm a, NonDet a) => Try a -> IO (IOList a)
-searchBFS x = bfs [] [] (return ()) (return ()) x
+searchBFS' :: NormalForm a => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
+searchBFS' cont x = bfs cont [] [] (return ()) (return ()) x
   where
     -- bfs searches the levels in alternating order, left to right and then
     -- right to left, TODO is this behavior desired?
     -- xs is the list of values to be processed in this level
     -- ys is the list of values to be processed in the next level
-    bfs xs ys _   reset Fail           = reset >> next xs ys
-    bfs xs ys _   reset (Val v)        = reset >> mcons v (next xs ys)
-    bfs xs ys set reset (Choice i x y) = set   >> lookupChoice i >>= choose
-
+    bfs cont xs ys _   reset Fail           = reset >> next cont xs ys
+    bfs cont xs ys set reset (Val v)        =
+      (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys)
+    bfs cont xs ys set reset (Choice i x y) = set >> lookupChoice i >>= choose
      where
-        choose ChooseLeft  = (bfs xs ys (return ()) reset . try) $!< x
-        choose ChooseRight = (bfs xs ys (return ()) reset . try) $!< y
+        choose ChooseLeft  = bfs cont xs ys (return ()) reset $ try x
+        choose ChooseRight = bfs cont xs ys (return ()) reset $ try y
         choose NoChoice    = do
           reset
-          next xs ((newSet ChooseLeft , newReset, x) :
+          next cont xs ((newSet ChooseLeft , newReset, x) :
                    (newSet ChooseRight, newReset, y) : ys)
 
         newSet c = set   >> setChoice i c
         newReset = reset >> setChoice i NoChoice
 
-    bfs xs ys set reset (Narrowed i cs) = set   >> lookupChoice i >>= choose
-
+    bfs cont xs ys set reset (Narrowed i@(NarrowedID pns _) cs)
+      = set >> lookupChoice i >>= choose
      where
-        choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
-        choose NoChoice    = do
+        choose (LazyBind cns) = processLB cns
+        choose (ChooseN c _) = bfs cont xs ys (return ()) reset (try (cs !! c))
+        choose NoChoice      = do
           reset
-          next xs ((zipWith newChoice [0..] cs) ++ ys)
-        newChoice n x = (newSet n, newReset, x)
-        newSet n = set   >> setChoice i (ChooseN n errChoice)
+          next cont xs (zipWith3 newChoice [0..] cs pns ++ ys)
+        choose c             = error $ "Basics.searchDFS'.choose: " ++ show c
+        
+        newChoice n x pn = (newSet n pn, newReset, x)
+        newSet n pn = set >> setChoice i (ChooseN n pn)
         newReset = reset >> setChoice i NoChoice
-        errChoice = error "propagation number used within non-free Choice"
 
-    bfs xs ys set reset (Free i cs) = lookupChoice i >>= choose
+        processLB cns = do
+          newReset <- setUnsetChoice i NoChoice
+          bfs cont xs ys (return ()) (reset >> newReset) (try (guardCons cns (choicesCons i cs)))
+
+    bfs cont xs ys set reset (Free i cs) = set >> lookupChoice i >>= choose
       where
-        choose (ChooseN c _) = (bfs xs ys (return ()) reset . try) $!< (cs !! c)
-        choose NoChoice      = reset >> mcons (choicesCons i cs) (next xs ys)
-{-
-    bfs xs ys set reset (Guard cs e) = do
-      mreset <- solves cs
-      case mreset of
-       Nothing    -> reset >> next xs ys
-       Just newReset -> bfs xs ys set (newReset >> reset) -- (searchDFS . try) $!< e |< reset
--}
-    next []  []                 = mnil
-    next []  ((set,reset,y):ys) = (bfs ys [] set reset . try) $!< y
-    next ((set,reset,x):xs) ys  = (bfs xs ys set reset . try) $!< x
+        choose (LazyBind cns) = processLB cns
+        choose (ChooseN c _) = bfs cont xs ys (return ()) reset (try $ cs !! c)
+        choose NoChoice      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
+        choose c             = error $ "Basics.searchBFS.choose: " ++ show c
+        
+        processLB cns = do
+          newReset <- setUnsetChoice i NoChoice
+          bfs cont xs ys (return ()) (reset >> newReset) (try (guardCons cns (choicesCons i cs)))
+
+    bfs cont xs ys set reset (Guard cs e) = solves cs >>= traverse
+      where
+        traverse FailST                = reset >> next cont xs ys
+        traverse (SuccessST reset2)    = bfs cont xs ys (return ()) (reset >> reset2) $ try e
+        traverse _                     = error "bfs traverse"      
+
+    next _    []  []                 = mnil
+    next cont []  ((set,reset,y):ys) = bfs cont ys [] set reset (try y)
+    next cont ((set,reset,x):xs) ys  = bfs cont xs ys set reset (try x)
 
 -- ---------------------------------------------------------------------------
 -- Iterative depth-first search into a monadic list

@@ -552,10 +552,10 @@ showsPrec4CurryList d cl =
 external_d_C_ensureNotFree :: Curry a => a -> a
 external_d_C_ensureNotFree x =
   case try x of
-    Choice i a b -> choiceCons i (external_d_C_ensureNotFree a)
+    Choice i a b  -> choiceCons i (external_d_C_ensureNotFree a)
                                  (external_d_C_ensureNotFree b)
-    Choices i xs -> choicesCons i (map external_d_C_ensureNotFree xs)
-    Frees i xs   -> narrows i (map external_d_C_ensureNotFree xs)
+    Narrowed i xs -> choicesCons i (map external_d_C_ensureNotFree xs)
+    Free i xs     -> narrows i (map external_d_C_ensureNotFree xs)
     -- TODO : reason about the case when there is a constraint
     --        for the free variable e
     Guard c e    -> guardCons c (external_d_C_ensureNotFree e)

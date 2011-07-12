@@ -130,11 +130,11 @@ various search strategies like depth-first, breadth-first, parallel,
 or iterative deepening instead of committing to a fixed (incomplete)
 strategy like backtracking \cite{BrasselHuch07}.
 
-In this paper we consider KiCS2 \cite{BrasselFischerHanusReck11},
+In this paper we consider KiCS2 \cite{BrasselHanusPeemoellerReck11},
 a new system that compiles functional logic programs of the
 source language Curry \cite{Hanus06Curry}
 into purely functional Haskell programs.
-We have shown in \cite{BrasselFischerHanusReck11}
+We have shown in \cite{BrasselHanusPeemoellerReck11}
 that this implementation can compete with or outperform
 other existing implementations of Curry.
 KiCS2 is based on the idea to represent
@@ -228,9 +228,8 @@ If non-deterministic operations are used as arguments in other operations,
 a semantical ambiguity might occur. Consider the operations
 %
 \begin{curry}
-  xor True  False = True
-  xor True  True  = False
-  xor False x     = x
+  xor True  x = not x             not True  = False
+  xor False x = x                 not False = True
 
   xorSelf x = xor x x
 \end{curry}
@@ -240,7 +239,7 @@ If we interpret this program as a term rewriting system,
 we could have the reduction
 \begin{haskell}
   xorSelf aBool  $\to~$  xor aBool aBool     $\to~$  xor True aBool
-                 $\to~$  xor True False      $\to~$  True
+                 $\to~$  xor True False      $\to~$  not False        $\to~$ True
 \end{haskell}
 leading to the unintended result \code{True}.
 Note that this result cannot be obtained if we use a strict strategy
@@ -311,7 +310,7 @@ To understand the extensions described in the subsequent sections,
 we sketch the translation of Curry programs
 into Haskell programs as performed by KiCS2.
 More details about this translation scheme can be found in
-\cite{BrasselFischer08IFL,BrasselFischerHanusReck11}.
+\cite{BrasselFischer08IFL,BrasselHanusPeemoellerReck11}.
 
 
 As mentioned in the introduction, the KiCS2 implementation
@@ -435,7 +434,7 @@ of \code{IDSupply} based on unbounded integers:
 If we apply the same transformation to the rules defining \code{xor}
 (actually, \code{xor} performs pattern matching on two arguments
 which is avoided in KiCS2 by introducing an intermediate operation,
-see \cite{BrasselFischerHanusReck11}) and evaluate the main expression
+see \cite{BrasselHanusPeemoellerReck11}) and evaluate the main expression
 \code{(main 1)},
 we obtain the result
 \begin{haskell}
@@ -484,18 +483,17 @@ allow this direct definition.}
 \label{sec:printValsDFS}
 \begin{haskell}
   printValsDFS :: a -> IO ()
-  printValsDFS Fail             = return ()
+  printValsDFS Fail             = return ()$\listline$
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
    where
     follow ChooseLeft  = printValsDFS x1
     follow ChooseRight = printValsDFS x2
     follow NoDecision  = do newDecision ChooseLeft  x1
-                            newDecision ChooseRight x2
-
+                            newDecision ChooseRight x2$\listline$
     newDecision d x = do setDecision i d
                          printValsDFS x
-                         setDecision i NoDecision
-  printValsDFS v                = print v
+                         setDecision i NoDecision$\listline$
+  printValsDFS v = print v
 \end{haskell}
 This operation ignores failures and prints values that are not a \code{Choice}.
 For a \code{Choice}, it checks whether a decision for
@@ -538,7 +536,7 @@ user-defined operations are transformed into calls of the choice operation
 then it is not necessary to pass an identifier supply to the operation.
 In consequence, only the matching rules are extended so that the generated code
 is nearly identical to a corresponding functional program.
-Actually, the benchmarks presented in \cite{BrasselFischerHanusReck11}
+Actually, the benchmarks presented in \cite{BrasselHanusPeemoellerReck11}
 show that this implementation outperforms all other Curry implementations
 for deterministic operations,
 and, for non-deterministic operations, outperforms Prolog-based
@@ -547,13 +545,8 @@ a Curry implementation that compiles to C.
 
 As mentioned in the introduction,
 KiCS2 translates occurrences of logic variables
-into generators. For instance, consider the operation \code{not}
-defined by the rules:
-\begin{curry}
-  not True  = False
-  not False = True
-\end{curry}
-Then the expression \ccode{not x}, where \code{x} is a logic variable,
+into generators.
+For instance, the expression \ccode{not x}, where \code{x} is a logic variable,
 is translated into \ccode{not aBool} (we omit the \code{IDSupply} argument
 here). The latter expression is evaluated by reducing the
 argument \code{aBool} to a choice between \code{True} or \code{False}
@@ -959,25 +952,29 @@ increases its argument \code{x} by 1.}
 \code{simplify} (simplify a symbolic arithmetic expression),
 \code{varInExp} (non-deterministically return a variable occuring
                   in a symbolic arithmetic expression),
-\code{half} (compute the half of a peano number using logic variables),
+\code{half} (compute the half of a Peano number using logic variables),
+\code{palindrome} (check whether a list is a palindrome),
+\code{horseman} (solving an equation relating heads and feet of horses and men
+based on Peano numbers),
 and
-\code{palindrome} (check whether a list is a palindrome).
+\code{grep} (string matching based on a non-deterministic
+specification of regular expressions \cite{AntoyHanus10CACM}).
 
 \begin{figure}[t]
 \centering
 \begin{tabular}{|l|r|r|r|}
 \hline
-Expression                              & \code{==~}& \code{=:=} & \code{=:<=} \\
+Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
 \hline
 \code{last (map (inc 0) [1..100000])}   & 134.23    & 0.83      & 0.26        \\
-% \code{grep}                             & 1.06      & 0.19      &             \\
 \code{simplify}                         & 8.50      & 7.15      & 7.34        \\
 \code{varInExp}                         & 11.72     & 1.50      & 1.40        \\
 % \code{varInExp2}                        & 423.01    & 10.50     & 1.04        \\
 % \code{varInExp3}                        & 399.68    & 16.70     & 11.28       \\
 \code{fromPeano (half (toPeano 10000))} & 32.92     & 6.35      & 11.88       \\
 \code{palindrome}                       & 28.59     & 15.58     & 23.21       \\
-% \code{horseman}                         & 3.58      & 3.13      &             \\
+\code{horseman}                         & 3.58      & 3.13      & n/a         \\
+\code{grep}                             & 1.06      & 0.19      & n/a         \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different equation solving methods}
@@ -1007,17 +1004,17 @@ all elements of the list are (unnecessarily) evaluated.
 \centering
 \begin{tabular}{|l|r|r|r|}
 \hline
-Expression                              & KiCS2 & PAKCS & MCC  \\
+Expression                              & KiCS2 & PAKCS  & MCC  \\
 \hline
 \code{last (map (inc 0) [1..100000])}   & 0.83  & 4.25   & 0.14 \\
-% \code{grep}                             & 0.19  & 2.88   & 0.14 \\
 \code{simplify}                         & 7.15  & 0.15   & 0.00 \\
 \code{varInExp}                         & 1.50  & 3.89   & 0.30 \\
 % \code{varInExp2}                        & 10.50 & 3.48   & stckOflw \\
 % \code{varInExp3}                        & 16.70 & 19.22  & 1.18 \\
 \code{fromPeano (half (toPeano 10000))} & 6.35  & 108.88 & 3.22 \\
 \code{palindrome}                       & 15.58 & 32.56  & 1.07 \\
-% \code{horseman}                         & 3.13  & 8.70   & 0.42 \\
+\code{horseman}                         & 3.13  & 8.70   & 0.42 \\
+\code{grep}                             & 0.19  & 2.88   & 0.14 \\
 \hline
 \end{tabular}
 \caption{Benchmarks: equational constraints in different Curry implementations}
@@ -1077,7 +1074,7 @@ for them in our implementation, it does not introduce
 additional work if these features are not used, i.e.,
 our implementation does not sacrifice the high efficiency
 of the kernel implementation as shown in
-\cite{BrasselFischerHanusReck11}.
+\cite{BrasselHanusPeemoellerReck11}.
 However, if these features are used, they usually lead
 to a more efficient execution, as demonstrated by our benchmarks.
 
