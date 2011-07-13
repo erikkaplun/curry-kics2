@@ -111,7 +111,7 @@ these operational features and implementing them in some (typically,
 imperative) language, like C \cite{Lux99FLOPS}
 or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP},
 
- \item compilation into logic languages (Prolog) and reusing
+ \item compilation into logic languages like Prolog and reusing
 the existing backtracking implementation for non-deterministic
 search as well as logic variables and unification for computing with partial
 information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}, or
@@ -146,7 +146,7 @@ i.e., operations that non-deterministically evaluate to
 all possible ground values of the type of the logic variable.
 It has been shown \cite{AntoyHanus06ICLP}
 that computing with logic variables by narrowing \cite{Reddy85,Slagle74}
-or computing with generators by rewriting
+and computing with generators by rewriting
 are equivalent, i.e., compute the same values.
 Although this implementation technique is correct \cite{Brassel11Thesis},
 the generation of all values for logic variables
@@ -161,14 +161,14 @@ to implement equational constraints in the framework of KiCS2
 (note that, in contrast to Prolog, unification is performed
 modulo function evaluation).
 Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
-i.e., patterns containing evaluable operations providing
-for more powerful pattern matching than in logic or functional languages,
+i.e., patterns containing evaluable operations for more powerful pattern 
+matching than in logic or functional languages,
 can be implemented in this framework.
 We show that both extensions lead to efficiency improvements
 without sacrificing the efficiency of the kernel implementation.
 
 In the next section, we review the source language Curry
-and the features that are considered in this paper.
+and the features considered in this paper.
 Section~\ref{sec:Compilation} sketches the implementation scheme
 of KiCS2.
 Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
@@ -251,7 +251,7 @@ the rewriting logic CRWL as a logical
 (execution- and strategy-independent) foundation for declarative
 programming with non-strict and non-deterministic operations.  This
 logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
-\label{ctc-semantics}
+\label{ctc-semantics},
 where values of the arguments of an operation are determined before the
 operation is evaluated. This can be enforced in a lazy strategy
 by sharing actual arguments.
@@ -260,7 +260,7 @@ provided that all occurrences of \code{aBool}
 are shared so that all of them reduce either to \code{True} or to \code{False}
 consistently.
 
-The condition $c$ in rule (\ref{rule}) is typically a
+The condition $c$ in rule (\ref{rule}) typically is a
 conjunction of \emph{equational constraints}
 of the form \code{$e_1$\,=:=\,$e_2$}.
 Such a constraint is satisfiable if
@@ -280,8 +280,8 @@ Like in Haskell, most rules defining functions are \emph{constructor-based}
 $t_1,\ldots,t_n$ consist of variables and/or data constructor symbols
 only.  However, Curry also allows \emph{functional patterns}
 \cite{AntoyHanus05LOPSTR}, i.e., $t_i$ might additionally contain calls to
-defined operations. For instance, we can define the last element
-of a list also by:
+defined operations. For instance, we can also define the last element
+of a list by:
 %
 \begin{curry}
   last' (xs++[e]) = e
@@ -294,11 +294,12 @@ some value of \code{(xs++[e])} where \code{xs} and \code{e} are
 free variables.
 By instantiating \code{xs} to arbitrary lists, the value
 of \code{(xs++[e])} is any list having \code{e} as its last element.
-Functional patterns are
-a powerful feature to express arbitrary selections in term structures.
-For instance, functional patterns support a straightforward
+Functional patterns are a powerful feature to express arbitrary 
+selections in term structures.
+For instance, they support a straightforward
 processing of XML data with incompletely specified
 or evolving formats \cite{Hanus11ICLP}.
+
 
 
 
@@ -339,14 +340,14 @@ that both duplicates, which later evaluate to a non-deterministic
 choice between two values, yield either \code{True} or \code{False}.
 This is obtained by assigning a unique identifier (of type \code{ID})
 to each \code{Choice}. The difficulty is to get a unique identifier
-when needed, i.e., when some operation evaluates to a \code{Choice}.
+on demand, i.e., when some operation evaluates to a \code{Choice}.
 Since we want to compile into \emph{purely} functional programs
 (in order to enable powerful program optimizations),
 we cannot use unsafe features with side effects to generate
 such identifiers.
 Hence, we pass a (conceptually infinite) set of identifiers,
 also called \emph{identifier supply},
-to each operation so that a \code{Choice} can pick an identifier from
+to each operation so that a \code{Choice} can pick its unique identifier from
 this set.
 For this purpose, we assume a type \code{IDSupply},
 representing an infinite set of identifiers,
@@ -364,7 +365,7 @@ the operation \code{thisID} takes some identifier from this set, and
 into two disjoint subsets without the identifier
 obtained by \code{thisID}.
 There are different implementations available \cite{AugustssonRittriSynek94}
-(see below for a simple implementation) and our implementation
+(see below for a simple implementation) and our system
 is parametric over concrete implementations of \code{IDSupply}.
 
 When translating Curry to Haskell, KiCS2 adds to each operation
@@ -440,35 +441,33 @@ we obtain the result
 \begin{haskell}
   Choice 2 (Choice 2 False True) (Choice 2 True False)
 \end{haskell}
-Thus, the result is non-deterministic and contains several choices,
-but all of them have the same identifier.
-This identifier is used when the values contained in this result
-are searched for: one has to make \emph{consistent} selections in choices with
-same identifiers. Thus, if we select the left branch as the value
-of the outermost \code{Choice}, we also have to select the left branch
-in the selected argument \code{(Choice 2 False True)} so that only
-the value \code{False} is possible here.
-Similarly, if we select the right branch as the value of the outermost
-\code{Choice}, we also have to select the right branch in
-its selected argument \code{(Choice 2 True False)} which yields the only
-value \code{False}.
-Thus, the unintended value \code{True} is not produced.
-
-In general, to extract all values from a \code{Choice} structure,
-we have to traverse it, compute all possible choices
+Thus, the result is non-deterministic and contains three choices,
+whereby all of them have the same identifier.
+To extract all values from such a \code{Choice} structure,
+we have to traverse it and  compute all possible choices,
 but consider the choice identifiers to make consistent (left/right)
 decisions.
-The latter requirement can be implemented by storing
+Thus, if we select the left branch as the value
+of the outermost \code{Choice}, we also have to select the left branch
+in the selected argument \code{(Choice 2 False True)} so that \code{False}
+is the only value possible for this branch.
+Similarly, if we select the right branch as the value of the outermost
+\code{Choice}, we also have to select the right branch in
+its selected argument \code{(Choice 2 True False)}, which again yields 
+\code{False} as the only possible value. In consequence, 
+the unintended value \code{True} is not produced.
+
+The requirement to make consistent decisions can be implemented by storing
 the decisions already made for some choices during the traversal.
 For this purpose, we introduce the type
 \begin{haskell}
   data Decision = NoDecision | ChooseLeft | ChooseRight
 \end{haskell}
-where \code{NoDecision} represents the fact that the value of a choice
-is yet undecided.
-Furthermore, we assume operations to lookup the current decision
-for a given identifier or change its decision (depending on the implementation
-of \code{IDSupply}, KiCS2 supports various implementations
+where \code{NoDecision} represents the fact that the value of a choice has
+not been decided yet. Furthermore, we assume operations to lookup the 
+current decision for a given identifier or change it
+(depending on the implementation
+of \code{IDSupply}, KiCS2 supports several implementations
 based on memory cells or finite maps):
 \begin{haskell}
   lookupDecision :: ID -> IO Decision
@@ -485,71 +484,69 @@ allow this direct definition.}
   printValsDFS :: a -> IO ()
   printValsDFS Fail             = return ()$\listline$
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
-   where
-    follow ChooseLeft  = printValsDFS x1
-    follow ChooseRight = printValsDFS x2
-    follow NoDecision  = do newDecision ChooseLeft  x1
-                            newDecision ChooseRight x2$\listline$
-    newDecision d x = do setDecision i d
-                         printValsDFS x
-                         setDecision i NoDecision$\listline$
+    where
+      follow ChooseLeft  = printValsDFS x1
+      follow ChooseRight = printValsDFS x2
+      follow NoDecision  = do newDecision ChooseLeft  x1
+                              newDecision ChooseRight x2$\listline$
+      newDecision d x = do setDecision i d
+                           printValsDFS x
+                           setDecision i NoDecision$\listline$
   printValsDFS v = print v
 \end{haskell}
-This operation ignores failures and prints values that are not a \code{Choice}.
-For a \code{Choice}, it checks whether a decision for
+This operation ignores failures and prints values that are not rooted by a
+\code{Choice} constructor. For a \code{Choice} constructor, 
+it checks whether a decision for
 this identifier has already been made (note that the initial value
 for all identifiers is \code{NoDecision}).
 If a decision has been made for this choice, it follows this decision.
 Otherwise, the left alternative is used and this decision is stored.
-After printing
-all the values w.r.t.\ this decision,
+After printing all values w.r.t.\ this decision,
 the decision is undone (like in backtracking)
 and the right alternative is used and stored.
 
 In general, this operation is applied to the normal form
 of the main expression (where \code{initSupply} is used to
 compute an initial identifier supply passed to this expression).
-The normal form computation is necessary for structured data like lists
+The normal form computation is necessary for structured data like lists,
 so that a failure or choice in some part of the data is moved to
-the root. Other search strategies, like
+the root.
+
+Other search strategies, like
 breadth-first search, iterative deepening, or parallel search,
 can be obtained by different implementations of this main operation
-to print all values. Instead of printing all values,
-one can also collect all values in a tree-like data structure
+to print all values.
+Furthermore, one can also collect all values in a tree-like data structure
 so that the programmer can implement his own search strategies
 (this corresponds to encapsulating search \cite{BrasselHanusHuch04JFLP}).
-Finally, one can also have other options rather than printing all values
-of the main expression.
-For instance, one can easily define operations
+Finally, instead of printing all values, one can easily define operations
 to print either the first solution only or one by one upon user request.
 Due to the lazy evaluation strategy of Haskell,
 such operations can also be applied to infinite choice structures.
 
 To avoid an unnecessary growth of the search space represented by
 \code{Choice} constructors, our compiler performs an optimization for
-deterministic operations. If an operation does not call, 
-neither directly nor indirectly through
-other operations, the choice operation \ccode{?},\footnote{%
-Note that before applying this compilation scheme, overlapping rules in
-user-defined operations are transformed into calls of the choice operation
-\ccode{?}.}
-then it is not necessary to pass an identifier supply to the operation.
-In consequence, only the matching rules are extended so that the generated code
+deterministic operations. If an operation is defined by non-overlapping
+rules and does not call, neither directly nor indirectly through
+other operations, a function defined by overlapping rules, it does not
+introduce non-determinism (like \code{xor} or \code{not}).
+Thus, it is not necessary to pass an identifier supply to the operation.
+In consequence, only the matching rules are extended, so that the generated code
 is nearly identical to a corresponding functional program.
 Actually, the benchmarks presented in \cite{BrasselHanusPeemoellerReck11}
-show that this implementation outperforms all other Curry implementations
-for deterministic operations,
+show that for deterministic operations this implementation outperforms 
+all other Curry implementations,
 and, for non-deterministic operations, outperforms Prolog-based
 implementations of Curry and can compete with MCC \cite{Lux99FLOPS},
 a Curry implementation that compiles to C.
 
-As mentioned in the introduction,
-KiCS2 translates occurrences of logic variables
-into generators.
+As mentioned in the introduction, occurrences of logic variables are
+translated into generators.
 For instance, the expression \ccode{not x}, where \code{x} is a logic variable,
-is translated into \ccode{not aBool} (we omit the \code{IDSupply} argument
-here). The latter expression is evaluated by reducing the
-argument \code{aBool} to a choice between \code{True} or \code{False}
+is translated into \ccode{not (aBool s)}, where s is an \code{IDSupply}
+provided by the context of the expression. The latter expression is 
+evaluated by reducing the
+argument \code{aBool s} to a choice between \code{True} or \code{False}
 followed by applying \code{not} to this choice.
 This is similar to a narrowing step on \ccode{not x}
 that instantiates the variable \code{x} to \code{True} or \code{False}.
@@ -558,8 +555,8 @@ that instantiates the variable \code{x} to \code{True} or \code{False}.
 % is equivalent to rewriting with generators.
 Since such generators are standard
 non-deterministic operations, they are translated like any other operation
-so that one does not need additional run-time support for them.
-However, if equational constraints should be solved,
+and therefore do not require any additional run-time support.
+However, in the presence of equational constraints,
 there are methods which are more efficient than generating all values.
 These methods and their implementation are discussed in the
 next section.
@@ -595,12 +592,13 @@ and tail \code{xs}.}
 
 Due to this constructive definition, \ccode{=:=}
 can be considered as a binary function defined by the
-following rules (here we show only the rules for the Boolean
+following rules (we only present the rules for the Boolean
 and list types, where \code{Success} denotes the only constructor
 of the type \code{Success} of constraints):
 \begin{curry}
   True   =:= True    =  Success
   False  =:= False   =  Success
+
   []     =:= []      =  Success
   (x:xs) =:= (y:ys)  =  x =:= y & xs =:= ys
 
@@ -641,10 +639,10 @@ Now consider the equational constraint \ccode{x =:= [True]}.
 If the logic variable \code{x} is replaced by \code{aBoolList},
 the translated expression \ccode{aBoolList s =:= [True]}
 creates a search space when evaluating its first argument,
-although there is no search required since there is only one possible
-binding for \code{x}.
-Furthermore and even worse, there is an infinite search space
-when unifying two logic variables. For instance,
+although there is no search required since there is only one
+binding for \code{x} satisfying the constraint.
+Furthermore and even worse, unifying two logic variables
+introduces an infinite search space. For instance,
 the expression \ccode{xs =:= ys \& xs++ys =:= [True]}
 results in an infinite search space when the logic variables
 \code{xs} and \code{ys} are replaced by generators.
@@ -653,21 +651,22 @@ To avoid these problems, we have to implement the idea
 of the well-known unification principle \cite{Robinson65}.
 Instead of enumerating all values for logic variables
 occurring in an equational constraint,
-we \emph{bind} them to another variable or term.
+we \emph{bind} the variables to another variable or term.
 Since we compile into a purely functional language,
 the binding cannot be performed by some side effect.
-Instead, we add binding constraints to the computed results.
+Instead, we add binding constraints to the computed results to be 
+processed during search.
 
 To implement unification, we have to distinguish free variables
-from ``standard choices'' (introduced by the operation \ccode{?})
+from ``standard choices'' (introduced by overlapping rules)
 in the target code. For this purpose, we refine the definition
 of the type \code{ID} as follows:\footnote{For the sake
-of simplicity, we consider in the following the
-implementation of \code{IDSupply} as unbounded integers.}
+of simplicity, in the following, we consider the
+implementation of \code{IDSupply} to be unbounded integers.}
 \begin{haskell}
   data ID = ChoiceID Integer | FreeID Integer
 \end{haskell}
-The new constructor \code{FreeID} marks a choice corresponding to
+The new constructor \code{FreeID} identifies a choice corresponding to
 a free variable, e.g., the generator for Boolean variables is
 redefined as
 \begin{haskell}
@@ -694,46 +693,34 @@ by the rule
 \begin{haskell}
   not (Choice i x1 x2) s = Choice (narrow i) (not x1 s) (not x2 s)
 \end{haskell}
-With this small change, the run-time system can distinguish
-free variables (choices with an identifier of the form \code{(FreeID $\ldots$)})
-from other values. This is quite useful at the top-level
-to print values containing logic variables in a specific form
-rather than enumerating all values, similarly to logic programming systems.
-For instance, KiCS2 evaluates the application of \code{head}
-to an unknown list as follows:
-\begin{haskell}
-  Prelude> head xs where xs free
-  {xs = (_x2:_x3)} _x2
-\end{haskell}
-Here, free variables are marked by the prefix \code{\us{}x}.
 
 As mentioned above, the consideration of free variables
 is relevant in equational constraints where \emph{binding constraints} are
 generated. For this purpose, we introduce a type to represent
 a binding constraint as a pair of a choice identifier
-and a decision for this choice:
+and a decision for this identifier:
 \begin{haskell}
   data Constraint = ID :=: Decision
 \end{haskell}
 Furthermore, we extend each data type by the possibility to
-add such a constraint:
+add constraints:
 \begin{haskell}
-  data Bool   = $\ldots$ | Guard Constraint Bool
-  data List a = $\ldots$ | Guard Constraint (List a)
+  data Bool   = $\ldots$ | Guard [Constraint] Bool
+  data List a = $\ldots$ | Guard [Constraint] (List a)
 \end{haskell}
-Thus, \code{(Guard $c$ $v$)} represents a \emph{constrained value},
-i.e., the value $v$ is only valid if the constraint $c$ is
+Thus, \code{(Guard $cs$ $v$)} represents a \emph{constrained value},
+i.e., the value $v$ is only valid if the constraints $cs$ are
 consistent with the decisions previously made during search.
-The binding constraints are created by the
+These binding constraints are created by the
 equational constraint operation \ccode{=:=}: if a free variable
 should be bound to a constructor, we make the same
-decision as it would be done in the successful branch
+decisions as it would be done in the successful branch
 of the generator. In case of Boolean values,
 this can be implemented by the following additional rules
 for \ccode{=:=}:
 \begin{haskell}
-  Choice (FreeID i) _ _ =:= True   =  Guard (i :=: ChooseLeft ) Success
-  Choice (FreeID i) _ _ =:= False  =  Guard (i :=: ChooseRight) Success
+  Choice (FreeID i) _ _ =:= True   =  Guard [i :=: ChooseLeft ] Success
+  Choice (FreeID i) _ _ =:= False  =  Guard [i :=: ChooseRight] Success
 \end{haskell}
 Hence, the binding of a variable to some known value
 is implemented as a binding constraint for the choice identifier
@@ -762,10 +749,10 @@ a rule handling constrained values:
 %
 \begin{haskell}
   $\ldots$
-  printValsDFS (Guard c x) = do consistent <- add c
-                                if consistent then do printValsDFS x
-                                                      remove c
-                                              else return ()
+  printValsDFS (Guard cs x) = do consistent <- add c
+                                 if consistent then do printValsDFS x
+                                                       remove c
+                                               else return ()
   $\ldots$
 \end{haskell}
 The operation \code{add} checks the consistency of the constraint \code{c}
@@ -777,12 +764,24 @@ Furthermore, the operations \code{lookupDecision} and \code{setDecision}
 are extended to deal with bindings between two variables,
 i.e., they follow variable chains in case of \code{BindTo} constructors.
 
-Due to the extensions described in this section,
-we obtain an implementation of a unification procedure
-that integrates the demand-driven evaluation of operations
-occurring in the arguments.
-Benchmarks evaluating the efficiency of this approach are
-shown in Section~\ref{sec:Benchmarks}.
+Finally, with the ability to distinguish free variables 
+(choices with an identifier of the form \code{(FreeID $\ldots$)})
+from other values during search, values containing logic variables 
+can also be printed in a specific form rather than enumerating all values, 
+like in logic programming systems. For instance, KiCS2 evaluates the 
+application of \code{head} to an unknown list as follows:
+\begin{haskell}
+  Prelude> head xs where xs free
+  {xs = (_x2:_x3)} _x2
+\end{haskell}
+Here, free variables are marked by the prefix \code{\us{}x}.
+
+% Due to the extensions described in this section,
+% we obtain an implementation of a unification procedure
+% that integrates the demand-driven evaluation of operations
+% occurring in the arguments.
+% Benchmarks evaluating the efficiency of this approach are
+% shown in Section~\ref{sec:Benchmarks}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -796,25 +795,15 @@ requirements on arguments, the resulting operations might be too strict.
 For instance, the equational constraint in the condition
 defining \code{last} (see Section~\ref{ex:last})
 requires that \code{ys++[e]} as well as \code{xs}
-must be reducible to identical values so that the input list \code{xs}
-is completely evaluated.
+must be reducible to unifiable terms so that in consequence
+the input list \code{xs} is completely evaluated.
 Hence, if \code{failed} denotes an operation whose evaluation fails,
 the evaluation of \code{last [failed,True]} has no result.
 On the other hand, the evaluation of \code{last' [failed,True]} yields
 the value \code{True}, i.e., the definition of \code{last'} is less strict.
-This is due to the fact that a functional pattern like
-\code{(xs++[e])} abbreviates all values to which it can be evaluated
-(by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]} etc.
-Conceptually, the rule defining \code{last'}
-abbreviates the following (infinite) set of rules:
-\begin{curry}
-  last' [e] = e
-  last' [x1,e] = e
-  last' [x1,x2,e] = e
-  $\ldots$
-\end{curry}
-As a further example,
-consider an operation that returns the first duplicated element in
+
+As another example for the advantage of the reduced strictness,
+consider an operation that returns the first duplicate element in
 a list.
 Using equational constraints, we can define it as follows:
 \begin{curry}
@@ -836,12 +825,19 @@ This is not the case if we define this operation by a functional pattern:
                         = e
 \end{curry}
 %
-Functional patterns are quite useful in situations
-where one wants to select parts of some structure
-at arbitrary positions. For instance,
-functional patterns have been applied to support
-the high-level programming of querying or transforming
-XML data \cite{Hanus11ICLP}.
+Because of the reduced strictness, the logic variable \code{zs} (matching
+the tail list after the first duplicate) is never evaluated.
+This is due to the fact that a functional pattern like
+\code{(xs++[e])} abbreviates all values to which it can be evaluated
+(by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]} etc.
+Conceptually, the rule defining \code{last'}
+abbreviates the following (infinite) set of rules:
+\begin{curry}
+  last' [e] = e
+  last' [x1,e] = e
+  last' [x1,x2,e] = e
+  $\ldots$
+\end{curry}
 
 Obviously, one cannot implement functional patterns by
 a transformation into an infinite set of rules. Instead, they are
@@ -851,7 +847,7 @@ For instance, the definition of \code{last'} is transformed into
 \begin{curry}
   last' ys | (xs++[e]) =:<= ys  = e   where xs, e free
 \end{curry}
-The behavior of \ccode{=:<=} is similar to \ccode{=:=}
+The behavior of \ccode{=:<=} is similar to \ccode{=:=},
 except for the case that a variable in the left argument
 should be bound to some expression: instead of evaluating
 the expression to some value and binding the variable to the value,
@@ -861,17 +857,16 @@ Due to this slight change, failures or infinite structures
 in actual arguments do not cause problems in the matching
 of functional patterns.
 
-The following discussion shows the requirements on an 
-implementation of functional patterns.
-The general structure
-is quite similar to equational constraints
+The general structure of the implementation of functional patterns in KiCS2
+is quite similar to that of equational constraints,
 with the exception that variables could be also bound
-to unevaluated expressions. Only if such variables are later
+to unevaluated expressions. 
+Only if such variables are later
 accessed, the expressions they are bound to are evaluated.
 This can be achieved by adding a further alternative
 to the type of decisions:
 \begin{haskell}
-  data Decision = $\ldots$ | LazyBind Constraint
+  data Decision = $\ldots$ | LazyBind [Constraint]
 \end{haskell}
 %
 The implementation of the lazy unification operation \ccode{=:<=}
@@ -882,14 +877,14 @@ in the left argument. All these rules are replaced by the single
 rule
 \begin{haskell}
   Choice (FreeID i) _ _ =:<= x
-    = Guard (i :=: LazyBind (lazyBind i x)) Success
+    = Guard [i :=: LazyBind (lazyBind i x)] Success
 \end{haskell}
 where the auxiliary operation \code{lazyBind}
 implements the demand-driven evaluation of the right argument \code{x}:
 \begin{haskell}
-  lazyBind :: ID -> a -> Constraint
-  lazyBind i True  = i :=: ChooseLeft
-  lazyBind i False = i :=: ChooseRight
+  lazyBind :: ID -> a -> [Constraint]
+  lazyBind i True  = i :=: [ChooseLeft]
+  lazyBind i False = i :=: [ChooseRight]
 \end{haskell}
 The use of the additional \code{LazyBind} constructor allows the argument 
 \code{x} to be stored in a binding constraint without evaluation 
@@ -908,21 +903,23 @@ according to the semantics of functional patterns
 In order to demonstrate the operational behavior of our implementation,
 we sketch the evaluation of the lazy unification constraint
 \code{xs++[e] =:<= [failed,True]} that occurs when the expression
-\code{last' [failed,True]} is evaluated (here we omit failed branches
+\code{last' [failed,True]} is evaluated (we omit failed branches
 and some other details; note that logic variables are replaced
 by generators):
 \begin{haskell}
-  aBoolList 2 ++ [aBool 3] =:<= [failed,True]
-  $\leadsto$ [aBool 4,aBool 3] =:<= [failed,True]
+     aBoolList 2 ++ [aBool 3] =:<= [failed, True]
+  $\leadsto$ [aBool 4, aBool 3] =:<= [failed, True]
   $\leadsto$ aBool 4 =:<= failed & aBool 3 =:<= True & [] =:<= []
-  $\leadsto$ Guard (4 :=: LazyBind (lazyBind 4 failed))
-           (Guard (3 :=: LazyBind (lazyBind 3 True)) Success)
+  $\leadsto$ Guard [ 4 :=: LazyBind (lazyBind 4 failed)
+           , 3 :=: LazyBind (lazyBind 3 True)] Success
 \end{haskell}
-If the binding of identifier \code{3} is later required,
-\code{(lazyBind 3 True)} is evaluated to \code{[3 :=: ChooseLeft]}
+If the value of the expression \code{last' [failed,True]} is later required,
+the value of the variable \code{e} (with the identifier \code{3}) is in turn
+required.
+Thus, \code{(lazyBind 3 True)} is evaluated to \code{[3 :=: ChooseLeft]}
 which corresponds to the value \code{True} of the generator \code{(aBool 3)}.
 Note that the variable with identifier \code{4} does not occur
-anywhere else so that the binding \code{(lazyBind 4 failed)}
+anywhere else, so that the binding \code{(lazyBind 4 failed)}
 will never be evaluated, as intended.
 
 
@@ -932,16 +929,17 @@ will never be evaluated, as intended.
 
 % The benchmark results are from unif@climens2011_7_5_20_38_47.bench
 
-In this section we evaluate our implementation by some benchmarks.
-They were executed on a Linux machine running Debian 5.0.7 with
+In this section we evaluate our implementation of
+equational constraints and functional patterns by some benchmarks.
+The benchmarks were executed on a Linux machine running Debian 5.0.7 with
 an Intel Core 2 Duo (3.0GHz) processor.
-KiCS2 has been executed with
-the Glasgow Haskell Compiler (GHC 7.0.4, option -O2) and uses
+KiCS2 has been used with
+the Glasgow Haskell Compiler (GHC 7.0.4, option -O2) as its backend and
 an efficient \code{IDSupply} implementation that makes use of \code{IORef}s.
 For a comparison with other mature implementations of Curry,
 we considered PAKCS \cite{Hanus10PAKCS}
-(Version 1.9.2, based on a SICStus-Prolog 4.1.2)
-and MCC \cite{Lux99FLOPS} (Version 0.9.10). The timings were performed with the
+(version 1.9.2, based on a SICStus-Prolog 4.1.2)
+and MCC \cite{Lux99FLOPS} (version 0.9.10). The timings were performed with the
 time command measuring the execution time (in seconds) of a compiled
 executable for each benchmark as a mean of three runs.
 The programs used for the benchmarks,
@@ -977,7 +975,7 @@ Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
 \code{grep}                             & 1.06      & 0.10      & n/a         \\
 \hline
 \end{tabular}
-\caption{Benchmarks: comparing different equation solving methods}
+\caption{Benchmarks: comparing different representations for equations}
  \label{fig:search-strategies}
 \end{figure}
 
@@ -987,16 +985,16 @@ but this technique might increase the search space due to the
 possibly superfluous generation of all values.
 To show the beneficial effects of our implementation
 of equational constraints with variable bindings,
-we compare in Fig.~\ref{fig:search-strategies}
+in Fig.~\ref{fig:search-strategies} we compare
 the results of using equational constraints (\code{=:=})
 to the results
 where the Boolean equality operator (\code{==}) is used (which
 does not perform bindings but enumerate all values).
-As expected, the creation and traversal of a large search space introduced
-by \code{==} is in most cases much slower than our presented approach
-with variable bindings.
+As expected, in most cases the creation and traversal of a large
+search space introduced by \code{==} is much slower than our
+presented approach with variable bindings.
 In addition, the example \code{last} shows that the lazy 
-unification operator (\code{=:<=}) improves performance when unifying an
+unification operator (\ccode{=:<=}) improves the performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
 all elements of the list are (unnecessarily) evaluated.
 
@@ -1017,20 +1015,21 @@ Expression                              & KiCS2 & PAKCS  & MCC  \\
 \code{grep}                             & 0.10  & 2.88   & 0.14 \\
 \hline
 \end{tabular}
-\caption{Benchmarks: equational constraints in different Curry implementations}
+\caption{Benchmarks: strict unification in different Curry implementations}
  \label{fig:unification}
 \end{figure}
 
-In contrast to the Curry implementations PAKCS and MCC, our approach is based
+In contrast to the Curry implementations PAKCS and MCC, our approach 
+of strict unification is based
 on an explicit representation of the search space instead of
 backtracking and manipulating
 a global state containing bindings for logic variables.
-Nevertheless, the benchmarks in Fig.~\ref{fig:unification}
-show that it can compete with or even outperform these implementations.
-In these benchmarks only equational constraints are used.
+Nevertheless, the benchmarks in Fig.~\ref{fig:unification},
+using equational constraints only,
+show that it can compete with or even outperform the other implementations.
 The results show that the implementation of unification
-of MCC performs best. However, in most cases
-our implementation outperforms the Prolog-based PAKCS implementation,
+of MCC performs best. However, in most cases our implementation 
+outperforms the Prolog-based PAKCS implementation, 
 except for some examples where further investigations
 and optimizations are necessary.
 
@@ -1049,7 +1048,7 @@ Expression                              & KiCS2 & PAKCS    \\
 \code{palindrome}                       & 20.26 & $\infty$ \\
 \hline
 \end{tabular}
-\caption{Benchmarks: comparing different implementations of functional patterns}
+\caption{Benchmarks: functional patterns in different Curry implementations}
  \label{fig:functional-patterns}
 \end{figure}
 
@@ -1065,18 +1064,18 @@ of more than 30 minutes).
 \label{sec:Conclusions}
 
 We have presented an implementation of equational constraints
-and functional patterns in a purely functional implementation
+and functional patterns in KiCS2, a purely functional implementation
 of Curry. Our implementation is based on adding binding constraints
 to computed values and processing them when values are extracted
 at the top level of a computation.
-Since we have added only new constructors and rules
-for them in our implementation, it does not introduce
-additional work if these features are not used, i.e.,
+Since we only have added new constructors and pattern matching rules 
+for them in our implementation, no overhead is introduced for programs
+without equational constraints, i.e.,
 our implementation does not sacrifice the high efficiency
-of the kernel implementation as shown in
+of the kernel implementation shown in
 \cite{BrasselHanusPeemoellerReck11}.
 However, if these features are used, they usually lead
-to a more efficient execution, as demonstrated by our benchmarks.
+to a comparably efficient execution, as demonstrated by our benchmarks.
 
 Other implementations of equational constraints in functional logic
 languages use side effects for their implementation.
@@ -1091,8 +1090,8 @@ a variety of search strategies, like breadth-first or parallel search,
 where the avoidance of side effects is important.
 
 For future work it might be interesting to add
-further constraint structures, like real arithmetic
-or finite domain constraints, to our implementation.
+further constraint structures to our implementation, like real arithmetic
+or finite domain constraints.
 This might be possible by extending the kinds of constraints
 of our implementation and solving them by
 functional approaches like \cite{SchrijversStuckeyWadler09}.
