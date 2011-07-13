@@ -703,7 +703,9 @@ and a decision for this identifier:
   data Constraint = ID :=: Decision
 \end{haskell}
 Furthermore, we extend each data type by the possibility to
-add constraints:
+add constraints:\footnote{A \code{Constraint} only provides the decision for
+                          one constructor. To support constraints for
+                          structured data, we need a list of \code{Constraint}s.}
 \begin{haskell}
   data Bool   = $\ldots$ | Guard [Constraint] Bool
   data List a = $\ldots$ | Guard [Constraint] (List a)
@@ -737,7 +739,7 @@ Furthermore, we add the rule that an equational constraint
 between two variables yields a binding for these variables:
 \begin{haskell}
   Choice (FreeID i) _ _ =:= Choice (FreeID j) _ _
-    =  Guard (i :=: BindTo j) Success
+    =  Guard [i :=: BindTo j] Success
 \end{haskell}
 %
 The consistency of constraints is checked when values are extracted
@@ -749,17 +751,17 @@ a rule handling constrained values:
 %
 \begin{haskell}
   $\ldots$
-  printValsDFS (Guard cs x) = do consistent <- add c
+  printValsDFS (Guard cs x) = do consistent <- add cs
                                  if consistent then do printValsDFS x
-                                                       remove c
+                                                       remove cs
                                                else return ()
   $\ldots$
 \end{haskell}
-The operation \code{add} checks the consistency of the constraint \code{c}
+The operation \code{add} checks the consistency of the constraints \code{cs}
 with the decisions made so far and, in case of consistency,
-stores the decision made by the constraint.
+stores the decisions made by the constraints.
 In this case, the constrained value is evaluated
-before the constraint is removed to allow backtracking.
+before the constraints are removed to allow backtracking.
 Furthermore, the operations \code{lookupDecision} and \code{setDecision}
 are extended to deal with bindings between two variables,
 i.e., they follow variable chains in case of \code{BindTo} constructors.
@@ -1030,8 +1032,11 @@ show that it can compete with or even outperform the other implementations.
 The results show that the implementation of unification
 of MCC performs best. However, in most cases our implementation 
 outperforms the Prolog-based PAKCS implementation, 
-except for some examples where further investigations
-and optimizations are necessary.
+except for some examples. Especially \code{simplify} performs very badly
+due to expensive bindings of free variables to large arithmetic expressions
+in unsuccessful branches of the search. Further investigation
+and optimization will hopefully lead to a better performance in
+such cases.
 
 \begin{figure}[t]
 \centering
