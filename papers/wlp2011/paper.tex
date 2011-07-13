@@ -966,7 +966,7 @@ specification of regular expressions \cite{AntoyHanus10CACM}).
 \hline
 Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
 \hline
-\code{last (map (inc 0) [1..100000])}   &  2.91   &    0.05   &    0.01   \\
+\code{last (map (inc 0) [1..10000])}   &  2.91   &    0.05   &    0.01   \\
 \code{simplify}                         & 10.30      & 6.77      & 7.07        \\
 \code{varInExp}                         & 2.34    & 0.24      & 0.21        \\
 % \code{varInExp2}                        & 0.34   & 0.02     & 0.01        \\
@@ -1006,7 +1006,7 @@ all elements of the list are (unnecessarily) evaluated.
 \hline
 Expression                              & KiCS2 & PAKCS  & MCC  \\
 \hline
-\code{last (map (inc 0) [1..1000])}   & 0.05  & 0.40   &  0.01\\
+\code{last (map (inc 0) [1..10000])}   & 0.05  & 0.40   &  0.01\\
 \code{simplify}                         & 6.77  & 0.15   & 0.00 \\
 \code{varInExp}                         & 0.24  & 0.89   & 0.07 \\
 % \code{varInExp2}                        & 0.02 & 0.06   & 0.00 \\
