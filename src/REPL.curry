@@ -289,7 +289,8 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
   maybe (return GoalError)
    (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let freevars = freeVarsInFuncRule mfunc
-    if null freevars || not (rst -> showBindings) || length freevars > 5
+    if null freevars || not (rst -> showBindings) || (rst->ndMode) == PrtChoices
+       || length freevars > 5 -- due to limited definitions in PrintBindings
      then return (GoalWithoutBindings prog)
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return (GoalWithoutBindings prog) else do
