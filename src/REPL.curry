@@ -46,7 +46,7 @@ cleanMainGoalFile rst
 type ReplState =
   { idcHome      :: String     -- installation directory of the system
   , rcvars       :: [(String,String)] -- content of rc file
-  , idSupply     :: String     -- IDSupply implementation (ioref or integer)
+  , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
   , verbose      :: Int        -- verbosity level: 0 = quiet,
                                -- 1 = show frontend (module) compile/load
                                -- 2 = show backend (Haskell) compile/load
@@ -362,6 +362,9 @@ createAndCompileMain rst goalstate = do
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
                            ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
+                           , case rst->idSupply of
+                              "ghc" -> "-package ghc"
+                              _     -> ""
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""
@@ -679,7 +682,7 @@ printOptions rst = putStrLn $
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "choices        - set search mode to print the raw choice structure\n"++
-  "supply <I>     - set idsupply implementation (integer or ioref)\n"++
+  "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
   "                 4: all intermediate results)\n"++
