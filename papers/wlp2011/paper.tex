@@ -543,7 +543,7 @@ a Curry implementation that compiles to C.
 As mentioned in the introduction, occurrences of logic variables are
 translated into generators.
 For instance, the expression \ccode{not x}, where \code{x} is a logic variable,
-is translated into \ccode{not (aBool s)}, where s is an \code{IDSupply}
+is translated into \ccode{not (aBool s)}, where \code{s} is an \code{IDSupply}
 provided by the context of the expression. The latter expression is 
 evaluated by reducing the
 argument \code{aBool s} to a choice between \code{True} or \code{False}
@@ -555,7 +555,7 @@ that instantiates the variable \code{x} to \code{True} or \code{False}.
 % is equivalent to rewriting with generators.
 Since such generators are standard
 non-deterministic operations, they are translated like any other operation
-and therefore do not require any additional run-time support.
+and, therefore, do not require any additional run-time support.
 However, in the presence of equational constraints,
 there are methods which are more efficient than generating all values.
 These methods and their implementation are discussed in the
@@ -655,7 +655,7 @@ we \emph{bind} the variables to another variable or term.
 Since we compile into a purely functional language,
 the binding cannot be performed by some side effect.
 Instead, we add binding constraints to the computed results to be 
-processed during search.
+processed by a search strategy that extract values from choice structures.
 
 To implement unification, we have to distinguish free variables
 from ``standard choices'' (introduced by overlapping rules)
@@ -770,7 +770,7 @@ Finally, with the ability to distinguish free variables
 (choices with an identifier of the form \code{(FreeID $\ldots$)})
 from other values during search, values containing logic variables 
 can also be printed in a specific form rather than enumerating all values, 
-like in logic programming systems. For instance, KiCS2 evaluates the 
+similarly to logic programming systems. For instance, KiCS2 evaluates the 
 application of \code{head} to an unknown list as follows:
 \begin{haskell}
   Prelude> head xs where xs free
@@ -885,8 +885,8 @@ where the auxiliary operation \code{lazyBind}
 implements the demand-driven evaluation of the right argument \code{x}:
 \begin{haskell}
   lazyBind :: ID -> a -> [Constraint]
-  lazyBind i True  = i :=: [ChooseLeft]
-  lazyBind i False = i :=: [ChooseRight]
+  lazyBind i True  = [i :=: ChooseLeft]
+  lazyBind i False = [i :=: ChooseRight]
 \end{haskell}
 The use of the additional \code{LazyBind} constructor allows the argument 
 \code{x} to be stored in a binding constraint without evaluation 
@@ -1021,8 +1021,8 @@ Expression                              & KiCS2 & PAKCS  & MCC  \\
  \label{fig:unification}
 \end{figure}
 
-In contrast to the Curry implementations PAKCS and MCC, our approach 
-of strict unification is based
+In contrast to the Curry implementations PAKCS and MCC,
+our implementation of strict unification is based
 on an explicit representation of the search space instead of
 backtracking and manipulating
 a global state containing bindings for logic variables.
