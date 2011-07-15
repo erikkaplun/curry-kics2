@@ -581,7 +581,7 @@ and infinite data structures,
 \ccode{=:=} is interpreted as the \emph{strict equality} on terms
 \cite{GiovannettiLeviMoisoPalamidessi91},
 i.e., the equation \code{$e_1$\,=:=\,$e_2$} is satisfied iff
-$e_1$ and $e_2$ are reducible to the same ground constructor term.
+$e_1$ and $e_2$ are reducible to unifiable ground constructor terms.
 In particular, expressions that do not have a value
 are not equal w.r.t.\ \ccode{=:=}, e.g.,
 the equational constraint \ccode{head [] =:= head []}
@@ -1032,7 +1032,7 @@ show that it can compete with or even outperform the other implementations.
 The results show that the implementation of unification
 of MCC performs best. However, in most cases our implementation 
 outperforms the Prolog-based PAKCS implementation, 
-except for some examples. In particular, \code{simplify} does not performs well
+except for some examples. In particular, \code{simplify} does not perform well
 due to expensive bindings of free variables to large arithmetic expressions
 in unsuccessful branches of the search. Further investigation
 and optimization will hopefully lead to a better performance in
