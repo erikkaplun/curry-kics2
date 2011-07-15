@@ -703,9 +703,9 @@ and a decision for this identifier:
   data Constraint = ID :=: Decision
 \end{haskell}
 Furthermore, we extend each data type by the possibility to
-add constraints:\footnote{A \code{Constraint} only provides the decision for
-                          one constructor. To support constraints for
-                          structured data, we need a list of \code{Constraint}s.}
+add constraints:\footnote{A single \code{Constraint} provides the decision for
+one constructor. To support constraints for structured data,
+we add a list of \code{Constraint}s to the data.}
 \begin{haskell}
   data Bool   = $\ldots$ | Guard [Constraint] Bool
   data List a = $\ldots$ | Guard [Constraint] (List a)
@@ -1032,7 +1032,7 @@ show that it can compete with or even outperform the other implementations.
 The results show that the implementation of unification
 of MCC performs best. However, in most cases our implementation 
 outperforms the Prolog-based PAKCS implementation, 
-except for some examples. Especially \code{simplify} performs very badly
+except for some examples. In particular, \code{simplify} does not performs well
 due to expensive bindings of free variables to large arithmetic expressions
 in unsuccessful branches of the search. Further investigation
 and optimization will hopefully lead to a better performance in
