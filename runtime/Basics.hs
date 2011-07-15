@@ -156,4 +156,6 @@ d_apply :: (a -> b) -> a -> b
 d_apply f a = f a
 
 nd_apply :: NonDet b => Func a b -> a -> IDSupply -> b
-nd_apply fun a s = (\(Func f) -> f a s) `d_dollar_bang` fun
+nd_apply fun a s = apply `d_dollar_bang` fun
+  where apply (Func f) = f a s
+        apply _        = error "Basics.nd_apply.apply: no ground term"

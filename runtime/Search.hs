@@ -582,7 +582,8 @@ searchMPlus'' cont (Free i branches) = lookupChoice' i >>= choose
 searchMPlus'' cont  (Guard cs e) =
   solves' cs >> searchMPlus' cont e
 
-
+processLazyBind' :: (NormalForm a, MonadPlus m) => ID
+  -> (a -> StateT SetOfChoices m b) -> Constraints -> [a] -> StateT SetOfChoices m b
 processLazyBind' i cont cs branches = do
   setChoice' i NoChoice
   searchMPlus' cont (guardCons cs (choicesCons i branches))

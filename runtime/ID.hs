@@ -2,10 +2,13 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( Constraint (..), Constraints, Choice (..), defaultChoice, isDefaultChoice
-  , ID (..), IDSupply
-  , mkInt, leftID, rightID, narrowID
-  , initSupply, leftSupply, rightSupply, thisID, freeID
+  ( -- * Constraints
+    Constraint (..), Constraints
+    -- * Choices
+  , Choice (..), defaultChoice, isDefaultChoice
+    -- * IDs
+  , ID (..), mkInt, leftID, rightID, narrowID
+  , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Choice management
   , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
   , nextNIDs
@@ -60,12 +63,6 @@ data Choice
   | LazyBind Constraints
     deriving Show
 
--- TODO: Idea: Split ChooseN Int Int into two cases
---   - ChooseFree Int Int     for free variables and
---   - ChooseNarrowed Int     for narrowed variables
--- to further separate these constructs and avoid the use of irregular values
--- like ChooseN 0 (-1)
-
 
 instance Eq Choice where
   NoChoice    == NoChoice    = True
@@ -91,9 +88,9 @@ isDefaultChoice _        = False
 -- ID
 -- ---------------------------------------------------------------------------
 
--- Type to identify different Choice structures in a non-deterministic result
+-- |Type to identify different Choice structures in a non-deterministic result
 data ID
-    -- |Identifier for a choice introduced by the use of the (?) operator
+    -- |Identifier for a choice introduced by using of the (?) operator
   = ChoiceID Ref
     -- |Identifier for a choice for a free variable
   | FreeID [Int] IDSupply
