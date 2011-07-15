@@ -736,7 +736,8 @@ type to cover this information:
   data Decision = $\ldots$ | BindTo ID
 \end{haskell}
 Furthermore, we add the rule that an equational constraint
-between two variables yields a binding for these variables:
+between two variables yields a binding for these variables:%
+\footnote{An occur check is not performed for efficiency reasons.}
 \begin{haskell}
   Choice (FreeID i) _ _ =:= Choice (FreeID j) _ _
     =  Guard [i :=: BindTo j] Success
