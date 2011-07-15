@@ -703,13 +703,15 @@ and a decision for this identifier:
   data Constraint = ID :=: Decision
 \end{haskell}
 Furthermore, we extend each data type by the possibility to
-add constraints:\footnote{A single \code{Constraint} provides the decision for
-one constructor. To support constraints for structured data,
-we add a list of \code{Constraint}s to the data.}
+add constraints:
 \begin{haskell}
   data Bool   = $\ldots$ | Guard [Constraint] Bool
   data List a = $\ldots$ | Guard [Constraint] (List a)
 \end{haskell}
+A single \code{Constraint} provides the decision for
+one constructor. In order to support constraints for structured data,
+a list of \code{Constraint}s provides the decision for the outermost
+constructor and the decisions for all its arguments.
 Thus, \code{(Guard $cs$ $v$)} represents a \emph{constrained value},
 i.e., the value $v$ is only valid if the constraints $cs$ are
 consistent with the decisions previously made during search.
@@ -737,7 +739,6 @@ type to cover this information:
 \end{haskell}
 Furthermore, we add the rule that an equational constraint
 between two variables yields a binding for these variables:%
-\footnote{An occur check is not performed for efficiency reasons.}
 \begin{haskell}
   Choice (FreeID i) _ _ =:= Choice (FreeID j) _ _
     =  Guard [i :=: BindTo j] Success
