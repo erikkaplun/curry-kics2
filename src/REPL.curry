@@ -46,7 +46,7 @@ cleanMainGoalFile rst
 type ReplState =
   { idcHome      :: String     -- installation directory of the system
   , rcvars       :: [(String,String)] -- content of rc file
-  , idSupply     :: String     -- IDSupply implementation (ioref or integer)
+  , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
   , verbose      :: Int        -- verbosity level: 0 = quiet,
                                -- 1 = show frontend (module) compile/load
                                -- 2 = show backend (Haskell) compile/load
@@ -289,7 +289,8 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
   maybe (return GoalError)
    (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let freevars = freeVarsInFuncRule mfunc
-    if null freevars || not (rst -> showBindings) || length freevars > 5
+    if null freevars || not (rst -> showBindings) || (rst->ndMode) == PrtChoices
+       || length freevars > 5 -- due to limited definitions in PrintBindings
      then return (GoalWithoutBindings prog)
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return (GoalWithoutBindings prog) else do
@@ -362,6 +363,9 @@ createAndCompileMain rst goalstate = do
                            ,"-XMultiParamTypeClasses"
                            ,"-XFlexibleInstances"
                            ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
+                           , case rst->idSupply of
+                              "ghc" -> "-package ghc"
+                              _     -> ""
                            ,case rst->ndMode of
                               Par _ -> "-threaded"
                               _     -> ""
@@ -679,7 +683,7 @@ printOptions rst = putStrLn $
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "choices        - set search mode to print the raw choice structure\n"++
-  "supply <I>     - set idsupply implementation (integer or ioref)\n"++
+  "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
   "                 4: all intermediate results)\n"++

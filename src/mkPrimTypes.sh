@@ -106,4 +106,4 @@ function replace ()
 }
 
 rm -f $DEST
-../bin/idc -i./lib $SRC && replace $DEST
+../bin/idc -i../lib $SRC && replace $DEST
