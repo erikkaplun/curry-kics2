@@ -1,5 +1,9 @@
 \documentclass[%handout
-,utf8]{beamer}
+,hyperref={pdfpagelabels=false} % beamer hack
+,utf8
+]{beamer}
+
+\let\Tiny=\tiny % beamer hack
 
 \usepackage{graphicx}
 \usepackage{color}
@@ -40,15 +44,9 @@ date in head/foot}%
     \end{actionenv}}
 }
 
-\newenvironment{program}
-{\begin{semiverbatim}\small}
-{\end{semiverbatim}}
-
+\newenvironment{program}{\begin{semiverbatim}\small}{\end{semiverbatim}}
 \newcommand{\code}[1]{\texttt{#1}}
-
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
-\def\back{\hspace*{-1ex}}
-\def\bback{\hspace*{-2ex}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -293,7 +291,7 @@ xor (Choice \alert{i} x1 x2) x = Choice \alert{i} (xor x1 x) (xor x2 x)
 \begin{frame}[fragile]%--------------------------------------------------------
 \frametitle{Choice Identifiers}
 \begin{itemize}
- \item \code{ID}s are provided by an \code{IDSupply} (infite set of \code{ID}s)
+ \item \code{ID}s are provided by an \code{IDSupply} (infinite set of \code{ID}s)
  \item \code{IDSupply}s can be split into disjoint subsets
  \item Functions that may introduce non-determinism
        are provided with an \code{IDSupply}
@@ -330,9 +328,9 @@ $\leadsto$ \code{Choice 1 (Choice 1 False True) (Choice 1 True False)}
 \begin{tikzpicture}
 \node (a) at (0,0) {\code{True}};
 \node (b) at (2,0) {\code{False}};
-\node (c) at (0,2) {$\code{?}_{1}$};
-\node (d) at (2,2) {$\code{?}_{1}$};
-\node (e) at (1,3) {$\code{?}_{1}$};
+\node (c) at (0,1.5) {$\code{?}_{1}$};
+\node (d) at (2,1.5) {$\code{?}_{1}$};
+\node (e) at (1,2) {$\code{?}_{1}$};
 \draw (e) -- (c);
 \draw (e) -- (d);
 \draw (c.south west) .. controls (0,0) and (1,2) .. (b);
@@ -350,9 +348,9 @@ Only \code{False} ist reachable with consistent decisions
 % \begin{itemize}
 %  \item Computing with failure is a common programming pattern in FLP
 %  \item Failures do not abort the computation, but are ignored
-%  \item Thus, failures have to be represented as well.
+%  \item Thus, failures have to be represented as well
 % \end{itemize}
-% \begin{block}{Curry}
+% \begin{curryblock}{Curry}
 % \begin{program}
 % data Bool = True | False
 % 
@@ -361,13 +359,13 @@ Only \code{False} ist reachable with consistent decisions
 % \end{block}
 % \begin{block}{Haskell}
 % \begin{program}
-% data Bool = True | False | Choice Bool Bool | Fail
+% data Bool = True | False | Choice ID Bool Bool | Fail
 % 
 % ensureTrue True             = True
-% ensureTrue (Choice i x1 x2) = ...
+% ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1) ensureTrue (x2)
 % ensureTrue _                = Fail
 % \end{program}
-% \end{block}
+% \end{curryblock}
 % \end{frame}
 
 
@@ -379,6 +377,7 @@ Only \code{False} ist reachable with consistent decisions
 \item In higher-order functions, the supply is passed 
       to the functional argument when applied
 \end{itemize}
+\pause
 
 \vspace{-2ex}
 
@@ -440,6 +439,7 @@ False
 \end{block}
 \end{columns}
 \vspace{2ex}
+\pause
 
 \item To avoid overhead, higher-order functions are translated into
   \begin{itemize}
@@ -462,9 +462,8 @@ False
 \item Functional programs run with almost no overhead
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/reverse}
+\includegraphics[width=11cm]{gfx/reverse}
 \end{center}
-\todo{include KiCS, remove+, update graphics}
 \end{frame}
 
 \begin{frame}%------------------------------------------------------------------
@@ -474,34 +473,30 @@ False
 \item Higher-order optimization dramatically improves performance
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/reverseho}
+\includegraphics[width=11cm]{gfx/reverseho}
 \end{center}
-\todo{include KiCS, remove+, update graphics}
 \end{frame}
 
 \begin{frame}%------------------------------------------------------------------
 \frametitle{Benchmark: Non-Deterministic Permutation Sort}
 \begin{itemize}
-\item For non-deterministic programs, KiCS2 can compete with existing compilers
+\item Program: Permutation Sort
+\item KiCS2 can compete with existing compilers
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/permsort}
+\includegraphics[width=11cm]{gfx/permsort}
 \end{center}
-\todo{include KiCS, Prolog systems, update graphics}
 \end{frame}
 
 \begin{frame}[fragile]%---------------------------------------------------------
 \frametitle{Benchmark: Halve a Peano Number}
 \begin{itemize}
-\item However, there is still much room for improvements
+\item Program: Halve a Peano number by inverting addition
+\item There is still much room for improvements
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/half}
-\begin{program}
-        half y | equal (add x x) y = x where x free
-\end{program}
+\includegraphics[width=11cm]{gfx/half}
 \end{center}
-\todo{include KiCS, Prolog systems, update graphics}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
