@@ -17,7 +17,10 @@ data SearchTree a = Value a
 getSearchTree :: a -> IO (SearchTree a)
 getSearchTree x = return (someSearchTree x)
 
---- Internal operation to eturn the search tree for some expression.
+--- Internal operation to return the search tree for some expression.
+--- Note that this operation is not purely declarative since
+--- the ordering in the resulting search tree depends on the
+--- ordering of the program rules.
 someSearchTree :: a -> SearchTree a
 someSearchTree external
 

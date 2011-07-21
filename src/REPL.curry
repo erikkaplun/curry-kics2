@@ -84,7 +84,7 @@ initReplState :: ReplState
 initReplState =
   { idcHome      = ""
   , rcvars       = []
-  , idSupply     = "integer"
+  , idSupply     = "ghc"
   , verbose      = 1
   , importPaths  = []
   , outputSubdir = "/.curry/kics2/"
