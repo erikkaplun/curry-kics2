@@ -1,9 +1,14 @@
-\documentclass[handout
-,utf8]{beamer}
+\documentclass[%handout
+,hyperref={pdfpagelabels=false} % beamer hack
+,utf8
+]{beamer}
+
+\let\Tiny=\tiny % beamer hack
 
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{listings}
+\usepackage{tikz}
 \usetheme{Boadilla}
 
 \setbeamertemplate{footline}%{infolines theme}
@@ -39,14 +44,9 @@ date in head/foot}%
     \end{actionenv}}
 }
 
-\newenvironment{program}
-{\begin{semiverbatim}\small}
-{\end{semiverbatim}}
-
+\newenvironment{program}{\begin{semiverbatim}\small}{\end{semiverbatim}}
 \newcommand{\code}[1]{\texttt{#1}}
-
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -54,7 +54,7 @@ date in head/foot}%
 
 \title[KiCS2]{KiCS2: A New Compiler from Curry to Haskell}
 
-\date{July 19, 2011}
+\date[WFLP 2011]{WFLP 2011, July 19}
 
 \author[B. Braßel, M. Hanus, \underline{B. Peemöller}, F. Reck]{%
 Bernd Braßel \and Michael Hanus \\
@@ -109,7 +109,6 @@ xorSelf x = xor x x
 \end{program}
 \end{curryblock}
 \end{columns}
-\todo{aufhübschen}
 \end{frame}
 
 
@@ -130,7 +129,7 @@ xorSelf x = xor x x
 \item Reuse features of Haskell 
       (lazy evaluation, higher-order functions)
 \item Benefit from mature Haskell compiler (GHC)
-      and its future improvements
+%      and its future improvements
 \end{itemize}
 \end{block}
 \pause
@@ -145,7 +144,6 @@ xorSelf x = xor x x
 \end{itemize}
 \end{block}
 
-\todo{vllt. weniger Text}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -271,7 +269,7 @@ xorSelf x = xor x x
 To preserve call-time choice semantics
 \begin{itemize}
 \item Choices are annotated with unique identifiers
-\item Decisions made for different occurrences of the same Choice
+\item Decisions made for different occurrences of the same choice
       have to be consistent
 \end{itemize}
 \pause
@@ -293,11 +291,13 @@ xor (Choice \alert{i} x1 x2) x = Choice \alert{i} (xor x1 x) (xor x2 x)
 \begin{frame}[fragile]%--------------------------------------------------------
 \frametitle{Choice Identifiers}
 \begin{itemize}
- \item \code{ID}s are provided by an \code{IDSupply}
- \item \code{IDSupply}s can be split
+ \item \code{ID}s are provided by an \code{IDSupply} (infinite set of \code{ID}s)
+ \item \code{IDSupply}s can be split into disjoint subsets
  \item Functions that may introduce non-determinism
-       are supplied with an \code{IDSupply}
+       are provided with an \code{IDSupply}
 \end{itemize}
+
+\pause
 
 \begin{block}{Choice Identifier}
 \begin{program}
@@ -310,25 +310,36 @@ aBool :: \alert{IDSupply ->} Bool
 aBool \alert{s} = Choice \alert{(thisID s)} True False
 \end{program}
 \end{block}
-\todo{fehlt etwas wesentliches?}
 \end{frame}
 
 
 \begin{frame}[fragile]%--------------------------------------------------------
-\frametitle{Evaluation with shared arguments revisited}
-% Mention that (aBool 1) is computed only once due to sharing
-% Mention the origin of the initial ID 1
-\begin{exampleblock}{Evaluation with sharing revisited}
+\frametitle{Evaluation revisited}
+
+\begin{exampleblock}{Evaluation with sharing}
 \code{xorSelf (aBool 1)}\\
 $\leadsto$ \code{xor (aBool 1) (aBool 1)}\\
 $\leadsto$ \code{xor (Choice 1 True False) (Choice 1 True False)}\\
 $\leadsto$ $\dots$\\
 $\leadsto$ \code{Choice 1 (Choice 1 False True) (Choice 1 True False)}
 \end{exampleblock}
-\begin{itemize}
-\item The paths to \code{True} are identified as invalid
-\end{itemize}
-\todo{Baumgrafik}
+
+\begin{center}
+\begin{tikzpicture}
+\node (a) at (0,0) {\code{True}};
+\node (b) at (2,0) {\code{False}};
+\node (c) at (0,1.5) {$\code{?}_{1}$};
+\node (d) at (2,1.5) {$\code{?}_{1}$};
+\node (e) at (1,2) {$\code{?}_{1}$};
+\draw (e) -- (c);
+\draw (e) -- (d);
+\draw (c.south west) .. controls (0,0) and (1,2) .. (b);
+\draw[style=dashed] (c.south east) -- (a);
+\draw[style=dashed] (d.south west) -- (a);
+\draw (d.south east) -- (b);
+\end{tikzpicture}
+\end{center}
+Only \code{False} ist reachable with consistent decisions
 \end{frame}
 
 
@@ -337,9 +348,9 @@ $\leadsto$ \code{Choice 1 (Choice 1 False True) (Choice 1 True False)}
 % \begin{itemize}
 %  \item Computing with failure is a common programming pattern in FLP
 %  \item Failures do not abort the computation, but are ignored
-%  \item Thus, failures have to be represented as well.
+%  \item Thus, failures have to be represented as well
 % \end{itemize}
-% \begin{block}{Curry}
+% \begin{curryblock}{Curry}
 % \begin{program}
 % data Bool = True | False
 % 
@@ -348,13 +359,13 @@ $\leadsto$ \code{Choice 1 (Choice 1 False True) (Choice 1 True False)}
 % \end{block}
 % \begin{block}{Haskell}
 % \begin{program}
-% data Bool = True | False | Choice Bool Bool | Fail
+% data Bool = True | False | Choice ID Bool Bool | Fail
 % 
 % ensureTrue True             = True
-% ensureTrue (Choice i x1 x2) = ...
+% ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1) ensureTrue (x2)
 % ensureTrue _                = Fail
 % \end{program}
-% \end{block}
+% \end{curryblock}
 % \end{frame}
 
 
@@ -365,8 +376,10 @@ $\leadsto$ \code{Choice 1 (Choice 1 False True) (Choice 1 True False)}
       as an additional parameter
 \item In higher-order functions, the supply is passed 
       to the functional argument when applied
-\item Deterministic higher-order functions can remain unchanged
 \end{itemize}
+\pause
+
+\vspace{-2ex}
 
 \begin{columns}[t]
 \column{.45\textwidth}
@@ -377,7 +390,6 @@ apply :: (a -> b)
 apply f x = f x
 
 func b = b ? not b
-
 
 > apply func True
 True
@@ -427,6 +439,7 @@ False
 \end{block}
 \end{columns}
 \vspace{2ex}
+\pause
 
 \item To avoid overhead, higher-order functions are translated into
   \begin{itemize}
@@ -445,45 +458,44 @@ False
 \begin{frame}%------------------------------------------------------------------
 \frametitle{Benchmark: Deterministic First-Order Function}
 \begin{itemize}
-\item Program: Naive reverse of a user-defined list structure
+\item Program: naive reverse of a user-defined list structure
 \item Functional programs run with almost no overhead
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/reverse}
+\includegraphics[width=11cm]{gfx/reverse}
 \end{center}
 \end{frame}
 
 \begin{frame}%------------------------------------------------------------------
 \frametitle{Benchmark: Deterministic Higher-Order Function}
 \begin{itemize}
-\item Program: Naive Reverse of a user-defined list using foldr
+\item Program: reverse of a user-defined list using foldl
 \item Higher-order optimization dramatically improves performance
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/reverseho}
+\includegraphics[width=11cm]{gfx/reverseho}
 \end{center}
 \end{frame}
 
 \begin{frame}%------------------------------------------------------------------
 \frametitle{Benchmark: Non-Deterministic Permutation Sort}
 \begin{itemize}
-\item For non-deterministic programs, KiCS2 can compete with existing compilers
+\item Program: permutation sort
+\item KiCS2 can compete with existing compilers
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/permsort}
+\includegraphics[width=11cm]{gfx/permsort}
 \end{center}
 \end{frame}
 
 \begin{frame}[fragile]%---------------------------------------------------------
 \frametitle{Benchmark: Halve a Peano Number}
 \begin{itemize}
-\item However, there is still much room for improvements
+\item Program: halve a Peano number by inverting addition
+\item There is still much room for improvements
 \end{itemize}
 \begin{center}
-\includegraphics[width=9cm]{gfx/half}
-\begin{program}
-        half y | equal (add x x) y = x where x free
-\end{program}
+\includegraphics[width=11cm]{gfx/half}
 \end{center}
 \end{frame}
 
