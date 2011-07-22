@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, Rank2Types #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Types where
 
 import ID
@@ -51,15 +52,14 @@ class NonDet a where
   -- function to gain more efficiency.
 
   -- |Matching with different function for the respective constructors
-  match      :: (a -> b)                 -- ^Head Normal Form
-             -> b                        -- ^Failure
-             -> (ID -> a -> a -> b)      -- ^binary Choice
-             -> (ID -> [a] -> b)         -- ^n-ary Choice for narrowed variable
-             -> (ID -> [a] -> b)         -- ^n-ary Choice for free variable
-             -> (Constraints -> a -> b)  -- ^Constrained value
-             -> a                        -- ^value to apply the function to
+  match      :: (ID -> a -> a -> b)     -- ^binary Choice
+             -> (ID -> [a] -> b)        -- ^n-ary Choice for narrowed variable
+             -> (ID -> [a] -> b)        -- ^n-ary Choice for free variable
+             -> b                       -- ^Failure
+             -> (Constraints -> a -> b) -- ^Constrained value
+             -> (a -> b)                -- ^Head Normal Form
+             -> a                       -- ^value to apply the function to
              -> b
-  match = error "match not implemented"
 
 narrow :: NonDet a => ID -> a -> a -> a
 narrow i@(ChoiceID _) = choiceCons i
@@ -85,7 +85,6 @@ class (Show a, NonDet a) => NormalForm a where
   ($!<) :: (a -> IO b) -> a -> IO b
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
-  searchNF = error "searchNF not implemented"
 
 
 -- Auxiliaries for $!!
@@ -279,16 +278,16 @@ readQualified mdl name r =
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 data C_Success
-  = C_Success
-  | Choice_C_Success ID C_Success C_Success
-  | Choices_C_Success ID [C_Success]
-  | Fail_C_Success
-  | Guard_C_Success Constraints C_Success
+     = C_Success
+     | Choice_C_Success ID C_Success C_Success
+     | Choices_C_Success ID ([C_Success])
+     | Fail_C_Success
+     | Guard_C_Success Constraints C_Success
 
 instance Show C_Success where
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
   showsPrec d (Choices_C_Success i xs) = showsChoices d i xs
-  showsPrec d (Guard_C_Success c e) = showsGuard d c e
+  showsPrec d (Guard_C_Success cs e) = showsGuard d cs e
   showsPrec _ Fail_C_Success = showChar '!'
   showsPrec _ C_Success = showString "Success"
 
@@ -303,8 +302,15 @@ instance NonDet C_Success where
   try (Choice_C_Success i x y) = tryChoice i x y
   try (Choices_C_Success i xs) = tryChoices i xs
   try Fail_C_Success = Fail
-  try (Guard_C_Success c e) = Guard c e
+  try (Guard_C_Success cs e) = Guard cs e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_Success i x y) = f i x y
+  match _ f _ _ _ _ (Choices_C_Success i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_Success i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_C_Success = f
+  match _ _ _ _ f _ (Guard_C_Success cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable C_Success where
   generate s = Choices_C_Success (freeID [0] s) [C_Success]
@@ -324,8 +330,8 @@ instance NormalForm C_Success where
   ($!<) cont (Choice_C_Success i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Success i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
-  searchNF _      cont C_Success = cont C_Success
-  searchNF _      _    s         = error $ "C_Success.searchNF: " ++ show s
+  searchNF _ cont C_Success = cont C_Success
+  searchNF _ _ x = error ("Prelude.Success.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Success where
   (=.=) C_Success C_Success = C_Success
@@ -334,14 +340,16 @@ instance Unifiable C_Success where
   (=.<=) _ _ = Fail_C_Success
   bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
   bind i (Choice_C_Success j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_C_Success = [Unsolvable]
   bind i (Guard_C_Success cs e) = cs ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Success j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_C_Success = [Unsolvable]
   lazyBind i (Guard_C_Success cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -359,6 +367,7 @@ instance NonDet (a -> b) where
   failCons    = error "failCons for function is undefined"
   guardCons   = error "guardCons for function is undefined"
   try         = error "try for function is undefined"
+  match       = error "match for function is undefined"
 
 instance Generable (a -> b) where
   generate = error "generate for function is undefined"

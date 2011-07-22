@@ -35,25 +35,25 @@ instance Curry (PrimData a) where
   (<?=) = error "(<=) is undefined for primitive data"
 
 -- BEGIN GENERATED FROM PrimTypes.curry
-instance Curry C_Success where
-  (=?=) (Choice_C_Success i x y) z = narrow i (x =?= z) (y =?= z)
-  (=?=) (Choices_C_Success i xs) y = narrows i (map ((=?= y)) xs)
-  (=?=) (Guard_C_Success c x) y = guardCons c (x =?= y)
+instance Curry_Prelude.Curry C_Success where
+  (=?=) (Choice_C_Success i x y) z = narrow i (x Curry_Prelude.=?= z) (y Curry_Prelude.=?= z)
+  (=?=) (Choices_C_Success i xs) y = narrows i (map ((Curry_Prelude.=?= y)) xs)
+  (=?=) (Guard_C_Success cs e) y = guardCons cs (e Curry_Prelude.=?= y)
   (=?=) Fail_C_Success _ = failCons
-  (=?=) z (Choice_C_Success i x y) = narrow i (z =?= x) (z =?= y)
-  (=?=) y (Choices_C_Success i xs) = narrows i (map ((y =?=)) xs)
-  (=?=) y (Guard_C_Success c x) = guardCons c (y =?= x)
+  (=?=) z (Choice_C_Success i x y) = narrow i (z Curry_Prelude.=?= x) (z Curry_Prelude.=?= y)
+  (=?=) y (Choices_C_Success i xs) = narrows i (map ((y Curry_Prelude.=?=)) xs)
+  (=?=) y (Guard_C_Success cs e) = guardCons cs (y Curry_Prelude.=?= e)
   (=?=) _ Fail_C_Success = failCons
-  (=?=) C_Success C_Success = C_True
-  (<?=) (Choice_C_Success i x y) z = narrow i (x <?= z) (y <?= z)
-  (<?=) (Choices_C_Success i xs) y = narrows i (map ((<?= y)) xs)
-  (<?=) (Guard_C_Success c x) y = guardCons c (x <?= y)
+  (=?=) C_Success C_Success = Curry_Prelude.C_True
+  (<?=) (Choice_C_Success i x y) z = narrow i (x Curry_Prelude.<?= z) (y Curry_Prelude.<?= z)
+  (<?=) (Choices_C_Success i xs) y = narrows i (map ((Curry_Prelude.<?= y)) xs)
+  (<?=) (Guard_C_Success cs e) y = guardCons cs (e Curry_Prelude.<?= y)
   (<?=) Fail_C_Success _ = failCons
-  (<?=) z (Choice_C_Success i x y) = narrow i (z <?= x) (z <?= y)
-  (<?=) y (Choices_C_Success i xs) = narrows i (map ((y <?=)) xs)
-  (<?=) y (Guard_C_Success c x) = guardCons c (y <?= x)
+  (<?=) z (Choice_C_Success i x y) = narrow i (z Curry_Prelude.<?= x) (z Curry_Prelude.<?= y)
+  (<?=) y (Choices_C_Success i xs) = narrows i (map ((y Curry_Prelude.<?=)) xs)
+  (<?=) y (Guard_C_Success cs e) = guardCons cs (y Curry_Prelude.<?= e)
   (<?=) _ Fail_C_Success = failCons
-  (<?=) C_Success C_Success = C_True
+  (<?=) C_Success C_Success = Curry_Prelude.C_True
 -- END GENERATED FROM PrimTypes.curry
 
 
@@ -108,6 +108,13 @@ instance NonDet C_Int where
   try Fail_C_Int = Fail
   try (Guard_C_Int c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_Int i x y) = f i x y
+  match _ f _ _ _ _ (Choices_C_Int i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_Int i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_C_Int = f
+  match _ _ _ _ f _ (Guard_C_Int cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable C_Int where
   generate s = Choices_C_Int (freeID [1] s) [C_CurryInt (generate (leftSupply s))]
@@ -131,6 +138,7 @@ instance NormalForm C_Int where
   ($!<) cont x = cont x
   searchNF search cont x@(C_Int _) = cont x
   searchNF search cont (C_CurryInt x1) = search (\y1 -> cont (C_CurryInt y1)) x1
+  searchNF _ _ x = error ("Prelude.Int.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Int where
   (=.=) (C_Int      x1) (C_Int      y1) = if (x1 ==# y1) then C_Success else Fail_C_Success
@@ -148,6 +156,7 @@ instance Unifiable C_Int where
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.bind: Choices with ChoiceID: " ++ (show c))
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = cs ++ (bind i e)
   lazyBind i (C_Int      x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primint2curryint x2))]
@@ -155,6 +164,7 @@ instance Unifiable C_Int where
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -210,14 +220,6 @@ curryint2primint (Neg n) = negateInt# (currynat2primint n)
 curryint2primint _ = error "KiCS2 error: Prelude.curryint2primint: no ground term"
 
 
-
-
---   match valF _ _ _ _ v@(C_Int _) = valF v
---   match _ fail _ _ _ Fail_C_Int  = fail
---   match _ _ choiceF _ _ (Choice_C_Int i@(ID _) x y) = choiceF i x y
---   match _ _ _ freeF _ (Choice_C_Int i@(FreeID _) x y) = freeF i x y
---   match _ _ _ _ guardF (Guard_C_Int c x) = guardF c x
-
 -- ---------------------------------------------------------------------------
 -- Float
 -- ---------------------------------------------------------------------------
@@ -248,6 +250,13 @@ instance NonDet C_Float where
   try Fail_C_Float = Fail
   try (Guard_C_Float c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_Float i x y) = f i x y
+  match _ f _ _ _ _ (Choices_C_Float i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_Float i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_C_Float = f
+  match _ _ _ _ f _ (Guard_C_Float cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable C_Float where
   generate _ = error "No generator for C_Float"
@@ -267,6 +276,7 @@ instance NormalForm C_Float where
   ($!<) cont (Choices_C_Float i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF search cont x@(C_Float _) = cont x
+  searchNF _ _ x = error ("Prelude.Float.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Float where
   (=.=) _ _ = Fail_C_Success
@@ -274,11 +284,13 @@ instance Unifiable C_Float where
   bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ c@(Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.bind: Choices with ChoiceID: " ++ (show c))
   bind _ Fail_C_Float = [Unsolvable]
   bind i (Guard_C_Float cs e) = cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ c@(Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ Fail_C_Float = [Unsolvable]
   lazyBind i (Guard_C_Float cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -346,6 +358,13 @@ instance NonDet C_Char where
   try Fail_C_Char = Fail
   try (Guard_C_Char c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_Char i x y) = f i x y
+  match _ f _ _ _ _ (Choices_C_Char i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_Char i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_C_Char = f
+  match _ _ _ _ f _ (Guard_C_Char cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable C_Char where
   generate s = Choices_C_Char (freeID [1] s) [CurryChar (generate (leftSupply s))]
@@ -369,6 +388,7 @@ instance NormalForm C_Char where
   ($!<) cont x = cont x
   searchNF search cont c@(C_Char _) = cont c
   searchNF search cont (CurryChar x) = search (cont . CurryChar) x
+  searchNF _ _ x = error ("Prelude.Char.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Char where
   (=.=) (C_Char       x1) (C_Char      x2) | x1 `eqChar#` x2 = C_Success
@@ -388,6 +408,7 @@ instance Unifiable C_Char where
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ c@(Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.bind: Choices with ChoiceID: " ++ (show c))
   bind _ Fail_C_Char = [Unsolvable]
   bind i (Guard_C_Char cs e) = cs ++ (bind i e)
   lazyBind i (C_Char    x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primChar2CurryChar x))]
@@ -395,6 +416,7 @@ instance Unifiable C_Char where
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ c@(Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ Fail_C_Char = [Unsolvable]
   lazyBind i (Guard_C_Char cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
