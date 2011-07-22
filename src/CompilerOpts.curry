@@ -130,7 +130,7 @@ options =
   , Option ['O'] ["optimization"]
       (ReqArg (\arg opts -> { optOptimization :=
         parseOptimization arg (opts -> optOptimization) | opts }) "<n>")
-      "set optimization level (0 = none, 1 = higher order)"      
+      "set optimization level (0 = none, 1 = higher order, 2 = strict supply eval)"      
   , Option [] ["no-opt"]
       (NoArg (\opts -> { optOptimization := OptimNone | opts } ))
       "disable optimization"
