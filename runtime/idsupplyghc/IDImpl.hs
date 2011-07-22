@@ -32,7 +32,7 @@ instance Eq IDSupply where
   s1 ==s2 = thisRef s1 == thisRef s2
 
 instance Show IDSupply where
-  show s = show (thisRef s)
+  show s = tail (show (thisRef s)) -- tail to avoid showing of leading 'a'
 
 initSupply :: IO IDSupply
 initSupply = mkSplitUniqSupply 'a' >>= return . IDSupply
