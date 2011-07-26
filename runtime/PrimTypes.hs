@@ -22,9 +22,9 @@ instance Show BinInt where
   showsPrec d (Choices_BinInt i xs) = showsChoices d i xs
   showsPrec d (Guard_BinInt c e) = showsGuard d c e
   showsPrec _ Fail_BinInt = showChar '!'
-  showsPrec d (Neg x1) = (showString "(Neg") . ((showChar ' ') . ((shows x1) . (showChar ')')))
-  showsPrec d Zero = showString "Zero"
-  showsPrec d (Pos x1) = (showString "(Pos") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec _ (Neg x1) = (showString "(Neg") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec _ Zero = showString "Zero"
+  showsPrec _ (Pos x1) = (showString "(Pos") . ((showChar ' ') . ((shows x1) . (showChar ')')))
 
 
 instance Read BinInt where
@@ -41,6 +41,13 @@ instance NonDet BinInt where
   try Fail_BinInt = Fail
   try (Guard_BinInt c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_BinInt i x y) = f i x y
+  match _ f _ _ _ _ (Choices_BinInt i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_BinInt i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_BinInt i@(ChoiceID _) _) = error ("Prelude.BinInt.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_BinInt = f
+  match _ _ _ _ f _ (Guard_BinInt cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 
 instance Generable BinInt where
@@ -69,8 +76,9 @@ instance NormalForm BinInt where
   ($!<) cont (Choices_BinInt i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF search cont (Neg x1) = search (\y1 -> cont (Neg y1)) x1
-  searchNF search cont Zero = cont Zero
+  searchNF _      cont Zero = cont Zero
   searchNF search cont (Pos x1) = search (\y1 -> cont (Pos y1)) x1
+  searchNF _ _ x = error ("Prelude.BinInt.searchNF: no constructor: " ++ (show x))
 
 
 instance Unifiable BinInt where
@@ -86,16 +94,18 @@ instance Unifiable BinInt where
   bind i Zero = ((i :=: (ChooseN 1 0)):(concat []))
   bind i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_BinInt j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_BinInt j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_BinInt j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_BinInt j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_BinInt i@(ChoiceID _) _) = error ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_BinInt = [Unsolvable]
   bind i (Guard_BinInt cs e) = cs ++ (bind i e)
   lazyBind i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i Zero = [(i :=: (ChooseN 1 0))]
   lazyBind i (Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_BinInt j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_BinInt j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_BinInt j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_BinInt j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_BinInt i@(ChoiceID _) _) = error ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_BinInt = [Unsolvable]
   lazyBind i (Guard_BinInt cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -115,9 +125,9 @@ instance Show Nat where
   showsPrec d (Choices_Nat i xs) = showsChoices d i xs
   showsPrec d (Guard_Nat c e) = showsGuard d c e
   showsPrec _ Fail_Nat = showChar '!'
-  showsPrec d IHi = showString "IHi"
-  showsPrec d (O x1) = (showString "(O") . ((showChar ' ') . ((shows x1) . (showChar ')')))
-  showsPrec d (I x1) = (showString "(I") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec _ IHi = showString "IHi"
+  showsPrec _ (O x1) = (showString "(O") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec _ (I x1) = (showString "(I") . ((showChar ' ') . ((shows x1) . (showChar ')')))
 
 
 instance Read Nat where
@@ -134,6 +144,13 @@ instance NonDet Nat where
   try Fail_Nat = Fail
   try (Guard_Nat c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_Nat i x y) = f i x y
+  match _ f _ _ _ _ (Choices_Nat i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_Nat i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_Nat i@(ChoiceID _) _) = error ("Prelude.Nat.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_Nat = f
+  match _ _ _ _ f _ (Guard_Nat cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 
 instance Generable Nat where
@@ -161,9 +178,10 @@ instance NormalForm Nat where
   ($!<) cont (Choice_Nat i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_Nat i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
-  searchNF search cont IHi = cont IHi
+  searchNF _      cont IHi = cont IHi
   searchNF search cont (O x1) = search (\y1 -> cont (O y1)) x1
   searchNF search cont (I x1) = search (\y1 -> cont (I y1)) x1
+  searchNF _ _ x = error ("Prelude.Nat.searchNF: no constructor: " ++ (show x))
 
 
 instance Unifiable Nat where
@@ -179,16 +197,18 @@ instance Unifiable Nat where
   bind i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
   bind i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
   bind i (Choice_Nat j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_Nat j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_Nat j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_Nat i@(ChoiceID _) _) = error ("Prelude.Nat.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_Nat = [Unsolvable]
   bind i (Guard_Nat cs e) = cs ++ (bind i e)
   lazyBind i IHi = [(i :=: (ChooseN 0 0))]
   lazyBind i (O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
   lazyBind i (Choice_Nat j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_Nat j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_Nat j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_Nat j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_Nat i@(ChoiceID _) _) = error ("Prelude.Nat.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_Nat = [Unsolvable]
   lazyBind i (Guard_Nat cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
@@ -216,6 +236,13 @@ instance NonDet (Func t0 t1) where
   try Fail_Func = Fail
   try (Guard_Func c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_Func i x y) = f i x y
+  match _ f _ _ _ _ (Choices_Func i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_Func i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_Func i@(ChoiceID _) _) = error ("Prelude.Func.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_Func = f
+  match _ _ _ _ f _ (Guard_Func cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable (Func a b) where generate _ = error "generate for Func"
 
@@ -234,18 +261,23 @@ instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
   ($!<) cont (Choices_Func i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF search cont (Func x1) = search (\y1 -> cont (Func y1)) x1
+  searchNF _ _ x = error ("Prelude.Func.searchNF: no constructor: " ++ (show x))
 
 instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
+  bind _ (Func _) = error "can not bind a Func"
   bind i (Choice_Func j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_Func j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_Func j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_Func i@(ChoiceID _) _) = error ("Prelude.Func.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_Func = [Unsolvable]
   bind i (Guard_Func cs e) = cs ++ (bind i e)
+  lazyBind _ (Func _) = error "can not lazily bind a Func"
   lazyBind i (Choice_Func j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_Func j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_Func j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_Func j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_Func i@(ChoiceID _) _) = error ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_Func = [Unsolvable]
   lazyBind i (Guard_Func cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -256,7 +288,7 @@ data C_IO t0
      | Choice_C_IO ID (C_IO t0) (C_IO t0)
      | Choices_C_IO ID ([C_IO t0])
      | Fail_C_IO
-     | Guard_C_IO ([Constraint]) (C_IO t0)
+     | Guard_C_IO Constraints (C_IO t0)
 
 instance Show (C_IO a) where show = error "show for C_IO"
 
@@ -272,6 +304,13 @@ instance NonDet (C_IO t0) where
   try Fail_C_IO = Fail
   try (Guard_C_IO c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_IO i x y) = f i x y
+  match _ f _ _ _ _ (Choices_C_IO i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_IO i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_IO i@(ChoiceID _) _) = error ("Prelude.IO.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_C_IO = f
+  match _ _ _ _ f _ (Guard_C_IO cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable (C_IO a) where generate _ = error "generate for C_IO"
 
@@ -289,19 +328,24 @@ instance (NormalForm t0) => NormalForm (C_IO t0) where
   ($!<) cont (Choice_C_IO i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_IO i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
-  searchNF search cont io@(C_IO _) = cont io
+  searchNF _ cont io@(C_IO _) = cont io
+  searchNF _ _ x = error ("Prelude.IO.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable t0 => Unifiable (C_IO t0) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
+  bind _ (C_IO _) = error "can not bind IO"
   bind i (Choice_C_IO j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_IO j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_C_IO j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_C_IO i@(ChoiceID _) _) = error ("Prelude.IO.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_C_IO = [Unsolvable]
   bind i (Guard_C_IO cs e) = cs ++ (bind i e)
+  lazyBind _ (C_IO _) = error "can not lazily bind IO"
   lazyBind i (Choice_C_IO j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_IO j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_IO j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_IO j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_C_IO i@(ChoiceID _) _) = error ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
@@ -332,6 +376,13 @@ instance NonDet (PrimData t0) where
   try Fail_PrimData = Fail
   try (Guard_PrimData c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_PrimData i x y) = f i x y
+  match _ f _ _ _ _ (Choices_PrimData i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_PrimData i@(FreeID _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_PrimData i@(ChoiceID _) _) = error ("Prelude.PrimData.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ Fail_PrimData = f
+  match _ _ _ _ f _ (Guard_PrimData cs e) = f cs e
+  match _ _ _ _ _ f x = f x
 
 instance Generable (PrimData a) where generate _ = error "generate for PrimData"
 
@@ -350,19 +401,24 @@ instance NormalForm (PrimData a) where
   ($!<) cont (Choices_PrimData i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   -- no search inside argument of PrimData since it is primitive:
-  searchNF search cont (PrimData x) = cont (PrimData x)
+  searchNF _ cont (PrimData x) = cont (PrimData x)
+  searchNF _ _ x = error ("Prelude.PrimData.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable (PrimData t0) where
   (=.=) _ _ = Fail_C_Success
   (=.<=) _ _ = Fail_C_Success
+  bind _ (PrimData _) = error "can not bind PrimData"
   bind i (Choice_PrimData j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_PrimData j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_PrimData j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ (Choices_PrimData i@(ChoiceID _) _) = error ("Prelude.PrimData.bind: Choices with ChoiceID: " ++ (show i))
   bind _ Fail_PrimData = [Unsolvable]
   bind i (Guard_PrimData cs e) = cs ++ (bind i e)
+  lazyBind _ (PrimData _) = error "can not lazily bind PrimData"
   lazyBind i (Choice_PrimData j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_PrimData j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_PrimData j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_PrimData j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ (Choices_PrimData i@(ChoiceID _) _) = error ("Prelude.PrimData.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_PrimData = [Unsolvable]
   lazyBind i (Guard_PrimData cs e) = cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry

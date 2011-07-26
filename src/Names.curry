@@ -72,6 +72,9 @@ isHaskellModule = not . isCurryModule
 renameQName :: QName -> QName
 renameQName (q, n) = (renameModule q, genRename n)
 
+unRenameQName :: QName -> QName
+unRenameQName (q, n) = (unRenameModule q, unGenRename n)
+
 genRename :: String -> String
 genRename n
   | n == "[]"     = "OP_List"

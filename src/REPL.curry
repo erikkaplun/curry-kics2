@@ -2,7 +2,7 @@
 --- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
---- @version April 2011
+--- @version July 2011
 --- --------------------------------------------------------------------------
 
 import RCFile
@@ -62,6 +62,7 @@ type ReplState =
   , interactive  :: Bool       -- interactive execution of goal?
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
+  , cmpOpts      :: String     -- additional options for calling kics2 compiler
   , rtsOpts      :: String     -- run-time options for ghc
   , quit         :: Bool       -- terminate the REPL?
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
@@ -84,7 +85,7 @@ initReplState :: ReplState
 initReplState =
   { idcHome      = ""
   , rcvars       = []
-  , idSupply     = "integer"
+  , idSupply     = "ghc"
   , verbose      = 1
   , importPaths  = []
   , outputSubdir = "/.curry/kics2/"
@@ -96,6 +97,7 @@ initReplState =
   , interactive  = False
   , showBindings = True
   , showTime     = False
+  , cmpOpts      = ""
   , rtsOpts      = ""
   , quit         = False
   , sourceguis   = []
@@ -324,7 +326,7 @@ compileCurryProgram rst curryprog ismain = do
       idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
                     "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths))
-      compileCmd  = unwords [compileProg,idcoptions,curryprog]
+      compileCmd  = unwords [compileProg,idcoptions,rst->cmpOpts,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
  where
@@ -622,7 +624,8 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply","rts",
+allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
+              "copts","rts",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
@@ -670,6 +673,7 @@ processThisOption rst option args
   | option=="-bindings"    = return (Just { showBindings := False | rst })
   | option=="+time"        = return (Just { showTime := True  | rst })
   | option=="-time"        = return (Just { showTime := False | rst })
+  | option=="copts"        = return (Just { cmpOpts := args | rst })
   | option=="rts"          = return (Just { rtsOpts := args | rst })
   | otherwise = writeErrorMsg ("unknown option: '"++option++"'") >>
                 return Nothing
@@ -692,7 +696,8 @@ printOptions rst = putStrLn $
   "+/-optimize    - turn on/off optimization\n"++
   "+/-bindings    - show bindings of free variables in initial goal\n"++
   "+/-time        - show execution time\n"++
-  "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
+  "copts <opts>   - additional options passed to KiCS2 compiler\n" ++
+  "rts   <opts>   - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
@@ -708,6 +713,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
          Par s      -> "parallel search with "++show s++" threads"
       ) ++ "\n" ++
   "idsupply         : " ++ rst->idSupply ++ "\n" ++
+  "compiler options : " ++ rst->cmpOpts ++ "\n" ++
   "run-time options : " ++ rst->rtsOpts ++ "\n" ++
   "verbosity        : " ++ show (rst->verbose) ++ "\n" ++
   showOnOff (rst->interactive)  ++ "interactive " ++
