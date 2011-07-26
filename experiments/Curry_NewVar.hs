@@ -57,8 +57,11 @@ lookupBind (IDSupply _ (Binding b) _ _) = readIORef (unsafeCoerce b)
 setBind :: IDSupply -> a -> IO ()
 setBind (IDSupply _ (Binding b) _ _) = writeIORef (unsafeCoerce b) . Just 
 
-lookupChoice :: IDSupply -> IO Decision
-lookupChoice = readIORef . thisID
+lookupChoice :: ID -> IO Decision
+lookupChoice = readIORef
+
+setChoice :: ID -> Decision -> IO ()
+setChoice ref = writeIORef ref
 
 
 -------------------------------------------------------------------------------
@@ -90,12 +93,23 @@ class Show a => Curry a where
 
 
 prdfs :: Curry a => a -> IO ()
-prdfs x = match val_f choice_f failVal free_f app_f bind_f x
+prdfs = prdfs' . (id $!!)
+
+prdfs' :: Curry a => a -> IO ()
+prdfs' x = match val_f choice_f failVal free_f app_f bind_f x
  where
   val_f                = print
-  choice_f             = undefined
+  choice_f i l r       = lookupChoice i >>= choose
+                          where choose ChooseLeft  = prdfs' l
+                                choose ChooseRight = prdfs' r
+                                choose NoChoice    = do
+                                  setChoice i ChooseLeft
+                                  prdfs' l
+                                  setChoice i ChooseRight
+                                  prdfs' r
+                                  setChoice i NoChoice
   failVal              = return ()
-  free_f  supp         = lookupBind supp >>=  maybe (putStrLn "free") (prdfs . coerceTo x)
+  free_f  supp         = lookupBind supp >>=  maybe (putStrLn "free") (prdfs' . coerceTo x)
   app_f f supp vals    = lookupBind supp >>= maybe tryAll (prdfs . f)
                           where
                            tryAll = do  mapM_ (\val  -> writeIORef bind (Just val) >> prdfs (f val)) 
@@ -344,11 +358,102 @@ isSingleton' l = case l of
   L_Free ref          -> B_App isSingleton' ref (generate ref)
   L_App f ref vals    -> B_App (isSingleton' . f) ref vals
   L_Bind f ref eq val -> B_Bind (isSingleton' . f) ref eq val
+  
+c_repeat :: Curry a => a -> C_List a
+c_repeat x = C_Cons x (c_repeat x)
 
-goal1 = initSupply >>= \s -> prdfs (isSingleton (L_Free s))
+goal1 = initSupply >>= \s -> prdfs (isSingleton (L_Free s)) -- C_False, C_True, C_False
 
 goal2 = initSupply >>= \s -> prdfs $ let free = L_Free s in
-  C_Cons C_True (C_Cons C_False (C_Cons C_True C_Nil)) =:= free &> isSingleton free 
+  C_Cons C_True (C_Cons C_False (C_Cons C_True C_Nil)) =:= free &> isSingleton free -- C_False
 
 goal3 = initSupply >>= \s -> prdfs $ let free = L_Free s in
-  (isSingleton free =:= C_True) & (C_Cons C_True (C_Cons C_False (C_Cons C_True C_Nil)) =:= free)
+  (isSingleton free =:= C_True) & (C_Cons C_True (C_Cons C_False (C_Cons C_True C_Nil)) =:= free) -- no solution
+
+goal4 = prdfs (C_True =:= C_True) -- C_Success
+goal5 = prdfs (C_True =:= C_False) -- no solution
+goal6 = initSupply >>= \s -> prdfs $ let free = B_Free s in free =:= C_True -- C_Success
+goal7 = initSupply >>= \s -> prdfs $ let free = B_Free s in (free =:= C_True) &> free -- C_True
+goal8 = initSupply >>= \s -> prdfs $ let free = B_Free s in  (free =:= C_True) &> C_Cons free (C_Cons free C_Nil) -- [True,True]
+goal9  = initSupply >>= \s -> prdfs $ let free = B_Free s in (C_Cons ((free =:= C_True) &> free) (C_Cons free C_Nil))  -- [True,True]
+goal10 = initSupply >>= \s -> prdfs $ let free = B_Free s in (C_Cons free (C_Cons ((free =:= C_True) &> free) C_Nil)) -- [True,True]
+
+{-
+uni :: Bool -> Bool -> Success
+uni x y = x =:= y
+
+test7 =  assertValues "test7" (uni x y) [success] where x,y free
+test8 =   assertValues "test8" (x =:= y    
+      &> y=:= True
+      &> [x,y]) [[True,True]]   where x,y free
+
+test9 =   assertValues "test9" (x =:= y  
+      &> x=:= True
+      &> [x,y]) [[True,True]]   where x,y free
+
+test10 =   assertValues "test10" (x =:= y
+       &> x =:= z
+       &> y=:=False &> [x,y])[[False,False]]
+  where x,y,z free
+
+test11 =   assertValues "test11" (x =:= y     
+       &> x =:= z
+       &> x=:=False
+       &> [z,x,y])[[False,False,False]]   where x,y,z free
+
+test12 = assertValues "test12" ( x =:= y     
+       &> x =:= z
+       &> z=:=False &> [x,z,y]) [[False,False,False]]
+  where x,y,z free
+
+test13 =   assertValues "test13" (x =:= y      
+       &> x =:= z
+       &> z=:=False
+       &> y=:=False
+       &> [x,y,z]) [[False,False,False]]   where x,y,z free
+
+test14 =  assertValues "test14" (x=:=y &> y=:=False &> x) [False] where x,y free
+test15 =  assertValues "test15" (x=:=(y?True) &> y=:=False &> x) [False,True] where x,y free
+
+-- complex types
+
+test16 =  assertValues "test16" (x=:=[] &> True:x) [[True]]  where x free
+test17 =  assertValues "test17" (x=:=[True] &> x) [[True]] where x free
+
+test18 =  assertValues "test18" (x=:=y &> (y=:= [True] &> x)) [[True]] where x,y free
+
+f [False] = success
+test19 =  assertValues "test19" (x=:=y &> y=:= [True] &> f x &> x) [] where x,y free
+
+g [True] = success
+test20 =  assertValues "test20" (x=:=y &> y=:= [True] &> g x &> x) [[True]] where x,y free
+
+
+test21 =  assertValues "test21" (x=:=(y?[False]) &> y=:=[True] &> x)[[True],[False]] where x,y free
+
+uni2 :: [Bool] -> [Bool] -> Success
+uni2 x y = x =:= y
+
+test22 =  assertValues "test22" (uni2 x [y]) [success] where x,y free
+--test23 =  assertValues "test23" (uni2 x [y] &> x)  [y] where x,y free TODO: how to test this?
+test24 =  assertValues "test24" (x =:= [y] &> y=:=True &> x) [[True]] where x,y free
+-- test25 =  assertValues "test25" (x =:= (y:z) &> x=:=(False:z1:z2) &> z2 =:=[] &> x) [[False,z1]]
+--   where x,y,z,z1,z2 free TODO: how to test this?
+
+
+test26 =  assertValues "test26" (x =:= [y?True] &> y=:=False &> x) [[False],[True]] where x,y free
+
+test27 =  assertValues "test27" ([x,True,z]=:=[False,y,y] &> [x,y,z]) [[False,True,True]]
+  where x,y,z free
+
+test28 = assertValues "test28" (x =:= (y =:= [True] &> y) &> x)[[True]] where x, y free
+
+test29 = assertValues "test29" (x =:= (True:(y =:= [] &> y)) &> x) [[True]] where x, y free
+
+test30 = assertValues "test30" (x =:= [True] &> y =:= [False] &> x =:= y) [] where x , y free
+
+test31 = assertValues "test31" (x =:= [] &> y ++ [False] =:= x) [] where x, y free
+test32 = assertValues "test32" (x =:= [] &> y1:(y2 ++ [False]) =:= x) [] where x, y1, y2 free
+test33 = assertValues "test33" (x =:= [] &> (y2 ++ [False]) =:= x) [] where x, y2 free
+test34 = assertValues "test34" (x =:= [] &> y1:[False] =:= x) [] where x, y1 free
+-}
