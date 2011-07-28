@@ -1,4 +1,4 @@
-{-# Language ExistentialQuantification #-}
+{-# Language ExistentialQuantification, Rank2Types #-}
 
 import Data.IORef
 import GHC.IO (unsafeDupableInterleaveIO)
@@ -55,7 +55,10 @@ lookupBind :: forall a . IDSupply -> IO (Maybe a)
 lookupBind (IDSupply _ (Binding b) _ _) = readIORef (unsafeCoerce b)
 
 setBind :: IDSupply -> a -> IO ()
-setBind (IDSupply _ (Binding b) _ _) = writeIORef (unsafeCoerce b) . Just 
+setBind (IDSupply _ (Binding b) _ _) = writeIORef (unsafeCoerce b) . Just
+
+unsetBind :: IDSupply -> IO ()
+unsetBind (IDSupply _ (Binding b) _ _) = writeIORef b Nothing
 
 lookupChoice :: ID -> IO Decision
 lookupChoice = readIORef
@@ -91,34 +94,39 @@ class Show a => Curry a where
   
   (=:=) :: a -> a -> C_Success
 
+  searchNF :: (forall b . Curry b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
+
 
 prdfs :: Curry a => a -> IO ()
-prdfs = prdfs' . (id $!!)
+prdfs = printdfs print
 
-prdfs' :: Curry a => a -> IO ()
-prdfs' x = match val_f choice_f failVal free_f app_f bind_f x
+printdfs :: Curry a => (a -> IO ()) -> a -> IO ()
+printdfs cont = printdfs' cont . (id $!!)
+
+printdfs' :: Curry a => (a -> IO ()) -> a -> IO ()
+printdfs' cont x = match val_f choice_f failVal free_f app_f bind_f x
  where
-  val_f                = print
+  val_f                = searchNF printdfs' cont
   choice_f i l r       = lookupChoice i >>= choose
-                          where choose ChooseLeft  = prdfs' l
-                                choose ChooseRight = prdfs' r
+                          where choose ChooseLeft  = printdfs' cont l
+                                choose ChooseRight = printdfs' cont r
                                 choose NoChoice    = do
                                   setChoice i ChooseLeft
-                                  prdfs' l
+                                  printdfs' cont l
                                   setChoice i ChooseRight
-                                  prdfs' r
+                                  printdfs' cont r
                                   setChoice i NoChoice
   failVal              = return ()
-  free_f  supp         = lookupBind supp >>=  maybe (putStrLn "free") (prdfs' . coerceTo x)
-  app_f f supp vals    = lookupBind supp >>= maybe tryAll (prdfs . f)
+  free_f  supp         = lookupBind supp >>=  maybe (cont (freeCons supp)) (printdfs' cont . coerceTo x)
+  app_f f supp vals    = lookupBind supp >>= maybe tryAll (printdfs cont . f)
                           where
-                           tryAll = do  mapM_ (\val  -> writeIORef bind (Just val) >> prdfs (f val)) 
+                           tryAll = do  mapM_ (\val  -> writeIORef bind (Just val) >> printdfs cont (f val)) 
                                               vals
                                         writeIORef bind Nothing
                            bind   = getBindRef supp 
-  bind_f f supp eq val = lookupBind supp >>= maybe (setBind supp val >> prdfs (f C_Success) 
-                                                                     >> setBind supp Nothing)
-                                                   (prdfs . f . eq)
+  bind_f f supp eq val = lookupBind supp >>= maybe (setBind supp val >> printdfs cont (f C_Success) 
+                                                                     >> unsetBind supp)
+                                                   (printdfs cont . f . eq)
 
 coerceTo :: a -> b -> a
 coerceTo _ = unsafeCoerce
@@ -181,6 +189,9 @@ instance Curry C_Success where
   x                     =:= S_Free ref           = (\x' -> S_Bind id ref  (=:= x') x') $!! x 
   x                     =:= S_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= S_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
+
+  searchNF _ cont C_Success = cont C_Success
+  searchNF _ _ x = error ("Prelude.Success.searchNF: no constructor: " ++ (show x))
   
 data C_Bool = C_True 
             | C_False 
@@ -241,7 +252,11 @@ instance Curry C_Bool where
   x                     =:= B_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= B_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
   _                     =:= _                     = S_Fail  
-  
+ 
+
+  searchNF _ cont C_True  = cont C_True
+  searchNF _ cont C_False = cont C_False
+  searchNF _ _ x = error ("Prelude.Bool.searchNF: no constructor: " ++ (show x)) 
 
 data C_List a = C_Cons a (C_List a) 
               | C_Nil 
@@ -305,11 +320,18 @@ instance Curry a => Curry (C_List a) where
   x                     =:= L_Free ref            = (\x' -> S_Bind id ref (x' =:=) x') $!! x
   x                     =:= L_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= L_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
-  _                     =:= _                     = S_Fail  
+  _                     =:= _                     = S_Fail
+
+  searchNF _ cont C_Nil = cont C_Nil
+  searchNF search cont (C_Cons x1 x2) = search (\y1 -> search (\y2 -> cont (C_Cons y1 y2)) x2) x1
+  searchNF _ _ x = error ("Prelude.List.searchNF: no constructor: " ++ (show x))  
 
 --------------------------------------------------------------------------------
 -- Functions
 --------------------------------------------------------------------------------
+
+(?) :: Curry a => a -> a -> IDSupply -> a
+x ? y = \s -> choiceCons (thisID s) x y 
 
 (&) :: C_Success -> C_Success -> C_Success
 C_Success           & x = x
@@ -378,82 +400,220 @@ goal8 = initSupply >>= \s -> prdfs $ let free = B_Free s in  (free =:= C_True) &
 goal9  = initSupply >>= \s -> prdfs $ let free = B_Free s in (C_Cons ((free =:= C_True) &> free) (C_Cons free C_Nil))  -- [True,True]
 goal10 = initSupply >>= \s -> prdfs $ let free = B_Free s in (C_Cons free (C_Cons ((free =:= C_True) &> free) C_Nil)) -- [True,True]
 
-{-
-uni :: Bool -> Bool -> Success
+
+uni :: C_Bool -> C_Bool -> C_Success
 uni x y = x =:= y
 
-test7 =  assertValues "test7" (uni x y) [success] where x,y free
-test8 =   assertValues "test8" (x =:= y    
-      &> y=:= True
-      &> [x,y]) [[True,True]]   where x,y free
+goal11 = initSupply >>= \s -> prdfs $ let free1 = B_Free (leftSupply s)
+                                          free2 = B_Free (rightSupply s) in 
+                                      (uni free1 free2) -- C_Success
 
-test9 =   assertValues "test9" (x =:= y  
-      &> x=:= True
-      &> [x,y]) [[True,True]]   where x,y free
+goal12 = initSupply >>= \s -> prdfs $ let free1 = B_Free (leftSupply s)
+                                          free2 = B_Free (rightSupply s) in
+     (free1 =:= free2    
+      &> free1 =:= C_True
+      &> C_Cons free1 (C_Cons free2 C_Nil)) -- [True,True]
 
-test10 =   assertValues "test10" (x =:= y
+
+goal13 = initSupply >>= \s -> prdfs $ let free1 = B_Free (leftSupply s)
+                                          free2 = B_Free (rightSupply s) in
+      (free1 =:= free2  
+      &> free1 =:= C_True
+      &> C_Cons free1 (C_Cons free2 C_Nil)) -- [True,True]
+
+
+goal14 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (leftSupply (rightSupply s)) 
+                                          z = B_Free (rightSupply (rightSupply s)) in
+       (x =:= y
        &> x =:= z
-       &> y=:=False &> [x,y])[[False,False]]
-  where x,y,z free
+       &> y=:=C_False &> C_Cons x (C_Cons y C_Nil)) -- [False,False]
 
-test11 =   assertValues "test11" (x =:= y     
+
+goal15 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (leftSupply (rightSupply s)) 
+                                          z = B_Free (rightSupply (rightSupply s)) in
+       (x =:= y     
        &> x =:= z
-       &> x=:=False
-       &> [z,x,y])[[False,False,False]]   where x,y,z free
+       &> x=:= C_False
+       &> C_Cons z (C_Cons x (C_Cons y C_Nil))) -- [False,False,False]
 
-test12 = assertValues "test12" ( x =:= y     
+
+goal16 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (leftSupply (rightSupply s)) 
+                                          z = B_Free (rightSupply (rightSupply s)) in
+       (  x =:= y     
        &> x =:= z
-       &> z=:=False &> [x,z,y]) [[False,False,False]]
-  where x,y,z free
+       &> z =:= C_False &> C_Cons x (C_Cons z (C_Cons y C_Nil))) -- [False,False,False]
 
-test13 =   assertValues "test13" (x =:= y      
+goal17 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (leftSupply (rightSupply s)) 
+                                          z = B_Free (rightSupply (rightSupply s)) in
+       (x =:= y      
        &> x =:= z
-       &> z=:=False
-       &> y=:=False
-       &> [x,y,z]) [[False,False,False]]   where x,y,z free
+       &> z=:= C_False
+       &> y=:= C_False
+       &> C_Cons x (C_Cons y (C_Cons z C_Nil))) -- [False,False,False]
 
-test14 =  assertValues "test14" (x=:=y &> y=:=False &> x) [False] where x,y free
-test15 =  assertValues "test15" (x=:=(y?True) &> y=:=False &> x) [False,True] where x,y free
+
+goal18 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (rightSupply s) in 
+         (x=:=y &> y=:= C_False &> x) -- False
+
+goal19 = initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                          y = B_Free (leftSupply (rightSupply s)) in
+   (x=:= ((y ? C_True)(rightSupply (rightSupply s))) &> y=:= C_False &> x) -- False, True
+
 
 -- complex types
 
-test16 =  assertValues "test16" (x=:=[] &> True:x) [[True]]  where x free
-test17 =  assertValues "test17" (x=:=[True] &> x) [[True]] where x free
+goal20 =  initSupply >>= \s -> prdfs $ let x  = (L_Free s :: C_List C_Bool) in (x =:= C_Nil &> C_Cons C_True x) -- [True]
+goal21 =  initSupply >>= \s -> prdfs $ let x = (L_Free s :: C_List C_Bool) in (x=:= C_Cons C_True C_Nil &> x) --[True]
 
-test18 =  assertValues "test18" (x=:=y &> (y=:= [True] &> x)) [[True]] where x,y free
+goal22 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (L_Free (rightSupply s) :: C_List C_Bool)in
+ (x=:=y &> (y=:= C_Cons C_True C_Nil &> x)) -- [True]
 
-f [False] = success
-test19 =  assertValues "test19" (x=:=y &> y=:= [True] &> f x &> x) [] where x,y free
+f (C_Cons x xs) = f' x xs
+f (L_Choice i xs ys)      = S_Choice i (f xs) (f ys)
+f (L_Free ref)            = S_App f ref (generate ref)
+f (L_App fun ref vals)    = S_App (f . fun) ref vals
+f (L_Bind fun ref eq val) = S_Bind (f . fun) ref eq val
+f _                       = S_Fail
 
-g [True] = success
-test20 =  assertValues "test20" (x=:=y &> y=:= [True] &> g x &> x) [[True]] where x,y free
+
+f' C_False zs = f'' zs
+f' (B_Choice i xs ys) zs     = S_Choice i (f' xs zs) (f' ys zs)
+f' (B_Free ref) zs           = S_App (flip f' zs) ref (generate ref)
+f' (B_App fun ref vals) zs   = S_App ((flip f' zs) . fun) ref vals
+f' (B_Bind fun ref eq val)zs = S_Bind ((flip f' zs) . fun) ref eq val
+f' _     _                   = S_Fail
+
+f'' C_Nil = C_Success
+f'' (L_Choice i xs ys)      = S_Choice i (f'' xs) (f'' ys)
+f'' (L_Free ref)            = S_App f'' ref (generate ref)
+f'' (L_App fun ref vals)    = S_App (f'' . fun) ref vals
+f'' (L_Bind fun ref eq val) = S_Bind (f'' . fun) ref eq val
+f'' _                       = S_Fail
+
+goal23 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (L_Free (rightSupply s) :: C_List C_Bool)in
+  (x=:=y &> y=:= C_Cons C_True C_Nil &> f x &> x) -- no solution
+
+g (C_Cons x xs) = g' x xs
+g (L_Choice i xs ys)      = S_Choice i (g xs) (g ys)
+g (L_Free ref)            = S_App g ref (generate ref)
+g (L_App fun ref vals)    = S_App (g . fun) ref vals
+g (L_Bind fun ref eq val) = S_Bind (g . fun) ref eq val
+g _                       = S_Fail
 
 
-test21 =  assertValues "test21" (x=:=(y?[False]) &> y=:=[True] &> x)[[True],[False]] where x,y free
+g' C_True zs = g'' zs
+g' (B_Choice i xs ys) zs     = S_Choice i (g' xs zs) (g' ys zs)
+g' (B_Free ref) zs           = S_App (flip g' zs) ref (generate ref)
+g' (B_App fun ref vals) zs   = S_App ((flip g' zs) . fun) ref vals
+g' (B_Bind fun ref eq val)zs = S_Bind ((flip g' zs) . fun) ref eq val
+g' _  _                      = S_Fail
 
-uni2 :: [Bool] -> [Bool] -> Success
+g'' C_Nil                   = C_Success
+g'' (L_Choice i xs ys)      = S_Choice i (g'' xs) (g'' ys)
+g'' (L_Free ref)            = S_App g'' ref (generate ref)
+g'' (L_App fun ref vals)    = S_App (g'' . fun) ref vals
+g'' (L_Bind fun ref eq val) = S_Bind (g'' . fun) ref eq val
+g'' _                       = S_Fail
+
+
+goal24 =   initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                            y = (L_Free (rightSupply s) :: C_List C_Bool) in
+ (x=:=y &> y=:= C_Cons C_True C_Nil &> g x &> x) --[True]
+
+
+
+
+goal25 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply (leftSupply s)) :: C_List C_Bool)
+                                          y = (L_Free (rightSupply s) :: C_List C_Bool) in  
+  (x =:= ((y ? (C_Cons C_False C_Nil))(rightSupply (leftSupply s))) &> y =:= C_Cons C_True C_Nil &> x) --[True],[False]
+
+uni2 :: C_List C_Bool -> C_List C_Bool -> C_Success
 uni2 x y = x =:= y
 
-test22 =  assertValues "test22" (uni2 x [y]) [success] where x,y free
---test23 =  assertValues "test23" (uni2 x [y] &> x)  [y] where x,y free TODO: how to test this?
-test24 =  assertValues "test24" (x =:= [y] &> y=:=True &> x) [[True]] where x,y free
--- test25 =  assertValues "test25" (x =:= (y:z) &> x=:=(False:z1:z2) &> z2 =:=[] &> x) [[False,z1]]
---   where x,y,z,z1,z2 free TODO: how to test this?
+goal26 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (B_Free (rightSupply s) :: C_Bool)
+ in  (uni2 x (C_Cons y C_Nil)) -- C_Success
 
 
-test26 =  assertValues "test26" (x =:= [y?True] &> y=:=False &> x) [[False],[True]] where x,y free
+goal27 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (B_Free (rightSupply s) :: C_Bool) in
+  (uni2 x (C_Cons y C_Nil) &> x) --  [y]
 
-test27 =  assertValues "test27" ([x,True,z]=:=[False,y,y] &> [x,y,z]) [[False,True,True]]
-  where x,y,z free
+goal28 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (B_Free (rightSupply s) :: C_Bool) in
+ (x =:= C_Cons y C_Nil &> y=:= C_True &> x)  --[True]
 
-test28 = assertValues "test28" (x =:= (y =:= [True] &> y) &> x)[[True]] where x, y free
+goal29 = initSupply >>= \s -> prdfs $ let ls = (leftSupply s)
+                                          rs = (rightSupply s)
+                                          lls = (leftSupply ls)
+                                          rls = (rightSupply ls)
+                                          lrs = (leftSupply  rs)
+                                          rrs = (rightSupply rs)
+                                          llls = (leftSupply lls)
+                                          rlls = (rightSupply lls)
+                                          x = (L_Free rls :: C_List C_Bool)
+                                          y = (B_Free lrs :: C_Bool)
+                                          z = (L_Free rrs :: C_List C_Bool)
+                                          z1 = (B_Free llls :: C_Bool)
+                                          z2 = (L_Free rlls :: C_List C_Bool) 
+                                          in
+  (x =:= C_Cons y z &> x=:= C_Cons C_False (C_Cons z1 z2) &> z2 =:= C_Nil &> x) --[False,z1]
 
-test29 = assertValues "test29" (x =:= (True:(y =:= [] &> y)) &> x) [[True]] where x, y free
 
-test30 = assertValues "test30" (x =:= [True] &> y =:= [False] &> x =:= y) [] where x , y free
 
-test31 = assertValues "test31" (x =:= [] &> y ++ [False] =:= x) [] where x, y free
-test32 = assertValues "test32" (x =:= [] &> y1:(y2 ++ [False]) =:= x) [] where x, y1, y2 free
-test33 = assertValues "test33" (x =:= [] &> (y2 ++ [False]) =:= x) [] where x, y2 free
-test34 = assertValues "test34" (x =:= [] &> y1:[False] =:= x) [] where x, y1 free
--}
+goal30 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply (leftSupply s)) :: C_List C_Bool)
+                                          y = (B_Free (rightSupply s) :: C_Bool) in
+ (x =:= C_Cons ((y ? C_True)(rightSupply (leftSupply s))) C_Nil &> y=:= C_False &> x) -- [False],[True]
+
+
+
+goal31 =  initSupply >>= \s -> prdfs $ let x = B_Free (leftSupply s)
+                                           y = B_Free (leftSupply (rightSupply s)) 
+                                           z = B_Free (rightSupply (rightSupply s)) in
+  (C_Cons x (C_Cons C_True (C_Cons z C_Nil)) =:= C_Cons C_False (C_Cons y (C_Cons y C_Nil)) 
+  &> C_Cons x (C_Cons y (C_Cons z C_Nil))) --[False,True,True]
+
+goal32 =  initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                           y = (L_Free (rightSupply s) :: C_List C_Bool) in 
+  (x =:= (y =:= C_Cons C_True C_Nil &> y) &> x) --[True]
+
+goal33 =  initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                           y = (L_Free (rightSupply s) :: C_List C_Bool) in 
+  (x =:= (C_Cons C_True (y =:= C_Nil &> y)) &> x) -- [True]
+
+goal34 =  initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                           y = (L_Free (rightSupply s) :: C_List C_Bool) in
+  (x =:= C_Cons C_True C_Nil &> y =:= C_Cons C_False C_Nil &> x =:= y) -- no solution
+
+append :: Curry a => C_List a -> C_List a -> C_List a
+append C_Nil                 zs = zs
+append (C_Cons x xs)         zs = C_Cons x (append xs zs)
+append (L_Choice i xs ys)    zs = L_Choice i (append xs zs) (append ys zs)
+append L_Fail                _  = L_Fail
+append (L_Free ref)          zs = L_App (flip append zs) ref (generate ref)
+append (L_App f ref vals)    zs = L_App ((flip append zs) . f) ref vals
+append (L_Bind f ref eq val) zs = L_Bind ((flip append zs) . f) ref eq val
+
+
+goal35 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = (L_Free (rightSupply s) :: C_List C_Bool) in 
+  (x =:= C_Nil &> append y (C_Cons C_False C_Nil) =:= x) -- no solution
+
+goal36 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y1 = B_Free (leftSupply (rightSupply s))
+                                          y2 = (L_Free (rightSupply (rightSupply s)) :: C_List C_Bool) in 
+ (x =:= C_Nil &> C_Cons y1 (append y2 (C_Cons C_False C_Nil)) =:= x) -- no solution
+goal37 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y2 = (L_Free(rightSupply s) :: C_List C_Bool) in
+ (x =:= C_Nil &> append y2  (C_Cons C_False C_Nil) =:= x) -- no solution
+
+goal38 =  initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                           y1 = B_Free (rightSupply s) in
+   (x =:= C_Nil &> (C_Cons y1 (C_Cons C_False C_Nil)) =:= x) -- no solution
