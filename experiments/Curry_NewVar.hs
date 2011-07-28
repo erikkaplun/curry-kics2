@@ -94,6 +94,8 @@ class Show a => Curry a where
   
   (=:=) :: a -> a -> C_Success
 
+  (=:<=) :: a -> a -> C_Success
+
   searchNF :: (forall b . Curry b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
 
@@ -178,17 +180,29 @@ instance Curry C_Success where
   f $!! S_App fun ref vals    = appCons (f . fun) ref vals --TODO: is $!! needed here? consider lazy bind  
   f $!! S_Bind fun ref eq val = bindCons (f . fun) ref eq val --TODO: s.o. 
   
-  C_Success             =:= C_Success            = C_Success
-  S_Fail                =:= _                    = S_Fail
-  _                     =:= S_Fail               = S_Fail
-  S_Choice i l r        =:= x                    = S_Choice i (l =:= x) (r =:= x) 
-  S_Free ref            =:= x                    = (\x' -> S_Bind id ref (=:= x') x') $!! x 
-  S_App fun ref vals    =:= x                    = S_App ((=:= x) . fun) ref vals
-  S_Bind fun ref eq val =:= x                    = S_Bind ((=:= x) . fun) ref eq val
-  x                     =:= S_Choice i l r       = S_Choice i (x =:= l) (x =:= r)
-  x                     =:= S_Free ref           = (\x' -> S_Bind id ref  (=:= x') x') $!! x 
+  C_Success             =:= C_Success             = C_Success
+  S_Fail                =:= _                     = S_Fail
+  _                     =:= S_Fail                = S_Fail
+  S_Choice i l r        =:= x                     = S_Choice i (l =:= x) (r =:= x) 
+  S_Free ref            =:= x                     = (\x' -> S_Bind id ref (=:= x') x') $!! x 
+  S_App fun ref vals    =:= x                     = S_App ((=:= x) . fun) ref vals
+  S_Bind fun ref eq val =:= x                     = S_Bind ((=:= x) . fun) ref eq val
+  x                     =:= S_Choice i l r        = S_Choice i (x =:= l) (x =:= r)
+  x                     =:= S_Free ref            = (\x' -> S_Bind id ref  (=:= x') x') $!! x 
   x                     =:= S_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= S_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
+
+  C_Success             =:<= C_Success             = C_Success
+  S_Fail                =:<= _                     = S_Fail
+  S_Choice i l r        =:<= x                     = S_Choice i (l =:<= x) (r =:<= x) 
+  S_Free ref            =:<= x                     = S_Bind id ref (=:<= x) x 
+  S_App fun ref vals    =:<= x                     = S_App ((=:<= x) . fun) ref vals
+  S_Bind fun ref eq val =:<= x                     = S_Bind ((=:<= x) . fun) ref eq val
+  x                     =:<= S_Choice i l r        = S_Choice i (x =:<= l) (x =:<= r)
+  x                     =:<= S_Free ref            = S_Bind id ref  (=:<= x) x 
+  x                     =:<= S_App fun ref vals    = S_App ((x =:<=) . fun) ref vals 
+  x                     =:<= S_Bind fun ref eq val = S_Bind ((=:<= x) . fun) ref eq val
+  _                     =:<= S_Fail                = S_Fail
 
   searchNF _ cont C_Success = cont C_Success
   searchNF _ _ x = error ("Prelude.Success.searchNF: no constructor: " ++ (show x))
@@ -251,7 +265,20 @@ instance Curry C_Bool where
   x                     =:= B_Free ref            = (\x' -> S_Bind id ref (x' =:=) x') $!! x
   x                     =:= B_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= B_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
-  _                     =:= _                     = S_Fail  
+  _                     =:= _                     = S_Fail 
+
+  C_True                =:<= C_True                = C_Success
+  C_False               =:<= C_False               = C_Success
+  B_Fail                =:<= _                     = S_Fail
+  B_Choice i l r        =:<= x                     = S_Choice i (l =:<= x) (r =:<= x) 
+  B_Free ref            =:<= x                     = S_Bind id ref (x =:<=) x 
+  B_App fun ref vals    =:<= x                     = S_App ((=:<= x) . fun) ref vals
+  B_Bind fun ref eq val =:<= x                     = S_Bind ((=:<= x) . fun) ref eq val
+  x                     =:<= B_Choice i l r        = S_Choice i (x =:<= l) (x =:<= r)
+  x                     =:<= B_Free ref            = S_Bind id ref (x =:<=) x
+  x                     =:<= B_App fun ref vals    = S_App ((x =:<=) . fun) ref vals 
+  x                     =:<= B_Bind fun ref eq val = S_Bind ((=:<= x) . fun) ref eq val
+  _                     =:<= _                     = S_Fail 
  
 
   searchNF _ cont C_True  = cont C_True
@@ -321,6 +348,19 @@ instance Curry a => Curry (C_List a) where
   x                     =:= L_App fun ref vals    = S_App ((x =:=) . fun) ref vals 
   x                     =:= L_Bind fun ref eq val = S_Bind ((=:= x) . fun) ref eq val
   _                     =:= _                     = S_Fail
+
+  C_Nil                 =:<= C_Nil                 = C_Success
+  C_Cons x xs           =:<= C_Cons y ys           = (x =:<= y) & (xs =:<= ys)
+  L_Fail                =:<= _                     = S_Fail
+  L_Choice i l r        =:<= x                     = S_Choice i (l =:<= x) (r =:<= x) 
+  L_Free ref            =:<= x                     = S_Bind id ref (x =:<=) x
+  L_App fun ref vals    =:<= x                     = S_App ((=:<= x) . fun) ref vals
+  L_Bind fun ref eq val =:<= x                     = S_Bind ((=:<= x) . fun) ref eq val
+  x                     =:<= L_Choice i l r        = S_Choice i (x =:<= l) (x =:<= r)
+  x                     =:<= L_Free ref            = S_Bind id ref (x =:<=) x
+  x                     =:<= L_App fun ref vals    = S_App ((x =:<=) . fun) ref vals 
+  x                     =:<= L_Bind fun ref eq val = S_Bind ((=:<= x) . fun) ref eq val
+  _                     =:<= _                     = S_Fail
 
   searchNF _ cont C_Nil = cont C_Nil
   searchNF search cont (C_Cons x1 x2) = search (\y1 -> search (\y2 -> cont (C_Cons y1 y2)) x2) x1
@@ -617,3 +657,30 @@ goal37 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C
 goal38 =  initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
                                            y1 = B_Free (rightSupply s) in
    (x =:= C_Nil &> (C_Cons y1 (C_Cons C_False C_Nil)) =:= x) -- no solution
+
+
+h :: C_Bool -> C_List C_Bool -> C_Success
+h C_True                xs = xs =:= C_Cons C_True  C_Nil
+h C_False               xs = xs =:= C_Cons C_False C_Nil
+h (B_Choice i l r)      xs = S_Choice i (h l xs) (h r xs)
+h B_Fail                _  = S_Fail
+h (B_Free ref)          xs = S_App (flip h xs) ref (generate ref)
+h (B_App f ref vals)    xs = S_App (flip h xs . f) ref vals
+h (B_Bind f ref eq val) xs = S_Bind (flip h xs . f) ref eq val
+
+goal39 = initSupply >>= \s -> prdfs $ let x = (L_Free (leftSupply s) :: C_List C_Bool)
+                                          y = B_Free (rightSupply s) in
+  C_Cons x (C_Cons ((h y x) &> x) C_Nil ) 
+
+-- Lazy Bind
+
+goal40 = initSupply >>= \s -> prdfs $ let x = S_Free (leftSupply s)
+                                          y = B_Free (rightSupply s) in
+  x =:<= (y =:= C_True) &> C_Cons y (C_Cons (x &> y) C_Nil)
+
+c_last :: Curry a => C_List a -> IDSupply -> a
+c_last xs s = let ys = L_Free (leftSupply s)
+                  x  = freeCons (rightSupply s) in
+  (append ys (C_Cons x C_Nil)) =:<= xs  &> x
+
+goal41 = initSupply >>= \s -> prdfs $ c_last (C_Cons B_Fail (C_Cons C_True C_Nil)) s
