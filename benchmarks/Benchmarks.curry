@@ -22,7 +22,10 @@ unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
 evalCmd :: String -> IO String
-evalCmd cmd = connectToCommand cmd >>= hGetContents
+evalCmd cmd =do h <- connectToCommand cmd 
+                s <- hGetContents h 
+                hClose h
+                return s
 
 isUbuntu :: IO Bool
 isUbuntu = do
@@ -343,23 +346,23 @@ allBenchmarks =
 unif = 
      [
        -- mcc does not support function pattern
-       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
+--       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_2L" True False
+       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_2L" True False
      , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2S" True True
        -- pakcs and mcc suspend on this goal
      , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2Eq" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_half_L" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_half_L" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
        -- mcc does not support function pattern
      , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L" True False
      , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S" True True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq" True True
+     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq" False False
        -- mcc does not support function pattern
      , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L'" True False
      , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S'" True True
@@ -371,18 +374,18 @@ unif =
        -- pakcs and mcc suspend on this goal
      , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq''" False False
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_Eq" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_Eq" False False
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_pali_L" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_S" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_pali_L" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_S" True True
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_Eq" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_S" True True
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_Eq" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_S" True True
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
+--     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
      ]
 
 -- Run all benchmarks and show results
@@ -407,7 +410,7 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
---main = run 3 allBenchmarks
+main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
@@ -419,4 +422,4 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
-main = run 3 unif
+--main = run 3 unif

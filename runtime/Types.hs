@@ -166,58 +166,54 @@ class NormalForm a => Unifiable a where
 
 -- |Unification on general terms
 (=:=) :: Unifiable a => a -> a -> C_Success
-x =:= y = unify (try x) (try y) -- 1. Compute the head normal forms hx, hy
+x =:= y = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
-  -- failure
-  unify Fail _    = failCons
-  unify _    Fail = failCons
+    uniChoice i x1 x2 = checkFail (choiceCons i (x1 =:= y) (x2 =:= y)) y
+    uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> x' =:= y) xs)) y
+    uniFree i _       = bindTo y
+     where
+      bindTo = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal 
+      bindChoice j y1 y2 = choiceCons j  (bindTo y1) (bindTo y2)
+      bindNarrowed j ys  = choicesCons j (map bindTo ys)
+      bindFree j _       = guardCons [i :=: BindTo j] C_Success
+      bindGuard c e      = guardCons c (bindTo e)
+      bindVal v          = guardCons (bind i v) C_Success   
+    uniGuard c e      = checkFail (guardCons c (e =:= y)) y
+    uniVal v          = uniWith y
+     where
+      uniWith = match univChoice univNarrowed univFree failCons univGuard univVal
+      univChoice j y1 y2   = choiceCons j (uniWith y1) (uniWith y2)
+      univNarrowed j ys    = choicesCons j (map uniWith ys)
+      univFree j _         = guardCons (bind j v) C_Success
+      univGuard c e        = guardCons c (uniWith e)
+      univVal w            = v =.= w
+    checkFail e = match (\_ _ _ -> e) const2 const2 failCons const2 (const e)
+     where
+      const2 _ _ = e
 
-  -- binary choice
-  unify (Choice i x1 x2) hy = choiceCons i (unify (try x1) hy) (unify (try x2) hy)
-  unify hx (Choice i y1 y2) = choiceCons i (unify hx (try y1)) (unify hx (try y2))
-
-  -- n-ary choice
-  unify (Narrowed i xs) hy = choicesCons i (map (\x' -> unify (try x') hy) xs)
-  unify hx (Narrowed i ys) = choicesCons i (map (\y' -> unify hx (try y')) ys)
-
-  -- constrained value
-  unify (Guard c e) hy = guardCons c (unify (try e) hy)
-  unify hx (Guard c e) = guardCons c (unify hx (try e))
-
-  -- constructor-rooted terms
-  unify (Val vx) (Val vy) = vx =.= vy
-
-  -- free variables
-  unify (Free i _) (Free j _) = guardCons [i :=: BindTo j] C_Success
-
-  -- bind a variable to a constructor-rooted term
-  unify (Free i _) (Val v) = guardCons (bind i v) C_Success
-  unify (Val v) (Free j _) = guardCons (bind j v) C_Success
   -- TODO2: Occurs check?
 
 -- Lazy unification on general terms, used for function patterns
 (=:<=) :: Unifiable a => a -> a -> C_Success
-x =:<= y = unifyLazy (try x) -- 1. Compute the head normal form hx
+x =:<= y = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
-  -- failure
-  unifyLazy Fail             = failCons
   -- binary choice
-  unifyLazy (Choice i x1 x2) = choiceCons i (x1 =:<= y) (x2 =:<= y)
+  uniChoice i x1 x2 = choiceCons i (x1 =:<= y) (x2 =:<= y)
   -- n-ary choice
-  unifyLazy (Narrowed i xs)  = choicesCons i (map (=:<= y) xs)
+  uniNarrowed i xs  = choicesCons i (map (=:<= y) xs)
   -- constrained value
-  unifyLazy (Guard c e)      = guardCons c (e =:<= y)
-  -- constructor-rooted term
-  unifyLazy (Val vx)         = unify vx (try y)
+  uniGuard c e      = guardCons c (e =:<= y)
   -- free variable
-  unifyLazy (Free i _)       = guardCons [i :=: LazyBind (lazyBind i y)] C_Success
-
-  unify _  Fail              = failCons
-  unify vx (Choice j y1 y2)  = choiceCons j (unify vx (try y1)) (unify vx (try y2))
-  unify vx (Narrowed j ys)   = choicesCons j (map (unify vx . try) ys)
-  unify vx (Guard c e)       = guardCons c (unify vx (try e))
-  unify vx (Val vy)          = vx =.<= vy
-  unify vx (Free j _)        = guardCons [j :=: LazyBind (lazyBind j vx)] C_Success
+  uniFree i _       = guardCons [i :=: LazyBind (lazyBind i y)] C_Success
+  -- constructor-rooted term
+  uniVal vx = unifyWith y
+   where 
+    unifyWith = match uniyChoice uniyNarrowed uniyFree failCons uniyGuard uniyVal
+    uniyChoice j y1 y2  = choiceCons j (unifyWith y1) (unifyWith y2)
+    uniyNarrowed j ys   = choicesCons j (map unifyWith ys)
+    uniyGuard c e       = guardCons c (unifyWith e)
+    uniyVal vy          = vx =.<= vy
+    uniyFree j _        = guardCons [j :=: LazyBind (lazyBind j vx)] C_Success
 
 -- ---------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types

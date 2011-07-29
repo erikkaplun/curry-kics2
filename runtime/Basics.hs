@@ -21,35 +21,23 @@ nonAsciiChr i = chr# i
 
 -- Apply a function to the head normal form
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
-d_dollar_bang f x = hnf (try x)
+d_dollar_bang f x = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard f x
   where
-   hnf (Val v)         = f v -- inlined d_apply f v
-   hnf Fail            = failCons
-   hnf (Choice i a b)  = choiceCons i (hnf (try a)) (hnf (try b))
-   hnf (Narrowed i xs) = choicesCons i (map (hnf . try) xs)
-   hnf (Free i xs)     = f (choicesCons i xs)
-   hnf (Guard c e)     = guardCons c (hnf (try e))
+   hnfChoice i a b  = choiceCons i (d_dollar_bang f a) (d_dollar_bang f b)
+   hnfNarrowed i xs = choicesCons i (map (d_dollar_bang f) xs)
+   hnfFree i xs     = f (choicesCons i xs)
+   hnfGuard c e     = guardCons c (d_dollar_bang f e)
 
 -- Apply a non-deterministic function to the head normal form
 nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
-nd_dollar_bang f x s = hnf (try x)
+nd_dollar_bang f x s = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard hnfVal x
   where
-   hnf (Val v)         = nd_apply f v s
-   hnf Fail            = failCons
+   hnfVal v         = nd_apply f v s
    -- TODO Do we better use leftSupply and rightSupply?
-   hnf (Choice i a b)  = choiceCons i (hnf (try a)) (hnf (try b))
-   hnf (Narrowed i xs) = choicesCons i (map (hnf . try) xs)
-   hnf (Free i xs)     = nd_apply f (choicesCons i xs) s
-   hnf (Guard c e)     = guardCons c (hnf (try e))
-
--- TODO: test implementation for $! replace if more efficient
--- d_dollar_bang_test :: (NonDet a, NonDet b) => (a -> b) -> a -> b
--- d_dollar_bang_test f x = match f failCons choiceF freeF guardF x
---   where
---     choiceF i a b = choiceCons i (f `d_dollar_bang_test` a)
---                                  (f `d_dollar_bang_test` b)
---     freeF i a b   = f (choiceCons i a b)
---     guardF c e    = guardCons c (f  `d_dollar_bang_test` e)
+   hnfChoice i a b  = choiceCons i (nd_dollar_bang f a s) (nd_dollar_bang f b s)
+   hnfNarrowed i xs = choicesCons i (map (\x -> nd_dollar_bang f x s) xs)
+   hnfFree i xs     = nd_apply f (choicesCons i xs) s
+   hnfGuard c e     = guardCons c (nd_dollar_bang f e s)
 
 -- ---------------------------------------------------------------------------
 -- Matching for Integers

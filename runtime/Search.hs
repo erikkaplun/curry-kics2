@@ -81,90 +81,88 @@ prdfs prt mainexp = do
 printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
   trace $ "\n\n-- \n\nprintValsDFS " ++ take 200 (show a)
-  printValsDFS' fb cont (try a)
+  match prChoice prNarrowed prFree (return ()) prGuard prVal a
 
-printValsDFS' :: NormalForm a => Bool -> (a -> IO ()) -> Try a -> IO ()
-printValsDFS' _  _    Fail           = return ()
-printValsDFS' fb cont (Val v)        = searchNF (printValsDFS fb) cont v
-printValsDFS' fb cont (Choice i x y) = lookupChoice i >>= choose
-  where
-    choose ChooseLeft  = printValsDFS fb cont x
-    choose ChooseRight = printValsDFS fb cont y
-    choose NoChoice    = -- doWithChoices_ fb i
+ where prVal = searchNF (printValsDFS fb) cont 
+       prChoice i x y = lookupChoice i >>= choose
+        where
+          choose ChooseLeft  = printValsDFS fb cont x
+          choose ChooseRight = printValsDFS fb cont y
+          choose NoChoice    = -- doWithChoices_ fb i
 --                            [ (ChooseLeft , printValsDFS True cont x)
 --                            , (ChooseRight, printValsDFS fb   cont y)
 --                            ]
 --  TODO: reactivate the implementation above, when performant
-      if fb
-        then do
-          newChoiceOpt True ChooseLeft  x
-          newChoiceOpt True ChooseRight y
-          setChoice i NoChoice
-        else do
-          newChoiceOpt True ChooseLeft   x
-          newChoiceOpt False ChooseRight y
-     where
-      newChoice fbt c a = do
-        reset <- setUnsetChoice i c
-        printValsDFS fbt cont a
-        reset
+            if fb
+              then do
+               newChoiceOpt True ChooseLeft  x
+               newChoiceOpt True ChooseRight y
+               setChoice i NoChoice
+              else do
+                newChoiceOpt True ChooseLeft   x
+                newChoiceOpt False ChooseRight y
+           where
+            newChoice fbt c a = do
+              reset <- setUnsetChoice i c
+              printValsDFS fbt cont a
+              reset
 
-      newChoiceOpt fbt c a = do
-        -- Assumption 1: Binary choices can only be set to one of
-        -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
-        -- be ignored in between
-        -- Assumption 2: Furthermore, binary Choices can not be chained, so
-        -- setChoiceRaw may be used
-        setChoice i c
-        printValsDFS fbt cont a
-    choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
+            newChoiceOpt fbt c a = do
+              -- Assumption 1: Binary choices can only be set to one of
+              -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
+              -- be ignored in between
+              -- Assumption 2: Furthermore, binary Choices can not be chained, so
+              -- setChoiceRaw may be used
+              setChoice i c
+              printValsDFS fbt cont a
+          choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
 
-printValsDFS' fb cont (Free i xs)   = lookupChoiceID i >>= choose
-  where
-    choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
-    choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) = cont $ choicesCons j xs
+       prFree i xs   = lookupChoiceID i >>= choose
+        where
+          choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
+          choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
+          choose (NoChoice   , j) = cont $ choicesCons j xs
 
-printValsDFS' fb cont (Narrowed i@(NarrowedID pns _) xs) = lookupChoiceID i >>= choose
-  where
-    choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
-    choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
-    choose (NoChoice   , j) =
+       prNarrowed i@(NarrowedID pns _) xs = lookupChoiceID i >>= choose
+         where
+          choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
+          choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
+          choose (NoChoice   , j) =
 --       doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
 
 --     mkChoice n x = (ChooseN n (-1), printValsDFS True cont x)
 --     mkLastChoice n x = (ChooseN n (-1), printValsDFS fb   cont x)
 --  TODO: reactivate the implementation above, when performant
-     if fb
-       then do
-         foldr1 (>>) $ zipWith3 (newChoice True) [0 ..] xs pns
-         setChoice i NoChoice
-       else foldr1 (>>) $ zipWithButLast3 (newChoice True) (newChoice False) [0 ..] xs pns
-      where
+           if fb
+             then do
+               foldr1 (>>) $ zipWith3 (newChoice True) [0 ..] xs pns
+               setChoice i NoChoice
+             else foldr1 (>>) $ zipWithButLast3 (newChoice True) (newChoice False) [0 ..] xs pns
+           where
 
-       newChoice fbt n a pn = do
-         setChoice i $ ChooseN n pn
-         printValsDFS fbt cont a
+             newChoice fbt n a pn = do
+               setChoice i $ ChooseN n pn
+               printValsDFS fbt cont a
 
-    choose c           = error $ "Basics.printValsDFS'.choose: " ++ show c
+          choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
 
-printValsDFS' fb cont (Guard cs e) = solves cs >>= traverse fb
-  where
-    traverse _     FailST               = return ()
-    traverse True  (SuccessST reset)    = printValsDFS True  cont e >> reset
-    traverse False (SuccessST _    )    = printValsDFS False cont e
-    traverse True  (ChoiceST reset l r) = do
-      l >>= traverse True
-      r >>= traverse True
-      reset
-    traverse False (ChoiceST _     l r) = do
-      l >>= traverse True
-      r >>= traverse False
-    traverse True  (ChoicesST reset cs) = do
-      mapM_ (>>= traverse True) cs
-      reset
-    traverse False (ChoicesST _     cs) = do
-      mapMButLast_ (>>= traverse True) (>>= traverse False) cs
+       prGuard cs e = solves cs >>= traverse fb
+        where
+           traverse _     FailST               = return ()
+           traverse True  (SuccessST reset)    = printValsDFS True  cont e >> reset
+           traverse False (SuccessST _    )    = printValsDFS False cont e
+           traverse True  (ChoiceST reset l r) = do
+             l >>= traverse True
+             r >>= traverse True
+             reset
+           traverse False (ChoiceST _     l r) = do
+             l >>= traverse True
+             r >>= traverse False
+           traverse True  (ChoicesST reset cs) = do
+             mapM_ (>>= traverse True) cs
+             reset
+           traverse False (ChoicesST _     cs) = do
+             mapMButLast_ (>>= traverse True) (>>= traverse False) cs
 
 
 processLazyBind :: NonDet a => Bool -> Constraints -> ID -> [a] -> (a -> IO ()) -> IO ()
@@ -217,13 +215,11 @@ computeWithDFS mainexp = initSupply >>=
   \s -> searchDFS (`mcons` mnil) (id $!! (mainexp s))
 
 searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchDFS cont a = searchDFS' cont (try a)
-
-searchDFS' :: NormalForm a => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
-searchDFS' cont Fail             = mnil
-searchDFS' cont (Val v)          = searchNF searchDFS cont v
-searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
-  where
+searchDFS cont a = match dfsChoice dfsNarrowed dfsFree mnil dfsGuard dfsVal a
+ where
+  dfsVal = searchNF searchDFS cont
+  dfsChoice i x1 x2 = lookupChoice i >>= choose
+   where
     choose ChooseLeft  = searchDFS cont x1
     choose ChooseRight = searchDFS cont x2
     choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
@@ -232,8 +228,8 @@ searchDFS' cont (Choice i x1 x2) = lookupChoice i >>= choose
       reset <- setUnsetChoice i c
       searchDFS cont x |< reset
 
-searchDFS' cont (Free i xs) = lookupChoiceID i >>= choose
-  where
+  dfsFree i xs = lookupChoiceID i >>= choose
+   where
     choose (LazyBind cs, _) = processLB cs
     choose (ChooseN c _, _) = searchDFS cont (xs !! c)
     choose (NoChoice   , j) = cont $ choicesCons j xs
@@ -243,8 +239,8 @@ searchDFS' cont (Free i xs) = lookupChoiceID i >>= choose
       reset <- setUnsetChoice i NoChoice
       searchDFS cont (guardCons cs $ choicesCons i xs) |< reset
 
-searchDFS' cont (Narrowed i@(NarrowedID pns _) xs) = lookupChoice i >>= choose
-  where
+  dfsNarrowed i@(NarrowedID pns _) xs = lookupChoice i >>= choose
+   where
     choose (LazyBind cs) = processLB cs
     choose (ChooseN c _) = searchDFS cont (xs !! c)
     choose NoChoice      = foldr1 (+++) $ zipWith3 newChoice [0 ..] xs pns
@@ -258,8 +254,8 @@ searchDFS' cont (Narrowed i@(NarrowedID pns _) xs) = lookupChoice i >>= choose
       reset <- setUnsetChoice i (ChooseN n pn)
       searchDFS cont x |< reset
 
-searchDFS' cont (Guard cs e) = solves cs >>= traverse
-  where
+  dfsGuard cs e = solves cs >>= traverse
+   where
     traverse FailST               = mnil
     traverse (SuccessST reset)    = searchDFS cont e |< reset
     traverse (ChoiceST reset l r) =
@@ -292,68 +288,67 @@ computeWithBFS mainexp =
   initSupply >>= \s -> searchBFS (`mcons` mnil) (id $!! (mainexp s))
   
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchBFS cont x = searchBFS' cont (try x)
-
-searchBFS' :: NormalForm a => (a -> IO (IOList b)) -> Try a -> IO (IOList b)
-searchBFS' cont x = bfs cont [] [] (return ()) (return ()) x
+searchBFS cont x = bfs cont [] [] (return ()) (return ()) x
   where
     -- bfs searches the levels in alternating order, left to right and then
     -- right to left, TODO is this behavior desired?
     -- xs is the list of values to be processed in this level
     -- ys is the list of values to be processed in the next level
-    bfs cont xs ys _   reset Fail           = reset >> next cont xs ys
-    bfs cont xs ys set reset (Val v)        =
-      (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys)
-    bfs cont xs ys set reset (Choice i x y) = set >> lookupChoice i >>= choose
+    bfs cont xs ys set reset x = 
+      match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
      where
-        choose ChooseLeft  = bfs cont xs ys (return ()) reset $ try x
-        choose ChooseRight = bfs cont xs ys (return ()) reset $ try y
-        choose NoChoice    = do
-          reset
-          next cont xs ((newSet ChooseLeft , newReset, x) :
-                   (newSet ChooseRight, newReset, y) : ys)
+       bfsFail  = reset >> next cont xs ys
+       bfsVal v = (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys)
+       bfsChoice i x y = set >> lookupChoice i >>= choose
+        where
+           choose ChooseLeft  = bfs cont xs ys (return ()) reset x
+           choose ChooseRight = bfs cont xs ys (return ()) reset y
+           choose NoChoice    = do
+             reset
+             next cont xs ((newSet ChooseLeft , newReset, x) :
+                      (newSet ChooseRight, newReset, y) : ys)
 
-        newSet c = set   >> setChoice i c
-        newReset = reset >> setChoice i NoChoice
+           newSet c = set   >> setChoice i c
+           newReset = reset >> setChoice i NoChoice
 
-    bfs cont xs ys set reset (Narrowed i@(NarrowedID pns _) cs)
-      = set >> lookupChoice i >>= choose
-     where
-        choose (LazyBind cns) = processLB cns
-        choose (ChooseN c _) = bfs cont xs ys (return ()) reset (try (cs !! c))
-        choose NoChoice      = do
-          reset
-          next cont xs (zipWith3 newChoice [0..] cs pns ++ ys)
-        choose c             = error $ "Basics.searchDFS'.choose: " ++ show c
-        
-        newChoice n x pn = (newSet n pn, newReset, x)
-        newSet n pn = set >> setChoice i (ChooseN n pn)
-        newReset = reset >> setChoice i NoChoice
+       bfsNarrowed i@(NarrowedID pns _) cs
+         = set >> lookupChoice i >>= choose
+        where
+           choose (LazyBind cns) = processLB cns
+           choose (ChooseN c _) = bfs cont xs ys (return ()) reset (cs !! c)
+           choose NoChoice      = do
+             reset
+             next cont xs (zipWith3 newChoice [0..] cs pns ++ ys)
+           choose c             = error $ "Basics.searchDFS'.choose: " ++ show c
+           
+           newChoice n x pn = (newSet n pn, newReset, x)
+           newSet n pn = set >> setChoice i (ChooseN n pn)
+           newReset = reset >> setChoice i NoChoice
 
-        processLB cns = do
-          newReset <- setUnsetChoice i NoChoice
-          bfs cont xs ys (return ()) (reset >> newReset) (try (guardCons cns (choicesCons i cs)))
+           processLB cns = do
+             newReset <- setUnsetChoice i NoChoice
+             bfs cont xs ys (return ()) (reset >> newReset) (guardCons cns (choicesCons i cs))
 
-    bfs cont xs ys set reset (Free i cs) = set >> lookupChoice i >>= choose
-      where
-        choose (LazyBind cns) = processLB cns
-        choose (ChooseN c _) = bfs cont xs ys (return ()) reset (try $ cs !! c)
-        choose NoChoice      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
-        choose c             = error $ "Basics.searchBFS.choose: " ++ show c
-        
-        processLB cns = do
-          newReset <- setUnsetChoice i NoChoice
-          bfs cont xs ys (return ()) (reset >> newReset) (try (guardCons cns (choicesCons i cs)))
+       bfsFree i cs = set >> lookupChoice i >>= choose
+         where
+           choose (LazyBind cns) = processLB cns
+           choose (ChooseN c _) = bfs cont xs ys (return ()) reset (cs !! c)
+           choose NoChoice      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
+           choose c             = error $ "Basics.searchBFS.choose: " ++ show c
+           
+           processLB cns = do
+             newReset <- setUnsetChoice i NoChoice
+             bfs cont xs ys (return ()) (reset >> newReset) (guardCons cns (choicesCons i cs))
 
-    bfs cont xs ys set reset (Guard cs e) = solves cs >>= traverse
-      where
-        traverse FailST                = reset >> next cont xs ys
-        traverse (SuccessST reset2)    = bfs cont xs ys (return ()) (reset >> reset2) $ try e
-        traverse _                     = error "bfs traverse"      
+       bfsGuard cs e = solves cs >>= traverse
+         where
+           traverse FailST                = reset >> next cont xs ys
+           traverse (SuccessST reset2)    = bfs cont xs ys (return ()) (reset >> reset2) e
+           traverse _                     = error "bfs traverse"      
 
-    next _    []  []                 = mnil
-    next cont []  ((set,reset,y):ys) = bfs cont ys [] set reset (try y)
-    next cont ((set,reset,x):xs) ys  = bfs cont xs ys set reset (try x)
+       next _    []  []                 = mnil
+       next cont []  ((set,reset,y):ys) = bfs cont ys [] set reset y
+       next cont ((set,reset,x):xs) ys  = bfs cont xs ys set reset x
 
 -- ---------------------------------------------------------------------------
 -- Iterative depth-first search into a monadic list
@@ -397,10 +392,10 @@ computeWithIDS initdepth goal = initSupply >>= \s -> iter s 0 initdepth
 startIDS :: (Show a,NonDet a) => a -> Int -> Int -> IO (IOList a)
 startIDS exp olddepth newdepth = idsHNF newdepth exp
  where
- idsHNF n x = case try x of
-  Val v -> if n<newdepth-olddepth then mcons x mnil else mnil
-  Fail  -> mnil
-  Choice i x1 x2 -> do
+ idsHNF n x = match idsChoice idsNarrowed idsFree mnil idsGuard idsVal x
+  where
+   idsVal v = if n<newdepth-olddepth then mcons x mnil else mnil
+   idsChoice i x1 x2 = do
     c <- lookupChoice i
     case c of
       ChooseLeft  -> idsHNF n x1
@@ -412,6 +407,9 @@ startIDS exp olddepth newdepth = idsHNF newdepth exp
       choose c x = do
        setChoice i c
        idsHNF (n - 1) x |< setChoice i NoChoice
+   idsNarrowed = error "IDS not implemented for free variables"
+   idsFree     = error "IDS not implemented for free variables"
+   idsGuard    = error "IDS not implemented for equational Constraints"
 
 -- ---------------------------------------------------------------------------
 -- Parallel search by mapping search results into monadic structure
@@ -549,38 +547,31 @@ searchMPlus' :: (NormalForm a, MonadPlus m) =>
                 (a -> StateT SetOfChoices m b)
                 -> a
                 -> StateT SetOfChoices m b
-searchMPlus' cont = searchMPlus'' cont . try
-
-searchMPlus'' :: (NormalForm a, MonadPlus m) =>
-                (a -> StateT SetOfChoices m b)
-                -> Try a
-                -> StateT SetOfChoices m b
-searchMPlus'' _   Fail           = mzero
-searchMPlus'' cont (Val v)        = searchNF searchMPlus' cont v
-searchMPlus'' cont (Choice i x y) = lookupChoice' i >>= choose
+searchMPlus' cont = match smpChoice smpNarrowed smpFree mzero smpGuard smpVal
   where
-    choose ChooseLeft  = searchMPlus' cont x
-    choose ChooseRight = searchMPlus' cont y
-    choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
-                         `mplus`
-                         (setChoice' i ChooseRight >> searchMPlus' cont y)
-searchMPlus'' cont (Narrowed i@(NarrowedID pns _)  branches) =
-   lookupChoice' i >>= choose
-  where
-    choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    choose NoChoice      =
-      msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] branches pns
-    choose (LazyBind cs) = processLazyBind' i cont cs branches
-    pick c pn = setChoice' i (ChooseN c pn)
+   smpVal v = searchNF searchMPlus' cont v
+   smpChoice i x y = lookupChoice' i >>= choose
+    where
+      choose ChooseLeft  = searchMPlus' cont x
+      choose ChooseRight = searchMPlus' cont y
+      choose NoChoice    = (setChoice' i ChooseLeft  >> searchMPlus' cont x)
+                           `mplus`
+                           (setChoice' i ChooseRight >> searchMPlus' cont y)
+   smpNarrowed i@(NarrowedID pns _)  branches = lookupChoice' i >>= choose
+    where
+      choose (ChooseN c _) = searchMPlus' cont (branches !! c)
+      choose NoChoice      =
+        msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] branches pns
+      choose (LazyBind cs) = processLazyBind' i cont cs branches
+      pick c pn = setChoice' i (ChooseN c pn)
 
-searchMPlus'' cont (Free i branches) = lookupChoice' i >>= choose
-  where
-    choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    choose NoChoice      = cont $ choicesCons i branches
-    choose (LazyBind cs) = processLazyBind' i cont cs branches
+   smpFree i branches = lookupChoice' i >>= choose
+    where
+     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
+     choose NoChoice      = cont $ choicesCons i branches
+     choose (LazyBind cs) = processLazyBind' i cont cs branches
 
-searchMPlus'' cont  (Guard cs e) =
-  solves' cs >> searchMPlus' cont e
+   smpGuard cs e =  solves' cs >> searchMPlus' cont e
 
 processLazyBind' :: (NormalForm a, MonadPlus m) => ID
   -> (a -> StateT SetOfChoices m b) -> Constraints -> [a] -> StateT SetOfChoices m b

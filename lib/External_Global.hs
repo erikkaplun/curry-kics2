@@ -26,9 +26,16 @@ instance NonDet (C_Global a) where
   failCons = Fail_C_Global
   guardCons = Guard_C_Global
   try (Choice_C_Global i x y) = tryChoice i x y
+  try (Choices_C_Global i xs) = tryChoices i xs
   try Fail_C_Global = Fail
   try (Guard_C_Global c e) = Guard c e
   try x = Val x
+  match choiceF _ _ _ _ _ (Choice_C_Global i x y) = choiceF i x y
+  match _ narrF _ _ _ _   (Choices_C_Global i@(NarrowedID _ _) xs) = narrF i xs
+  match _ _ freeF _ _ _   (Choices_C_Global i@(FreeID _ _) xs)     = freeF i xs
+  match _ _ _ failV _ _   Fail_C_Global = failV
+  match _ _ _ _ guardF _  (Guard_C_Global c e) = guardF c e
+  match _ _ _ _ _ valF    x                    = valF x 
 
 instance Generable (C_Global a) where
   generate _ = error "ERROR: no generator for Global"
