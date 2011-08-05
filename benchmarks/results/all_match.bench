@@ -1,0 +1,195 @@
+Benchmarks at Linux climens 2.6.26-2-686 #1 SMP Thu Nov 25 01:53:57 UTC 2010 i686 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+ReverseUser@IDC_D |  1.42 |  0.17 |  0.17 |  0.16 |  0.18
+ReverseUser@IDC+_D|  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+ReverseUser@PAKCS | 17.28 |  2.07 |  2.07 |  2.07 |  2.08
+ReverseUser@MCC   |  3.47 |  0.42 |  0.44 |  0.40 |  0.41
+ReverseUser@GHC   |  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+ReverseUser@GHC+  |  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+reverseuser@SICS  |  3.28 |  0.39 |  0.40 |  0.39 |  0.39
+reverseuser@SWI   | 13.17 |  1.58 |  1.58 |  1.58 |  1.58
+ReverseUser@MON+  |195.97 | 23.52 | 23.66 | 23.77 | 23.12
+--------
+Reverse@IDC_D |  1.44 |  0.17 |  0.18 |  0.17 |  0.17
+Reverse@IDC+_D|  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+Reverse@PAKCS | 15.72 |  1.89 |  1.89 |  1.89 |  1.88
+Reverse@MCC   |  3.89 |  0.47 |  0.44 |  0.48 |  0.48
+Reverse@GHC   |  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+Reverse@GHC+  |  1.00 |  0.12 |  0.12 |  0.12 |  0.12
+reverse@SICS  |  2.42 |  0.29 |  0.29 |  0.29 |  0.29
+reverse@SWI   | 11.58 |  1.39 |  1.39 |  1.39 |  1.39
+Reverse@MON+  |184.50 | 22.14 | 21.96 | 22.02 | 22.44
+--------
+Tak@IDC_D | 13.58 |  0.54 |  0.56 |  0.55 |  0.52
+Tak@IDC+_D|  6.00 |  0.24 |  0.24 |  0.24 |  0.24
+Tak@PAKCS |1012.17 | 40.49 | 42.24 | 39.59 | 39.63
+Tak@MCC   | 31.42 |  1.26 |  1.26 |  1.24 |  1.27
+Tak@GHC   |  7.08 |  0.28 |  0.28 |  0.29 |  0.28
+Tak@GHC+  |  1.00 |  4.0e-2 |  4.0e-2 |  4.0e-2 |  4.0e-2
+tak@SICS  | 12.42 |  0.50 |  0.50 |  0.50 |  0.49
+tak@SWI   | 43.67 |  1.75 |  1.73 |  1.75 |  1.76
+Tak@MON+  |507.00 | 20.28 | 20.32 | 20.20 | 20.32
+--------
+TakPeano@IDC_D |  1.99 |  0.97 |  0.97 |  0.97 |  0.97
+TakPeano@IDC+_D|  1.70 |  0.83 |  0.83 |  0.82 |  0.83
+TakPeano@PAKCS |126.24 | 61.44 | 60.96 | 61.65 | 61.70
+TakPeano@MCC   | 11.42 |  5.56 |  5.53 |  5.56 |  5.58
+TakPeano@GHC   |  1.32 |  0.64 |  0.64 |  0.64 |  0.64
+TakPeano@GHC+  |  1.00 |  0.49 |  0.48 |  0.49 |  0.49
+takpeano@SICS  | 10.74 |  5.23 |  5.32 |  5.13 |  5.23
+takpeano@SWI   | 24.21 | 11.78 | 11.75 | 11.75 | 11.85
+TakPeano@MON+  | 59.12 | 28.77 | 28.70 | 28.71 | 28.91
+--------
+ReverseHO@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ReverseHO@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ReverseHO@IDC_D |6233.33 |  0.62 |  0.63 |  0.62 |  0.62
+ReverseHO@IDC+_D|2500.00 |  0.25 |  0.26 |  0.25 |  0.24
+ReverseHO@PAKCS |77133.34 |  7.71 |  7.58 |  7.78 |  7.78
+ReverseHO@MCC   |2633.33 |  0.26 |  0.26 |  0.25 |  0.28
+ReverseHO@GHC   |3100.00 |  0.31 |  0.32 |  0.31 |  0.30
+ReverseHO@GHC+  |2333.33 |  0.23 |  0.23 |  0.25 |  0.22
+ReverseHO@MON+  |264566.66 | 26.46 | 26.56 | 26.22 | 26.59
+--------
+ReverseBuiltin@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ReverseBuiltin@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ReverseBuiltin@IDC_D |4133.33 |  0.41 |  0.40 |  0.42 |  0.42
+ReverseBuiltin@IDC+_D|2466.67 |  0.25 |  0.24 |  0.25 |  0.25
+ReverseBuiltin@PAKCS |75600.00 |  7.56 |  7.59 |  7.55 |  7.54
+ReverseBuiltin@MCC   |2133.33 |  0.21 |  0.21 |  0.23 |  0.20
+ReverseBuiltin@GHC   |2233.33 |  0.22 |  0.21 |  0.22 |  0.24
+ReverseBuiltin@GHC+  |1166.67 |  0.12 |  0.12 |  0.12 |  0.11
+--------
+Primes@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+Primes@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+Primes@IDC_D |3000.00 |  0.30 |  0.30 |  0.30 |  0.30
+Primes@IDC+_D|1000.00 |  0.10 |  0.10 |  0.10 |  0.10
+Primes@PAKCS |145600.02 | 14.56 | 14.65 | 14.48 | 14.55
+Primes@MCC   |3666.67 |  0.37 |  0.36 |  0.36 |  0.38
+Primes@GHC   |1200.00 |  0.12 |  0.12 |  0.12 |  0.12
+Primes@GHC+  |600.00 |  6.0e-2 |  6.0e-2 |  6.0e-2 |  6.0e-2
+Primes@MON+  |168066.66 | 16.81 | 16.76 | 16.80 | 16.86
+--------
+PrimesPeano@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+PrimesPeano@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+PrimesPeano@IDC_D |3133.33 |  0.31 |  0.32 |  0.31 |  0.31
+PrimesPeano@IDC+_D|2700.00 |  0.27 |  0.27 |  0.27 |  0.27
+PrimesPeano@PAKCS |219733.34 | 21.97 | 21.87 | 22.00 | 22.05
+PrimesPeano@MCC   |17766.67 |  1.78 |  1.77 |  1.78 |  1.78
+PrimesPeano@GHC   |2500.00 |  0.25 |  0.25 |  0.25 |  0.25
+PrimesPeano@GHC+  |2200.00 |  0.22 |  0.22 |  0.22 |  0.22
+PrimesPeano@MON+  |268266.70 | 26.83 | 26.69 | 26.62 | 27.17
+--------
+PrimesBuiltin@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+PrimesBuiltin@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+PrimesBuiltin@IDC_D |14833.33 |  1.48 |  1.48 |  1.48 |  1.49
+PrimesBuiltin@IDC+_D|3900.00 |  0.39 |  0.39 |  0.39 |  0.39
+PrimesBuiltin@PAKCS |599600.06 | 59.96 | 59.21 | 60.91 | 59.76
+PrimesBuiltin@MCC   |11500.00 |  1.15 |  1.13 |  1.16 |  1.16
+PrimesBuiltin@GHC   |4700.00 |  0.47 |  0.47 |  0.47 |  0.47
+PrimesBuiltin@GHC+  |2466.67 |  0.25 |  0.25 |  0.25 |  0.24
+PrimesBuiltin@MON+  |300133.34 | 30.01 | 29.85 | 30.33 | 29.86
+--------
+Queens@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+Queens@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+Queens@IDC_D |17200.00 |  1.72 |  1.72 |  1.72 |  1.72
+Queens@IDC+_D|6633.33 |  0.66 |  0.67 |  0.66 |  0.66
+Queens@PAKCS |846700.00 | 84.67 | 81.33 | 91.02 | 81.66
+Queens@MCC   |32366.67 |  3.24 |  3.25 |  3.14 |  3.32
+Queens@GHC   |8466.67 |  0.85 |  0.85 |  0.84 |  0.85
+Queens@GHC+  |600.00 |  6.0e-2 |  6.0e-2 |  6.0e-2 |  6.0e-2
+Queens@MON+  |443633.30 | 44.36 | 44.37 | 44.46 | 44.26
+--------
+QueensUser@IDC   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+QueensUser@IDC+  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+QueensUser@IDC_D |23566.66 |  2.36 |  2.35 |  2.36 |  2.36
+QueensUser@IDC+_D|8000.00 |  0.80 |  0.80 |  0.80 |  0.80
+QueensUser@PAKCS |817033.25 | 81.70 | 83.14 | 80.58 | 81.39
+QueensUser@MCC   |37033.33 |  3.70 |  3.70 |  3.69 |  3.72
+QueensUser@GHC   |8000.00 |  0.80 |  0.80 |  0.80 |  0.80
+QueensUser@GHC+  |1100.00 |  0.11 |  0.11 |  0.11 |  0.11
+QueensUser@MON+  |446933.30 | 44.69 | 44.71 | 44.91 | 44.46
+--------
+PermSort@IDC_PrDFS       | 28.18 | 41.14 | 41.21 | 41.12 | 41.10
+PermSort@IDC+_PrDFS      |  7.18 | 10.49 | 10.48 | 10.47 | 10.52
+PermSort@IDC+_PrDFS_IORef|  2.39 |  3.49 |  3.52 |  3.50 |  3.46
+PermSort@PAKCS           | 18.49 | 27.00 | 26.98 | 27.11 | 26.91
+PermSort@MCC             |  1.00 |  1.46 |  1.46 |  1.46 |  1.46
+PermSort@MON+            | 33.07 | 48.28 | 48.33 | 48.23 | 48.28
+--------
+PermSortPeano@IDC_PrDFS       |  9.48 | 40.45 | 40.43 | 40.46 | 40.45
+PermSortPeano@IDC+_PrDFS      |  2.70 | 11.53 | 11.53 | 11.54 | 11.53
+PermSortPeano@IDC+_PrDFS_IORef|  1.00 |  4.27 |  4.27 |  4.26 |  4.27
+PermSortPeano@PAKCS           | 15.63 | 66.70 | 65.91 | 66.38 | 67.82
+PermSortPeano@MCC             |  1.33 |  5.66 |  5.62 |  5.71 |  5.64
+PermSortPeano@MON+            |215.07 |917.64 |915.07 |918.99 |918.87
+--------
+Half@IDC_PrDFS       | 20.12 | 82.70 | 82.49 | 82.94 | 82.68
+Half@IDC+_PrDFS      |  9.25 | 38.03 | 38.05 | 37.99 | 38.06
+Half@IDC+_PrDFS_IORef|  6.35 | 26.12 | 26.09 | 26.23 | 26.03
+Half@PAKCS           | 23.73 | 97.53 | 95.33 | 99.03 | 98.22
+Half@MCC             |  1.00 |  4.11 |  4.13 |  4.07 |  4.13
+--------
+PermSort@IDC+PrDFS_IOREF|  1.00 |  3.49 |  3.48 |  3.49 |  3.50
+PermSort@IDC+DFS_IOREF  |  1.60 |  5.59 |  5.57 |  5.61 |  5.58
+PermSort@IDC+BFS_IOREF  |  7.64 | 26.67 | 26.70 | 26.67 | 26.65
+PermSort@IDC+IDS_IOREF  |  2.98 | 10.39 | 10.42 | 10.39 | 10.36
+--------
+PermSortPeano@IDC+PrDFS_IOREF|  1.00 |  4.27 |  4.29 |  4.24 |  4.27
+PermSortPeano@IDC+DFS_IOREF  |  1.51 |  6.46 |  6.46 |  6.47 |  6.46
+PermSortPeano@IDC+BFS_IOREF  |  7.04 | 30.02 | 30.04 | 29.97 | 30.05
+PermSortPeano@IDC+IDS_IOREF  |  2.86 | 12.19 | 12.20 | 12.17 | 12.21
+--------
+Half@IDC+PrDFS_IOREF|261433.34 | 26.14 | 26.04 | 26.11 | 26.28
+Half@IDC+DFS_IOREF  |260766.69 | 26.08 | 26.10 | 25.98 | 26.15
+Half@IDC+BFS_IOREF  |431000.03 | 43.10 | 43.03 | 43.22 | 43.05
+Half@IDC+IDS_IOREF  |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+--------
+NDNums@IDC+BFS_IOREF|221.04 | 34.63 | 34.61 | 34.59 | 34.69
+NDNums@IDC+IDS_IOREF|  1.00 |  0.16 |  0.16 |  0.16 |  0.15
+--------
+ShareNonDet@IDC_PrDFS:goal1       |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@IDC+_PrDFS:goal1      |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@IDC+_PrDFS_IORef:goal1|  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@PAKCS                 |149166.67 | 14.92 | 14.64 | 14.98 | 15.13
+ShareNonDet@MCC                   |3533.33 |  0.35 |  0.34 |  0.36 |  0.36
+--------
+ShareNonDet@IDC_PrDFS:goal2       |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@IDC+_PrDFS:goal2      |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@IDC+_PrDFS_IORef:goal2|  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+ShareNonDet@PAKCS                 |166.67 |  2.0e-2 |  1.0e-2 |  2.0e-2 |  2.0e-2
+ShareNonDet@MCC                   |  0.00 |  0.00 |  0.00 |  0.00 |  0.00
+--------
+ShareNonDet@IDC_PrDFS:goal3       |  1.75 |  9.0e-2 |  0.10 |  9.0e-2 |  9.0e-2
+ShareNonDet@IDC+_PrDFS:goal3      |  1.00 |  5.0e-2 |  5.0e-2 |  6.0e-2 |  5.0e-2
+ShareNonDet@IDC+_PrDFS_IORef:goal3|  1.06 |  6.0e-2 |  5.0e-2 |  6.0e-2 |  6.0e-2
+ShareNonDet@PAKCS                 |2828.94 |150.88 |150.55 |151.41 |150.67
+ShareNonDet@MCC                   | 64.63 |  3.45 |  3.46 |  3.44 |  3.44
+--------
+Last@IDC+_PrDFS_IORef|  3.62 |  0.31 |  0.31 |  0.31 |  0.32
+Last@IDC+_DFS_IORef  |  4.23 |  0.37 |  0.36 |  0.37 |  0.37
+Last@PAKCS           | 30.42 |  2.64 |  2.66 |  2.65 |  2.60
+Last@MCC             |  1.00 |  9.0e-2 |  8.0e-2 |  9.0e-2 |  9.0e-2
+--------
+RegExp@IDC+_PrDFS_IORef|  1.75 |  1.04 |  1.04 |  1.04 |  1.04
+RegExp@IDC+_DFS_IORef  |  2.21 |  1.31 |  1.31 |  1.30 |  1.33
+RegExp@PAKCS           | 21.66 | 12.85 | 12.89 | 12.94 | 12.72
+RegExp@MCC             |  1.00 |  0.59 |  0.61 |  0.58 |  0.59
+--------
+LastFunPats@IDC+_PrDFS_IORef|  1.00 |  0.29 |  0.28 |  0.29 |  0.29
+LastFunPats@IDC+_DFS_IORef  |  1.24 |  0.36 |  0.35 |  0.36 |  0.36
+LastFunPats@PAKCS           | 15.93 |  4.57 |  4.56 |  4.54 |  4.60
+--------
+ExpVarFunPats@IDC+_PrDFS_IORef|  1.00 |  1.53 |  1.53 |  1.52 |  1.53
+ExpVarFunPats@IDC+_DFS_IORef  |  1.18 |  1.81 |  1.80 |  1.81 |  1.81
+ExpVarFunPats@PAKCS           |  5.82 |  8.88 |  9.02 |  8.84 |  8.79
+--------
+ExpSimpFunPats@IDC+_PrDFS_IORef| 50.39 | 13.44 | 13.46 | 13.38 | 13.47
+ExpSimpFunPats@IDC+_DFS_IORef  | 50.29 | 13.41 | 13.43 | 13.44 | 13.36
+ExpSimpFunPats@PAKCS           |  1.00 |  0.27 |  0.28 |  0.26 |  0.26
+--------
+PaliFunPats@IDC+_PrDFS_IORef|  1.00 |  0.11 |  0.10 |  0.11 |  0.11
+PaliFunPats@IDC+_DFS_IORef  |  1.03 |  0.11 |  0.11 |  0.11 |  0.11
+PaliFunPats@PAKCS           |1333.00 |142.19 |142.08 |142.86 |141.62
