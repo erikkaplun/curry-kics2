@@ -35,6 +35,6 @@ tools/CurryTest
 tools/browser/BrowserGUI
 tools/curry2js/Curry2JS
 tools/currydoc/CurryDoc
-tools/SourceProgGUi
+tools/SourceProgGUI
 www/Registry
 www/submitform
