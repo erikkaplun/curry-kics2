@@ -17,7 +17,7 @@
 --- is a shell script stored in <i>pakcshome</i>/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version June 2011
+--- @version August 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
@@ -70,7 +70,7 @@ infixl 0 `addFormParam`
 
 ------------------------------------------------------------------------------
 --- The default encoding used in generated web pages.
-defaultEncoding = "iso-8859-1"
+defaultEncoding = "utf-8" --"iso-8859-1"
 
 --- The default background for generated web pages.
 defaultBackground = ("bgcolor","#ffffff")
@@ -769,13 +769,17 @@ htmlQuote (c:cs) | c=='<' = "&lt;"   ++ htmlQuote cs
 --- Translates umlauts in iso-8859-1 encoding into HTML special characters.
 htmlIsoUmlauts :: String -> String
 htmlIsoUmlauts [] = []
-htmlIsoUmlauts (c:cs) | oc==228 = "&auml;" ++ htmlIsoUmlauts cs
-                      | oc==246 = "&ouml;" ++ htmlIsoUmlauts cs
-                      | oc==252 = "&uuml;" ++ htmlIsoUmlauts cs
-                      | oc==196 = "&Auml;" ++ htmlIsoUmlauts cs
-                      | oc==214 = "&Ouml;" ++ htmlIsoUmlauts cs
-                      | oc==220 = "&Uuml;" ++ htmlIsoUmlauts cs
-                      | oc==223 = "&szlig;"++ htmlIsoUmlauts cs
+htmlIsoUmlauts (c:cs) | oc==228 = "&auml;"  ++ htmlIsoUmlauts cs
+                      | oc==246 = "&ouml;"  ++ htmlIsoUmlauts cs
+                      | oc==252 = "&uuml;"  ++ htmlIsoUmlauts cs
+                      | oc==196 = "&Auml;"  ++ htmlIsoUmlauts cs
+                      | oc==214 = "&Ouml;"  ++ htmlIsoUmlauts cs
+                      | oc==220 = "&Uuml;"  ++ htmlIsoUmlauts cs
+                      | oc==223 = "&szlig;" ++ htmlIsoUmlauts cs
+                      | oc==197 = "&Aring;" ++ htmlIsoUmlauts cs
+                      | oc==250 = "&uacute;"++ htmlIsoUmlauts cs
+                      | oc==237 = "&iacute;"++ htmlIsoUmlauts cs
+                      | oc==225 = "&aacute;"++ htmlIsoUmlauts cs
                       | otherwise = c : htmlIsoUmlauts cs
   where oc = ord c
 

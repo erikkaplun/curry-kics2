@@ -263,7 +263,9 @@ writeMainGoalFile rst imports mtype goal =
 makeMainGoalMonomorphic :: ReplState -> CurryProg -> String -> IO Bool
 makeMainGoalMonomorphic rst (CurryProg _ _ _ [mfunc] _) goal = do
   let (CFunc _ _ _ maintype _) = mfunc
-      newgoal = goal ++ (if isIOReturnType maintype then " >>= print" else "")
+      newgoal = if isIOReturnType maintype
+                then '(' : goal++") >>= print"
+                else goal
   if isFunctionalType maintype
    then writeErrorMsg "expression is of functional type" >> return False
    else
