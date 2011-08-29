@@ -29,12 +29,6 @@
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
 
-% Redefine description env as equation list to gain key alignment
-\usepackage{eqlist}
-\let\description=\eqlist
-\let\enddescription=\endeqlist
-\let\eqlistlabel\descriptionlabel
-
 
 \begin{document}
 %\pagestyle{plain}
@@ -44,11 +38,11 @@
 
 \author{
 Bernd Bra{\ss}el
-\kern1em
+\and
 Michael Hanus
-\kern1em
+\and
 Bj{\"o}rn Peem{\"o}ller
-\kern1em
+\and
 Fabian Reck
 }
 \institute{
