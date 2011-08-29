@@ -1,12 +1,6 @@
 \documentclass{llncs}
 
-\addtolength{\textheight}{0.2cm}
-\addtolength{\topmargin}{-0.1cm}
-\addtolength{\textwidth}{0.2cm}
-\addtolength{\oddsidemargin}{-0.1cm}
-\addtolength{\evensidemargin}{-0.1cm}
-
-\usepackage{times}
+\usepackage{a4,a4wide}
 \usepackage{url}
 \def\UrlFont{\tt}
 \usepackage{latexsym}
@@ -15,8 +9,8 @@
 \usepackage{color}
 
 \usepackage{listings}
-\lstset{aboveskip=0.5ex,
-        belowskip=0.5ex,
+\lstset{aboveskip=0.8ex,
+        belowskip=0.8ex,
         showstringspaces=false, % no special string space
         mathescape=true,
         flexiblecolumns=false,
@@ -34,9 +28,6 @@
 \newcommand{\ccode}[1]{``\code{#1}''}
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
-\newcommand{\dollar}{\code{\char36}} % dollar in programs
-\newcommand{\Choice}[2]{#1 \mathop{?} #2}
-\newcommand{\todo}[1]{\fbox{\sc To do: #1}}
 
 % Redefine description env as equation list to gain key alignment
 \usepackage{eqlist}
@@ -46,7 +37,7 @@
 
 
 \begin{document}
-\pagestyle{plain}
+%\pagestyle{plain}
 \sloppy
 
 \title{Implementing Equational Constraints\\ in a Functional Language}
@@ -175,8 +166,8 @@ Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
 discuss the extensions to implement unification modulo
 functional evaluation and functional patterns, respectively.
 Benchmarks demonstrating the usefulness of this scheme
-are presented in Section~\ref{sec:Benchmarks}
-before we conclude in Section~\ref{sec:Conclusions}.
+are presented in Sect.~\ref{sec:Benchmarks}
+before we conclude in Sect.~\ref{sec:Conclusions}.
 
 
 
@@ -228,8 +219,11 @@ If non-deterministic operations are used as arguments in other operations,
 a semantical ambiguity might occur. Consider the operations
 %
 \begin{curry}
-  xor True  x = not x             not True  = False
-  xor False x = x                 not False = True
+  not True  = False
+  not False = True
+
+  xor True  x = not x
+  xor False x = x
 
   xorSelf x = xor x x
 \end{curry}
@@ -288,8 +282,8 @@ of a list by:
 \end{curry}
 %
 Here, the functional pattern \code{(xs++[e])}
-states that \code{last'} is reducible
-to \code{e} provided that the argument can be matched against
+states that \code{(last' t)} is reducible
+to \code{e} provided that the argument \code{t} can be matched against
 some value of \code{(xs++[e])} where \code{xs} and \code{e} are
 free variables.
 By instantiating \code{xs} to arbitrary lists, the value
@@ -333,7 +327,7 @@ to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
 \end{haskell}
 The first argument of type \code{ID} of each \code{Choice} constructor
 is used to implement the call-time choice semantics
-discussed in Section~\ref{sec:Curry}.
+discussed in Sect.~\ref{sec:Curry}.
 Since the evaluation of \code{xorSelf aBool} duplicates
 the argument operation \code{aBool}, we have to ensure
 that both duplicates, which later evaluate to a non-deterministic
@@ -371,7 +365,7 @@ is parametric over concrete implementations of \code{IDSupply}.
 When translating Curry to Haskell, KiCS2 adds to each operation
 an additional argument of type \code{IDSupply}.
 For instance, the operation \code{aBool}
-defined in Section~\ref{ex:aBool} is translated into:
+defined in Sect.~\ref{ex:aBool} is translated into:
 \begin{haskell}
   aBool :: IDSupply -> Bool
   aBool s = Choice (thisID s) True False
@@ -393,7 +387,12 @@ for the evaluation of the operation \code{xorSelf}.
 
 Since all data types are extended by additional constructors,
 we must also extend the definition of operations performing
-pattern matching. For instance, consider the definition of polymorphic lists
+pattern matching.\footnote{To obtain a simple compilation scheme,
+KiCS2 transforms source programs into uniform programs
+\cite{BrasselHanusPeemoellerReck11} where pattern matching
+is restricted to a single argument.
+This is always possible by introducing auxiliary operations.}
+For instance, consider the definition of polymorphic lists
 \begin{curry}
   data List a = Nil | Cons a (List a)
 \end{curry}
@@ -433,10 +432,7 @@ of \code{IDSupply} based on unbounded integers:
 \end{haskell}
 %
 If we apply the same transformation to the rules defining \code{xor}
-(actually, \code{xor} performs pattern matching on two arguments
-which is avoided in KiCS2 by introducing an intermediate operation,
-see \cite{BrasselHanusPeemoellerReck11}) and evaluate the main expression
-\code{(main 1)},
+and evaluate the main expression \code{(main 1)},
 we obtain the result
 \begin{haskell}
   Choice 2 (Choice 2 False True) (Choice 2 True False)
@@ -444,7 +440,7 @@ we obtain the result
 Thus, the result is non-deterministic and contains three choices,
 whereby all of them have the same identifier.
 To extract all values from such a \code{Choice} structure,
-we have to traverse it and  compute all possible choices,
+we have to traverse it and  compute all possible choices
 but consider the choice identifiers to make consistent (left/right)
 decisions.
 Thus, if we select the left branch as the value
@@ -481,7 +477,7 @@ since the type system of Haskell does not
 allow this direct definition.}
 \label{sec:printValsDFS}
 \begin{haskell}
-  printValsDFS :: a -> IO ()
+  printValsDFS :: a -> IO ()$\listline$
   printValsDFS Fail             = return ()$\listline$
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
     where
@@ -528,10 +524,12 @@ To avoid an unnecessary growth of the search space represented by
 \code{Choice} constructors, our compiler performs an optimization for
 deterministic operations. If an operation is defined by non-overlapping
 rules and does not call, neither directly nor indirectly through
-other operations, a function defined by overlapping rules, it does not
-introduce non-determinism (like \code{xor} or \code{not}).
+other operations, a function defined by overlapping rules,
+the evaluation of such an operation (like \code{xor} or \code{not})
+cannot introduce non-deterministic values.
 Thus, it is not necessary to pass an identifier supply to the operation.
-In consequence, only the matching rules are extended, so that the generated code
+In consequence, only the matching rules are extended by additional cases
+for handling \code{Choice} and \code{Fail} so that the generated code
 is nearly identical to a corresponding functional program.
 Actually, the benchmarks presented in \cite{BrasselHanusPeemoellerReck11}
 show that for deterministic operations this implementation outperforms 
@@ -550,9 +548,6 @@ argument \code{aBool s} to a choice between \code{True} or \code{False}
 followed by applying \code{not} to this choice.
 This is similar to a narrowing step on \ccode{not x}
 that instantiates the variable \code{x} to \code{True} or \code{False}.
-% Actually, it has been shown in \cite{AntoyHanus06ICLP}
-% that narrowing expressions with logic variables
-% is equivalent to rewriting with generators.
 Since such generators are standard
 non-deterministic operations, they are translated like any other operation
 and, therefore, do not require any additional run-time support.
@@ -574,14 +569,14 @@ equational constraints of the form \code{$e_1$\,=:=\,$e_2$}
 are the most important kind of constraints.
 We have already seen a typical application
 of an equational constraint in the operation
-\code{last} in Section~\ref{ex:last}.
+\code{last} in Sect.~\ref{ex:last}.
 
 Due to the presence of non-terminating operations
 and infinite data structures,
 \ccode{=:=} is interpreted as the \emph{strict equality} on terms
 \cite{GiovannettiLeviMoisoPalamidessi91},
 i.e., the equation \code{$e_1$\,=:=\,$e_2$} is satisfied iff
-$e_1$ and $e_2$ are reducible to unifiable ground constructor terms.
+$e_1$ and $e_2$ are reducible to unifiable constructor terms.
 In particular, expressions that do not have a value
 are not equal w.r.t.\ \ccode{=:=}, e.g.,
 the equational constraint \ccode{head [] =:= head []}
@@ -606,7 +601,7 @@ of the type \code{Success} of constraints):
 \end{curry}
 %
 If we translate these operations into Haskell by the scheme
-shown in Section~\ref{sec:Compilation},
+presented in Sect.~\ref{sec:Compilation},
 the following rules are added to these rules
 in order to propagate choices and failures:
 \begin{haskell}
@@ -693,7 +688,7 @@ by the rule
 \begin{haskell}
   not (Choice i x1 x2) s = Choice (narrow i) (not x1 s) (not x2 s)
 \end{haskell}
-
+%
 As mentioned above, the consideration of free variables
 is relevant in equational constraints where \emph{binding constraints} are
 generated. For this purpose, we introduce a type to represent
@@ -780,13 +775,6 @@ application of \code{head} to an unknown list as follows:
 \end{haskell}
 Here, free variables are marked by the prefix \code{\us{}x}.
 
-% Due to the extensions described in this section,
-% we obtain an implementation of a unification procedure
-% that integrates the demand-driven evaluation of operations
-% occurring in the arguments.
-% Benchmarks evaluating the efficiency of this approach are
-% shown in Section~\ref{sec:Benchmarks}.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Functional Patterns}
@@ -797,16 +785,18 @@ is the fact that \ccode{=:=} is interpreted as strict equality.
 Thus, if one uses equational constraints to express
 requirements on arguments, the resulting operations might be too strict.
 For instance, the equational constraint in the condition
-defining \code{last} (see Section~\ref{ex:last})
+defining \code{last} (see Sect.~\ref{ex:last})
 requires that \code{ys++[e]} as well as \code{xs}
 must be reducible to unifiable terms so that in consequence
 the input list \code{xs} is completely evaluated.
 Hence, if \code{failed} denotes an operation whose evaluation fails,
 the evaluation of \code{last [failed,True]} has no result.
 On the other hand, the evaluation of \code{last' [failed,True]} yields
-the value \code{True}, i.e., the definition of \code{last'} is less strict.
+the value \code{True}, i.e., the definition of \code{last'} is less strict
+thanks to the use of functional patterns.
 
-As another example for the advantage of the reduced strictness,
+As another example for the advantage of the reduced strictness
+implied by functional patterns,
 consider an operation that returns the first duplicate element in
 a list.
 Using equational constraints, we can define it as follows:
@@ -816,11 +806,11 @@ Using equational constraints, we can define it as follows:
 \end{curry}
 The first equational constraint is used to split the input list \code{xs}
 into three sublists.
-The last constraint ensures that the first sublist
+The last equational constraint ensures that the first sublist
 \code{ys} does not contain duplicated elements
 (the library operation \code{nub} removes all duplicates from a list)
-and the second constraint ensures that the first element after \code{ys}
-occurs in \code{ys}.
+and the second equational constraint ensures that the first element
+after \code{ys} occurs in \code{ys}.
 Although this implementation is concise, it cannot be applied
 to infinite lists due to the strict interpretation of \ccode{=:=}.
 This is not the case if we define this operation by a functional pattern:
@@ -842,7 +832,7 @@ abbreviates the following (infinite) set of rules:
   last' [x1,x2,e] = e
   $\ldots$
 \end{curry}
-
+%
 Obviously, one cannot implement functional patterns by
 a transformation into an infinite set of rules. Instead, they are
 implemented by a specific \emph{lazy unification} procedure \ccode{=:<=}
@@ -875,7 +865,7 @@ to the type of decisions:
 %
 The implementation of the lazy unification operation \ccode{=:<=}
 is almost identical to the strict unification operation \ccode{=:=}
-as shown in Section~\ref{sec:Unification}.
+as shown in Sect.~\ref{sec:Unification}.
 The only difference is in the rules where a free variable occurs
 in the left argument. All these rules are replaced by the single
 rule
@@ -909,7 +899,8 @@ we sketch the evaluation of the lazy unification constraint
 \code{xs++[e] =:<= [failed,True]} that occurs when the expression
 \code{last' [failed,True]} is evaluated (we omit failed branches
 and some other details; note that logic variables are replaced
-by generators):
+by generators, i.e., we assume that \code{xs} is replaced by
+\code{aBoolList 2} and \code{e} is replaced by \code{aBool 3}):
 \begin{haskell}
      aBoolList 2 ++ [aBool 3] =:<= [failed, True]
   $\leadsto$ [aBool 4, aBool 3] =:<= [failed, True]
@@ -930,8 +921,6 @@ will never be evaluated, as intended.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:Benchmarks}
-
-% The benchmark results are from unif@climens2011_7_5_20_38_47.bench
 
 In this section we evaluate our implementation of
 equational constraints and functional patterns by some benchmarks.
@@ -971,8 +960,6 @@ Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
 \code{last (map (inc 0) [1..10000])}   &  2.91   &    0.05   &    0.01   \\
 \code{simplify}                         & 10.30      & 6.77      & 7.07        \\
 \code{varInExp}                         & 2.34    & 0.24      & 0.21        \\
-% \code{varInExp2}                        & 0.34   & 0.02     & 0.01        \\
-% \code{varInExp3}                        & 13.28    & 1.36     & 1.02       \\
 \code{fromPeano (half (toPeano 10000))} & 26.67     & 5.95      & 11.19       \\
 \code{palindrome}                       & 30.86     & 14.05     & 20.26       \\
 \code{horseman}                         & 3.24      & 3.31      & n/a         \\
@@ -983,7 +970,7 @@ Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
  \label{fig:search-strategies}
 \end{figure}
 
-In Section~\ref{sec:Unification} we mentioned that equational
+In Sect.~\ref{sec:Unification} we mentioned that equational
 constraints could also be solved by generators without variable bindings,
 but this technique might increase the search space due to the
 possibly superfluous generation of all values.
@@ -1011,8 +998,6 @@ Expression                              & KiCS2 & PAKCS  & MCC  \\
 \code{last (map (inc 0) [1..10000])}   & 0.05  & 0.40   &  0.01\\
 \code{simplify}                         & 6.77  & 0.15   & 0.00 \\
 \code{varInExp}                         & 0.24  & 0.89   & 0.07 \\
-% \code{varInExp2}                        & 0.02 & 0.06   & 0.00 \\
-% \code{varInExp3}                        & 1.36 & 2.07  & 0.14 \\
 \code{fromPeano (half (toPeano 10000))} & 5.95  & 108.88 & 3.22 \\
 \code{palindrome}                       & 14.05 & 32.56  & 1.07 \\
 \code{horseman}                         & 3.31  & 8.70   & 0.42 \\
@@ -1049,8 +1034,6 @@ Expression                              & KiCS2 & PAKCS    \\
 \code{last (map (inc 0) [1..10000])}   &  0.01 & 0.33     \\
 \code{simplify}                         & 7.07  & 0.27     \\
 \code{varInExp}                         &  0.21  &  1.87    \\
-% \code{varInExp2}                         & 0.01  & 0.02    \\
-% \code{varInExp3}                         & 1.02 & 2.16   \\
 \code{fromPeano (half (toPeano 10000))} & 11.19 & $\infty$ \\
 \code{palindrome}                       & 20.26 & $\infty$ \\
 \hline
@@ -1104,8 +1087,185 @@ of our implementation and solving them by
 functional approaches like \cite{SchrijversStuckeyWadler09}.
 
 
-\bibliographystyle{mhnumber} %plain}
-\bibliography{mh}
+\begin{thebibliography}{10}
+
+\bibitem{AntoyHanus00FROCOS}
+S.~Antoy and M.~Hanus.
+\newblock Compiling multi-paradigm declarative programs into {Prolog}.
+\newblock In {\em Proc. International Workshop on Frontiers of Combining
+  Systems (FroCoS'2000)}, pages 171--185. Springer LNCS 1794, 2000.
+
+\bibitem{AntoyHanus02FLOPS}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic design patterns.
+\newblock In {\em Proc.\ of the 6th International Symposium on Functional and
+  Logic Programming (FLOPS 2002)}, pages 67--87. Springer LNCS 2441, 2002.
+
+\bibitem{AntoyHanus05LOPSTR}
+S.~Antoy and M.~Hanus.
+\newblock Declarative programming with function patterns.
+\newblock In {\em Proceedings of the International Symposium on Logic-based
+  Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
+  3901, 2005.
+
+\bibitem{AntoyHanus06ICLP}
+S.~Antoy and M.~Hanus.
+\newblock Overlapping rules and logic variables in functional logic programs.
+\newblock In {\em Proceedings of the 22nd International Conference on Logic
+  Programming (ICLP 2006)}, pages 87--101. Springer LNCS 4079, 2006.
+
+\bibitem{AntoyHanus10CACM}
+S.~Antoy and M.~Hanus.
+\newblock Functional logic programming.
+\newblock {\em Communications of the ACM}, 53(4):74--85, 2010.
+
+\bibitem{AntoyHanus11WFLP}
+S.~Antoy and M.~Hanus.
+\newblock New functional logic design patterns.
+\newblock In {\em Proc.\ of the 20th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2011)}, pages 19--34. Springer LNCS
+  6816, 2011.
+
+\bibitem{AntoyHanusLiuTolmach05}
+S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
+\newblock A virtual machine for functional logic computations.
+\newblock In {\em Proc.\ of the 16th International Workshop on Implementation
+  and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
+  LNCS 3474, 2005.
+
+\bibitem{AugustssonRittriSynek94}
+L.~Augustsson, M.~Rittri, and D.~Synek.
+\newblock On generating unique names.
+\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
+\bibitem{Brassel11Thesis}
+B.~Bra{\ss}el.
+\newblock {\em Implementing Functional Logic Programs by Translation into
+  Purely Functional Programs}.
+\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
+
+\bibitem{BrasselFischer08IFL}
+B.~Bra{\ss}el and S.~Fischer.
+\newblock From functional logic programs to purely functional programs
+  preserving laziness.
+\newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
+  Application of Functional Languages (IFL 2008)}, 2008.
+
+\bibitem{BrasselHanusHuch04JFLP}
+B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
+\newblock Encapsulating non-determinism in functional logic computations.
+\newblock {\em Journal of Functional and Logic Programming}, 2004(6), 2004.
+
+\bibitem{BrasselHanusPeemoellerReck11}
+B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
+\newblock {KiCS2}: A new compiler from {Curry} to {Haskell}.
+\newblock In {\em Proc. of the 20th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2011)}, pages 1--18. Springer LNCS 6816,
+  2011.
+
+\bibitem{BrasselHuch07}
+B.~Bra{\ss}el and F.~Huch.
+\newblock On a tighter integration of functional and logic programming.
+\newblock In {\em Proc. APLAS 2007}, pages 122--138. Springer LNCS 4807, 2007.
+
+\bibitem{BrasselHuch09}
+B.~Bra{\ss}el and F.~Huch.
+\newblock The {Kiel} {Curry} {System} {KiCS}.
+\newblock In {\em Applications of Declarative Programming and Knowledge
+  Management}, pages 195--205. Springer LNAI 5437, 2009.
+
+\bibitem{GiovannettiLeviMoisoPalamidessi91}
+E.~Giovannetti, G.~Levi, C.~Moiso, and C.~Palamidessi.
+\newblock Kernel leaf: A logic plus functional language.
+\newblock {\em Journal of Computer and System Sciences}, 42(2):139--185, 1991.
+
+\bibitem{GonzalezEtAl99}
+J.C. Gonz{\'a}lez-Moreno, M.T. Hortal{\'a}-Gonz{\'a}lez, F.J.
+  L{\'o}pez-Fraguas, and M.~Rodr{\'\i}guez-Artalejo.
+\newblock An approach to declarative programming based on a rewriting logic.
+\newblock {\em Journal of Logic Programming}, 40:47--87, 1999.
+
+\bibitem{Hanus07ICLP}
+M.~Hanus.
+\newblock Multi-paradigm declarative languages.
+\newblock In {\em Proceedings of the International Conference on Logic
+  Programming (ICLP 2007)}, pages 45--75. Springer LNCS 4670, 2007.
+
+\bibitem{Hanus11ICLP}
+M.~Hanus.
+\newblock Declarative processing of semistructured web data.
+\newblock In {\em Technical Communications of the 27th International Conference
+  on Logic Programming}, volume~11, pages 198--208. Leibniz International
+  Proceedings in Informatics (LIPIcs), 2011.
+
+\bibitem{Hanus10PAKCS}
+M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
+  P.~Niederau, R.~Sadre, and F.~Steiner.
+\newblock {PAKCS}: The {P}ortland {A}achen {K}iel {C}urry {S}ystem.
+\newblock Available at \url{http://www.informatik.uni-kiel.de/~pakcs/}, 2010.
+
+\bibitem{HanusSadre99JFLP}
+M.~Hanus and R.~Sadre.
+\newblock An abstract machine for curry and its concurrent implementation in
+  java.
+\newblock {\em Journal of Functional and Logic Programming}, 1999(6), 1999.
+
+\bibitem{Hanus06Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
+\newblock Available at \url{http://www.curry-language.org}, 2006.
+
+\bibitem{Hussmann92}
+H.~Hussmann.
+\newblock Nondeterministic algebraic specifications and nonconfluent term
+  rewriting.
+\newblock {\em Journal of Logic Programming}, 12:237--255, 1992.
+
+\bibitem{Lopez-FraguasSanchez-Hernandez99}
+F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
+\newblock {TOY}: A multiparadigm declarative system.
+\newblock In {\em Proc. of RTA'99}, pages 244--247. Springer LNCS 1631, 1999.
+
+\bibitem{Lux99FLOPS}
+W.~Lux.
+\newblock Implementing encapsulated search for a lazy functional logic
+  language.
+\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
+  Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
+
+\bibitem{ODonnell85}
+M.J. O'Donnell.
+\newblock {\em Equational Logic as a Programming Language}.
+\newblock MIT Press, 1985.
+
+\bibitem{PeytonJones03Haskell}
+S.~Peyton~Jones, editor.
+\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
+\newblock Cambridge University Press, 2003.
+
+\bibitem{Reddy85}
+U.S. Reddy.
+\newblock Narrowing as the operational semantics of functional languages.
+\newblock In {\em Proc. IEEE Internat. Symposium on Logic Programming}, pages
+  138--151, Boston, 1985.
+
+\bibitem{Robinson65}
+J.A. Robinson.
+\newblock A machine-oriented logic based on the resolution principle.
+\newblock {\em Journal of the ACM}, 12(1):23--41, 1965.
+
+\bibitem{SchrijversStuckeyWadler09}
+T.~Schrijvers, P.~Stuckey, and P.~Wadler.
+\newblock Monadic constraint programming.
+\newblock {\em Journal of Functional Programming}, 19(6):663--697, 2009.
+
+\bibitem{Slagle74}
+J.R. Slagle.
+\newblock Automated theorem-proving for theories with simplifiers,
+  commutativity, and associativity.
+\newblock {\em Journal of the ACM}, 21(4):622--642, 1974.
+
+\end{thebibliography}
 
 \end{document}
 
