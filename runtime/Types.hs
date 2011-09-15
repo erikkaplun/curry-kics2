@@ -362,8 +362,8 @@ instance NonDet (a -> b) where
   choicesCons = error "choicesCons for function is undefined"
   failCons    = error "failCons for function is undefined"
   guardCons   = error "guardCons for function is undefined"
-  try         = error "try for function is undefined"
-  match       = error "match for function is undefined"
+  try         = Val
+  match _ _ _ _ _ f x = f x
 
 instance Generable (a -> b) where
   generate = error "generate for function is undefined"
