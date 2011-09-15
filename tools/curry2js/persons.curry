@@ -27,9 +27,10 @@ wPerson = w4Tuple (wRequiredStringSize 12) (wRequiredStringSize 12) wEmail wDate
 -- a WUI for persons:
 main = mainWUI (wList wPerson) persons resultForm
 
-persons = [("Bob","Carter","bob@carter.com",(3,10,1965)),
-           ("Bill","Jones","billy@acm.org",(29,2,1982)),
-           ("Joe","Smith","smith.org",(20,3,1978))]
+persons = [("Bob","Carter","bob@carter.com",(3,10,1965))
+          ,("Bill","Jones","billy@acm.org",(29,2,1982))
+          ,("Joe","Smith","smith.org",(20,3,1978))
+          ]
 
 -- makecurrycgi -wuijs persons
 

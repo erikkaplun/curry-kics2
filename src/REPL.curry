@@ -2,7 +2,7 @@
 --- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
---- @version July 2011
+--- @version September 2011
 --- --------------------------------------------------------------------------
 
 import RCFile
@@ -118,18 +118,25 @@ main = do
   let rst = { idcHome := Inst.installDir
             , rcvars := rcdefs 
             | initReplState }
-  processArgsAndStart { importPaths := defaultImportPaths rst | rst }
+  ipath  <- defaultImportPaths rst
+  processArgsAndStart { importPaths := ipath | rst }
     (map strip (words (rcValue (rst->rcvars) "defaultparams")) ++ args)
 
 -- The default import paths of KiCS2.
-defaultImportPaths :: ReplState -> [String]
-defaultImportPaths rst =
+-- It consists of the path defined by the environment variable CURRYPATH,
+-- the "libraries" property defined in ~/.kics2rc, and the
+-- directories of the system libraries of KiCS2.
+defaultImportPaths :: ReplState -> IO [String]
+defaultImportPaths rst = do
+  currypath <- getEnviron "CURRYPATH"
   let rclibs = rcValue (rst->rcvars) "libraries"
-   in (if null rclibs then [] else splitPath rclibs) ++
-      map (Inst.installDir </>) ["/lib","/lib/meta"]
+  return $ (if null currypath then [] else splitPath currypath) ++
+           (if null rclibs    then [] else splitPath rclibs) ++
+           map (Inst.installDir </>) ["/lib","/lib/meta"]
 
-defaultImportPathsWith :: ReplState -> String -> [String]
-defaultImportPathsWith rst dirs = splitPath dirs ++ defaultImportPaths rst
+defaultImportPathsWith :: ReplState -> String -> IO [String]
+defaultImportPathsWith rst dirs =
+  defaultImportPaths rst >>= return . ((splitPath dirs) ++)
 
 processArgsAndStart rst [] =
   if rst -> quit
@@ -636,9 +643,9 @@ allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
   | option=="paths"
-   = if null args
-     then return (Just { importPaths := defaultImportPaths rst | rst })
-     else return (Just { importPaths := defaultImportPathsWith rst args | rst })
+   = do ipath <- if null args then defaultImportPaths rst
+                              else defaultImportPathsWith rst args
+        return (Just { importPaths := ipath | rst })
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
