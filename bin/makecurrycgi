@@ -132,6 +132,10 @@ fi
 # generate cgi script:
 rm -f $CGIFILE
 echo "#!/bin/sh" >> $CGIFILE
+if test -n "$LANG" ; then
+  echo "LANG=$LANG" >> $CGIFILE
+  echo "export LANG" >> $CGIFILE
+fi
 echo "$KICS2HOME/www/submitform $SERVERTIMEOUT $LOADBALANCE \"$CGIPROG\" \"$CGIKEY\" \"$CGISERVERFILE\" 2> /dev/null" >> $CGIFILE
 chmod 755 $CGIFILE
 
