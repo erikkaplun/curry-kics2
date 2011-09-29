@@ -71,24 +71,26 @@ type ReplState =
   }
 
 --------------------------------------------------------------------------
--- Information for communication with ghci (pair of command and handle)
-data GhciCommunication = GhciComm String Handle
+-- Information for communication with ghci
+-- (triple of command, handle, and KiCS2 verbosity of this command)
+data GhciCommunication = GhciComm String Handle Int
 
 -- start ghci communication (if necessary)
 startGhciComm :: ReplState -> String -> IO ReplState
-startGhciComm rst cmd =
+startGhciComm rst cmd = let v = rst->verbose in
   maybe (do hdl <- connectToCommand cmd
-            let rst' = { ghcicomm := Just (GhciComm cmd hdl) | rst }
+            let rst' = { ghcicomm := Just (GhciComm cmd hdl v) | rst }
             showGhciOutput rst' "putStrLn \"\""
             return rst'
         )
-        (\ (GhciComm cmd0 hdl0) ->
+        (\ (GhciComm cmd0 hdl0 v0) ->
           if cmd==cmd0
           then hPutStrLnGhci rst hdl0 ":reload" >> return rst
           else do hPutStrLnGhci rst hdl0 ":quit"
+                  unless (v0 < 2) (hGetLine hdl0 >>= putStrLn)
                   hClose hdl0
                   hdl <- connectToCommand cmd
-                  return { ghcicomm := Just (GhciComm cmd hdl) | rst }
+                  return { ghcicomm := Just (GhciComm cmd hdl v) | rst }
         )
         (rst->ghcicomm)
 
@@ -96,22 +98,23 @@ startGhciComm rst cmd =
 stopGhciComm :: ReplState -> IO ReplState
 stopGhciComm rst =
   maybe (return rst)
-        (\ (GhciComm _ hdl) -> hPutStrLnGhci rst hdl ":quit" >>
-                               hClose hdl >>
-                               return { ghcicomm := Nothing | rst })
+        (\ (GhciComm _ hdl _) -> hPutStrLnGhci rst hdl ":quit" >>
+                                 hClose hdl >>
+                                 return { ghcicomm := Nothing | rst })
         (rst->ghcicomm)
 
 -- send "main" to ghci and print results
 mainGhciComm :: ReplState -> IO ()
 mainGhciComm rst = do
-  let (Just (GhciComm _ hdl)) = rst->ghcicomm
-  unless (not (rst->showTime)) (hPutStrLnGhci rst hdl (":set +s"))
+  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
+  hPutStrLnGhci rst hdl $ ':':(if rst->showTime then "" else "un")++"set +s"
   showGhciOutput rst "main"
+  unless (not (rst->showTime)) (hGetLine hdl >>= putStrLn)
 
 -- send an IO expression to ghci and print the stdout data from ghci
 showGhciOutput :: ReplState -> String -> IO ()
 showGhciOutput rst cmd = do
-  let (Just (GhciComm _ hdl)) = rst->ghcicomm
+  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
       stopstring = "XXX"
   hPutStrLnGhci rst hdl (cmd++" >> putStrLn \""++stopstring++"\"")
   hPrintLinesBefore hdl stopstring
