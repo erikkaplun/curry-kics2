@@ -7,7 +7,7 @@
 
 import RCFile
 import System(system,getArgs,getEnviron,setEnviron,getPID)
-import Char(isAlpha,isDigit,isSpace,toLower)
+import Char(isAlpha,isAlphaNum,isDigit,isSpace,toLower)
 import IO
 import IOExts
 import FileGoodies
@@ -103,7 +103,10 @@ stopGhciComm rst =
 
 -- send "main" to ghci and print results
 mainGhciComm :: ReplState -> IO ()
-mainGhciComm rst = showGhciOutput rst "main"
+mainGhciComm rst = do
+  let (Just (GhciComm _ hdl)) = rst->ghcicomm
+  unless (not (rst->showTime)) (hPutStrLnGhci rst hdl (":set +s"))
+  showGhciOutput rst "main"
 
 -- send an IO expression to ghci and print the stdout data from ghci
 showGhciOutput :: ReplState -> String -> IO ()
@@ -175,6 +178,7 @@ writeVerboseInfo rst level msg =
 writeErrorMsg :: String -> IO ()
 writeErrorMsg msg = putStrLn ("ERROR: "++msg)
 
+--------------------------------------------------------------------------
 main = do
   rcdefs <- readRC
   args   <- getArgs
@@ -578,8 +582,12 @@ processThisCommand rst cmd args
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
-                (\_ -> compileCurryProgram rst' modname False >>
-                     return (Just { mainMod := modname, addMods := [] | rst' }))
+                (\fn ->
+                   readAndProcessSourceFileOptions rst' fn >>=
+                   maybe (return Nothing)
+                     (\rst'' -> compileCurryProgram rst'' modname False >>
+                      return (Just{mainMod := modname, addMods := [] | rst''}))
+                )
                 mbf
   | cmd=="reload"
    = if rst->mainMod == "Prelude"
@@ -864,6 +872,61 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
 errorMissingTool execfile = writeErrorMsg $
   Inst.installDir ++ '/' : execfile ++ " not found\n" ++
   "Possible solution: run \"cd "++Inst.installDir++" && make install\""
+
+--------------------------------------------------------------------------
+-- Read KiCS2 options in a Curry source file
+-- Source file options are comments of the form
+-- {-# KiCS2_OPTION <opt> #-}
+-- occurring before the module header where <opt> is an option
+-- of KiCS2 (i.e., ":set <opt>" is a valid KiCS2 command).
+-- These options are read and processed when a module is loaded (not reloaded!).
+
+readAndProcessSourceFileOptions :: ReplState -> String -> IO (Maybe ReplState)
+readAndProcessSourceFileOptions rst fname = do
+  opts <- readSourceFileOptions fname
+  unless (null opts) $
+   writeVerboseInfo rst 1 $ "Source file options: " ++
+                            concat (intersperse " | " (map unwords opts))
+  processSourceFileOptions rst opts
+
+processSourceFileOptions :: ReplState -> [[String]] -> IO (Maybe ReplState)
+processSourceFileOptions rst [] = return (Just rst)
+processSourceFileOptions rst (o:os) =
+  processSetOption rst (unwords o) >>=
+  maybe (return Nothing) (\rst' -> processSourceFileOptions rst' os)
+
+readSourceFileOptions :: String -> IO [[String]]
+readSourceFileOptions fname = do
+  h <- openFile fname ReadMode
+  headers <- readHeaderLines h
+  hClose h
+  return (filter (not . null) (map getOptions (filter isOptionComment headers)))
+ where
+  isOptionComment s = take 3 s == "{-#" -- #-}
+
+  getOptions s =
+   let optwords = words (extractOptionString (drop 3 s))
+    in if null optwords || map toLower (head optwords) /= "kics2_option"
+       then []
+       else tail optwords
+
+  extractOptionString [] = ""
+  extractOptionString (c:cs) = case cs of
+    [] -> ""
+    [_] -> ""
+    _ -> if (c:take 2 cs) == "#-}" then "" else c : extractOptionString cs
+
+readHeaderLines h = do
+  eof <- hIsEOF h
+  if eof then return []
+         else do line <- hGetLine h
+                 if isModuleStart line
+                  then return []
+                  else do lines <- readHeaderLines h
+                          return (strip line:lines)
+ where isModuleStart l = take 6 l `elem` ["module","import"] ||
+                         (let (w,_) = break isSpace l
+                           in not (null w) && all isAlphaNum w)
 
 -----------------------------------------------------------------------
 -- Showing source code of functions via SourcProgGUI tool.
