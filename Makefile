@@ -169,8 +169,8 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
-	rm -rf benchmarks papers talks tests examples
-	rm -f TODO compilerdoc.wiki
+	rm -rf benchmarks papers talks tests examples experiments
+	rm -f TODO compilerdoc.wiki testsuite/TODO
 
 # publish the distribution files in the local web pages
 HTMLDIR=${HOME}/public_html/kics2/download
