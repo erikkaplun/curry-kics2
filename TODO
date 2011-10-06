@@ -8,12 +8,15 @@ Things we have to do
 - Literal pattern like f 'a' = 'b' are not fully tested, especially for exotic
   characters (e.g., characters above (chr 127)).
 - set functions
-- test function patterns
+- test functional patterns
 - IO
 - repair --no-opt compiler option
 - sharing of non-determinism is less efficient than in KiCS
 - sharing of non-determinism and free vars is less efficient than in KiCS
-- repair search strategies bfs, iterative deepening
+- complete implementation of search strategies
 - eta-expansion of deterministic functions (optimizing)
   Update: It seems like this functionality has been included in the frontend
   but disabled for PAKCS. Maybe we can reactivate it.
+- Extend failure constructors with String or other appropriate to be able to
+  give good error messages
+- Integrate new frontend implementation
