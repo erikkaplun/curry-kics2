@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=22/08/11
+COMPILERDATE=29/09/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -45,6 +45,19 @@ install: ${INSTALLCURRY} frontend Compile REPL
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	chmod -R go+rX .
+
+#
+# Create documentation for system libraries:
+#
+.PHONY: libdoc
+libdoc:
+	@if [ ! -r bin/currydoc ] ; then \
+	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
+	@rm -f ${MAKELOG}
+	@echo "Make libdoc started at `date`" > ${MAKELOG}
+	@cd lib && ${MAKE} doc 2>&1 | tee -a ../${MAKELOG}
+	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
+	@echo "Make libdoc process logged in file ${MAKELOG}"
 
 .PHONY: frontend
 frontend:
@@ -156,8 +169,8 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
-	rm -rf benchmarks papers talks tests examples
-	rm -f TODO compilerdoc.wiki
+	rm -rf benchmarks papers talks tests examples experiments
+	rm -f TODO compilerdoc.wiki testsuite/TODO
 
 # publish the distribution files in the local web pages
 HTMLDIR=${HOME}/public_html/kics2/download

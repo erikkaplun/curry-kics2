@@ -10,6 +10,10 @@
 *.aux
 *.log
 *.out
+*.nav
+*.snm
+*.toc
+*.vrb
 *.pdf
 
 # intermediate files
@@ -38,3 +42,6 @@ tools/currydoc/CurryDoc
 tools/SourceProgGUI
 www/Registry
 www/submitform
+
+# documentation
+lib/CDOC

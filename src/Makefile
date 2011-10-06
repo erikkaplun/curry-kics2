@@ -7,9 +7,9 @@ INSTALLCURRY=Installation.curry
 # ghc options
 GHCOPTIONS=-O2 --make -v1
 # ghc language extensions for compiling translating Curry programs:
-GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
+GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec -package ghc
 # ghc includes for compiling translating Curry programs:
-GHCINCLUDES=-i../runtime:../runtime/idsupplyinteger:./.curry/kics2/:../lib/.curry/kics2/:../lib/meta/.curry/kics2/
+GHCINCLUDES=-i../runtime:../runtime/idsupplyghc:./.curry/kics2/:../lib/.curry/kics2/:../lib/meta/.curry/kics2/
 
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \

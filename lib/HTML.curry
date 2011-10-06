@@ -17,7 +17,7 @@
 --- is a shell script stored in <i>pakcshome</i>/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version August 2011
+--- @version September 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
@@ -598,7 +598,7 @@ textfield cref contents
   | cref =:= CgiRef ref -- instantiate cref argument
   = HtmlCRef
        (HtmlStruct "input" [("type","text"),("name",ref),
-                            ("value",contents)] [])
+                            ("value",htmlQuote contents)] [])
        cref
  where ref free
 

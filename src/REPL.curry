@@ -2,12 +2,12 @@
 --- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
---- @version July 2011
+--- @version September 2011
 --- --------------------------------------------------------------------------
 
 import RCFile
 import System(system,getArgs,getEnviron,setEnviron,getPID)
-import Char(isAlpha,isDigit,isSpace,toLower)
+import Char(isAlpha,isAlphaNum,isDigit,isSpace,toLower)
 import IO
 import IOExts
 import FileGoodies
@@ -62,11 +62,78 @@ type ReplState =
   , interactive  :: Bool       -- interactive execution of goal?
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
+  , useGhci      :: Bool       -- use ghci to evaluate main goal
   , cmpOpts      :: String     -- additional options for calling kics2 compiler
   , rtsOpts      :: String     -- run-time options for ghc
   , quit         :: Bool       -- terminate the REPL?
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
+  , ghcicomm     :: Maybe GhciCommunication -- possible ghci comm. info
   }
+
+--------------------------------------------------------------------------
+-- Information for communication with ghci
+-- (triple of command, handle, and KiCS2 verbosity of this command)
+data GhciCommunication = GhciComm String Handle Int
+
+-- start ghci communication (if necessary)
+startGhciComm :: ReplState -> String -> IO ReplState
+startGhciComm rst cmd = let v = rst->verbose in
+  maybe (do hdl <- connectToCommand cmd
+            let rst' = { ghcicomm := Just (GhciComm cmd hdl v) | rst }
+            showGhciOutput rst' "putStrLn \"\""
+            return rst'
+        )
+        (\ (GhciComm cmd0 hdl0 v0) ->
+          if cmd==cmd0
+          then hPutStrLnGhci rst hdl0 ":reload" >> return rst
+          else do hPutStrLnGhci rst hdl0 ":quit"
+                  unless (v0 < 2) (hGetLine hdl0 >>= putStrLn)
+                  hClose hdl0
+                  hdl <- connectToCommand cmd
+                  return { ghcicomm := Just (GhciComm cmd hdl v) | rst }
+        )
+        (rst->ghcicomm)
+
+-- terminate ghci communication
+stopGhciComm :: ReplState -> IO ReplState
+stopGhciComm rst =
+  maybe (return rst)
+        (\ (GhciComm _ hdl _) -> hPutStrLnGhci rst hdl ":quit" >>
+                                 hClose hdl >>
+                                 return { ghcicomm := Nothing | rst })
+        (rst->ghcicomm)
+
+-- send "main" to ghci and print results
+mainGhciComm :: ReplState -> IO ()
+mainGhciComm rst = do
+  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
+  hPutStrLnGhci rst hdl $ ':':(if rst->showTime then "" else "un")++"set +s"
+  showGhciOutput rst "main"
+  unless (not (rst->showTime)) (hGetLine hdl >>= putStrLn)
+
+-- send an IO expression to ghci and print the stdout data from ghci
+showGhciOutput :: ReplState -> String -> IO ()
+showGhciOutput rst cmd = do
+  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
+      stopstring = "XXX"
+  hPutStrLnGhci rst hdl (cmd++" >> putStrLn \""++stopstring++"\"")
+  hPrintLinesBefore hdl stopstring
+ where
+   hPrintLinesBefore h stop = do
+     line <- hGetLine h
+     --putStrLn $ "FROM GHCI> "++line
+     if line == stop
+       then done
+       else putStrLn line >> hPrintLinesBefore h stop
+
+-- Send and show (if demanded) a string to ghci handle:
+hPutStrLnGhci :: ReplState -> Handle -> String -> IO ()
+hPutStrLnGhci rst h s = do
+  writeVerboseInfo rst 2 $ "SEND TO GHCI> "++s
+  hPutStrLn h s
+  hFlush h
+
+--------------------------------------------------------------------------
 
 -- Mode for non-deterministic evaluation of main goal
 data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices
@@ -97,10 +164,12 @@ initReplState =
   , interactive  = False
   , showBindings = True
   , showTime     = False
+  , useGhci      = False
   , cmpOpts      = ""
   , rtsOpts      = ""
   , quit         = False
   , sourceguis   = []
+  , ghcicomm     = Nothing
   }
 
 -- Show an info message for a given verbosity level
@@ -112,24 +181,32 @@ writeVerboseInfo rst level msg =
 writeErrorMsg :: String -> IO ()
 writeErrorMsg msg = putStrLn ("ERROR: "++msg)
 
+--------------------------------------------------------------------------
 main = do
   rcdefs <- readRC
   args   <- getArgs
   let rst = { idcHome := Inst.installDir
             , rcvars := rcdefs 
             | initReplState }
-  processArgsAndStart { importPaths := defaultImportPaths rst | rst }
+  ipath  <- defaultImportPaths rst
+  processArgsAndStart { importPaths := ipath | rst }
     (map strip (words (rcValue (rst->rcvars) "defaultparams")) ++ args)
 
 -- The default import paths of KiCS2.
-defaultImportPaths :: ReplState -> [String]
-defaultImportPaths rst =
+-- It consists of the path defined by the environment variable CURRYPATH,
+-- the "libraries" property defined in ~/.kics2rc, and the
+-- directories of the system libraries of KiCS2.
+defaultImportPaths :: ReplState -> IO [String]
+defaultImportPaths rst = do
+  currypath <- getEnviron "CURRYPATH"
   let rclibs = rcValue (rst->rcvars) "libraries"
-   in (if null rclibs then [] else splitPath rclibs) ++
-      map (Inst.installDir </>) ["/lib","/lib/meta"]
+  return $ (if null currypath then [] else splitPath currypath) ++
+           (if null rclibs    then [] else splitPath rclibs) ++
+           map (Inst.installDir </>) ["/lib","/lib/meta"]
 
-defaultImportPathsWith :: ReplState -> String -> [String]
-defaultImportPathsWith rst dirs = splitPath dirs ++ defaultImportPaths rst
+defaultImportPathsWith :: ReplState -> String -> IO [String]
+defaultImportPathsWith rst dirs =
+  defaultImportPaths rst >>= return . ((splitPath dirs) ++)
 
 processArgsAndStart rst [] =
   if rst -> quit
@@ -168,14 +245,16 @@ processInput rst g
                              (\rst' -> if (rst'->quit) then cleanUpRepl rst'
                                                        else repl rst')
                              mbrst
-  | otherwise = evalExpression rst g >> repl rst
+  | otherwise = evalExpression rst g >>= repl
 
 -- Evaluate an expression w.r.t. currently loaded modules
-evalExpression :: ReplState -> String -> IO ()
+evalExpression :: ReplState -> String -> IO ReplState
 evalExpression rst expr = do
-  status <- compileProgramWithGoal rst expr
-  unless (status==MainError) (execMain rst status expr >> done)
-  cleanMainGoalFile rst
+  (rst',status) <- compileProgramWithGoal rst (not (rst->useGhci)) expr
+  unless (status==MainError || (rst'->useGhci && not (rst'->interactive)))
+         (execMain rst' status expr >> done)
+  cleanMainGoalFile rst'
+  return rst'
 
 -- Generate, read, and delete .acy file of main goal file.
 -- Return Nothing if some error occurred during parsin.
@@ -223,8 +302,9 @@ getModuleOfFunction rst funname = do
                   _ -> ""
 
 -- Compile main program with goal:
-compileProgramWithGoal :: ReplState -> String -> IO MainCompile
-compileProgramWithGoal rst goal = do
+compileProgramWithGoal :: ReplState -> Bool -> String
+                       -> IO (ReplState,MainCompile)
+compileProgramWithGoal rst createexecutable goal = do
   let infoFile = funcInfoFile (rst -> outputSubdir) mainGoalFile
   oldmaincurryexists <- doesFileExist infoFile
   unless (not oldmaincurryexists) $ removeFile infoFile
@@ -232,7 +312,7 @@ compileProgramWithGoal rst goal = do
   unless (not oldmainfcyexists) $ removeFile (flatCurryFileName mainGoalFile)
   writeMainGoalFile rst [] Nothing goal
   goalstate <- insertFreeVarsInMainGoal rst goal
-  if goalstate==GoalError then return MainError else do
+  if goalstate==GoalError then return (rst,MainError) else do
     let (newprog,newgoal) = case goalstate of
                     GoalWithBindings p _ g -> (p,g)
                     GoalWithoutBindings p  -> (p,goal)
@@ -241,9 +321,10 @@ compileProgramWithGoal rst goal = do
      then do
       status <- compileCurryProgram rst mainGoalFile True
       exinfo <- doesFileExist infoFile
-      if status==0 && exinfo then createAndCompileMain rst goalstate
-                             else return MainError
-     else return MainError
+      if status==0 && exinfo
+       then createAndCompileMain rst createexecutable goal goalstate
+       else return (rst,MainError)
+     else return (rst,MainError)
 
 -- write the file with the main goal where necessary imports
 -- and possibly a type string is provided:
@@ -340,8 +421,9 @@ readInfoFile rst = do
   readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
 
 -- Create and compile the main module containing the main goal
-createAndCompileMain :: ReplState -> MainGoalCompile -> IO MainCompile
-createAndCompileMain rst goalstate = do
+createAndCompileMain :: ReplState -> Bool -> String -> MainGoalCompile
+                     -> IO (ReplState,MainCompile)
+createAndCompileMain rst createexecutable mainexp goalstate = do
   infos <- readInfoFile rst
   --print infos
   let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
@@ -355,31 +437,41 @@ createAndCompileMain rst goalstate = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst goalstate isdet isio
-  let ghcImports = [ rst -> idcHome ++ "/runtime"
+  let useghci = rst->useGhci && not createexecutable
+                && not (rst->interactive)
+      ghcImports = [ rst -> idcHome ++ "/runtime"
                    , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply
                    , "." </> rst -> outputSubdir
                    ]
                    ++ map (</> rst -> outputSubdir) (rst -> importPaths)
-      ghcCompile = unwords ["ghc"
-                           ,if rst->optim then "-O2" else ""
-                           ,"--make"
-                           ,if rst->verbose < 2 then "-v0" else "-v1"
-                           ,"-XMultiParamTypeClasses"
-                           ,"-XFlexibleInstances"
-                           ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
-                           , case rst->idSupply of
-                              "ghc" -> "-package ghc"
-                              _     -> ""
-                           ,case rst->ndMode of
-                              Par _ -> "-threaded"
-                              _     -> ""
-                           ,"-i"++concat (intersperse ":" ghcImports)
-                           ,"." </> rst -> outputSubdir </> "Main.hs"]
+      ghcCompile = unwords $
+                     [if useghci then "ghci" else "ghc"
+                     ,if rst->optim then "-O2" else ""] ++
+                     (if useghci then [] else ["--make"]) ++
+                     [if rst->verbose < 2 then "-v0" else "-v1"
+                     ,"-XMultiParamTypeClasses"
+                     ,"-XFlexibleInstances"
+                     ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
+                     , case rst->idSupply of
+                        "ghc" -> "-package ghc"
+                        _     -> ""
+                     ,case rst->ndMode of
+                        Par _ -> "-threaded"
+                        _     -> ""
+                     ,"-i"++concat (intersperse ":" ghcImports)
+                     ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
   writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
-  status <- system ghcCompile
-  return (if status>0 then MainError else
-          if isdet || isio then MainDet else MainNonDet)
+  rst' <- if useghci then startGhciComm rst ghcCompile
+                          else return rst
+  status <- if useghci
+            then do writeVerboseInfo rst' 1
+                                  ("Evaluating expression: " ++ strip mainexp)
+                    mainGhciComm rst'
+                    return 0
+            else system ghcCompile
+  return (rst',if status>0 then MainError else
+               if isdet || isio then MainDet else MainNonDet)
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
@@ -493,8 +585,12 @@ processThisCommand rst cmd args
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
-                (\_ -> compileCurryProgram rst' modname False >>
-                     return (Just { mainMod := modname, addMods := [] | rst' }))
+                (\fn ->
+                   readAndProcessSourceFileOptions rst' fn >>=
+                   maybe (return Nothing)
+                     (\rst'' -> compileCurryProgram rst'' modname False >>
+                      return (Just{mainMod := modname, addMods := [] | rst''}))
+                )
                 mbf
   | cmd=="reload"
    = if rst->mainMod == "Prelude"
@@ -589,26 +685,28 @@ processThisCommand rst cmd args
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
-       status <- compileProgramWithGoal rst (if null args then "main" else args)
+       (rst',status) <- compileProgramWithGoal rst True
+                                        (if null args then "main" else args)
        unless (status==MainError) $ do
-          renameFile ("." </> rst -> outputSubdir </> "Main") (rst->mainMod)
-          writeVerboseInfo rst 1 ("Executable saved in '"++rst->mainMod++"'")
-       cleanMainGoalFile rst
-       return (Just rst)
+          renameFile ("." </> rst' -> outputSubdir </> "Main") (rst'->mainMod)
+          writeVerboseInfo rst' 1 ("Executable saved in '"++rst'->mainMod++"'")
+       cleanMainGoalFile rst'
+       return (Just rst')
   | cmd=="fork"
    = if rst->mainMod == "Prelude"
      then writeErrorMsg "no program loaded" >> return Nothing
      else do
-       status <- compileProgramWithGoal rst (if null args then "main" else args)
+       (rst',status) <- compileProgramWithGoal rst True
+                                        (if null args then "main" else args)
        unless (status==MainError) $ do
           pid <- getPID
           let execname = "/tmp/kics2fork" ++ show pid
-          system ("mv ." </> rst -> outputSubdir </> "Main " ++ execname)
-          writeVerboseInfo rst 3 ("Starting executable '"++execname++"'...")
+          system ("mv ." </> rst' -> outputSubdir </> "Main " ++ execname)
+          writeVerboseInfo rst' 3 ("Starting executable '"++execname++"'...")
           system ("( "++execname++" && rm -f "++execname++ ") "++
                   "> /dev/null 2> /dev/null &") >> done
-       cleanMainGoalFile rst
-       return (Just rst)
+       cleanMainGoalFile rst'
+       return (Just rst')
   | otherwise = writeErrorMsg ("unknown command: ':"++cmd++"'") >>
                 return Nothing
 
@@ -631,14 +729,14 @@ allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
-                        "time"]
+                        "time","ghci"]
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
   | option=="paths"
-   = if null args
-     then return (Just { importPaths := defaultImportPaths rst | rst })
-     else return (Just { importPaths := defaultImportPathsWith rst args | rst })
+   = do ipath <- if null args then defaultImportPaths rst
+                              else defaultImportPathsWith rst args
+        return (Just { importPaths := ipath | rst })
   | option=="bfs" = return (Just { ndMode := BFS | rst })
   | option=="dfs" = return (Just { ndMode := DFS | rst })
   | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
@@ -675,6 +773,9 @@ processThisOption rst option args
   | option=="-bindings"    = return (Just { showBindings := False | rst })
   | option=="+time"        = return (Just { showTime := True  | rst })
   | option=="-time"        = return (Just { showTime := False | rst })
+  | option=="+ghci"        = return (Just { useGhci := True  | rst })
+  | option=="-ghci"        = do rst' <- stopGhciComm rst
+                                return (Just { useGhci := False | rst' })
   | option=="copts"        = return (Just { cmpOpts := args | rst })
   | option=="rts"          = return (Just { rtsOpts := args | rst })
   | otherwise = writeErrorMsg ("unknown option: '"++option++"'") >>
@@ -698,6 +799,7 @@ printOptions rst = putStrLn $
   "+/-optimize    - turn on/off optimization\n"++
   "+/-bindings    - show bindings of free variables in initial goal\n"++
   "+/-time        - show execution time\n"++
+  "+/-ghci        - use ghci instead of ghc to evaluate main expression\n"++
   "copts <opts>   - additional options passed to KiCS2 compiler\n" ++
   "rts   <opts>   - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   showCurrentOptions rst
@@ -722,7 +824,8 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst->firstSol)     ++ "first " ++
   showOnOff (rst->optim)        ++ "optimize " ++
   showOnOff (rst->showBindings) ++ "bindings " ++
-  showOnOff (rst->showTime)     ++ "time "
+  showOnOff (rst->showTime)     ++ "time " ++
+  showOnOff (rst->useGhci)      ++ "ghci "
  where
    showOnOff b = if b then "+" else "-"
 
@@ -772,6 +875,61 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
 errorMissingTool execfile = writeErrorMsg $
   Inst.installDir ++ '/' : execfile ++ " not found\n" ++
   "Possible solution: run \"cd "++Inst.installDir++" && make install\""
+
+--------------------------------------------------------------------------
+-- Read KiCS2 options in a Curry source file
+-- Source file options are comments of the form
+-- {-# KiCS2_OPTION <opt> #-}
+-- occurring before the module header where <opt> is an option
+-- of KiCS2 (i.e., ":set <opt>" is a valid KiCS2 command).
+-- These options are read and processed when a module is loaded (not reloaded!).
+
+readAndProcessSourceFileOptions :: ReplState -> String -> IO (Maybe ReplState)
+readAndProcessSourceFileOptions rst fname = do
+  opts <- readSourceFileOptions fname
+  unless (null opts) $
+   writeVerboseInfo rst 1 $ "Source file options: " ++
+                            concat (intersperse " | " (map unwords opts))
+  processSourceFileOptions rst opts
+
+processSourceFileOptions :: ReplState -> [[String]] -> IO (Maybe ReplState)
+processSourceFileOptions rst [] = return (Just rst)
+processSourceFileOptions rst (o:os) =
+  processSetOption rst (unwords o) >>=
+  maybe (return Nothing) (\rst' -> processSourceFileOptions rst' os)
+
+readSourceFileOptions :: String -> IO [[String]]
+readSourceFileOptions fname = do
+  h <- openFile fname ReadMode
+  headers <- readHeaderLines h
+  hClose h
+  return (filter (not . null) (map getOptions (filter isOptionComment headers)))
+ where
+  isOptionComment s = take 3 s == "{-#" -- #-}
+
+  getOptions s =
+   let optwords = words (extractOptionString (drop 3 s))
+    in if null optwords || map toLower (head optwords) /= "kics2_option"
+       then []
+       else tail optwords
+
+  extractOptionString [] = ""
+  extractOptionString (c:cs) = case cs of
+    [] -> ""
+    [_] -> ""
+    _ -> if (c:take 2 cs) == "#-}" then "" else c : extractOptionString cs
+
+readHeaderLines h = do
+  eof <- hIsEOF h
+  if eof then return []
+         else do line <- hGetLine h
+                 if isModuleStart line
+                  then return []
+                  else do lines <- readHeaderLines h
+                          return (strip line:lines)
+ where isModuleStart l = take 6 l `elem` ["module","import"] ||
+                         (let (w,_) = break isSpace l
+                           in not (null w) && all isAlphaNum w)
 
 -----------------------------------------------------------------------
 -- Showing source code of functions via SourcProgGUI tool.
