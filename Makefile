@@ -44,6 +44,8 @@ install: ${INSTALLCURRY} frontend Compile REPL
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
+	# generate manual, if necessary:
+	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
 	chmod -R go+rX .
 
 #
@@ -169,6 +171,7 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
+	rm -rf docs/src
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
 

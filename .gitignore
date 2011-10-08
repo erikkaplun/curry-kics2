@@ -15,6 +15,10 @@
 *.toc
 *.vrb
 *.pdf
+*.blg
+*.idx
+*.ilg
+*.ind
 
 # intermediate files
 stage[1,2,3]
@@ -46,3 +50,4 @@ www/submitform
 # documentation
 lib/CDOC
 lib/TEXDOC
+docs/src/lib

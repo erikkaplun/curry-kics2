@@ -8,9 +8,9 @@ manual.pdf: manual.tex
 	bibtex manual
 	pdflatex manual
 	makeindex manual.idx
-	thumbpdf manual
+	#thumbpdf manual
 	pdflatex manual
-	rm -f thumb* manual.out
+	rm -f thumb*
 
 ../Manual.pdf: manual.pdf
 	rm -f ../Manual.pdf
@@ -30,10 +30,10 @@ install:
 .PHONY: clean
 clean:
 	/bin/mv manual.tex manual.texx
-	/bin/mv manual.bib manual.bibx
-	/bin/rm -f manual.?? manual.??? version-defs.sty
+	/bin/mv manual.bbl manual.bblx
+	/bin/rm -f manual.?? manual.???
 	/bin/mv manual.texx manual.tex
-	/bin/mv manual.bibx manual.bib
+	/bin/mv manual.bblx manual.bbl
 	/bin/rm -f ../Manual.pdf
 
 
