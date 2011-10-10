@@ -46,7 +46,7 @@ import Distribution
 -- Global definitions:
 
 -- Version of currydoc
-currydocVersion = "Version 0.4.2 of May 18, 2010"
+currydocVersion = "Version 0.4.3 of October 10, 2011"
 
 -- Directory where include files for generated documention (e.g., icons,
 -- css, tex includes) are stored:

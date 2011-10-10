@@ -9,7 +9,8 @@ CurryDoc: CurryDoc.curry CurryDocRead.curry CurryDocHtml.curry \
 	        CurryDocTeX.curry ${META}/FlexRigid.curry \
 	        ${LIB}/CategorizedHtmlList.curry \
 	        ${LIB}/Distribution.curry ${LIB}/PropertyFile.curry \
-	        ${META}/FlatCurry.curry ${LIB}/HTML.curry \
+	        ${META}/FlatCurry.curry \
+	        ${LIB}/HTML.curry ${LIB}/HtmlParser.curry \
 	        ${ANADIR}/AnaOverlapping.curry ${ANADIR}/AnaIndeterminism.curry \
 	        ${ANADIR}/AnaCompleteness.curry ${ANADIR}/AnaOpComplete.curry \
 	        ${ANADIR}/AnaDependency.curry 
