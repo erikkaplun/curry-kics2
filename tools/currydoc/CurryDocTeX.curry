@@ -25,8 +25,8 @@ generateTexDocs anainfo progname modcmts progcmts = do
       texfuncs = concatMap (genTexFunc progcmts anainfo) functions
   return $
     (imports,
-     "\\currymodule{"++getLastName progname++"}{" ++
-     htmlString2Tex (fst (splitComment modcmts)) ++ "}\n" ++
+     "\\currymodule{"++getLastName progname++"}\n" ++
+     htmlString2Tex (fst (splitComment modcmts)) ++ "\n" ++
      (if null textypes then ""
       else "\\currytypesstart\n" ++ textypes ++ "\\currytypesstop\n") ++
      (if null texfuncs then ""

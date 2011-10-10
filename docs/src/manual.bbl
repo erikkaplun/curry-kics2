@@ -1,0 +1,100 @@
+\begin{thebibliography}{10}
+
+\bibitem{AntoyHanus05LOPSTR}
+S.~Antoy and M.~Hanus.
+\newblock Declarative programming with function patterns.
+\newblock In {\em Proceedings of the International Symposium on Logic-based
+  Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
+  3901, 2005.
+
+\bibitem{BrasselHanusPeemoellerReck11WLP}
+B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
+\newblock Implementing equational constraints in a functional language.
+\newblock In {\em Proc. of the 19th International Conference on Applications of
+  Declarative Programming and Knowledge Management (INAP 2011) and the 25th
+  Workshop on Logic Programming (WLP 2011)}, pages 22--33. INFSYS Research
+  Report 1843-11-06 (TU Wien), 2011.
+
+\bibitem{BrasselHanusPeemoellerReck11}
+B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
+\newblock {KiCS2}: A new compiler from {Curry} to {Haskell}.
+\newblock In {\em Proc. of the 20th International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2011)}, pages 1--18. Springer LNCS 6816,
+  2011.
+
+\bibitem{Hanus97POPL}
+M.~Hanus.
+\newblock A unified computation model for functional and logic programming.
+\newblock In {\em Proc.\ of the 24th ACM Symposium on Principles of Programming
+  Languages (Paris)}, pages 80--93, 1997.
+
+\bibitem{Hanus99PPDP}
+M.~Hanus.
+\newblock Distributed programming in a multi-paradigm declarative language.
+\newblock In {\em Proc.\ of the International Conference on Principles and
+  Practice of Declarative Programming (PPDP'99)}, pages 376--395. Springer LNCS
+  1702, 1999.
+
+\bibitem{Hanus00PADL}
+M.~Hanus.
+\newblock A functional logic programming approach to graphical user interfaces.
+\newblock In {\em International Workshop on Practical Aspects of Declarative
+  Languages (PADL'00)}, pages 47--62. Springer LNCS 1753, 2000.
+
+\bibitem{Hanus01PADL}
+M.~Hanus.
+\newblock High-level server side web scripting in {Curry}.
+\newblock In {\em Proc.\ of the Third International Symposium on Practical
+  Aspects of Declarative Languages (PADL'01)}, pages 76--92. Springer LNCS
+  1990, 2001.
+
+\bibitem{Hanus05WCFLP}
+M.~Hanus.
+\newblock A generic analysis environment for declarative programs.
+\newblock In {\em Proc. of the ACM SIGPLAN 2005 Workshop on Curry and
+  Functional Logic Programming (WCFLP 2005)}, pages 43--48. ACM Press, 2005.
+
+\bibitem{Hanus06WLPE}
+M.~Hanus.
+\newblock {CurryBrowser}: A generic analysis environment for {Curry} programs.
+\newblock In {\em Proc. of the 16th Workshop on Logic-based Methods in
+  Programming Environments (WLPE'06)}, pages 61--74, 2006.
+
+\bibitem{Hanus06PPDP}
+M.~Hanus.
+\newblock Type-oriented construction of web user interfaces.
+\newblock In {\em Proceedings of the 8th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'06)}, pages
+  27--38. ACM Press, 2006.
+
+\bibitem{HanusSteiner98PLILP}
+M.~Hanus and F.~Steiner.
+\newblock Controlling search in declarative programs.
+\newblock In {\em Principles of Declarative Programming (Proc. Joint
+  International Symposium PLILP/ALP'98)}, pages 374--390. Springer LNCS 1490,
+  1998.
+
+\bibitem{Hanus06Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
+\newblock Available at \url{http://www.curry-language.org}, 2006.
+
+\bibitem{Johnsson85}
+T.~Johnsson.
+\newblock Lambda lifting: Transforming programs to recursive functions.
+\newblock In {\em Functional Programming Languages and Computer Architecture},
+  pages 190--203. Springer LNCS 201, 1985.
+
+\bibitem{Leijen05}
+D.~Leijen.
+\newblock Extensible records with scoped labels.
+\newblock In {\em Proceedings of the 2005 Symposium on Trends in Functional
+  Programming (TFP'05)}, 2005.
+
+\bibitem{Wadler87}
+P.~Wadler.
+\newblock Efficient compilation of pattern-matching.
+\newblock In S.L. Peyton~Jones, editor, {\em The Implementation of Functional
+  Programming Languages}, pages 78--103. Prentice Hall, 1987.
+
+\end{thebibliography}
