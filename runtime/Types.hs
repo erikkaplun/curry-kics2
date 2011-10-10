@@ -172,12 +172,12 @@ x =:= y = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
     uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> x' =:= y) xs)) y
     uniFree i _       = bindTo y
      where
-      bindTo = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal 
+      bindTo = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal
       bindChoice j y1 y2 = choiceCons j  (bindTo y1) (bindTo y2)
       bindNarrowed j ys  = choicesCons j (map bindTo ys)
       bindFree j _       = guardCons [i :=: BindTo j] C_Success
       bindGuard c e      = guardCons c (bindTo e)
-      bindVal v          = guardCons (bind i v) C_Success   
+      bindVal v          = guardCons (bind i v) C_Success
     uniGuard c e      = checkFail (guardCons c (e =:= y)) y
     uniVal v          = uniWith y
      where
@@ -207,7 +207,7 @@ x =:<= y = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   uniFree i _       = guardCons [i :=: LazyBind (lazyBind i y)] C_Success
   -- constructor-rooted term
   uniVal vx = unifyWith y
-   where 
+   where
     unifyWith = match uniyChoice uniyNarrowed uniyFree failCons uniyGuard uniyVal
     uniyChoice j y1 y2  = choiceCons j (unifyWith y1) (unifyWith y2)
     uniyNarrowed j ys   = choicesCons j (map unifyWith ys)
@@ -357,24 +357,24 @@ instance Show (a -> b) where
 instance Read (a -> b) where
   readsPrec = error "read for function is undefined"
 
-instance NonDet (a -> b) where
-  choiceCons  = error "choiceCons for function is undefined"
-  choicesCons = error "choicesCons for function is undefined"
-  failCons    = error "failCons for function is undefined"
-  guardCons   = error "guardCons for function is undefined"
-  try         = Val
+instance NonDet b => NonDet (a -> b) where
+  choiceCons    i f g = \ x -> choiceCons i (f x) (g x)
+  choicesCons    i fs = \ x -> choicesCons i (map ($x) fs)
+  failCons            = \ _ -> failCons
+  guardCons       c f = \ x -> guardCons c (f x)
+  try                 = Val
   match _ _ _ _ _ f x = f x
 
-instance Generable (a -> b) where
+instance NonDet b => Generable (a -> b) where
   generate = error "generate for function is undefined"
 
-instance NormalForm (a -> b) where
+instance NonDet b => NormalForm (a -> b) where
   cont $!! f = cont f
   cont $## f = cont f
   cont $!< f = cont f
   searchNF _ cont f = cont f
 
-instance Unifiable (a -> b) where
+instance NonDet b => Unifiable (a -> b) where
   (=.=)    = error "(=.=) for function is undefined"
   (=.<=)   = error "(=.<=) for function is undefined"
   bind     = error "bind for function is undefined"
