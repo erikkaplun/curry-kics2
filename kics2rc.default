@@ -38,6 +38,10 @@ showcommand=cat
 # more solutions (e.g., new terminal window)
 interactivecommand=xterm -e
 
+# System command to view dot graph specifications that come from stdin
+# (e.g., used in the Curry browser and the erd2curry tools)
+dotviewcommand=dot -Tps > /tmp/dotxxx && gv /tmp/dotxxx
+
 # Should the auxiliary files generated for the main goal be kept?
 # (values: yes | no )
 # Usually, they are deleted, i.e., "yes" might be useful for debugging

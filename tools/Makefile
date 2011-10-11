@@ -5,6 +5,7 @@ all: AddTypes GenInt ImportCalls CreateMakefile CurryTest SourceProgGUI
 	@cd browser   ; ${MAKE}
 	@cd currydoc  ; ${MAKE}
 	@cd curry2js  ; ${MAKE}
+	@cd erd2curry ; ${MAKE}
 
 # generate executable for addtypes program:
 AddTypes: AddTypes.curry
@@ -44,3 +45,4 @@ clean:
 	cd browser   ; ${MAKE} clean
 	cd currydoc  ; ${MAKE} clean
 	cd curry2js  ; ${MAKE} clean
+	cd erd2curry ; ${MAKE} clean
