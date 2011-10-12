@@ -6,6 +6,10 @@ PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
 KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
 CYMAKE="$KICS2HOME/mccparser/bin/cymake"
 if [ ! -x "$CYMAKE" ] ; then
+  # try cymake of cabal installation
+  CYMAKE="$HOME/.cabal/bin/cymake"
+fi
+if [ ! -x "$CYMAKE" ] ; then
   # try cymake of PAKCS
   CYMAKE="$(dirname `which pakcs`)/../mccparser/bin/cymake"
 fi
@@ -13,6 +17,7 @@ if [ ! -x "$CYMAKE" ] ; then
   echo "ERROR: Curry parser not found!" >&2
   exit 1
 fi
+#echo CYMAKE=$CYMAKE
 
 # define KICS2RC
 KICS2RC=$HOME/.kics2rc

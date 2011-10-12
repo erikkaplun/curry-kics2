@@ -37,7 +37,7 @@ showDotID s | all isAlphaNum s = s
 viewDot :: String -> IO ()
 viewDot dottxt = do
     --writeFile "/home/mh/tmp.dot" dottxt
-    dotview <- getBrowserConfig "viewdot"
+    dotview <- getDotViewCmd
     dotstr <- connectToCommand dotview
     hPutStr dotstr dottxt
     hClose dotstr
