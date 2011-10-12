@@ -17,7 +17,7 @@
 --- is a shell script stored in <i>pakcshome</i>/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version September 2011
+--- @version October 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
@@ -885,7 +885,7 @@ showHtmlPage (HtmlPage title params html) =
   htmlPrelude ++
   showHtmlExp (HtmlStruct "html" htmlTagAttrs
                   [HtmlStruct "head" []
-                       ([HtmlStruct "title" [] [HtmlText title]] ++
+                       ([HtmlStruct "title" [] [HtmlText (htmlQuote title)]] ++
                        concatMap param2html params),
                    HtmlStruct "body" [defaultBackground] html])
  where
@@ -1363,8 +1363,9 @@ showForm cenv url (HtmlForm title params html) =
   htmlPrelude ++
   showHtmlExp
    (HtmlStruct "html" htmlTagAttrs
-     [HtmlStruct "head" [] ([HtmlStruct "title" [] [HtmlText title]] ++
-                            concatMap param2html params),
+     [HtmlStruct "head" []
+                 ([HtmlStruct "title" [] [HtmlText (htmlQuote title)]] ++
+                  concatMap param2html params),
       HtmlStruct "body" bodyattrs
        ((if null url then id
          else \he->[HtmlStruct "form"
