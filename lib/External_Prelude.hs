@@ -65,7 +65,7 @@ instance Curry t0 => Curry (C_IO t0) where
   (=?=) = error "(==) is undefined for I/O actions"
   (<?=) = error "(<=) is undefined for I/O actions"
 
-instance Curry (a -> b) where
+instance NonDet b => Curry (a -> b) where
   (=?=) = error "(==) is undefined for functions"
   (<?=) = error "(<=) is undefined for functions"
 
