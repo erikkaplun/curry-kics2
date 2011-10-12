@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=29/09/11
+COMPILERDATE=12/10/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
