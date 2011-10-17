@@ -1,9 +1,13 @@
 {-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
-import System
-import System.Posix.Process(getProcessID)
-import System.CPUTime(getCPUTime)
-import Network.BSD(getHostName)
+
 import qualified Curry_Prelude as CP
+
+import Network.BSD (getHostName)
+import System.Cmd
+import System.CPUTime (getCPUTime)
+import System.Environment
+import System.Exit
+import System.Posix.Process (getProcessID)
 
 external_d_C_getCPUTime :: CP.C_IO CP.C_Int
 external_d_C_getCPUTime =
