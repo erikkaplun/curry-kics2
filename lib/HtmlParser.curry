@@ -2,7 +2,7 @@
 --- This module contains a very simple parser for HTML documents.
 ---
 --- @author Michael Hanus
---- @version November 2006
+--- @version October 2011
 ------------------------------------------------------------------------------
 
 module HtmlParser(readHtmlFile,parseHtmlString) where
@@ -64,7 +64,9 @@ scanHtmlString s = scanHtml s
     if c=='<'
     then if take 3 cs == "!--"
          then scanHtmlComment cs
-         else scanHtmlElem [] cs
+         else if take 4 (map toLower cs) == "pre>"
+              then scanHtmlPre "" (skipFirstNewLine (drop 4 cs))
+              else scanHtmlElem [] cs
     else let (initxt,remtag) = break (=='<') (c:cs)
           in HText initxt : scanHtml remtag
 
@@ -91,6 +93,15 @@ scanHtmlComment (c:cs) =
   then scanHtmlString (drop 2 cs)
   else scanHtmlComment cs
 
+-- scan an HTML preformatted element
+scanHtmlPre :: String -> String -> [HtmlToken]
+scanHtmlPre _ [] = []  -- errorneous incomplete element
+scanHtmlPre pre (c:cs) =
+  if c=='<' && take 5 (map toLower cs) == "/pre>"
+  then HElem "pre" [] : HText (reverse pre) : HElem "/pre" []
+       : scanHtmlString (drop 5 cs)
+  else scanHtmlPre (c:pre) cs
+
 -- split a string into blank separated list of strings:
 string2args :: String -> [(String,String)]
 string2args [] = []
@@ -114,5 +125,11 @@ splitAtElement _ [] = ([],[])
 splitAtElement p (c:cs) =
   if p c then ([],cs)
          else let (first,rest) = splitAtElement p cs in (c:first,rest)
+
+skipFirstNewLine :: String -> String
+skipFirstNewLine [] = []
+skipFirstNewLine (c:cs) = 
+  if c=='\n' then cs
+             else if isSpace c then skipFirstNewLine cs else c:cs
 
 -- end of HTML parser
