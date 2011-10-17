@@ -663,7 +663,7 @@ prim_readFile external
 --- @param filename - The name of the file to be written.
 --- @param contents - The contents to be written to the file.
 writeFile         :: String -> String -> IO ()
-writeFile f s = (prim_writeFile $## f) s
+writeFile f s = (prim_writeFile $## f) $## s
 
 prim_writeFile         :: String -> String -> IO ()
 prim_writeFile external
@@ -673,7 +673,7 @@ prim_writeFile external
 --- @param filename - The name of the file to be written.
 --- @param contents - The contents to be appended to the file.
 appendFile        :: String -> String -> IO ()
-appendFile f s = (prim_appendFile $## f) s
+appendFile f s = (prim_appendFile $## f) $## s
 
 prim_appendFile         :: String -> String -> IO ()
 prim_appendFile external

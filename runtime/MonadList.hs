@@ -2,6 +2,7 @@
 -- Data structures and operations to collect and show results
 -- w.r.t. various search strategies
 -- ---------------------------------------------------------------------------
+{-# LANGUAGE BangPatterns #-}
 module MonadList where
 
 import Data.Char (toLower)

@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns, MagicHash, MultiParamTypeClasses #-}
 
 import qualified Control.Exception as C
 
