@@ -637,13 +637,15 @@ processThisCommand rst cmd args
                 (\fn -> system (editprog++" "++fn++"& ") >> return (Just rst))
                 mbf
   | cmd=="source"
-   = let (mod,dotfun) = break (=='.') args
-      in if null dotfun
-         then do m <- getModuleOfFunction rst args
-                 if null m
-                  then writeErrorMsg "function not found" >> return Nothing
-                  else showFunctionInModule rst m args
-         else showFunctionInModule rst mod (tail dotfun)
+   = if null args
+     then writeErrorMsg "missing function name" >> return Nothing
+     else let (mod,dotfun) = break (=='.') args in
+          if null dotfun
+          then do m <- getModuleOfFunction rst args
+                  if null m
+                   then writeErrorMsg "function not found" >> return Nothing
+                   else showFunctionInModule rst m args
+          else showFunctionInModule rst mod (tail dotfun)
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
