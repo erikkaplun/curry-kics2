@@ -2,7 +2,7 @@
 --- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
---- @version September 2011
+--- @version October 2011
 --- --------------------------------------------------------------------------
 
 import RCFile
@@ -267,9 +267,11 @@ getAcyOfMainGoal rst = do
   callFrontendWithParams ACY frontendParams mainGoalProg
   acyexists <- doesFileExist acyMainGoalFile
   if not acyexists then return Nothing else do
-    prog <- readAbstractCurryFile acyMainGoalFile
-    removeFile acyMainGoalFile
-    return (Just prog)
+    acysize <- fileSize acyMainGoalFile
+    if acysize==0 then return Nothing else do
+      prog <- readAbstractCurryFile acyMainGoalFile
+      removeFile acyMainGoalFile
+      return (Just prog)
 
 -- Show the type of goal w.r.t. main program:
 showTypeOfGoal :: ReplState -> String -> IO Bool

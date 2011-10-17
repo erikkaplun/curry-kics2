@@ -7,6 +7,13 @@ S.~Antoy and M.~Hanus.
   Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
   3901, 2005.
 
+\bibitem{BrasselHanusMueller08PADL}
+B.~Bra{\ss}el, M.~Hanus, and M.~M{\"u}ller.
+\newblock High-level database programming in {Curry}.
+\newblock In {\em Proc. of the Tenth International Symposium on Practical
+  Aspects of Declarative Languages (PADL'08)}, pages 316--332. Springer LNCS
+  4902, 2008.
+
 \bibitem{BrasselHanusPeemoellerReck11WLP}
 B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
 \newblock Implementing equational constraints in a functional language.

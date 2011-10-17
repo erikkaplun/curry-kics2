@@ -3,7 +3,7 @@
 --- that is stored in $HOME/.kics2rc
 ----------------------------------------------------------------------
 
-module RCFile(readRC,rcValue,strip) where
+module RCFile(readRC,rcValue,setRCProperty,strip) where
 
 import PropertyFile
 import Directory(doesFileExist,renameFile)
@@ -50,6 +50,13 @@ updateRC = do
                                             updatePropertyFile rcname n uv)
                                     (lookup n userprops))
                   distprops
+
+--- Sets a property in the rc file.
+setRCProperty :: String -> String -> IO ()
+setRCProperty pname pval = do
+  readRC -- just be to sure that rc file exists and is up-to-date
+  rcname   <- rcFileName
+  updatePropertyFile rcname pname pval
 
 --- Look up a configuration variable in the list of variables from the rc file.
 --- Uppercase/lowercase is ignored for the variable names and the empty
