@@ -66,9 +66,18 @@ instance NonDet (C_IORef a) where
   failCons = Fail_C_IORef
   guardCons = Guard_C_IORef
   try (Choice_C_IORef i x y) = tryChoice i x y
+  try (Choices_C_IORef s xs) = tryChoices s xs
   try Fail_C_IORef = Fail
   try (Guard_C_IORef c e) = Guard c e
   try x = Val x
+  match f _ _ _ _ _ (Choice_C_IORef  i x y)                 = f i x y
+  match _ f _ _ _ _ (Choices_C_IORef i@(NarrowedID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_IORef i@(FreeID _ _)     xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_IORef i@(ChoiceID _) _)      =
+    error ("IOExts.IORef.match: Choices with ChoiceID " ++ show i)
+  match _ _ _ f _ _ Fail_C_IORef                            = f
+  match _ _ _ _ f _ (Guard_C_IORef cs e)                    = f cs e
+  match _ _ _ _ _ f x                                       = f x
 
 instance Generable (C_IORef a) where
   generate _ = error "ERROR: no generator for IORef"
