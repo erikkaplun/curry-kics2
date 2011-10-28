@@ -6,27 +6,27 @@
 --- integer key as a first parameter.
 ---
 --- This module reimplements the interface of the module
---- <code>KeyDatabase</code> based on the
---- <a href="http://sqlite.org/">SQLite</a> database engine.
---- In order to use it you need to have <code>sqlite3</code> in your
---- <code>PATH</code> environment variable or adjust the value of the
---- constant <code>path'to'sqlite3</code>.
+--- `KeyDatabase` based on the
+--- [SQLite](http://sqlite.org/) database engine.
+--- In order to use it you need to have `sqlite3` in your
+--- `PATH` environment variable or adjust the value of the
+--- constant `path'to'sqlite3`.
 ---
---- Programs that use the <code>KeyDatabase</code> module can be adjusted
+--- Programs that use the `KeyDatabase` module can be adjusted
 --- to use this module instead by replacing the imports of
---- <code>Dynamic</code>, <code>Database</code>, and
---- <code>KeyDatabase</code> with this module and changing the declarations
---- of database predicates to use the function <code>persistentSQLite</code>
---- instead of <code>dynamic</code> or <code>persistent</code>.
---- This module redefines the types <code>Dynamic</code>,
---- <code>Query</code>, and <code>Transaction</code> and although both
+--- `Dynamic`, `Database`, and
+--- `KeyDatabase` with this module and changing the declarations
+--- of database predicates to use the function `persistentSQLite`
+--- instead of `dynamic` or `persistent`.
+--- This module redefines the types `Dynamic`,
+--- `Query`, and `Transaction` and although both
 --- implementations can be used in the same program (by importing modules
 --- qualified) they cannot be mixed.
 ---
---- Compared with the interface of <code>KeyDatabase</code>, this module
---- lacks definitions for <code>index</code>, <code>sortByIndex</code>,
---- <code>groupByIndex</code>, and <code>runTNA</code> and adds the
---- functions <code>deleteDBEntries</code> and <code>closeDBHandles</code>.
+--- Compared with the interface of `KeyDatabase`, this module
+--- lacks definitions for `index`, `sortByIndex`,
+--- `groupByIndex`, and `runTNA` and adds the
+--- functions `deleteDBEntries` and `closeDBHandles`.
 ---
 --- @author Sebastian Fischer with changes by Michael Hanus
 --- @version August 2011

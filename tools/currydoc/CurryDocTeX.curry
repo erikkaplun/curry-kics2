@@ -6,27 +6,33 @@
 
 module CurryDocTeX where
 
+import CurryDocParams
 import CurryDocRead
 import FlatCurry
 import HTML
 import HtmlParser
 import List
+import Pandoc(markdown2latex)
 
 --------------------------------------------------------------------------
 -- Generates the documentation of a module in HTML format where the comments
 -- are already analyzed.
-generateTexDocs :: AnaInfo -> String -> String
+generateTexDocs :: DocParams -> AnaInfo -> String -> String
                 -> [(SourceLine,String)] -> IO ([String],String)
-generateTexDocs anainfo progname modcmts progcmts = do
+generateTexDocs docparams anainfo progname modcmts progcmts = do
   let fcyname = flatCurryFileName progname
   putStrLn $ "Reading FlatCurry program \""++fcyname++"\"..."
   (Prog _ imports types functions _) <- readFlatCurryFile fcyname
   let textypes = concatMap (genTexType progcmts) types
       texfuncs = concatMap (genTexFunc progcmts anainfo) functions
+      modcmt   = fst (splitComment modcmts)
+  modcmttex <- if withMarkdown docparams
+               then markdown2latex modcmt
+               else return (htmlString2Tex modcmt)
   return $
     (imports,
      "\\currymodule{"++getLastName progname++"}\n" ++
-     htmlString2Tex (fst (splitComment modcmts)) ++ "\n" ++
+     modcmttex ++ "\n" ++
      (if null textypes then ""
       else "\\currytypesstart\n" ++ textypes ++ "\\currytypesstop\n") ++
      (if null texfuncs then ""

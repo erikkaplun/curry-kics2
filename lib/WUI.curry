@@ -4,7 +4,7 @@
 ---
 --- The ideas behind the application and implementation of WUIs are
 --- described in a paper that is available via
---- <a href="http://www.informatik.uni-kiel.de/~pakcs/WUI">this web page</a>.
+--- [this web page](http://www.informatik.uni-kiel.de/~pakcs/WUI).
 ---
 --- @author Michael Hanus
 --- @version February 2009

@@ -8,15 +8,15 @@
 --- Currently, it is still experimental so that its interface might
 --- be slightly changed in the future.
 ---
---- A global entity <code>g</code> with an initial value <code>v</code>
---- of type <code>t</code> must be declared by:
+--- A global entity `g` with an initial value `v`
+--- of type `t` must be declared by:
 --- 
---- <code>g :: Global t</code><br/>
---- <code>g = global v spec</code>
+---     g :: Global t
+---     g = global v spec
 ---
---- Here, the type <code>t</code> must not contain type variables and
---- <code>spec</code> specifies the storage mechanism for the
---- global entity (see type <code>GlobalSpec</code>).
+--- Here, the type `t` must not contain type variables and
+--- `spec` specifies the storage mechanism for the
+--- global entity (see type `GlobalSpec`).
 ---
 ---
 --- @author Michael Hanus

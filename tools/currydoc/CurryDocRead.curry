@@ -34,7 +34,7 @@ data SourceLine = Comment String  -- a comment for CurryDoc
 -- here we replace blank line comments by a "breakline" tag
 classifyLine :: String -> SourceLine
 classifyLine line
- | take 3 line == "---" && all isSpace (drop 3 line) = Comment "<br/>"
+ | take 3 line == "---" && all isSpace (drop 3 line) = Comment "" --"<br/>"
  | take 4 line == "--- "     = Comment (drop 4 line)
  | take 7 line == "module "  = ModDef
  | take 7 line == "import "  = ModDef

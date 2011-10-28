@@ -4,7 +4,7 @@
 ---
 --- The ideas behind the application and implementation of WUIs are
 --- described in a paper that is available via
---- <a href="http://www.informatik.uni-kiel.de/~pakcs/WUI">this web page</a>.
+--- [this web page](http://www.informatik.uni-kiel.de/~pakcs/WUI).
 ---
 --- In addition to the original library, this version provides also support
 --- for JavaScript.

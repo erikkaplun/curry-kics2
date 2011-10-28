@@ -1,11 +1,7 @@
 ------------------------------------------------------------------------------
 --- Library for GUI programming in Curry (based on Tcl/Tk).
---- <A HREF="http://www.informatik.uni-kiel.de/~mh/papers/PADL00.html">
---- This paper</A> contains a description of the basic ideas
---- behind this library.
----
---- This library is an improved and updated version of the library Tk.
---- The latter might not be supported in the future.
+--- [This paper](http://www.informatik.uni-kiel.de/~mh/papers/PADL00.html)
+--- contains a description of the basic ideas behind this library.
 ---
 --- @authors Michael Hanus, Bernd Brassel
 --- @version August 2007

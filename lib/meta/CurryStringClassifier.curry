@@ -3,19 +3,19 @@
 --- Curry source code. The source string is classified into the following
 --- categories:
 ---
---- (1) moduleHead - module interface, imports, operators
+---   * moduleHead - module interface, imports, operators
 ---
---- (2) code - the part where the actual program is defined
+---   * code - the part where the actual program is defined
 ---
---- (3) big comment - parts enclosed in {- ... -}
+---   * big comment - parts enclosed in {- ... -}
 ---
---- (4) small comment - from "--" to the end of a line
+---   * small comment - from "--" to the end of a line
 ---
---- (5) text - a string, i.e. text enclosed in "..."
+---   * text - a string, i.e. text enclosed in "..."
 ---
---- (6) letter - the given string is the representation of a character
+---   * letter - the given string is the representation of a character
 ---
---- (7) meta - containing information for meta programming
+---   * meta - containing information for meta programming
 ---
 --- For an example to use the state scanner cf. addtypes, the tool 
 --- to add function types to a given program.

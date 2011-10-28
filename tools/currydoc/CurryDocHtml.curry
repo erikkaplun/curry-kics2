@@ -6,6 +6,7 @@
 
 module CurryDocHtml where
 
+import CurryDocParams
 import CurryDocRead
 import FlatCurry
 import FlexRigid
@@ -17,6 +18,7 @@ import Sort
 import Time
 import Distribution
 import CategorizedHtmlList
+import Pandoc(markdown2html)
 
 -- Name of style sheet for documentation files:
 currydocCSS = "currydoc.css"
@@ -24,19 +26,20 @@ currydocCSS = "currydoc.css"
 --------------------------------------------------------------------------
 -- Generates the documentation of a module in HTML format where the comments
 -- are already analyzed.
-generateHtmlDocs :: String -> CalendarTime -> AnaInfo -> String -> String
-                 -> [(SourceLine,String)] -> IO ([String],[HtmlExp])
-generateHtmlDocs cdversion time anainfo progname modcmts progcmts = do
+generateHtmlDocs :: String -> CalendarTime -> DocParams -> AnaInfo -> String
+                 -> String -> [(SourceLine,String)] -> IO ([String],[HtmlExp])
+generateHtmlDocs cdversion time docparams anainfo progname modcmts progcmts = do
   let fcyname = flatCurryFileName progname
   putStrLn $ "Reading FlatCurry program \""++fcyname++"\"..."
   (Prog _ imports types functions ops) <- readFlatCurryFile fcyname
+  modcmtshtml <- genHtmlModule docparams modcmts
   return $
      (imports,
       [h1 [htxt ("Module \""),
            href (getLastName progname++"_curry.html")
                 [htxt (getLastName progname++".curry")],
            htxt "\""]] ++
-      genHtmlModule modcmts ++
+      modcmtshtml ++
       bigHRule "Exported names:" ++
       genHtmlExportIndex (getExportedTypes types)
                          (getExportedCons types)
@@ -108,14 +111,18 @@ getExportedFuns funs = map (\(Func (_,name) _ _ _ _)->name)
 
 
 --- generate HTML documentation for a module:
-genHtmlModule modcmts =
+genHtmlModule :: DocParams -> String -> IO [HtmlExp]
+genHtmlModule docparams modcmts = do
   let (maincmt,avcmts) = splitComment modcmts
-   in [par [HtmlText maincmt]] ++
-      map (\a->par [bold [htxt "Author: "], htxt a])
-          (getCommentType "author" avcmts) ++
-      map (\a->par [bold [htxt "Version: "], htxt a])
-          (getCommentType "version" avcmts)
-       
+  mainhtml <- if withMarkdown docparams
+              then markdown2html maincmt >>= \h -> return [HtmlText h]
+              else return [par [HtmlText maincmt]]
+  return $ mainhtml ++
+           map (\a->par [bold [htxt "Author: "], htxt a])
+               (getCommentType "author" avcmts) ++
+           map (\a->par [bold [htxt "Version: "], htxt a])
+               (getCommentType "version" avcmts)
+
 --- generate HTML documentation for a datatype if it is exported:
 genHtmlType progcmts (Type (_,tcons) tvis tvars constrs) =
   if tvis==Public

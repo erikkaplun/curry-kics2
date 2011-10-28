@@ -1,20 +1,19 @@
 ------------------------------------------------------------------------------
 --- Library for HTML and CGI programming.
---- <a href="http://www.informatik.uni-kiel.de/~mh/papers/PADL01.html">
---- This paper</a> contains a description of the basic ideas
---- behind this library.
+--- [This paper](http://www.informatik.uni-kiel.de/~mh/papers/PADL01.html)
+--- contains a description of the basic ideas behind this library.
 ---
 --- The installation of a cgi script written with this library
 --- can be done by the command
 --- 
---- <code>makecurrycgi -m initialForm -o /home/joe/public_html/prog.cgi prog</code>
+---     makecurrycgi -m initialForm -o /home/joe/public_html/prog.cgi prog
 ---
---- where <code>prog</code> is the name of the Curry program with
---- the cgi script, <code>/home/joe/public_html/prog.cgi</code> is
+--- where `prog` is the name of the Curry program with
+--- the cgi script, `/home/joe/public_html/prog.cgi` is
 --- the desired location of the
---- compiled cgi script, and <code>initialForm</code> is the Curry expression
+--- compiled cgi script, and `initialForm` is the Curry expression
 --- (of type IO HtmlForm) computing the HTML form (where makecurrycgi
---- is a shell script stored in <i>pakcshome</i>/bin).
+--- is a shell script stored in *pakcshome*/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
 --- @version October 2011

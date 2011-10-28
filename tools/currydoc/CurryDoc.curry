@@ -27,6 +27,7 @@
 
 module CurryDoc where
 
+import CurryDocParams
 import CurryDocRead
 import CurryDocHtml
 import CurryDocTeX
@@ -46,7 +47,7 @@ import Distribution
 -- Global definitions:
 
 -- Version of currydoc
-currydocVersion = "Version 0.4.3 of October 10, 2011"
+currydocVersion = "Version 0.5.0 of October 28, 2011"
 
 -- Directory where include files for generated documention (e.g., icons,
 -- css, tex includes) are stored:
@@ -56,40 +57,36 @@ includeDir = installDir++"/include"
 -- Check arguments and call main function:
 main = do
   args <- getArgs
+  processArgs defaultCurryDocParams args
+
+processArgs docparams args = do
   case args of
-    ["--html",modname] -> makeCompleteDoc HtmlDoc True True
-                                 ("DOC_"++stripSuffix modname)
-                                 (stripSuffix modname)
-    ["-html",modname] -> makeCompleteDoc HtmlDoc True True
-                                 ("DOC_"++stripSuffix modname)
-                                 (stripSuffix modname)
-    ["--tex",modname] -> makeCompleteDoc TexDoc False False
-                                 ("DOC_"++stripSuffix modname)
-                                 (stripSuffix modname)
-    ["-tex",modname] -> makeCompleteDoc TexDoc False False
-                                 ("DOC_"++stripSuffix modname)
-                                 (stripSuffix modname)
-    ["--html",docdir,modname] ->
-       makeCompleteDoc HtmlDoc True True docdir (stripSuffix modname)
-    ["-html",docdir,modname] ->
-       makeCompleteDoc HtmlDoc True True docdir (stripSuffix modname)
-    ["--tex",docdir,modname] ->
-       makeCompleteDoc TexDoc False False docdir (stripSuffix modname)
+    ("--nopandoc":margs) ->
+        processArgs (setMarkDown False docparams) margs
+    ("--html":margs) ->
+        processArgs (setDocType HtmlDoc docparams) margs
+    ("--tex":margs) ->
+        processArgs (setDocType TexDoc docparams) margs
     ["--noindexhtml",docdir,modname] ->
-       makeCompleteDoc HtmlDoc False True docdir (stripSuffix modname)
-    ["-noindexhtml",docdir,modname] ->
-       makeCompleteDoc HtmlDoc False True docdir (stripSuffix modname)
+       makeCompleteDoc (setIndex False (setDocType HtmlDoc docparams))
+                       True docdir (stripSuffix modname)
     ("--onlyindexhtml":docdir:modnames) ->
                         makeIndexPages docdir (map stripSuffix modnames)
-    ("-onlyindexhtml":docdir:modnames) ->
-                        makeIndexPages docdir (map stripSuffix modnames)
-    _ -> putStrLn $
-           "ERROR: Illegal arguments for currydoc: " ++
-           concat (intersperse " " args) ++ "\n" ++
-           "Usage: currydoc [--html|--tex] <module_name>\n" ++
-           "       currydoc [--html|--tex] <doc directory> <module_name>\n" ++
-           "       currydoc --noindexhtml <doc directory> <module_name>\n" ++
-           "       currydoc --onlyindexhtml <doc directory> <module_names>\n"
+    (('-':_):_) -> putStrLn usageMessage
+    [modname] ->
+        makeCompleteDoc docparams (docType docparams == HtmlDoc)
+                        ("DOC_"++stripSuffix modname) (stripSuffix modname)
+    [docdir,modname] ->
+        makeCompleteDoc docparams (docType docparams == HtmlDoc) docdir
+                        (stripSuffix modname)
+    _ -> putStrLn usageMessage
+
+usageMessage =
+ "ERROR: Illegal arguments for currydoc\n" ++
+ "Usage: currydoc [--nopandoc] [--html|--tex] <module_name>\n" ++
+ "       currydoc [--nopandoc] [--html|--tex] <doc directory> <module_name>\n" ++
+ "       currydoc [--nopandoc] --noindexhtml <doc directory> <module_name>\n" ++
+ "       currydoc --onlyindexhtml <doc directory> <module_names>\n"
 
 -- create directory if not existent:
 createDir :: String -> IO ()
@@ -98,29 +95,25 @@ createDir dir = do
   if exdir then done else system ("mkdir "++dir) >> done
 
 --------------------------------------------------------------------------
--- The type of documentations which can be generated.
-data DocType = HtmlDoc | TexDoc
-
---------------------------------------------------------------------------
 --- The main function of the CurryDoc utility.
 --- @param withindex - True if the index pages should also be generated
 --- @param recursive - True if the documentation for the imported modules
 ---                    should be also generated (if necessary)
 --- @param docdir - the directory name containing all documentation files
 --- @param modname - the name of the main module to be documented
-makeCompleteDoc :: DocType -> Bool -> Bool -> String -> String -> IO ()
-makeCompleteDoc doctype withindex recursive docdir modname = do
+makeCompleteDoc :: DocParams -> Bool -> String -> String -> IO ()
+makeCompleteDoc docparams recursive docdir modname = do
   putStrLn("CurryDoc ("++currydocVersion++") - the Curry Documentation Tool\n")
-  prepareDocDir doctype docdir
+  prepareDocDir (docType docparams) docdir
   -- parsing source program:
   callFrontend FCY modname
   (alltypes,allfuns,allops) <- readFlatCurryWithImports [modname]
   progname <- findSourceFileInLoadPath modname
-  makeDocIfNecessary doctype recursive docdir
+  makeDocIfNecessary docparams recursive docdir
                      (genAnaInfo (Prog modname [] alltypes allfuns allops))
                      progname
   time <- getLocalTime
-  if withindex
+  if withIndex docparams
    then do genMainIndexPage     currydocVersion time docdir [modname]
            genFunctionIndexPage currydocVersion time docdir allfuns
            genConsIndexPage     currydocVersion time docdir alltypes
@@ -171,34 +164,34 @@ genAnaInfo prog =
           (getFunctionInfo (analyseOpCompleteness prog))
 
 -- generate documentation for a single module:
-makeDoc :: DocType -> Bool -> String -> AnaInfo -> String -> IO ()
-makeDoc doctype recursive docdir anainfo progname = do
+makeDoc :: DocParams -> Bool -> String -> AnaInfo -> String -> IO ()
+makeDoc docparams recursive docdir anainfo progname = do
   putStrLn ("Reading comments from file \""++progname++".curry\"...")
   (modcmts,progcmts) <- readComments (progname++".curry")
-  makeDocWithComments doctype recursive docdir anainfo progname
-                      modcmts progcmts
+  makeDocWithComments (docType docparams) docparams recursive docdir
+                      anainfo progname modcmts progcmts
 
-makeDocWithComments HtmlDoc recursive docdir anainfo progname
+makeDocWithComments HtmlDoc docparams recursive docdir anainfo progname
                     modcmts progcmts = do
   time <- getLocalTime
-  (imports,hexps) <- generateHtmlDocs currydocVersion time anainfo progname
-                                      modcmts progcmts
+  (imports,hexps) <- generateHtmlDocs currydocVersion time docparams anainfo
+                                      progname modcmts progcmts
   let outfile = docdir++"/"++getLastName progname++".html"
   putStrLn $ "Writing documentation to \""++outfile++"\"..."
   writeFile outfile (showDocCSS ("Module "++getLastName progname) hexps)
   translateSource2ColoredHtml docdir progname
   if recursive
-   then mapIO_ (makeDocIfNecessary HtmlDoc recursive docdir anainfo) imports
+   then mapIO_ (makeDocIfNecessary docparams recursive docdir anainfo) imports
    else done
 
-makeDocWithComments TexDoc recursive docdir anainfo progname
+makeDocWithComments TexDoc docparams recursive docdir anainfo progname
                     modcmts progcmts = do
-  (imports,textxt) <- generateTexDocs anainfo progname modcmts progcmts
+  (imports,textxt) <- generateTexDocs docparams anainfo progname modcmts progcmts
   let outfile = docdir++"/"++getLastName progname++".tex"
   putStrLn $ "Writing documentation to \""++outfile++"\"..."
   writeFile outfile textxt
   if recursive
-   then mapIO_ (makeDocIfNecessary TexDoc recursive docdir anainfo) imports
+   then mapIO_ (makeDocIfNecessary docparams recursive docdir anainfo) imports
    else done
 
 
@@ -206,21 +199,21 @@ makeDocWithComments TexDoc recursive docdir anainfo progname
 --- I.e., the documentation is generated if no previous documentation
 --- file exists or if the existing documentation file is older than
 --- the FlatCurry file.
-makeDocIfNecessary :: DocType -> Bool -> String -> AnaInfo -> String -> IO ()
-makeDocIfNecessary doctype recursive docdir anainfo modname = do
+makeDocIfNecessary :: DocParams -> Bool -> String -> AnaInfo -> String -> IO ()
+makeDocIfNecessary docparams recursive docdir anainfo modname = do
   progname <- findSourceFileInLoadPath modname
   let docfile = docdir ++ "/" ++ getLastName progname ++
-                (if doctype==HtmlDoc then ".html" else ".tex")
+                (if docType docparams == HtmlDoc then ".html" else ".tex")
   docexists <- doesFileExist docfile
   if not docexists
-   then copyOrMakeDoc doctype recursive docdir anainfo progname 
+   then copyOrMakeDoc docparams recursive docdir anainfo progname 
    else do ctime  <- getModificationTime (flatCurryFileName progname)
            dftime <- getModificationTime docfile
            if compareClockTime ctime dftime == GT
-            then copyOrMakeDoc doctype recursive docdir anainfo progname
+            then copyOrMakeDoc docparams recursive docdir anainfo progname
             else if recursive
                  then do imports <- getImports progname
-                         mapIO_ (makeDocIfNecessary doctype recursive docdir
+                         mapIO_ (makeDocIfNecessary docparams recursive docdir
                                                     anainfo)
                                 imports
                  else done
@@ -234,20 +227,22 @@ getImports progname = do
                             else readFlatCurryFile (flatCurryFileName progname)
   return imports
 
-copyOrMakeDoc :: DocType -> Bool -> String -> AnaInfo -> String -> IO ()
-copyOrMakeDoc doctype recursive docdir anainfo progname = do
-  hasCopied <- copyDocIfPossible doctype docdir progname
+copyOrMakeDoc :: DocParams -> Bool -> String -> AnaInfo -> String -> IO ()
+copyOrMakeDoc docparams recursive docdir anainfo progname = do
+  hasCopied <- copyDocIfPossible docparams docdir progname
   if hasCopied then done
-               else makeDoc doctype recursive docdir anainfo progname
+               else makeDoc docparams recursive docdir anainfo progname
 
 --- Copy the documentation file from standard documentation directoy "CDOC"
 --- (used for documentation of system libraries) if possible.
 --- Returns true if the copy was possible.
-copyDocIfPossible :: DocType -> String -> String -> IO Bool
-copyDocIfPossible TexDoc _ _ = return False -- ignore copying for TeX docs
-copyDocIfPossible HtmlDoc docdir progname =
-  let docprogname = getDirName progname++"/CDOC/"++getLastName progname in
-  do docexists <- doesFileExist (docprogname++".html")
+copyDocIfPossible :: DocParams -> String -> String -> IO Bool
+copyDocIfPossible docparams docdir progname =
+  if docType docparams == TexDoc
+  then return False -- ignore copying for TeX docs
+  else do
+     let docprogname = getDirName progname++"/CDOC/"++getLastName progname
+     docexists <- doesFileExist (docprogname++".html")
      if not docexists
       then return False
       else

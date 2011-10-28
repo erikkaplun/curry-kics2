@@ -6,7 +6,8 @@ ANADIR=../analysis
 
 # generate executable for currydoc program:
 CurryDoc: CurryDoc.curry CurryDocRead.curry CurryDocHtml.curry \
-	        CurryDocTeX.curry ${META}/FlexRigid.curry \
+	        CurryDocTeX.curry CurryDocParams.curry Pandoc.curry \
+	        ${META}/FlexRigid.curry \
 	        ${LIB}/CategorizedHtmlList.curry \
 	        ${LIB}/Distribution.curry ${LIB}/PropertyFile.curry \
 	        ${META}/FlatCurry.curry \
