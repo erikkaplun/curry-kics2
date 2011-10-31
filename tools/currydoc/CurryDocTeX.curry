@@ -13,6 +13,7 @@ import HTML
 import HtmlParser
 import List
 import Pandoc(markdown2latex)
+import Markdown
 
 --------------------------------------------------------------------------
 -- Generates the documentation of a module in HTML format where the comments
@@ -23,12 +24,12 @@ generateTexDocs docparams anainfo progname modcmts progcmts = do
   let fcyname = flatCurryFileName progname
   putStrLn $ "Reading FlatCurry program \""++fcyname++"\"..."
   (Prog _ imports types functions _) <- readFlatCurryFile fcyname
-  let textypes = concatMap (genTexType progcmts) types
-      texfuncs = concatMap (genTexFunc progcmts anainfo) functions
+  let textypes = concatMap (genTexType docparams progcmts) types
+      texfuncs = concatMap (genTexFunc docparams progcmts anainfo) functions
       modcmt   = fst (splitComment modcmts)
   modcmttex <- if withMarkdown docparams
                then markdown2latex modcmt
-               else return (htmlString2Tex modcmt)
+               else return (htmlString2Tex docparams modcmt)
   return $
     (imports,
      "\\currymodule{"++getLastName progname++"}\n" ++
@@ -39,28 +40,32 @@ generateTexDocs docparams anainfo progname modcmts progcmts = do
       else "\\curryfuncstart\n" ++ texfuncs ++ "\\curryfuncstop\n")
     )
 
--- translate a string possibly containing HTML tags into a corresponding
--- LaTeX string:
-htmlString2Tex :: String -> String
-htmlString2Tex s = showLatexExps (parseHtmlString s)
+--- Translate a documentation comment to LaTeX and use markdown translation
+--- if necessary. If the string contains HTML tags, these are also
+--- translated into LaTeX.
+htmlString2Tex :: DocParams -> String -> String
+htmlString2Tex docparams cmt =
+  if withMarkdown docparams
+  then markdownText2LaTeX cmt
+  else showLatexExps (parseHtmlString cmt)
 
 -- generate short HTML documentation for a function if it is exported:
-genTexFunc progcmts _ (Func (_,fname) _ fvis ftype _) =
+genTexFunc docparams progcmts _ (Func (_,fname) _ fvis ftype _) =
   if fvis==Public
   then "\\curryfunction{" ++ string2tex fname ++ "}{" ++
        "\\curryfuncsig{" ++ string2tex (showId fname) ++ "}{" ++
          showTexType False ftype ++ "}}{" ++
-         htmlString2Tex
+         htmlString2Tex docparams
                (fst (splitComment (getFuncComment fname progcmts))) ++ "}\n"
   else ""
 
 --- generate TeX documentation for a datatype if it is exported:
-genTexType progcmts (Type (_,tcons) tvis tvars constrs) =
+genTexType docparams progcmts (Type (_,tcons) tvis tvars constrs) =
   if tvis==Public
   then
    let (datacmt,conscmts) = splitComment (getDataComment tcons progcmts)
     in "\\currydata{" ++ tcons ++ "}{" ++
-       htmlString2Tex datacmt ++ "}{" ++
+       htmlString2Tex docparams datacmt ++ "}{" ++
        concatMap (genHtmlCons (getCommentType "cons" conscmts)) constrs
        ++ "}\n"
   else ""
@@ -71,12 +76,13 @@ genTexType progcmts (Type (_,tcons) tvis tvars constrs) =
          concatMap (\t->showTexType True t++" $\\to$ ") argtypes ++
                    tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars ++ "}{" ++
          (maybe ""
-                (\ (call,cmt) -> "{\\tt " ++ call ++ "}" ++ htmlString2Tex cmt)
+                (\ (call,cmt) -> "{\\tt " ++ call ++ "}" ++
+                                 htmlString2Tex docparams cmt)
                 (getConsComment conscmts cname))
          ++ "}\n"
     else ""
 
-genTexType progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
+genTexType docparams progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
   if tvis==Public
   then let (typecmt,_) = splitComment (getDataComment tcons progcmts) in
        "\\currytype{" ++ tcons ++ "}{" ++
@@ -84,7 +90,7 @@ genTexType progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
         then "String = [Char]"
         else tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars ++ " = " ++
                       showTexType False texp ) ++ "}{" ++
-       htmlString2Tex typecmt ++ "}\n"
+       htmlString2Tex docparams typecmt ++ "}\n"
   else ""
 
 -- Pretty printer for types in Curry syntax as TeX string.

@@ -19,6 +19,7 @@ import Time
 import Distribution
 import CategorizedHtmlList
 import Pandoc(markdown2html)
+import Markdown
 
 -- Name of style sheet for documentation files:
 currydocCSS = "currydoc.css"
@@ -47,17 +48,25 @@ generateHtmlDocs cdversion time docparams anainfo progname modcmts progcmts = do
       bigHRule "Summary of exported functions:" ++
       [HtmlStruct "table" [("border","1"),("width","100%")]
        (map (\ht->HtmlStruct "tr" [] [HtmlStruct "td" [] [ht]])
-          (concatMap (genHtmlFuncShort progcmts anainfo)
+          (concatMap (genHtmlFuncShort docparams progcmts anainfo)
                      functions))] ++
       bigHRule "Imported modules:" ++
       concatMap (\i->[href (getLastName i++".html") [htxt i],
                       breakline]) imports ++
       bigHRule "Exported datatypes:" ++
-      concatMap (genHtmlType progcmts) types ++
+      concatMap (genHtmlType docparams progcmts) types ++
       bigHRule "Exported functions:" ++
-      concatMap (genHtmlFunc progname progcmts anainfo ops)
+      concatMap (genHtmlFunc docparams progname progcmts anainfo ops)
                 functions ++
       curryDocEpilog cdversion time)
+
+--- Translate a documentation comment to HTML and use markdown translation
+--- if necessary.
+docComment2HTML :: DocParams -> String -> [HtmlExp]
+docComment2HTML docparams cmt =
+  if withMarkdown docparams
+  then markdownText2HTML cmt
+  else [HtmlText cmt]
 
 --- generate HTML index for all exported names:
 genHtmlExportIndex exptypes expcons expfuns =
@@ -124,12 +133,12 @@ genHtmlModule docparams modcmts = do
                (getCommentType "version" avcmts)
 
 --- generate HTML documentation for a datatype if it is exported:
-genHtmlType progcmts (Type (_,tcons) tvis tvars constrs) =
+genHtmlType docparams progcmts (Type (_,tcons) tvis tvars constrs) =
   if tvis==Public
   then
    let (datacmt,conscmts) = splitComment (getDataComment tcons progcmts)
     in [h3 [anchor (tcons++"_TYPE") [htxt tcons]],
-        par [HtmlText datacmt],
+        par (docComment2HTML docparams datacmt),
         par [italic [htxt "Constructors:"], breakline,
              dlist (concatMap
                           (genHtmlCons (getCommentType "cons" conscmts))
@@ -145,16 +154,17 @@ genHtmlType progcmts (Type (_,tcons) tvis tvars constrs) =
               concatMap (\t->" "++showType cmod True t++" -> ") argtypes ++
               tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars)]],
            (maybe []
-                  (\ (call,cmt) -> [par [code [htxt call], HtmlText cmt]])
+                  (\ (call,cmt) -> [par ([code [htxt call]]++
+                                         docComment2HTML docparams cmt)])
                   (getConsComment conscmts cname))
           )]
     else []
 
-genHtmlType progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
+genHtmlType docparams progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
   if tvis==Public
   then let (typecmt,_) = splitComment (getDataComment tcons progcmts) in
        [h3 [anchor (tcons++"_TYPE") [htxt tcons]],
-        par [HtmlText typecmt],
+        par (docComment2HTML docparams typecmt),
         par [italic [htxt "Type synonym: "],
              if tcons=="String" && tcmod=="Prelude"
              then code [htxt "String = [Char]"]
@@ -165,7 +175,8 @@ genHtmlType progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
   else []
 
 -- generate short HTML documentation for a function if it is exported:
-genHtmlFuncShort progcmts anainfo (Func (fmod,fname) _ fvis ftype rule) =
+genHtmlFuncShort docparams progcmts anainfo
+                 (Func (fmod,fname) _ fvis ftype rule) =
   if fvis==Public
   then [table
          [[[anchor (fname++"_SHORT")
@@ -174,14 +185,15 @@ genHtmlFuncShort progcmts anainfo (Func (fmod,fname) _ fvis ftype rule) =
                             ++ showType fmod False ftype)],
             HtmlText "&nbsp;&nbsp;"]
             ++ genFuncPropIcons anainfo (fmod,fname) rule],
-          [[HtmlText (concat (take 10 (repeat "&nbsp;")) ++
-             firstSentence (fst (splitComment
-                                       (getFuncComment fname progcmts))))]]]
+          [[HtmlText (concat (take 10 (repeat "&nbsp;")))] ++
+            docComment2HTML docparams
+              (firstSentence (fst (splitComment
+                                     (getFuncComment fname progcmts))))]]
        ]
   else []
 
 -- generate HTML documentation for a function if it is exported:
-genHtmlFunc progname progcmts anainfo ops
+genHtmlFunc docparams progname progcmts anainfo ops
             (Func (fmod,fname) _ fvis ftype rule) =
   if fvis==Public
   then let (funcmt,paramcmts) = splitComment (getFuncComment fname progcmts)
@@ -192,7 +204,7 @@ genHtmlFunc progname progcmts anainfo ops
               code [HtmlText ("&nbsp;::&nbsp;"++ showType fmod False ftype)]],
             HtmlText "&nbsp;&nbsp;"] ++
            genFuncPropIcons anainfo (fmod,fname) rule ++
-           [par [HtmlText funcmt]] ++
+           [par (docComment2HTML docparams funcmt)] ++
            genParamComment paramcmts ++
            -- show further infos for this function, if present:
            (if furtherInfos == []
@@ -212,10 +224,12 @@ genHtmlFunc progname progcmts anainfo ops
                     code [htxt (showCall fname (map fst params))]],
                dlist ([([italic [htxt "Parameters:"]],[])] ++
                       map (\(parid,parcmt)->
-                                   ([],[code [htxt parid], HtmlText parcmt]))
+                                   ([],[code [htxt parid]] ++
+                                        docComment2HTML docparams parcmt))
                           params)
               ]) ++
-         [dlist (map (\rescmt->([italic [htxt "Returns:"]],[HtmlText rescmt]))
+         [dlist (map (\rescmt->([italic [htxt "Returns:"]],
+                                docComment2HTML docparams rescmt))
                      (getCommentType "return" paramcmts))
          ]
 

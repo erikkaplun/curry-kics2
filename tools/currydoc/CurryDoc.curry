@@ -47,7 +47,7 @@ import Distribution
 -- Global definitions:
 
 -- Version of currydoc
-currydocVersion = "Version 0.5.0 of October 28, 2011"
+currydocVersion = "Version 0.5.0 of October 31, 2011"
 
 -- Directory where include files for generated documention (e.g., icons,
 -- css, tex includes) are stored:
@@ -61,7 +61,7 @@ main = do
 
 processArgs docparams args = do
   case args of
-    ("--nopandoc":margs) ->
+    ("--nomarkdown":margs) ->
         processArgs (setMarkDown False docparams) margs
     ("--html":margs) ->
         processArgs (setDocType HtmlDoc docparams) margs
@@ -83,9 +83,9 @@ processArgs docparams args = do
 
 usageMessage =
  "ERROR: Illegal arguments for currydoc\n" ++
- "Usage: currydoc [--nopandoc] [--html|--tex] <module_name>\n" ++
- "       currydoc [--nopandoc] [--html|--tex] <doc directory> <module_name>\n" ++
- "       currydoc [--nopandoc] --noindexhtml <doc directory> <module_name>\n" ++
+ "Usage: currydoc [--nomarkdown] [--html|--tex] <module_name>\n" ++
+ "       currydoc [--nomarkdown] [--html|--tex] <doc directory> <module_name>\n" ++
+ "       currydoc [--nomarkdown] --noindexhtml <doc directory> <module_name>\n" ++
  "       currydoc --onlyindexhtml <doc directory> <module_names>\n"
 
 -- create directory if not existent:

@@ -3,7 +3,7 @@
 .PHONY: pdf
 pdf : manual.pdf
 
-manual.pdf: manual.tex
+manual.pdf: manual.tex currydoc.tex
 	pdflatex manual
 	bibtex manual
 	pdflatex manual
