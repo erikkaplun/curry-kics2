@@ -23,7 +23,7 @@ import FileGoodies(stripSuffix)
 --- Data type for representing a Curry module in the intermediate form.
 --- A value of this data type has the form
 --- 
---- `(Prog modname imports typedecls functions opdecls translation_table)`
+---     (Prog modname imports typedecls functions opdecls translation_table)
 --- 
 --- where
 --- `modname` is the name of this module,
@@ -46,18 +46,18 @@ data Visibility = Public    -- public (exported) entity
                 | Private   -- private entity
 
 --- The data type for representing type variables.
---- They are represented by (TVar i) where i is a type variable index.
+--- They are represented by `(TVar i)` where `i` is a type variable index.
 type TVarIndex = Int
 
 --- Data type for representing definitions of algebraic data types.
 ---
 --- A data type definition of the form
 ---
---- `data t x1...xn = ...| c t1....tkc |...`
+---     data t x1...xn = ...| c t1....tkc |...
 ---
 --- is represented by the FlatCurry term
 ---
---- `(Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...])`
+---     (Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...])
 ---
 --- where each `ij` is the index of the type variable `xj`.
 ---
@@ -102,9 +102,8 @@ data Fixity = InfixOp | InfixlOp | InfixrOp
 
 
 --- Data type for representing object variables.
---- Object variables occurring in expressions are represented by (Var i)
---- where i is a variable index.
-
+--- Object variables occurring in expressions are represented by `(Var i)`
+--- where `i` is a variable index.
 type VarIndex = Int
 
 
@@ -112,13 +111,12 @@ type VarIndex = Int
 ---
 --- A function declaration in FlatCurry is a term of the form
 ---
---- `(Func name k type (Rule [i1,...,ik] e))`
+---     (Func name k type (Rule [i1,...,ik] e))
 ---
 --- and represents the function `name` with definition
 ---
---- `name :: type`
---- 
---- `name x1...xk = e`
+---     name :: type
+---     name x1...xk = e
 ---
 --- where each `ij` is the index of the variable `xj`.
 ---
@@ -126,7 +124,9 @@ type VarIndex = Int
 ---       and are usually numbered from 0
 ---
 --- External functions are represented as
---- `(Func name arity type (External s))`
+---
+---     (Func name arity type (External s))
+---
 --- where s is the external name associated to this function.
 ---
 --- Thus, a function declaration consists of the name, arity, type, and rule.
@@ -164,38 +164,38 @@ data CombType = FuncCall | ConsCall | FuncPartCall Int | ConsPartCall Int
 ---
 --- if-then-else expressions are represented as function calls:
 ---
---- `(if e1 then e2 else e3)`
+---     (if e1 then e2 else e3)
 ---
 --- is represented as
 ---
---- `(Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])`
+---     (Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])
 --- 
 --- Higher-order applications are represented as calls to the (external)
 --- function `apply`. For instance, the rule
 ---
---- `app f x = f x`
+---     app f x = f x
 ---
 --- is represented as
 ---
---- `(Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))`
+---     (Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))
 --- 
 --- A conditional rule is represented as a call to an external function
 --- `cond` where the first argument is the condition (a constraint).
 --- For instance, the rule
 ---
---- `equal2 x | x=:=2 = success`
+---     equal2 x | x=:=2 = success
 ---
 --- is represented as
 ---
---- `(Rule [0]
----        (Comb FuncCall ("Prelude","cond")
----              [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
----               Comb FuncCall ("Prelude","success") []]))`
+---     (Rule [0]
+---           (Comb FuncCall ("Prelude","cond")
+---                 [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
+---                  Comb FuncCall ("Prelude","success") []]))
 ---
 --- @cons Var - variable (represented by unique index)
---- @cons Lit - literal (Integer/Float/Char constant)
---- @cons Comb - application (f e1 ... en) of function/constructor f
----              with n&lt;=arity(f)
+--- @cons Lit - literal (Int/Float/Char constant)
+--- @cons Comb - application `(f e1 ... en)` of function/constructor `f`
+---              with `n`&lt;=arity(`f`)
 --- @cons Free - introduction of free local variables
 --- @cons Or - disjunction of two expressions (used to translate rules
 ---            with overlapping left-hand sides)
@@ -214,11 +214,11 @@ data Expr = Var VarIndex
 ---
 --- Branches "(m.c x1...xn) -> e" in case expressions are represented as
 ---
----   (Branch (Pattern (m,c) [i1,...,in]) e)
+---     (Branch (Pattern (m,c) [i1,...,in]) e)
 ---
---- where each ij is the index of the pattern variable xj, or as
+--- where each `ij` is the index of the pattern variable `xj`, or as
 ---
----   (Branch (LPattern (Intc i)) e)
+---     (Branch (LPattern (Intc i)) e)
 ---
 --- for integers as branch patterns (similarly for other literals
 --- like float or character constants).

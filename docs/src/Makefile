@@ -8,11 +8,11 @@ manual.pdf: manual.tex currydoc.tex
 	bibtex manual
 	pdflatex manual
 	makeindex manual.idx
-	#thumbpdf manual
 	pdflatex manual
-	rm -f thumb*
 
 ../Manual.pdf: manual.pdf
+	thumbpdf manual
+	pdflatex manual
 	rm -f ../Manual.pdf
 	cp manual.pdf ../Manual.pdf
 
@@ -34,6 +34,6 @@ clean:
 	/bin/rm -f manual.?? manual.???
 	/bin/mv manual.texx manual.tex
 	/bin/mv manual.bblx manual.bbl
-	/bin/rm -f ../Manual.pdf
+	/bin/rm -f ../Manual.pdf thumb*
 
 

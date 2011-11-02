@@ -50,11 +50,12 @@ htmlString2Tex docparams cmt =
 -- generate short HTML documentation for a function if it is exported:
 genTexFunc docparams progcmts _ (Func (_,fname) _ fvis ftype _) =
   if fvis==Public
-  then "\\curryfunction{" ++ string2tex fname ++ "}{" ++
+  then "\\curryfunctionstart{" ++ string2tex fname ++ "}{" ++
        "\\curryfuncsig{" ++ string2tex (showId fname) ++ "}{" ++
-         showTexType False ftype ++ "}}{" ++
+         showTexType False ftype ++ "}}\n" ++
          htmlString2Tex docparams
-               (fst (splitComment (getFuncComment fname progcmts))) ++ "}\n"
+               (fst (splitComment (getFuncComment fname progcmts))) ++
+       "\\curryfunctionstop\n"
   else ""
 
 --- generate TeX documentation for a datatype if it is exported:
@@ -62,33 +63,34 @@ genTexType docparams progcmts (Type (_,tcons) tvis tvars constrs) =
   if tvis==Public
   then
    let (datacmt,conscmts) = splitComment (getDataComment tcons progcmts)
-    in "\\currydata{" ++ tcons ++ "}{" ++
-       htmlString2Tex docparams datacmt ++ "}{" ++
-       concatMap (genHtmlCons (getCommentType "cons" conscmts)) constrs
-       ++ "}\n"
+    in "\\currydatastart{" ++ tcons ++ "}\n" ++
+       htmlString2Tex docparams datacmt ++
+       "\n\\currydatacons\n" ++
+       concatMap (genHtmlCons (getCommentType "cons" conscmts)) constrs ++
+       "\\currydatastop\n"
   else ""
  where
   genHtmlCons conscmts (Cons (_,cname) _ cvis argtypes) =
     if cvis==Public
-    then "\\currycons{" ++ cname ++ "}{" ++
+    then "\\curryconsstart{" ++ cname ++ "}{" ++
          concatMap (\t->showTexType True t++" $\\to$ ") argtypes ++
-                   tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars ++ "}{" ++
+                   tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars ++ "}\n" ++
          (maybe ""
                 (\ (call,cmt) -> "{\\tt " ++ call ++ "}" ++
                                  htmlString2Tex docparams cmt)
                 (getConsComment conscmts cname))
-         ++ "}\n"
+         ++ "\n"
     else ""
 
 genTexType docparams progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
   if tvis==Public
   then let (typecmt,_) = splitComment (getDataComment tcons progcmts) in
-       "\\currytype{" ++ tcons ++ "}{" ++
+       "\\currytypesynstart{" ++ tcons ++ "}{" ++
        (if tcons=="String" && tcmod=="Prelude"
         then "String = [Char]"
         else tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars ++ " = " ++
-                      showTexType False texp ) ++ "}{" ++
-       htmlString2Tex docparams typecmt ++ "}\n"
+                      showTexType False texp ) ++ "}\n" ++
+       htmlString2Tex docparams typecmt ++ "\\currytypesynstop\n\n"
   else ""
 
 -- Pretty printer for types in Curry syntax as TeX string.

@@ -10,13 +10,15 @@
 --- @version November 2011
 ------------------------------------------------------------------------------
 
-module Markdown(markdownText2HTML,markdownText2LaTeX)
+module Markdown(markdownText2HTML,
+                markdownText2LaTeX,markdownText2CompleteLaTeX)
  where
 
 import List
 import Char
 import HTML
 import HtmlParser
+import System
 
 -----------------------------------------------------------------------
 -- Structure of markdown documents
@@ -121,13 +123,22 @@ isNumberedItemLine s =
         else 0
 
 -- parse a paragraph:
-markdownPar ptxt txt =
-  if null txt || isSpace (head txt)
-  then MDPar (outsideMarkdownElem "" ptxt) : markdownText txt
-  else let (fstline,remtxt) = break (=='\n') txt
-        in if null remtxt
-           then [MDPar (outsideMarkdownElem "" (ptxt++'\n':fstline))]
-           else markdownPar (ptxt++'\n':fstline) (tail remtxt)
+markdownPar ptxt txt
+ | isLevel1Line && onlyOnePreviousLine
+  = MDHeader 1 ptxt : markdownText (dropFirst remtxt)
+ | isLevel2Line && onlyOnePreviousLine
+  = MDHeader 2 ptxt : markdownText (dropFirst remtxt)
+ | null txt || head txt `elem` [' ','\n','-','=','#']
+  = MDPar (outsideMarkdownElem "" ptxt) : markdownText txt
+ | null remtxt
+  = [MDPar (outsideMarkdownElem "" (ptxt++'\n':fstline))]
+ | otherwise = markdownPar (ptxt++'\n':fstline) (tail remtxt)
+ where
+  (fstline,remtxt) = break (=='\n') txt
+
+  onlyOnePreviousLine = '\n' `notElem` ptxt
+  isLevel1Line = not (null fstline) && all (=='=') fstline
+  isLevel2Line = not (null fstline) && all (=='-') fstline
 
 -- parse a quoted section:
 markdownQuote qtxt txt =
@@ -282,9 +293,44 @@ html2latex = showLatexExps . parseHtmlString
 
 m3 = mdDoc2latex m1
 
+--- Translate a markdown text into a (partial) LaTeX document.
 markdownText2LaTeX :: String -> String
 markdownText2LaTeX = mdDoc2latex . fromMarkdownText
 
 m4 = readFile "test.txt" >>= putStrLn . markdownText2LaTeX
+
+--- Translate a markdown text into a complete LaTeX document
+--- that can be formatted as a standalone document.
+markdownText2CompleteLaTeX :: String -> String
+markdownText2CompleteLaTeX mds =
+   latexHeader ++ mdDoc2latex (fromMarkdownText mds) ++ "\\end{document}\n"
+
+latexHeader =
+ "\\documentclass{article}\n"++
+ "\\usepackage[utf8x]{inputenc}\n"++
+ "\\usepackage{url}\n"++
+ "\\usepackage[breaklinks=true,unicode=true]{hyperref}\n"++
+ "\\setlength{\\parindent}{0pt}\n"++
+ "\\setlength{\\parskip}{6pt plus 2pt minus 1pt}\n"++
+ "\\setcounter{secnumdepth}{0}\n"++
+ "\\begin{document}\n"
+
+
+-- Format a markdown file as PDF
+formatMarkdownAsPDF :: String -> IO ()
+formatMarkdownAsPDF fname = do
+  pid <- getPID
+  let tmp = "tmp_"++show pid
+  readFile fname >>= writeFile (tmp++".tex") . markdownText2CompleteLaTeX
+  pdflatexFile tmp
+
+-- Format a file tmp.tex with pdflatex and show the result
+pdflatexFile :: String -> IO ()
+pdflatexFile tmp = do
+  system $ "pdflatex \'\\nonstopmode\\input{"++tmp++".tex}\'"
+  system $ "/bin/rm -f "++tmp++".tex "++tmp++".aux "++tmp++".log "++tmp++".out"
+  system $ "evince "++tmp++".pdf"
+  system $ "/bin/rm -f "++tmp++".pdf"
+  done
 
 -----------------------------------------------------------------------
