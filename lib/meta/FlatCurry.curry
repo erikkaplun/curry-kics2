@@ -22,13 +22,14 @@ import FileGoodies(stripSuffix)
 
 --- Data type for representing a Curry module in the intermediate form.
 --- A value of this data type has the form
---- <CODE>
----  (Prog modname imports typedecls functions opdecls translation_table)
---- </CODE>
---- where modname: name of this module,
----       imports: list of modules names that are imported,
----       typedecls, opdecls, functions, translation of type names
----       and constructor/function names: see below
+--- 
+--- `(Prog modname imports typedecls functions opdecls translation_table)`
+--- 
+--- where
+--- `modname` is the name of this module,
+--- `imports` is the list of modules names that are imported,
+--- `typedecls`, `opdecls`, `functions`, translation of type names
+--- and constructor/function names are explained see below
 
 data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
 
@@ -52,14 +53,13 @@ type TVarIndex = Int
 ---
 --- A data type definition of the form
 ---
---- <code>data t x1...xn = ...| c t1....tkc |...</code>
+--- `data t x1...xn = ...| c t1....tkc |...`
 ---
 --- is represented by the FlatCurry term
 ---
---- <code>(Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...])</code>
+--- `(Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...])`
 ---
---- where each <code>ij</code> is the index of the type variable
---- <code>xj</code>.
+--- where each `ij` is the index of the type variable `xj`.
 ---
 --- Note: the type variable indices are unique inside each type declaration
 ---       and are usually numbered from 0
@@ -81,8 +81,8 @@ data ConsDecl = Cons QName Int Visibility [TypeExpr]
 --- or a type constructor application.
 ---
 --- Note: the names of the predefined type constructors are
----       "Int", "Float", "Bool", "Char", "IO", "Success",
----       "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
+--- "Int", "Float", "Bool", "Char", "IO", "Success",
+--- "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
 
 data TypeExpr =
      TVar TVarIndex                 -- type variable
@@ -92,8 +92,8 @@ data TypeExpr =
 
 
 --- Data type for operator declarations.
---- An operator declaration "fix p n" in Curry corresponds to the
---- FlatCurry term (Op n fix p).
+--- An operator declaration `fix p n` in Curry corresponds to the
+--- FlatCurry term `(Op n fix p)`.
 
 data OpDecl = Op QName Fixity Int
 
@@ -112,20 +112,21 @@ type VarIndex = Int
 ---
 --- A function declaration in FlatCurry is a term of the form
 ---
---- <code>(Func name arity type (Rule [i_1,...,i_arity] e))</code>
+--- `(Func name k type (Rule [i1,...,ik] e))`
 ---
---- and represents the function "name" with definition
+--- and represents the function `name` with definition
 ---
---- <code>name :: type</code><br/>
---- <code>name x_1...x_arity = e</code>
+--- `name :: type`
+--- 
+--- `name x1...xk = e`
 ---
---- where each <code>i_j</code> is the index of the variable <code>x_j</code>.
+--- where each `ij` is the index of the variable `xj`.
 ---
 --- Note: the variable indices are unique inside each function declaration
 ---       and are usually numbered from 0
 ---
 --- External functions are represented as
---- <code>(Func name arity type (External s))</code>
+--- `(Func name arity type (External s))`
 --- where s is the external name associated to this function.
 ---
 --- Thus, a function declaration consists of the name, arity, type, and rule.
@@ -161,40 +162,35 @@ data CombType = FuncCall | ConsCall | FuncPartCall Int | ConsPartCall Int
 ---
 --- Remarks:
 ---
---- <ol>
---- <li> if-then-else expressions are represented as function calls:
+--- if-then-else expressions are represented as function calls:
 ---
----    <code>(if e1 then e2 else e3)</code>
+--- `(if e1 then e2 else e3)`
 ---
----    is represented as
+--- is represented as
 ---
----    <code>(Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])</code>
---- </li>
---- <li>
----    Higher-order applications are represented as calls to the (external)
----    function "apply". For instance, the rule
+--- `(Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])`
+--- 
+--- Higher-order applications are represented as calls to the (external)
+--- function `apply`. For instance, the rule
 ---
----      <code>app f x = f x</code>
+--- `app f x = f x`
 ---
----    is represented as
+--- is represented as
 ---
----    <code>(Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))</code>
---- </li>
---- <li>
----    A conditional rule is represented as a call to an external function
----    "cond" where the first argument is the condition (a constraint).
----    For instance, the rule
+--- `(Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))`
+--- 
+--- A conditional rule is represented as a call to an external function
+--- `cond` where the first argument is the condition (a constraint).
+--- For instance, the rule
 ---
----      <code>equal2 x | x=:=2 = success</code>
+--- `equal2 x | x=:=2 = success`
 ---
----    is represented as
+--- is represented as
 ---
----     <code>(Rule [0]
----            (Comb FuncCall ("Prelude","cond")
----                  [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
----                   Comb FuncCall ("Prelude","success") []]))</code>
---- </li>
---- </ol>
+--- `(Rule [0]
+---        (Comb FuncCall ("Prelude","cond")
+---              [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
+---               Comb FuncCall ("Prelude","success") []]))`
 ---
 --- @cons Var - variable (represented by unique index)
 --- @cons Lit - literal (Integer/Float/Char constant)
@@ -255,7 +251,7 @@ readFlatCurry progfile =
 
 --- I/O action which reads a FlatCurry program from a file
 --- with respect to some parser options.
---- This I/O action is used by the standard action <CODE>readFlatCurry</CODE>.
+--- This I/O action is used by the standard action `readFlatCurry`.
 --- It is currently predefined only in Curry2Prolog.
 --- @param progfile - the program file name (without suffix ".curry")
 --- @param options - parameters passed to the front end
@@ -284,7 +280,7 @@ flatCurryIntName :: String -> String
 flatCurryIntName prog = inCurrySubdir (stripSuffix prog ++ ".fint")
 
 --- I/O action which reads a FlatCurry program from a file in ".fcy" format.
---- In contrast to <CODE>readFlatCurry</CODE>, this action does not parse
+--- In contrast to `readFlatCurry`, this action does not parse
 --- a source program. Thus, the argument must be the name of an existing
 --- file (with suffix ".fcy") containing a FlatCurry program in ".fcy"
 --- format and the result is a FlatCurry term representing this program.

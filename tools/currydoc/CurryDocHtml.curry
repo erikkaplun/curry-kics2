@@ -18,7 +18,6 @@ import Sort
 import Time
 import Distribution
 import CategorizedHtmlList
-import Pandoc(markdown2html)
 import Markdown
 
 -- Name of style sheet for documentation files:
@@ -33,14 +32,13 @@ generateHtmlDocs cdversion time docparams anainfo progname modcmts progcmts = do
   let fcyname = flatCurryFileName progname
   putStrLn $ "Reading FlatCurry program \""++fcyname++"\"..."
   (Prog _ imports types functions ops) <- readFlatCurryFile fcyname
-  modcmtshtml <- genHtmlModule docparams modcmts
   return $
      (imports,
       [h1 [htxt ("Module \""),
            href (getLastName progname++"_curry.html")
                 [htxt (getLastName progname++".curry")],
            htxt "\""]] ++
-      modcmtshtml ++
+      genHtmlModule docparams modcmts ++
       bigHRule "Exported names:" ++
       genHtmlExportIndex (getExportedTypes types)
                          (getExportedCons types)
@@ -120,17 +118,16 @@ getExportedFuns funs = map (\(Func (_,name) _ _ _ _)->name)
 
 
 --- generate HTML documentation for a module:
-genHtmlModule :: DocParams -> String -> IO [HtmlExp]
-genHtmlModule docparams modcmts = do
+genHtmlModule :: DocParams -> String -> [HtmlExp]
+genHtmlModule docparams modcmts =
   let (maincmt,avcmts) = splitComment modcmts
-  mainhtml <- if withMarkdown docparams
-              then markdown2html maincmt >>= \h -> return [HtmlText h]
-              else return [par [HtmlText maincmt]]
-  return $ mainhtml ++
-           map (\a->par [bold [htxt "Author: "], htxt a])
-               (getCommentType "author" avcmts) ++
-           map (\a->par [bold [htxt "Version: "], htxt a])
-               (getCommentType "version" avcmts)
+   in (if withMarkdown docparams
+       then markdownText2HTML maincmt
+       else [par [HtmlText maincmt]]) ++
+      map (\a->par [bold [htxt "Author: "], htxt a])
+          (getCommentType "author" avcmts) ++
+      map (\a->par [bold [htxt "Version: "], htxt a])
+          (getCommentType "version" avcmts)
 
 --- generate HTML documentation for a datatype if it is exported:
 genHtmlType docparams progcmts (Type (_,tcons) tvis tvars constrs) =

@@ -12,7 +12,6 @@ import FlatCurry
 import HTML
 import HtmlParser
 import List
-import Pandoc(markdown2latex)
 import Markdown
 
 --------------------------------------------------------------------------
@@ -27,13 +26,12 @@ generateTexDocs docparams anainfo progname modcmts progcmts = do
   let textypes = concatMap (genTexType docparams progcmts) types
       texfuncs = concatMap (genTexFunc docparams progcmts anainfo) functions
       modcmt   = fst (splitComment modcmts)
-  modcmttex <- if withMarkdown docparams
-               then markdown2latex modcmt
-               else return (htmlString2Tex docparams modcmt)
   return $
     (imports,
      "\\currymodule{"++getLastName progname++"}\n" ++
-     modcmttex ++ "\n" ++
+     (if withMarkdown docparams
+      then markdownText2LaTeX modcmt
+      else htmlString2Tex docparams modcmt) ++ "\n" ++
      (if null textypes then ""
       else "\\currytypesstart\n" ++ textypes ++ "\\currytypesstop\n") ++
      (if null texfuncs then ""

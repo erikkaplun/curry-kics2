@@ -60,17 +60,18 @@ should not be used since the formatting is the task of CurryDoc.
 
 The documentation comment for the module (i.e., the documentation
 comment at the beginning of the module before the module header)
-can be formatted with
-\href{http://en.wikipedia.org/wiki/Markdown}{Markdown's syntax}\index{markdown}
-provided that the
-\href{http://johnmacfarlane.net/pandoc/}{pandoc}\index{pandoc}
- tool is installed.
-Other documentations comments, like comments for operations
-or data types, can contain Markdown annotations for
+can be formatted with a subset of
+\href{http://en.wikipedia.org/wiki/Markdown}{Markdown's syntax}\index{markdown}.
+For instance, it can contain Markdown annotations for
 emphasizing elements (e.g., \verb!*emph*! or \verb!_verb_!),
 strong elements (e.g., \verb!**important**! or \verb!__important__!),
-or code elements (e.g., \verb!`3+4`!).
-If \code{pandoc} is not installed, one should run CurryDoc
+code elements (e.g., \verb!`3+4`!), code blocks (lines prefixed by four blanks),
+unordered lists (lines prefixed by two blanks followed by ``\verb!* !''),
+ordered lists (lines prefixed by two blanks followed by a digit and a dot),
+quotations (lines prefixed by ``\verb!> !''),
+and web links of the form \ccode{<http://\ldots>}
+or \ccode{[link text](http://\ldots)}.
+If the Markdown syntax should not be used, one could run CurryDoc
 with the parameter \ccode{--nomarkdown}.
 
 The following example text shows a Curry program with some
@@ -84,20 +85,20 @@ documentation comments:
 
 module Example where
 
---- The function conc concatenates two lists.
+--- The function `conc` concatenates two lists.
 --- @param xs - the first list
 --- @param ys - the second list
---- @return a list containing all elements of xs and ys
+--- @return a list containing all elements of `xs` and `ys`
 conc []     ys = ys
 conc (x:xs) ys = x : conc xs ys
 -- this comment will not be included in the documentation
 
---- The function last computes the last element of a given list.
+--- The function `last` computes the last element of a given list.
 --- @param xs - the given input list
 --- @return last element of the input list
 last xs | conc ys [x] =:= xs  = x   where x,ys free
 
---- This data type defines polymorphic trees.
+--- This data type defines _polymorphic_ trees.
 --- @cons Leaf - a leaf of the tree
 --- @cons Node - an inner node of the tree
 data Tree a = Leaf a | Node [Tree a]

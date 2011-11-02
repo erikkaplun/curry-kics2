@@ -7,7 +7,8 @@
 ------------------------------------------------------------------------------
 
 module FlatCurryRead(readFlatCurryWithImports,readFlatCurryWithImportsInPath,
-                     readFlatCurryIntWithImports,readFlatCurryIntWithImportsInPath)
+                     readFlatCurryIntWithImports,
+                     readFlatCurryIntWithImportsInPath)
   where
 
 import FlatCurry

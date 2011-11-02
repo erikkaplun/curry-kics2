@@ -1558,7 +1558,8 @@ findHtmlAttr atag ((t,f):attrs) =
              else findHtmlAttr atag attrs
 
 
--- convert special characters into TeX representation:
+--- Convert special characters into TeX representation, if necessary.
+specialchars2tex :: String -> String
 specialchars2tex [] = []
 specialchars2tex (c:cs)
   | c==chr 228  = "\\\"a"  ++ specialchars2tex cs

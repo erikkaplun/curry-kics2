@@ -2,12 +2,11 @@
 --- Some tools to show FlatCurry programs.
 ---
 --- This library contains
---- <ul>
---- <li> show functions for a string representation of FlatCurry programs
----      (showFlatProg, showFlatType, showFlatFunc) </li>
---- <li> functions for showing FlatCurry (type) expressions in (almost)
----      Curry syntax (showCurryType, showCurryExpr,...).</li>
---- </ul>
+--- 
+---   * show functions for a string representation of FlatCurry programs
+---     (`showFlatProg`, `showFlatType`, `showFlatFunc`)
+---   * functions for showing FlatCurry (type) expressions in (almost)
+---     Curry syntax (`showCurryType`, `showCurryExpr`,...).
 ---
 --- @author Michael Hanus
 --- @version December 2005
