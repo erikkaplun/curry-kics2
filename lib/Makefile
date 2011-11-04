@@ -23,7 +23,7 @@ LIB_CURRY = Prelude.curry \
 	    Integer.curry IO.curry IOExts.curry \
 	    JavaScript.curry \
             KeyDatabaseSQLite.curry \
-	    List.curry Mail.curry Maybe.curry \
+	    List.curry Mail.curry Markdown.curry Maybe.curry \
 	    NamedSocket.curry \
 	    Parser.curry Pretty.curry \
 	    Profile.curry PropertyFile.curry \

@@ -3,7 +3,7 @@
 .PHONY: pdf
 pdf : manual.pdf
 
-manual.pdf: manual.tex currydoc.tex
+manual.pdf: manual.tex currydoc.tex markdown_syntax.tex ../../lib/TEXDOC/LAST
 	pdflatex manual
 	bibtex manual
 	pdflatex manual
@@ -16,6 +16,15 @@ manual.pdf: manual.tex currydoc.tex
 	rm -f ../Manual.pdf
 	cp manual.pdf ../Manual.pdf
 
+markdown_syntax.tex: markdown_syntax.txt
+	../../bin/kics2 :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "markdown_syntax.tex" . markdownText2LaTeX' :q
+
+../markdown_syntax.html: markdown_syntax.txt
+	../../bin/kics2 :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "../markdown_syntax.html" . markdownText2CompleteHTML' :q
+
+../../lib/TEXDOC/LAST:
+	${MAKE} libdoc
+
 # generate documentation for all libraries
 .PHONY: libdoc
 libdoc:
@@ -24,6 +33,7 @@ libdoc:
 
 .PHONY: install
 install:
+	${MAKE} ../markdown_syntax.html
 	${MAKE} libdoc
 	${MAKE} ../Manual.pdf
 

@@ -1,17 +1,19 @@
 ------------------------------------------------------------------------------
---- Library to translate simple markdown documents into HTML.
+--- Library to translate
+--- [markdown documents](http://en.wikipedia.org/wiki/Markdown)
+--- into HTML or LaTeX.
+--- The slightly restricted subset of the markdown syntax recognized by
+--- this implementation is
+--- [documented in this page](http://www.informatik.uni-kiel.de/~pakcs/markdown_syntax.html).
 ---
---- A simple markdown document might contain the following elements
---- that are considered by this translator:
---- *emph* _emph_ **strong** __strong__ `code`
---- Backslash escapes in the form of `\\c` are recognized as character `c`.
---- 
 --- @author Michael Hanus
 --- @version November 2011
 ------------------------------------------------------------------------------
 
-module Markdown(markdownText2HTML,
-                markdownText2LaTeX,markdownText2CompleteLaTeX)
+module Markdown(fromMarkdownText,
+                markdownText2HTML,markdownText2CompleteHTML,
+                markdownText2LaTeX,markdownText2CompleteLaTeX,
+                formatMarkdownAsPDF)
  where
 
 import List
@@ -39,58 +41,58 @@ data MarkdownElem = MDText String
                   | MDHRule
                   | MDHeader Int String
 
------------------------------------------------------------------------
--- Parse markdown document from textual representation.
+isMDUItem md = case md of MDUItem _ -> True
+                          _         -> False
 
+isMDOItem md = case md of MDOItem _ -> True
+                          _         -> False
+
+textOfItem (MDUItem txt) = txt
+textOfItem (MDOItem txt) = txt
+
+-----------------------------------------------------------------------
+--- Parse markdown document from its textual representation.
 fromMarkdownText :: String -> MarkdownDoc
 fromMarkdownText = groupMarkDownElems . markdownText
 
--- Group adjacent markdown elements together.
+-- Group adjacent item elements together in a markdown list.
 groupMarkDownElems mes = case mes of
   [] -> []
-  (MDUItem itxt : mds) -> joinUItems [itxt] mds
-  (MDOItem itxt : mds) -> joinOItems [itxt] mds
-  --(MDCodeBlock cl : mds) -> joinCodeLines cl mds
+  (MDUItem itxt : mds) -> joinItems MDUList isMDUItem [itxt] mds
+  (MDOItem itxt : mds) -> joinItems MDOList isMDOItem [itxt] mds
   (md:mds) -> md : groupMarkDownElems mds
 
-joinUItems items mes = case mes of
-  [] -> [MDUList (reverse (map fromMarkdownText items))]
-  (MDUItem itxt : mds) -> joinUItems (itxt:items) mds
-  (md:mds) -> MDUList (reverse (map fromMarkdownText items))
-              : groupMarkDownElems (md:mds)
+joinItems mdlcons _ items [] = [mdlcons (reverse (map fromMarkdownText items))]
+joinItems mdlcons isitem items (md:mds) =
+  if isitem md
+  then joinItems mdlcons isitem (textOfItem md : items) mds
+  else mdlcons (reverse (map fromMarkdownText items))
+        : groupMarkDownElems (md:mds)
 
-joinOItems items mes = case mes of
-  [] -> [MDOList (reverse (map fromMarkdownText items))]
-  (MDOItem itxt : mds) -> joinOItems (itxt:items) mds
-  (md:mds) -> MDOList (reverse (map fromMarkdownText items))
-              : groupMarkDownElems (md:mds)
-
--- Basic reader for markdown text.
+-- Basic reader for a markdown text.
 markdownText :: String -> MarkdownDoc
 markdownText [] = []
 markdownText txt@(_:_) = markdownLine (break (=='\n') txt)
 
 -- Analyze the first line of a markdown text:
 markdownLine (fstline,remtxt)
- | all isSpace fstline
-  = markdownText (dropFirst remtxt)
- | take 1 fstline == "#"
-  = tryMDHeader fstline (dropFirst remtxt)
- | isHRule fstline
-  = MDHRule : markdownText (dropFirst remtxt)
+ | all isSpace fstline   = markdownText (dropFirst remtxt)
+ | take 1 fstline == "#" = tryMDHeader fstline (dropFirst remtxt)
+ | isHRule fstline       = MDHRule : markdownText (dropFirst remtxt)
  | take 2 fstline == "> " -- start of a quoted text
   = markdownQuote (drop 2 fstline) (dropFirst remtxt)
- | take 4 fstline == "    " && (fstline!!4/=' ') -- four space indent for code
-  = markdownCodeBlock (drop 4 fstline) (dropFirst remtxt)
- | take 4 fstline == "  * "  -- start of an unordered item
-  = markdownItem MDUItem 4 (drop 4 fstline) (dropFirst remtxt)
- | take 3 fstline == " * "  -- start of an unordered item
-  = markdownItem MDUItem 3 (drop 3 fstline) (dropFirst remtxt)
+ | oitemlen > 0 -- start of an unordered item
+  = markdownItem MDUItem oitemlen (drop oitemlen fstline) (dropFirst remtxt)
  | nitemlen > 0 -- start of a numbered item
   = markdownItem MDOItem nitemlen (drop nitemlen fstline) (dropFirst remtxt)
+ | blanklen > 0 -- four space indent for code
+  = markdownCodeBlock blanklen (translateSpecials (drop blanklen fstline))
+                               (dropFirst remtxt)
  | otherwise = markdownPar fstline (dropFirst remtxt)
  where
   nitemlen = isNumberedItemLine fstline
+  oitemlen = isUnorderedItemLine fstline
+  blanklen = isCodeLine fstline
 
 dropFirst s = if null s then [] else tail s
 
@@ -107,13 +109,17 @@ isHRule l =
   (all (\c -> isSpace c || c=='-') l && length (filter (=='-') l) > 3) ||
   (all (\c -> isSpace c || c=='*') l && length (filter (=='*') l) > 3)
 
--- check whether a line starts with an indented number and return indent:
+-- check whether a line starts with an unordered item indicator ("* ")
+-- and return indent:
+isUnorderedItemLine s =
+  let (blanks,nonblanks) = span (==' ') s
+   in if take 2 nonblanks `elem` ["* ","- ","+ "] then length blanks+2 else 0
+
+-- check whether a line starts with an indented number and return indent value:
 isNumberedItemLine s =
-    if take 2 s == "  " && length s > 3
-    then checkNumber 2 (drop 2 s)
-    else if take 1 s == " " && length s > 2
-         then checkNumber 1 (tail s)
-         else 0
+  let (blanks,nonblanks) = span (==' ') s
+      numblanks = length blanks
+   in checkNumber numblanks nonblanks
  where
   checkNumber indt numtxt =
     let (ns,_) = break (==' ') numtxt
@@ -122,13 +128,21 @@ isNumberedItemLine s =
         then nsl+indt+1
         else 0
 
--- parse a paragraph:
+-- check whether a line starts with at least four blanks and return indent value:
+isCodeLine s =
+  let (blanks,nonblanks) = span (==' ') s
+      numblanks = length blanks
+   in if not (null nonblanks) && numblanks >= 4 then numblanks else 0
+
+-- parse a paragraph (where the initial part of the paragraph is given
+-- as the first argument):
+markdownPar :: String -> String -> MarkdownDoc
 markdownPar ptxt txt
  | isLevel1Line && onlyOnePreviousLine
   = MDHeader 1 ptxt : markdownText (dropFirst remtxt)
  | isLevel2Line && onlyOnePreviousLine
   = MDHeader 2 ptxt : markdownText (dropFirst remtxt)
- | null txt || head txt `elem` [' ','\n','-','=','#']
+ | null txt || head txt `elem` [' ','\n','-','=','#','*','+']
   = MDPar (outsideMarkdownElem "" ptxt) : markdownText txt
  | null remtxt
   = [MDPar (outsideMarkdownElem "" (ptxt++'\n':fstline))]
@@ -149,13 +163,16 @@ markdownQuote qtxt txt =
            else markdownQuote (qtxt++'\n':fstline) (tail remtxt)
   else MDQuote (fromMarkdownText qtxt) : markdownText txt
 
--- parse a program block:
-markdownCodeBlock ctxt txt =
-  if take 4 txt == "    "
-  then let (fstline,remtxt) = break (=='\n') (drop 4 txt)
-        in if null remtxt
-           then [MDCodeBlock (ctxt++'\n':fstline)]
-           else markdownCodeBlock (ctxt++'\n':fstline) (tail remtxt)
+-- parse a program block (where the indent and the initial code block is given):
+markdownCodeBlock :: Int -> String -> String -> MarkdownDoc
+markdownCodeBlock n ctxt txt =
+  if take n txt == "    "
+  then
+   let (fstline,remtxt) = break (=='\n') (drop n txt)
+    in if null remtxt
+       then [MDCodeBlock (ctxt++'\n':translateSpecials fstline)]
+       else markdownCodeBlock n (ctxt++'\n':translateSpecials fstline)
+                                (tail remtxt)
   else MDCodeBlock ctxt : markdownText txt
 
 -- parse a markdown list item:
@@ -171,6 +188,13 @@ markdownItem icons n itxt txt =
                 then [icons itxt]
                 else markdownItem icons n (itxt++"\n") (tail remtxt)
            else icons itxt : markdownText txt
+
+-- translate special character introduced by backslash in a string:
+translateSpecials :: String -> String
+translateSpecials s = case s of
+  []          -> []
+  ('\\':c:cs) -> c : translateSpecials cs
+  (c:cs)      -> c : translateSpecials cs
 
 -- Analyze markdown text outside an element like emphasis, code, strong:
 outsideMarkdownElem :: String -> String -> MarkdownDoc
@@ -223,10 +247,6 @@ text2MDElem marker txt = case marker of
   "`"  -> MDCode txt
   _    -> error $ "Markdown.text2MDElem: unknown marker \""++marker++"\""
 
-m1 = fromMarkdownText
-        "Try \\*emph\\* *emph* _emph_ **strong** __strong__ `c\\`o~de`"
-
-m = readFile "test.txt" >>= print . fromMarkdownText
 
 -----------------------------------------------------------------------
 -- Translate markdown document to HTML.
@@ -249,13 +269,15 @@ mdElem2html (MDOList s) = olist (map mdDoc2html s)
 mdElem2html MDHRule = hrule
 mdElem2html (MDHeader l s) = HtmlStruct ('h':show l) [] [htxt s]
 
-m2 = showHtmlExps (mdDoc2html m1)
-
-
+--- Translate a markdown text into a (partial) HTML document.
 markdownText2HTML :: String -> [HtmlExp]
 markdownText2HTML = mdDoc2html . fromMarkdownText
 
-m2' = readFile "test.txt" >>= putStrLn . showHtmlExps . markdownText2HTML
+--- Translate a markdown text into a complete HTML text
+--- that can be viewed as a standalone document by a browser.
+markdownText2CompleteHTML :: String -> String
+markdownText2CompleteHTML s =
+   showHtmlPage (page "Markdown Syntax" (markdownText2HTML s))
 
 -----------------------------------------------------------------------
 -- Translate markdown document to LaTeX string.
@@ -291,13 +313,9 @@ mdElem2latex (MDHeader l s) = case l of
 
 html2latex = showLatexExps . parseHtmlString
 
-m3 = mdDoc2latex m1
-
 --- Translate a markdown text into a (partial) LaTeX document.
 markdownText2LaTeX :: String -> String
 markdownText2LaTeX = mdDoc2latex . fromMarkdownText
-
-m4 = readFile "test.txt" >>= putStrLn . markdownText2LaTeX
 
 --- Translate a markdown text into a complete LaTeX document
 --- that can be formatted as a standalone document.
@@ -316,7 +334,7 @@ latexHeader =
  "\\begin{document}\n"
 
 
--- Format a markdown file as PDF
+--- Format a file containing markdown text as PDF.
 formatMarkdownAsPDF :: String -> IO ()
 formatMarkdownAsPDF fname = do
   pid <- getPID
