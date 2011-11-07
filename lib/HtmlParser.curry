@@ -2,7 +2,7 @@
 --- This module contains a very simple parser for HTML documents.
 ---
 --- @author Michael Hanus
---- @version October 2011
+--- @version November 2011
 ------------------------------------------------------------------------------
 
 module HtmlParser(readHtmlFile,parseHtmlString) where
@@ -72,7 +72,7 @@ scanHtmlString s = scanHtml s
 
 -- scan an HTML element
 scanHtmlElem :: String -> String -> [HtmlToken]
-scanHtmlElem ct [] = [HElem ct []]
+scanHtmlElem ct [] = [HText ('<':ct)] -- incomplete element
 scanHtmlElem ct (c:cs)
   | c=='>'    = HElem ct [] : scanHtmlString cs
   | isSpace c = let (args,rest) = splitAtElement (=='>') (dropWhile isSpace cs)

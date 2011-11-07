@@ -7,7 +7,7 @@ the writing of texts whose source is readable and can be easily formatted,
 e.g., as part of a web document.
 It is a subset of the
 [original markdown syntax](http://en.wikipedia.org/wiki/Markdown)
-(basically, only internal links are missing)
+(basically, only internal links and pictures are missing)
 supported by the
 [Curry](http://curry-language.org/) library
 [Markdown](http://www.informatik.uni-kiel.de/~pakcs/lib/CDOC/Markdown.html).
@@ -46,9 +46,10 @@ link in round brackets, as in
 
     [Google](http://www.google.com)
 
-If one wants to put a character with a specific meaning,
-like \* or \_, in the text, it should be escaped with a
-backslash, i.e., a backslash followed by a character in the
+If one wants to put a character that has a specific meaning
+in the syntax of Markdown,
+like \* or \_, in the output document, it should be escaped with a
+backslash, i.e., a backslash followed by a special character in the
 source text is translated into the given character
 (this also holds for program code, see below).
 For instance, the input text
@@ -56,7 +57,21 @@ For instance, the input text
     \\_word\\_
 
 produces the output "\_word\_".
+The following backslash escapes are recognized:
 
+    \\   backslash
+    \`   backtick
+    \*   asterisk
+    \_   underscore
+    \{\}  curly braces
+    \[\]  square brackets
+    \(\)  parentheses
+    \#   hash symbol
+    \+   plus symbol
+    \-   minus symbol (dash)
+    \.   dot
+    \    blank
+    \!   exclamation mark
 
 Lists and Block Formatting
 --------------------------
@@ -105,17 +120,20 @@ is formatted as
    + White
 
 Similarly, **ordered lists** (i.e., with numbering each item)
-are introduced by putting a number followed by a dot
-instead of the star. The actual value of the number is
-not important. Thus, the input
+are introduced by a number followed by a dot and at least one blank.
+All following lines belonging to the same numbered item
+must have the same indent as the first line.
+The actual value of the number is not important. Thus, the input
 
-    \1. First element
-    1. Second element
+    1\. First element
+    99. Second
+        element
 
 is formatted as
 
  1. First element
- 1. Second element
+ 99. Second
+     element
 
 A quotation block is marked by putting a right angle followed
 by a blank in front of each line:
@@ -128,10 +146,10 @@ It will be formatted as a quote element:
 > This is
 > a quotation.
 
-A block containing **program code** is marked by intending each
-input line by _at least four spaces_ where all following
-lines must have at least the same indentation as the first
-non-blank character of the first line:
+A block containing **program code** starts with a blank line and is
+marked by intending each input line by _at least four spaces_ where
+all following lines must have at least the same indentation as the
+first non-blank character of the first line:
 
     \    f x y = let z = (x,y)
     \             in (z,z)

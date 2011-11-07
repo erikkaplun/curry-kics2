@@ -45,7 +45,8 @@ module HTML(HtmlExp(..),HtmlPage(..),PageParam(..),
             getUrlParameter,urlencoded2string,string2urlencoded,
             showLatexExps,showLatexExp,showLatexDoc,showLatexDocs,
             showLatexDocsWithPackages,showLatexDocWithPackages,
-            germanLatexDoc,addSound,addCookies) where
+            germanLatexDoc,htmlSpecialChars2tex,
+            addSound,addCookies) where
 
 import System
 import Char
@@ -727,7 +728,7 @@ selectionInitial cref sellist sel
 --- if the corresponding name is selected. If flag is True, the
 --- corresonding name is initially selected. If more than one name
 --- has been selected, all values are returned in one string
---- where the values are separated by '\n' characters.
+--- where the values are separated by newline (`'\n'`) characters.
 multipleSelection :: CgiRef -> [(String,String,Bool)] -> HtmlExp
 multipleSelection cref sellist
   | cref =:= CgiRef ref -- instantiate cref argument
@@ -751,9 +752,8 @@ hiddenfield name value =
 
 
 ------------------------------------------------------------------------------
---- Quotes special characters (<,>,&,", umlauts) in a string
+--- Quotes special characters (`<`,`>`,`&`,`"`, umlauts) in a string
 --- as HTML special characters.
-
 htmlQuote :: String -> String
 htmlQuote [] = []
 htmlQuote (c:cs) | c=='<' = "&lt;"   ++ htmlQuote cs
@@ -1560,32 +1560,42 @@ findHtmlAttr atag ((t,f):attrs) =
 
 --- Convert special characters into TeX representation, if necessary.
 specialchars2tex :: String -> String
-specialchars2tex [] = []
-specialchars2tex (c:cs)
-  | c==chr 228  = "\\\"a"  ++ specialchars2tex cs
-  | c==chr 246  = "\\\"o"  ++ specialchars2tex cs
-  | c==chr 252  = "\\\"u"  ++ specialchars2tex cs
-  | c==chr 196  = "\\\"A"  ++ specialchars2tex cs
-  | c==chr 214  = "\\\"O"  ++ specialchars2tex cs
-  | c==chr 220  = "\\\"U"  ++ specialchars2tex cs
-  | c==chr 223  = "\\ss{}" ++ specialchars2tex cs
-  | c=='^'      = "{\\char94}" ++ specialchars2tex cs
-  | c=='~'      = "{\\char126}" ++ specialchars2tex cs
-  | c=='\\'     = "{\\char92}" ++ specialchars2tex cs
-  | c=='<'      = "{$<$}" ++ specialchars2tex cs
-  | c=='>'      = "{$>$}" ++ specialchars2tex cs
-  | c=='_'      = "\\_" ++ specialchars2tex cs
-  | c=='#'      = "\\#" ++ specialchars2tex cs
-  | c=='$'      = "\\$" ++ specialchars2tex cs
-  | c=='%'      = "\\%" ++ specialchars2tex cs
-  | c=='{'      = "\\{" ++ specialchars2tex cs
-  | c=='}'      = "\\}" ++ specialchars2tex cs
+specialchars2tex = htmlSpecialChars2tex . escapeLaTeXSpecials
+
+escapeLaTeXSpecials :: String -> String
+escapeLaTeXSpecials [] = []
+escapeLaTeXSpecials (c:cs)
+  | c=='^'      = "{\\tt\\char94}" ++ escapeLaTeXSpecials cs
+  | c=='~'      = "{\\tt\\char126}" ++ escapeLaTeXSpecials cs
+  | c=='\\'     = "{\\tt\\char92}" ++ escapeLaTeXSpecials cs
+  | c=='<'      = "{\\tt\\char60}" ++ escapeLaTeXSpecials cs
+  | c=='>'      = "{\\tt\\char62}" ++ escapeLaTeXSpecials cs
+  | c=='_'      = "\\_" ++ escapeLaTeXSpecials cs
+  | c=='#'      = "\\#" ++ escapeLaTeXSpecials cs
+  | c=='$'      = "\\$" ++ escapeLaTeXSpecials cs
+  | c=='%'      = "\\%" ++ escapeLaTeXSpecials cs
+  | c=='{'      = "\\{" ++ escapeLaTeXSpecials cs
+  | c=='}'      = "\\}" ++ escapeLaTeXSpecials cs
+  | otherwise   = c : escapeLaTeXSpecials cs
+
+--- Convert special HTML characters into their LaTeX representation,
+--- if necessary.
+htmlSpecialChars2tex :: String -> String
+htmlSpecialChars2tex [] = []
+htmlSpecialChars2tex (c:cs)
+  | c==chr 228  = "\\\"a"  ++ htmlSpecialChars2tex cs
+  | c==chr 246  = "\\\"o"  ++ htmlSpecialChars2tex cs
+  | c==chr 252  = "\\\"u"  ++ htmlSpecialChars2tex cs
+  | c==chr 196  = "\\\"A"  ++ htmlSpecialChars2tex cs
+  | c==chr 214  = "\\\"O"  ++ htmlSpecialChars2tex cs
+  | c==chr 220  = "\\\"U"  ++ htmlSpecialChars2tex cs
+  | c==chr 223  = "\\ss{}" ++ htmlSpecialChars2tex cs
   | c=='&'      = let (special,rest) = break (==';') cs
                   in  if null rest
-                      then "\\&" ++ specialchars2tex special -- wrong format
+                      then "\\&" ++ htmlSpecialChars2tex special -- wrong format
                       else htmlspecial2tex special ++
-                           specialchars2tex (tail rest)
-  | otherwise   = c : specialchars2tex cs
+                           htmlSpecialChars2tex (tail rest)
+  | otherwise   = c : htmlSpecialChars2tex cs
 
 htmlspecial2tex special
   | special=="Auml"   =  "{\\\"A}"
