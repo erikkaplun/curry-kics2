@@ -44,22 +44,34 @@ data Assertion a = AssertTrue      String Bool
                  | AssertIO        String (IO a) a
                  | AssertEqualIO   String (IO a) (IO a)
 
-
+--- `(assertTrue s b)` asserts (with name `s`) that `b` must be true.
 assertTrue :: String -> Bool -> Assertion ()
 assertTrue s b = AssertTrue s b
 
+--- `(assertEqual s e1 e2)` asserts (with name `s`) that `e1` and `e2`
+--- must be equal (w.r.t. `==`).
 assertEqual :: String -> a -> a -> Assertion a
 assertEqual s x y = AssertEqual s x y
 
+--- `(assertValues s e vs)` asserts (with name `s`) that `vs` is the multiset
+--- of all values of `e`. All values of `e` are
+--- compared with the elements in `vs` w.r.t. `==`.
 assertValues :: String -> a -> [a] -> Assertion a
 assertValues s x y = AssertValues s x y
 
+--- `(assertSolutions s c vs)` asserts (with name `s`) that constraint
+--- abstraction `c` has the multiset of solutions `vs`.
+--- The solutions of `c` are compared with the elements in `vs` w.r.t. `==`.
 assertSolutions :: String -> (a->Success) -> [a] -> Assertion a
 assertSolutions s x y = AssertSolutions s x y
 
+--- `(assertIO s a r)` asserts (with name `s`) that I/O action `a`
+--- yields the result value `r`.
 assertIO :: String -> IO a -> a -> Assertion a
 assertIO s x y = AssertIO s x y
 
+--- `(assertEqualIO s a1 a2)` asserts (with name `s`) that I/O actions `a1`
+--- and `a2` yield equal (w.r.t. `==`) results.
 assertEqualIO :: String -> IO a -> IO a -> Assertion a
 assertEqualIO s x y = AssertEqualIO s x y
 

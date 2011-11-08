@@ -33,66 +33,84 @@ generateHtmlDocs cdversion time docparams anainfo progname modcmts progcmts = do
   putStrLn $ "Reading FlatCurry program \""++fcyname++"\"..."
   (Prog _ imports types functions ops) <- readFlatCurryFile fcyname
   return $
-     (imports,
-      [h1 [htxt ("Module \""),
-           href (getLastName progname++"_curry.html")
-                [htxt (getLastName progname++".curry")],
-           htxt "\""]] ++
-      genHtmlModule docparams modcmts ++
-      bigHRule "Exported names:" ++
-      genHtmlExportIndex (getExportedTypes types)
-                         (getExportedCons types)
-                         (getExportedFuns functions) ++
-      bigHRule "Summary of exported functions:" ++
-      [HtmlStruct "table" [("border","1"),("width","100%")]
-       (map (\ht->HtmlStruct "tr" [] [HtmlStruct "td" [] [ht]])
-          (concatMap (genHtmlFuncShort docparams progcmts anainfo)
-                     functions))] ++
-      bigHRule "Imported modules:" ++
-      concatMap (\i->[href (getLastName i++".html") [htxt i],
-                      breakline]) imports ++
-      bigHRule "Exported datatypes:" ++
-      concatMap (genHtmlType docparams progcmts) types ++
-      bigHRule "Exported functions:" ++
-      concatMap (genHtmlFunc docparams progname progcmts anainfo ops)
-                functions ++
-      curryDocEpilog cdversion time)
+    (imports,
+     [h1 [href (getLastName progname++"_curry.html")
+               [htxt (getLastName progname++".curry")]]] ++
+     genHtmlModule docparams modcmts ++
+     [HtmlStruct "table" [("border","1"),("width","100%")]
+       [HtmlStruct "tr" []
+         [HtmlStruct "td" [("valign","top"),("width","20%")]
+           ([h2 [htxt "Exported names:"]] ++
+            genHtmlExportIndex (getExportedTypes types)
+                               (getExportedCons types)
+                               (getExportedFuns functions) ++
+            [h2 [htxt "Imported modules:"],
+             par (concatMap (\i->[href (getLastName i++".html") [htxt i],
+                                  breakline]) imports)]),
+          HtmlStruct "td" []
+           ([h2 [htxt "Summary of exported functions:"],
+             HtmlStruct "table" [("border","1"),("width","100%")]
+             (map (\ht->HtmlStruct "tr" [] [HtmlStruct "td" [] [ht]])
+                (concatMap (genHtmlFuncShort docparams progcmts anainfo)
+                           functions))] ++
+            (if null types
+             then []
+             else [h2 [htxt "Exported datatypes:"], hrule] ++
+                  concatMap (genHtmlType docparams progcmts) types) ++
+            [h2 [htxt "Exported functions:"], hrule] ++
+            concatMap (genHtmlFunc docparams progname progcmts anainfo ops)
+                      functions
+                 )]]] ++
+       curryDocEpilog cdversion time)
 
 --- Translate a documentation comment to HTML and use markdown translation
 --- if necessary.
 docComment2HTML :: DocParams -> String -> [HtmlExp]
 docComment2HTML docparams cmt =
   if withMarkdown docparams
-  then markdownText2HTML cmt
-  else [HtmlText cmt]
+  then markdownText2HTML (replaceIdLinks cmt)
+  else [HtmlText (replaceIdLinks cmt)]
 
---- generate HTML index for all exported names:
-genHtmlExportIndex exptypes expcons expfuns =
-  (if htmltypes==[]
-   then []
-   else [par ([bold [htxt "Datatypes:"], breakline] ++
-              intersperse (htxt " | ") htmltypes)] ) ++
-  (if htmlcons==[]
-   then []
-   else [par ([bold [htxt "Constructors:"], breakline] ++
-              intersperse (htxt " | ") htmlcons)] ) ++
-  (if htmlfuns==[]
-   then []
-   else [par ([bold [htxt "Functions:"], breakline] ++
-              intersperse (htxt " | ") htmlfuns)] )
+-- replace identifier hyperlinks in a string (i.e., enclosed in single quotes)
+-- by HTML hyperrefences:
+replaceIdLinks :: String -> String
+replaceIdLinks str = case str of
+  [] -> []
+  ('\\':'\'':cs) -> '\'' : replaceIdLinks cs
+  (c:cs) -> if c=='\'' then tryReplaceIdLink [] cs
+                       else c : replaceIdLinks cs
  where
-  htmltypes = map (\n->href ('#':n++"_TYPE") [htxt n])
-                  (rmdups (sortStrings exptypes))
-  htmlcons  = map (\n->href ('#':n) [htxt n])
-                  (rmdups (sortStrings expcons))
-  htmlfuns  = map (\n->href ('#':n++"_SHORT") [htxt n])
-                  (rmdups (sortStrings expfuns))
+  tryReplaceIdLink ltxt [] = '\'' : reverse ltxt
+  tryReplaceIdLink ltxt (c:cs)
+   | isSpace c = '\'' : reverse ltxt ++ c : replaceIdLinks cs -- no space in id
+   | c == '\'' = checkId (reverse ltxt) ++ replaceIdLinks cs
+   | otherwise = tryReplaceIdLink (c:ltxt) cs
 
-  -- remove subsequent duplicates:
-  rmdups [] = []
-  rmdups [x] = [x]
-  rmdups (x:y:xs) = if x==y then rmdups (y:xs)
-                            else x : rmdups (y:xs)
+  checkId s =
+    if ' ' `elem` s
+    then '\'' : s ++ ['\'']
+    else let (md,dotfun) = break (=='.') s
+          in "<code><a href=\"" ++
+             (if null dotfun then '#':s else md++".html#"++tail dotfun) ++
+             "\">"++s++"</a></code>"
+
+-- generate HTML index for all exported names:
+genHtmlExportIndex exptypes expcons expfuns =
+  concatMap (\ (htmlnames,cattitle) ->
+                if null htmlnames
+                then []
+                else [par ([bold [htxt cattitle], breakline] ++
+                           intersperse breakline htmlnames)])
+            [(htmltypes,"Datatypes:"),
+             (htmlcons ,"Constructors:"),
+             (htmlfuns ,"Functions:")]
+ where
+  htmltypes = map (\n->href ('#':n) [htxt n])
+                  (nub (sortStrings exptypes))
+  htmlcons  = map (\n->href ('#':n++"_CONS") [htxt n])
+                  (nub (sortStrings expcons))
+  htmlfuns  = map (\n->href ('#':n++"_SHORT") [htxt n])
+                  (nub (sortStrings expfuns))
 
 -- extract all exported types
 getExportedTypes :: [TypeDecl] -> [String]
@@ -134,25 +152,27 @@ genHtmlType docparams progcmts (Type (_,tcons) tvis tvars constrs) =
   if tvis==Public
   then
    let (datacmt,conscmts) = splitComment (getDataComment tcons progcmts)
-    in [h3 [anchor (tcons++"_TYPE") [htxt tcons]],
+    in [h3 [anchor tcons [htxt tcons]],
         par (docComment2HTML docparams datacmt),
-        par [italic [htxt "Constructors:"], breakline,
+        par [explainCat "Constructors:", breakline,
              dlist (concatMap
-                          (genHtmlCons (getCommentType "cons" conscmts))
-                           constrs)],
+                      (genHtmlCons (getCommentType "cons" conscmts))
+                      constrs)],
         hrule]
   else []
  where
   genHtmlCons conscmts (Cons (cmod,cname) _ cvis argtypes) =
     if cvis==Public
-    then [([anchor cname [bold [htxt cname]],
+    then [([opnameDoc [anchor (cname++"_CONS") [htxt cname]],
             code [HtmlText
              (" :: " ++
               concatMap (\t->" "++showType cmod True t++" -> ") argtypes ++
               tcons ++ concatMap (\i->[' ',chr (97+i)]) tvars)]],
            (maybe []
-                  (\ (call,cmt) -> [par ([code [htxt call]]++
-                                         docComment2HTML docparams cmt)])
+                  (\ (call,cmt) ->
+                     [par ([code [htxt call], htxt " : "] ++
+                           removeTopPar (docComment2HTML docparams
+                                                         (removeDash cmt)))])
                   (getConsComment conscmts cname))
           )]
     else []
@@ -160,9 +180,9 @@ genHtmlType docparams progcmts (Type (_,tcons) tvis tvars constrs) =
 genHtmlType docparams progcmts (TypeSyn (tcmod,tcons) tvis tvars texp) =
   if tvis==Public
   then let (typecmt,_) = splitComment (getDataComment tcons progcmts) in
-       [h3 [anchor (tcons++"_TYPE") [htxt tcons]],
+       [h3 [anchor tcons [htxt tcons]],
         par (docComment2HTML docparams typecmt),
-        par [italic [htxt "Type synonym: "],
+        par [explainCat "Type synonym:", nbsp,
              if tcons=="String" && tcmod=="Prelude"
              then code [htxt "String = [Char]"]
              else code [HtmlText
@@ -176,16 +196,16 @@ genHtmlFuncShort docparams progcmts anainfo
                  (Func (fmod,fname) _ fvis ftype rule) =
   if fvis==Public
   then [table
-         [[[anchor (fname++"_SHORT")
-                   [href ('#':fname) [bold [htxt (showId fname)]]],
-            code [HtmlText ("&nbsp;&nbsp;::&nbsp;"
-                            ++ showType fmod False ftype)],
-            HtmlText "&nbsp;&nbsp;"]
+         [[[opnameDoc
+                  [anchor (fname++"_SHORT")
+                          [href ('#':fname) [htxt (showId fname)]]],
+            code [HtmlText (" :: " ++ showType fmod False ftype)],
+            nbsp, nbsp]
             ++ genFuncPropIcons anainfo (fmod,fname) rule],
-          [[HtmlText (concat (take 10 (repeat "&nbsp;")))] ++
-            docComment2HTML docparams
-              (firstSentence (fst (splitComment
-                                     (getFuncComment fname progcmts))))]]
+          [removeTopPar
+             (docComment2HTML docparams
+                (firstSentence (fst (splitComment
+                                       (getFuncComment fname progcmts)))))]]
        ]
   else []
 
@@ -194,19 +214,20 @@ genHtmlFunc docparams progname progcmts anainfo ops
             (Func (fmod,fname) _ fvis ftype rule) =
   if fvis==Public
   then let (funcmt,paramcmts) = splitComment (getFuncComment fname progcmts)
-        in [HtmlStruct "font" [("size","+1")]
-            [anchor fname
-                    [href (getLastName progname++"_curry.html#"++fname)
-                          [bold [htxt (showId fname)]]],
-              code [HtmlText ("&nbsp;::&nbsp;"++ showType fmod False ftype)]],
-            HtmlText "&nbsp;&nbsp;"] ++
-           genFuncPropIcons anainfo (fmod,fname) rule ++
-           [par (docComment2HTML docparams funcmt)] ++
+        in [par $
+             [opnameDoc
+                    [anchor fname
+                            [href (getLastName progname++"_curry.html#"++fname)
+                                  [htxt (showId fname)]]],
+              code [HtmlText (" :: "++ showType fmod False ftype)],
+              nbsp, nbsp] ++
+             genFuncPropIcons anainfo (fmod,fname) rule] ++
+           docComment2HTML docparams funcmt ++
            genParamComment paramcmts ++
            -- show further infos for this function, if present:
            (if furtherInfos == []
             then []
-            else [dlist [([italic [htxt "Further infos:"]],
+            else [dlist [([explainCat "Further infos:"],
                           [ulist furtherInfos])]] ) ++
            [hrule]
   else []
@@ -217,16 +238,18 @@ genHtmlFunc docparams progname progcmts anainfo ops
     let params = map (span isIdChar) (getCommentType "param" paramcmts)
      in (if params==[]
          then []
-         else [par [italic [HtmlText "Example call:&nbsp; "],
+         else [par [explainCat "Example call:", nbsp,
                     code [htxt (showCall fname (map fst params))]],
-               dlist ([([italic [htxt "Parameters:"]],[])] ++
+               dlist ([([explainCat "Parameters:"],[])] ++
                       map (\(parid,parcmt)->
-                                   ([],[code [htxt parid]] ++
-                                        docComment2HTML docparams parcmt))
+                            ([],[code [htxt parid], htxt " : "] ++
+                                removeTopPar (docComment2HTML docparams
+                                                       (removeDash parcmt))))
                           params)
               ]) ++
-         [dlist (map (\rescmt->([italic [htxt "Returns:"]],
-                                docComment2HTML docparams rescmt))
+         [dlist (map (\rescmt ->
+                         ([explainCat "Returns:"],
+                          removeTopPar (docComment2HTML docparams rescmt)))
                      (getCommentType "return" paramcmts))
          ]
 
@@ -235,10 +258,20 @@ genHtmlFunc docparams progname progcmts anainfo ops
     then "(" ++ showId f ++ concatMap (" "++) params ++ ")"
     else "(" ++ params!!0 ++ " " ++ f ++ " " ++ params!!1 ++ ")"
 
+-- remove initial dash sign (of a parameter comment)
+removeDash s = let ds = dropWhile isSpace s in
+  if take 2 ds == "- " then dropWhile isSpace (drop 2 ds)
+                       else ds
+
+-- remove a single top-level paragraph in HTML expressions:
+removeTopPar hexps = case hexps of
+  [HtmlStruct "p" [] hs] -> hs
+  _ -> hexps
+
 --------------------------------------------------------------------------
 --- Generates icons for particular properties of functions.
 genFuncPropIcons anainfo fname rule =
-   [detIcon, HtmlText "&nbsp;", flexRigidIcon rule]
+   [detIcon, nbsp, flexRigidIcon rule]
  where
    --(non)deterministically defined property:
    detIcon =
@@ -252,7 +285,7 @@ genFuncPropIcons anainfo fname rule =
    flexRigidIcon (External _) = htxt ""
    flexRigidIcon (Rule _ rhs) = imageEvalAnnot (getFlexRigid rhs)
     where
-      imageEvalAnnot ConflictFR = --bold [htxt "?"] --mixed rigid flexible
+      imageEvalAnnot ConflictFR = -- mixed rigid flexible
           href "index.html#flexrigid_explain"
                [addIconParams $ image "flexrigid.gif" "flexible+rigid"]
       imageEvalAnnot UnknownFR  = htxt ""
@@ -341,11 +374,11 @@ showType mod nested (TCons tc ts)
 
 showTypeCons mod (mtc,tc) =
   if mtc == "Prelude"
-  then tc --"<A HREF=\"Prelude.html#"++tc++"_TYPE\">"++tc++"</A>"
+  then tc --"<a href=\"Prelude.html#"++tc++"\">"++tc++"</a>"
   else
     if mod == mtc
-    then "<A HREF=\"#"++tc++"_TYPE\">"++tc++"</A>"
-    else "<A HREF=\""++mtc++".html#"++tc++"_TYPE\">"++tc++"</A>"
+    then "<a href=\"#"++tc++"\">"++tc++"</a>"
+    else "<a href=\""++mtc++".html#"++tc++"\">"++tc++"</a>"
 
 
 --------------------------------------------------------------------------
@@ -471,6 +504,14 @@ htmlConsIndex qnames =
 --------------------------------------------------------------------------
 -- auxiliaries:
 
+-- style for explanation categories, like "Constructors:", "Parameters:",...
+explainCat :: String -> HtmlExp
+explainCat s = textstyle "explaincat" s
+
+-- style for function/constructor name shown in the documentation part:
+opnameDoc :: [HtmlExp] -> HtmlExp
+opnameDoc = style "opname"
+
 -- show HTML doc with standard style sheet:
 showDocCSS title hexps = 
   showHtmlPage (page title hexps `addPageParam` pageCSS currydocCSS)
@@ -487,16 +528,6 @@ firstSentence s = let (fs,ls) = break (=='.') s in
        then fs ++ "."
        else fs ++ "." ++ firstSentence (tail ls)
 
-
--- generate big hrule containing a text string:
-bigHRule s =
- [hrule,
-  HtmlStruct "table" [("border","0"),("width","100%"),("cellpadding","3")]
-   [HtmlStruct "tr" []
-     [HtmlStruct "td" [("bgcolor","#0000ff")]
-       [HtmlStruct "font" [("color","#ffffff")]
-         [bold [HtmlText "&nbsp;", htxt s]]]]],
-  hrule]
 
 -- standard epilog for all generated web pages:
 curryDocEpilog cdversion time =

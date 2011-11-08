@@ -7,16 +7,16 @@
 ---
 --- A graph is either <i>empty</i> or it consists of <i>node context</i> 
 --- and a <i>graph g'</i> which 
---- are put together by a constructor <code>(:&amp;)</code>.
+--- are put together by a constructor `(:&amp;)`.
 ---
---- This constructor <code>(:&amp;)</code>, however, is not a constructor in 
+--- This constructor `(:&amp;)`, however, is not a constructor in 
 --- the sense of abstract 
 --- data type, but more basically a defined constructing funtion. 
 ---
---- A <i>context</i> is a node together withe the edges to and from this node into
---- the nodes in the graph g'.
+--- A <i>context</i> is a node together withe the edges to and from this node
+--- into the nodes in the graph g'.
 --- 
---- For examples of how to use this library, cf. the module "GraphAlgorithms".
+--- For examples of how to use this library, cf. the module `GraphAlgorithms`.
 ---
 --- @author Bernd Brassel
 --- @version May 2005

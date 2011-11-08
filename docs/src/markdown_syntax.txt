@@ -83,18 +83,22 @@ list elements must contain the same indentation, as in
 
     \* First list element
       with two lines
+    
     * Next list element.
     
       It contains two paragraphs.
+    
     * Final list element.
 
 This is formatted as follows:    
 
  * First list element
    with two lines
+
  * Next list element.
 
    It contains two paragraphs.
+
  * Final list element.
 
 Instead of a star, one can also put dashes or plus to mark
@@ -126,12 +130,14 @@ must have the same indent as the first line.
 The actual value of the number is not important. Thus, the input
 
     1\. First element
+    
     99. Second
         element
 
 is formatted as
 
  1. First element
+
  99. Second
      element
 
@@ -154,7 +160,7 @@ first non-blank character of the first line:
     \    f x y = let z = (x,y)
     \             in (z,z)
 
-The indenting is removed in the output:
+The indentation is removed in the output:
 
     f x y = let z = (x,y)
              in (z,z)

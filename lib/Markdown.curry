@@ -10,7 +10,8 @@
 --- @version November 2011
 ------------------------------------------------------------------------------
 
-module Markdown(fromMarkdownText,
+module Markdown(MarkdownDoc,MarkdownElem(..),fromMarkdownText,
+                removeEscapes,
                 markdownText2HTML,markdownText2CompleteHTML,
                 markdownText2LaTeX,markdownText2LaTeXWithFormat,
                 markdownText2CompleteLaTeX,formatMarkdownAsPDF)
@@ -23,32 +24,65 @@ import HtmlParser
 import System
 
 -----------------------------------------------------------------------
--- Structure of markdown documents
+--- A markdown document is a list of markdown elements.
 type MarkdownDoc = [MarkdownElem]
 
-data MarkdownElem = MDText String
-                  | MDEmph String
-                  | MDStrong String
-                  | MDCode String
-                  | MDHRef String String
-                  | MDPar MarkdownDoc
-                  | MDCodeBlock String
-                  | MDUItem String -- only for internal use
-                  | MDOItem String -- only for internal use
-                  | MDUList [MarkdownDoc]
-                  | MDOList [MarkdownDoc]
-                  | MDQuote MarkdownDoc
-                  | MDHRule
-                  | MDHeader Int String
+--- The data type for representing the different elements
+--- occurring in a markdown document.
+--- @cons Text s - a simple text in a markdown document
+--- @cons Emph s - an emphasized text in a markdown document
+--- @cons Strong s - a strongly emphaszed text in a markdown document
+--- @cons Strong s - a code string in a markdown document
+--- @cons Code s - a code string in a markdown document
+--- @cons HRef s u - a reference to URL `u` with text `s` in a markdown document
+--- @cons Par md - a paragraph in a markdown document
+--- @cons CodeBlock s - a code block in a markdown document
+--- @cons UList mds - an unordered list in a markdown document
+--- @cons OList mds - an ordered list in a markdown document
+--- @cons Quote md - a quoted paragraph in a markdown document
+--- @cons HRule - a hoirzontal rule in a markdown document
+--- @cons Header l s - a level `l` header with title `s`
+---                    in a markdown document
+data MarkdownElem = Text String
+                  | Emph String
+                  | Strong String
+                  | Code String
+                  | HRef String String
+                  | Par MarkdownDoc
+                  | CodeBlock String
+                  | UList [MarkdownDoc]
+                  | OList [MarkdownDoc]
+                  | Quote MarkdownDoc
+                  | HRule
+                  | Header Int String
 
-isMDUItem md = case md of MDUItem _ -> True
-                          _         -> False
+-----------------------------------------------------------------------
+--- The data type for representing the different elements
+--- of a source markdown document. Basically, it is the same
+--- as the final markdown document execept for single list items
+--- that occur in the source but are combined into a list in
+--- the final document.
+data SourceMDElem = SMDText String
+                  | SMDEmph String
+                  | SMDStrong String
+                  | SMDCode String
+                  | SMDHRef String String
+                  | SMDPar MarkdownDoc
+                  | SMDCodeBlock String
+                  | SMDUItem String
+                  | SMDOItem String
+                  | SMDQuote MarkdownDoc
+                  | SMDHRule
+                  | SMDHeader Int String
 
-isMDOItem md = case md of MDOItem _ -> True
-                          _         -> False
+isSMDUItem md = case md of SMDUItem _ -> True
+                           _          -> False
 
-textOfItem (MDUItem txt) = txt
-textOfItem (MDOItem txt) = txt
+isSMDOItem md = case md of SMDOItem _ -> True
+                           _          -> False
+
+textOfItem (SMDUItem txt) = txt
+textOfItem (SMDOItem txt) = txt
 
 -----------------------------------------------------------------------
 --- Parse markdown document from its textual representation.
@@ -56,11 +90,20 @@ fromMarkdownText :: String -> MarkdownDoc
 fromMarkdownText = groupMarkDownElems . markdownText
 
 -- Group adjacent item elements together in a markdown list.
-groupMarkDownElems mes = case mes of
-  [] -> []
-  (MDUItem itxt : mds) -> joinItems MDUList isMDUItem [itxt] mds
-  (MDOItem itxt : mds) -> joinItems MDOList isMDOItem [itxt] mds
-  (md:mds) -> md : groupMarkDownElems mds
+groupMarkDownElems :: [SourceMDElem] -> MarkdownDoc
+groupMarkDownElems [] = []
+groupMarkDownElems (SMDUItem itxt :mds) = joinItems UList isSMDUItem [itxt] mds
+groupMarkDownElems (SMDOItem itxt :mds) = joinItems OList isSMDOItem [itxt] mds
+groupMarkDownElems (SMDText s : mds) = Text s : groupMarkDownElems mds
+groupMarkDownElems (SMDEmph s : mds) = Emph s : groupMarkDownElems mds
+groupMarkDownElems (SMDStrong s : mds) = Strong s : groupMarkDownElems mds
+groupMarkDownElems (SMDCode s : mds) = Code s : groupMarkDownElems mds
+groupMarkDownElems (SMDHRef s u : mds) = HRef s u : groupMarkDownElems mds
+groupMarkDownElems (SMDPar md : mds) = Par md : groupMarkDownElems mds
+groupMarkDownElems (SMDCodeBlock s : mds) = CodeBlock s : groupMarkDownElems mds
+groupMarkDownElems (SMDQuote md : mds) = Quote md : groupMarkDownElems mds
+groupMarkDownElems (SMDHRule : mds) = HRule : groupMarkDownElems mds
+groupMarkDownElems (SMDHeader l s : mds) = Header l s : groupMarkDownElems mds
 
 joinItems mdlcons _ items [] = [mdlcons (reverse (map fromMarkdownText items))]
 joinItems mdlcons isitem items (md:mds) =
@@ -70,23 +113,24 @@ joinItems mdlcons isitem items (md:mds) =
         : groupMarkDownElems (md:mds)
 
 -- Basic reader for a markdown text.
-markdownText :: String -> MarkdownDoc
+markdownText :: String -> [SourceMDElem]
 markdownText [] = []
 markdownText txt@(_:_) = markdownLine (break (=='\n') txt)
 
 -- Analyze the first line of a markdown text:
+markdownLine :: (String,String) -> [SourceMDElem]
 markdownLine (fstline,remtxt)
  | all isSpace fstline   = markdownText (dropFirst remtxt)
  | take 1 fstline == "#" = tryMDHeader fstline (dropFirst remtxt)
- | isHRule fstline       = MDHRule : markdownText (dropFirst remtxt)
+ | isHRule fstline       = SMDHRule : markdownText (dropFirst remtxt)
  | take 2 fstline == "> " -- start of a quoted text
   = markdownQuote (drop 2 fstline) (dropFirst remtxt)
  | uitemlen > 0 -- start of an unordered item
-  = markdownItem MDUItem uitemlen (drop uitemlen fstline) (dropFirst remtxt)
+  = markdownItem SMDUItem uitemlen (drop uitemlen fstline) (dropFirst remtxt)
  | nitemlen > 0 -- start of a numbered item
-  = markdownItem MDOItem nitemlen (drop nitemlen fstline) (dropFirst remtxt)
+  = markdownItem SMDOItem nitemlen (drop nitemlen fstline) (dropFirst remtxt)
  | blanklen > 0 -- four space indent for code
-  = markdownCodeBlock blanklen (removeSpecials (drop blanklen fstline))
+  = markdownCodeBlock blanklen (removeEscapes (drop blanklen fstline))
                                (dropFirst remtxt)
  | otherwise = markdownPar fstline (dropFirst remtxt)
  where
@@ -102,7 +146,7 @@ tryMDHeader s rtxt =
       level = length sharps
    in if null htxt || level>6
       then markdownPar s rtxt
-      else MDHeader level (dropFirst htxt) : markdownText rtxt
+      else SMDHeader level (dropFirst htxt) : markdownText rtxt
 
 -- is a line a horizontal rule:
 isHRule l =
@@ -138,17 +182,17 @@ isCodeLine s =
 
 -- parse a paragraph (where the initial part of the paragraph is given
 -- as the first argument):
-markdownPar :: String -> String -> MarkdownDoc
+markdownPar :: String -> String -> [SourceMDElem]
 markdownPar ptxt txt
  | isLevel1Line && onlyOnePreviousLine
-  = MDHeader 1 ptxt : markdownText (dropFirst remtxt)
+  = SMDHeader 1 ptxt : markdownText (dropFirst remtxt)
  | isLevel2Line && onlyOnePreviousLine
-  = MDHeader 2 ptxt : markdownText (dropFirst remtxt)
+  = SMDHeader 2 ptxt : markdownText (dropFirst remtxt)
  | null txt || head txt `elem` ['\n'] ||
    uitemlen>0 || nitemlen>0
-  = MDPar (outsideMarkdownElem "" ptxt) : markdownText txt
+  = SMDPar (groupMarkDownElems (outsideMarkdownElem "" ptxt)) : markdownText txt
  | null remtxt
-  = [MDPar (outsideMarkdownElem "" (ptxt++'\n':fstline))]
+  = [SMDPar (groupMarkDownElems (outsideMarkdownElem "" (ptxt++'\n':fstline)))]
  | otherwise = markdownPar (ptxt++'\n':fstline) (tail remtxt)
  where
   (fstline,remtxt) = break (=='\n') txt
@@ -165,21 +209,21 @@ markdownQuote qtxt txt =
   if take 2 txt == "> "
   then let (fstline,remtxt) = break (=='\n') (drop 2 txt)
         in if null remtxt
-           then [MDQuote (fromMarkdownText (qtxt++'\n':fstline))]
+           then [SMDQuote (fromMarkdownText (qtxt++'\n':fstline))]
            else markdownQuote (qtxt++'\n':fstline) (tail remtxt)
-  else MDQuote (fromMarkdownText qtxt) : markdownText txt
+  else SMDQuote (fromMarkdownText qtxt) : markdownText txt
 
 -- parse a program block (where the indent and the initial code block is given):
-markdownCodeBlock :: Int -> String -> String -> MarkdownDoc
+markdownCodeBlock :: Int -> String -> String -> [SourceMDElem]
 markdownCodeBlock n ctxt txt =
   if take n txt == "    "
   then
    let (fstline,remtxt) = break (=='\n') (drop n txt)
     in if null remtxt
-       then [MDCodeBlock (ctxt++'\n':removeSpecials fstline)]
-       else markdownCodeBlock n (ctxt++'\n':removeSpecials fstline)
+       then [SMDCodeBlock (ctxt++'\n':removeEscapes fstline)]
+       else markdownCodeBlock n (ctxt++'\n':removeEscapes fstline)
                                 (tail remtxt)
-  else MDCodeBlock ctxt : markdownText txt
+  else SMDCodeBlock ctxt : markdownText txt
 
 -- parse a markdown list item:
 markdownItem icons n itxt txt =
@@ -195,23 +239,24 @@ markdownItem icons n itxt txt =
                 else markdownItem icons n (itxt++"\n") (tail remtxt)
            else icons itxt : markdownText txt
 
--- remove special characters introduced by backslash in a string
--- by removing the backslash
-removeSpecials :: String -> String
-removeSpecials s = case s of
+--- Remove the backlash of escaped markdown characters in a string.
+removeEscapes :: String -> String
+removeEscapes s = case s of
   []          -> []
-  ('\\':c:cs) -> if c `elem` escapeChars then c : removeSpecials cs
-                                         else '\\' : removeSpecials (c:cs)
-  (c:cs)      -> c : removeSpecials cs
+  ('\\':c:cs) -> if c `elem` markdownEscapeChars
+                 then c : removeEscapes cs
+                 else '\\' : removeEscapes (c:cs)
+  (c:cs)      -> c : removeEscapes cs
 
--- escape characters supported by markdown:
-escapeChars = ['\\','`','*','_','{','}','[',']','(',')','#','+','-','.',' ','!']
+--- Escape characters supported by markdown.
+markdownEscapeChars =
+  ['\\','`','*','_','{','}','[',']','(',')','#','+','-','.',' ','!']
 
 -- Analyze markdown text outside an element like emphasis, code, strong:
-outsideMarkdownElem :: String -> String -> MarkdownDoc
+outsideMarkdownElem :: String -> String -> [SourceMDElem]
 outsideMarkdownElem txt s = case s of
   [] -> addPrevious txt []
-  ('\\':c:cs)  -> if c `elem` escapeChars
+  ('\\':c:cs)  -> if c `elem` markdownEscapeChars
                   then outsideMarkdownElem (c:'\\':txt) cs
                   else outsideMarkdownElem ('\\':txt) (c:cs)
   ('*':'*':cs) -> addPrevious txt $ insideMarkdownElem "**" [] cs
@@ -225,7 +270,7 @@ outsideMarkdownElem txt s = case s of
               else outsideMarkdownElem ('<':txt) cs
   (c:cs)   -> outsideMarkdownElem (c:txt) cs
 
-addPrevious ptxt xs = if null ptxt then xs else MDText (reverse ptxt) : xs
+addPrevious ptxt xs = if null ptxt then xs else SMDText (reverse ptxt) : xs
 
 -- Try to parse a link of the form [link test](url)
 tryParseLink txt = let (linktxt,rtxt) = break (==']') txt in
@@ -234,30 +279,30 @@ tryParseLink txt = let (linktxt,rtxt) = break (==']') txt in
   else let (url,mtxt) = break (==')') (drop 2 rtxt)
         in if null mtxt
            then outsideMarkdownElem "[" txt
-           else MDHRef linktxt url : outsideMarkdownElem "" (tail mtxt)
+           else SMDHRef linktxt url : outsideMarkdownElem "" (tail mtxt)
 
 markdownHRef txt = let (url,rtxt) = break (=='>') txt in
   if null rtxt
   then outsideMarkdownElem "" ('<':txt)
-  else MDHRef url url : outsideMarkdownElem "" (dropFirst rtxt)
+  else SMDHRef url url : outsideMarkdownElem "" (dropFirst rtxt)
 
 insideMarkdownElem marker etext s =
   if marker `isPrefixOf` s
   then text2MDElem marker (reverse etext)
         : outsideMarkdownElem "" (drop (length marker) s)
   else case s of
-        []     -> [MDText (marker ++ reverse etext)] -- end marker missing
-        ('\\':c:cs) -> if c `elem` escapeChars
+        []     -> [SMDText (marker ++ reverse etext)] -- end marker missing
+        ('\\':c:cs) -> if c `elem` markdownEscapeChars
                        then insideMarkdownElem marker (c:'\\':etext) cs
                        else insideMarkdownElem marker ('\\':etext) (c:cs)
         (c:cs)      -> insideMarkdownElem marker (c:etext) cs
 
 text2MDElem marker txt = case marker of
-  "**" -> MDStrong txt
-  "__" -> MDStrong txt
-  "*"  -> MDEmph txt
-  "_"  -> MDEmph txt
-  "`"  -> MDCode txt
+  "**" -> SMDStrong txt
+  "__" -> SMDStrong txt
+  "*"  -> SMDEmph txt
+  "_"  -> SMDEmph txt
+  "`"  -> SMDCode txt
   _    -> error $ "Markdown.text2MDElem: unknown marker \""++marker++"\""
 
 
@@ -268,30 +313,30 @@ mdDoc2html :: MarkdownDoc -> [HtmlExp]
 mdDoc2html = map mdElem2html
 
 -- translate markdown special characters in text to HTML
-mdtxt2html s = HtmlText (removeSpecials s)
+mdtxt2html s = HtmlText (removeEscapes s)
 
 mdElem2html :: MarkdownElem -> HtmlExp
-mdElem2html (MDText s) = mdtxt2html s
-mdElem2html (MDEmph s) = emphasize [mdtxt2html s]
-mdElem2html (MDStrong s) = HtmlStruct "strong" [] [mdtxt2html s]
-mdElem2html (MDHRef s url) = if s==url
+mdElem2html (Text s) = mdtxt2html s
+mdElem2html (Emph s) = emphasize [mdtxt2html s]
+mdElem2html (Strong s) = HtmlStruct "strong" [] [mdtxt2html s]
+mdElem2html (HRef s url) = if s==url
                              then href url [code [mdtxt2html s]]
                              else href url [mdtxt2html s]
-mdElem2html (MDCode s) = code [HtmlText s]
-mdElem2html (MDCodeBlock s) = verbatim s
-mdElem2html (MDQuote md) = HtmlStruct "blockquote" [] (mdDoc2html md)
-mdElem2html (MDPar md) = par (mdDoc2html md)
-mdElem2html (MDUList mds) = ulist (map mdDoc2htmlWithoutPar mds)
-mdElem2html (MDOList mds) = olist (map mdDoc2htmlWithoutPar mds)
-mdElem2html MDHRule = hrule
-mdElem2html (MDHeader l s) = HtmlStruct ('h':show l) [] [mdtxt2html s]
+mdElem2html (Code s) = code [HtmlText s]
+mdElem2html (CodeBlock s) = verbatim s
+mdElem2html (Quote md) = HtmlStruct "blockquote" [] (mdDoc2html md)
+mdElem2html (Par md) = par (mdDoc2html md)
+mdElem2html (UList mds) = ulist (map mdDoc2htmlWithoutPar mds)
+mdElem2html (OList mds) = olist (map mdDoc2htmlWithoutPar mds)
+mdElem2html HRule = hrule
+mdElem2html (Header l s) = HtmlStruct ('h':show l) [] [mdtxt2html s]
 
 mdDoc2htmlWithoutPar :: MarkdownDoc -> [HtmlExp]
 mdDoc2htmlWithoutPar mdoc = case mdoc of
   [] -> []
-  [MDPar md] -> mdDoc2html md
+  [Par md] -> mdDoc2html md
   [md] -> [mdElem2html md]
-  (MDPar md1:md2:mds) -> mdDoc2html md1 ++ breakline : 
+  (Par md1:md2:mds) -> mdDoc2html md1 ++ breakline : 
                          mdDoc2htmlWithoutPar (md2:mds)
   (md1:md2:mds) -> mdElem2html md1 : mdDoc2htmlWithoutPar (md2:mds)
 
@@ -316,28 +361,28 @@ mdDoc2latex :: (String->String) -> MarkdownDoc -> String
 mdDoc2latex txt2latex = concatMap (mdElem2latex txt2latex)
 
 mdElem2latex :: (String->String) -> MarkdownElem -> String
-mdElem2latex txt2latex (MDText s) = txt2latex s
-mdElem2latex txt2latex (MDEmph s) = "\\emph{"++txt2latex s++"}"
-mdElem2latex txt2latex (MDStrong s) = "\\textbf{"++txt2latex s++"}"
-mdElem2latex txt2latex (MDHRef s url) =
+mdElem2latex txt2latex (Text s) = txt2latex s
+mdElem2latex txt2latex (Emph s) = "\\emph{"++txt2latex s++"}"
+mdElem2latex txt2latex (Strong s) = "\\textbf{"++txt2latex s++"}"
+mdElem2latex txt2latex (HRef s url) =
   if s==url then "\\url{"++url++"}"
             else "\\href{"++url++"}{"++txt2latex s++"}"
-mdElem2latex txt2latex (MDCode s) = "\\texttt{"++txt2latex s++"}"
-mdElem2latex _ (MDCodeBlock s) =
+mdElem2latex txt2latex (Code s) = "\\texttt{"++txt2latex s++"}"
+mdElem2latex _ (CodeBlock s) =
   "\\begin{verbatim}\n"++s++"\n\\end{verbatim}\n"
-mdElem2latex txt2latex (MDQuote md) =
+mdElem2latex txt2latex (Quote md) =
   "\\begin{quote}\n"++mdDoc2latex txt2latex md++"\\end{quote}\n"
-mdElem2latex txt2latex (MDPar md) = mdDoc2latex txt2latex md++"\n\n"
-mdElem2latex txt2latex (MDUList s) =
+mdElem2latex txt2latex (Par md) = mdDoc2latex txt2latex md++"\n\n"
+mdElem2latex txt2latex (UList s) =
   "\\begin{itemize}"++
     concatMap (\i -> "\n\\item\n"++mdDoc2latex txt2latex i) s ++
   "\\end{itemize}\n"
-mdElem2latex txt2latex (MDOList s) =
+mdElem2latex txt2latex (OList s) =
   "\\begin{enumerate}"++
     concatMap (\i -> "\n\\item\n"++mdDoc2latex txt2latex i) s ++
   "\\end{enumerate}\n"
-mdElem2latex _ MDHRule = "\\begin{center}\\rule{3in}{0.4pt}\\end{center}\n\n"
-mdElem2latex txt2latex (MDHeader l s) = case l of
+mdElem2latex _ HRule = "\\begin{center}\\rule{3in}{0.4pt}\\end{center}\n\n"
+mdElem2latex txt2latex (Header l s) = case l of
   1 -> "\\section{"++txt2latex s++"}\n\n"
   2 -> "\\subsection{"++txt2latex s++"}\n\n"
   3 -> "\\subsubsection{"++txt2latex s++"}\n\n"
@@ -349,7 +394,7 @@ mdElem2latex txt2latex (MDHeader l s) = case l of
 --- Translator for basic text to LaTeX.
 --- markdown escapes are removed and possible HTML markups
 --- are translated to LaTeX.
-html2latex = showLatexExps . parseHtmlString . removeSpecials
+html2latex = showLatexExps . parseHtmlString . removeEscapes
 
 --- Translate a markdown text into a (partial) LaTeX document.
 --- All characters with a special meaning in LaTeX, like dollar

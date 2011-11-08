@@ -72,11 +72,11 @@ cmpList _   (_:_)  []     = GT
 cmpList cmp (x:xs) (y:ys) | cmp x y == EQ = cmpList cmp xs ys
                           | otherwise     = cmp x y
 
---- Less-or-equal on characters (deprecated, use Prelude.<=).
+--- Less-or-equal on characters (deprecated, use 'Prelude.<=').
 leqChar :: Char -> Char -> Bool
 leqChar = (<=)
 
---- Comparison of characters (deprecated, use Prelude.compare).
+--- Comparison of characters (deprecated, use 'Prelude.compare').
 cmpChar :: Char -> Char -> Ordering
 cmpChar = compare
 
@@ -84,11 +84,11 @@ cmpChar = compare
 leqCharIgnoreCase :: Char -> Char -> Bool
 leqCharIgnoreCase c1 c2 = (toUpper c1) <= (toUpper c2)
 
---- Less-or-equal on strings (deprecated, use Prelude.<=).
+--- Less-or-equal on strings (deprecated, use 'Prelude.<=').
 leqString :: String -> String -> Bool
 leqString = (<=)
 
---- Comparison of strings (deprecated, use Prelude.compare).
+--- Comparison of strings (deprecated, use 'Prelude.compare').
 cmpString :: String -> String -> Ordering
 cmpString = compare
 
