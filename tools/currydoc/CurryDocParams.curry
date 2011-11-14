@@ -34,19 +34,3 @@ setMarkDown wmd (DocParams dt windex _) = DocParams dt windex wmd
 
 -- Default parameters
 defaultCurryDocParams = DocParams HtmlDoc True True
-
--- Check whether the given parameters are reasonable and, if not,
--- adapt them
-checkDocParams :: DocParams -> IO DocParams
-checkDocParams docparams =
-  if withMarkdown docparams
-  then do r <- system "which pandoc > /dev/null"
-          if r==0
-           then return docparams
-           else do putStrLn nopandocMsg
-                   return (setMarkDown False docparams)
-  else return docparams
- where
-   nopandocMsg = "WARNING: No markdown syntax processing since executable "++
-                 "'pandoc' not found.\nEither set parameter '--nopandoc' "++
-                 "or install 'pandoc'."

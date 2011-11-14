@@ -102,9 +102,8 @@ createDir dir = do
 --- @param docdir - the directory name containing all documentation files
 --- @param modname - the name of the main module to be documented
 makeCompleteDoc :: DocParams -> Bool -> String -> String -> IO ()
-makeCompleteDoc userdocparams recursive docdir modname = do
+makeCompleteDoc docparams recursive docdir modname = do
   putStrLn("CurryDoc ("++currydocVersion++") - the Curry Documentation Tool\n")
-  docparams <- checkDocParams userdocparams
   prepareDocDir (docType docparams) docdir
   -- parsing source program:
   callFrontend FCY modname

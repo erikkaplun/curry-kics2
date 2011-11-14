@@ -121,5 +121,6 @@ meta/%.tex: ../meta/%.curry
 .PHONY: clean
 clean:
 	rm -f "${DOCDIR}"/*
+	rm -f "${TEXDOCDIR}"/*
 	../bin/cleancurry
 	cd meta && ../../bin/cleancurry

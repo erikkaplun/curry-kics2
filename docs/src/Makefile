@@ -39,11 +39,10 @@ install:
 
 .PHONY: clean
 clean:
+	/bin/rm -f markdown_syntax.tex ../markdown_syntax.html
 	/bin/mv manual.tex manual.texx
 	/bin/mv manual.bbl manual.bblx
 	/bin/rm -f manual.?? manual.???
 	/bin/mv manual.texx manual.tex
 	/bin/mv manual.bblx manual.bbl
 	/bin/rm -f ../Manual.pdf thumb*
-
-
