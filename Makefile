@@ -65,6 +65,8 @@ libdoc:
 frontend:
 	# install the mcc front-end if necessary:
 	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
+	@if [ -d frontend/curry-base ] ; then cd frontend/curry-base && cabal install ; fi
+	@if [ -d frontend/curry-frontend ] ; then cd frontend/curry-frontend && cabal install ; fi
 
 .PHONY: Compile
 Compile: ${INSTALLCURRY}
@@ -152,6 +154,9 @@ dist:
 	git clone . ${KICS2DIST}               # create copy of git version
 	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
 	cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
+	mkdir ${KICS2DIST}/frontend
+	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-base.git
+	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-frontend.git
 	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
