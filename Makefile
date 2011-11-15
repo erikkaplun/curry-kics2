@@ -135,28 +135,19 @@ cleanall: clean
 
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
-# directory with distribution of mcc front-end:
-MCCPARSERHOME=/home/mh/lehrstuhl/frontend/mcc
-MCCPARSERDIST=${MCCPARSERHOME}/dist
-MCCSRCDIST=${MCCPARSERDIST}/mcc_for_pakcs_src.tar.gz
-
-# install mcc parser sources (without make) from current distribution:
-.PHONY: installmcc
-installmcc:
-	rm -rf mccparser
-	gunzip -c ${MCCSRCDIST} | tar xf -
+# repository with new front-end:
+FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/~bjp/repos
 
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	cd ${MCCPARSERHOME} && ${MAKE} dist    # make mcc frontend distribution
 	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
 	git clone . ${KICS2DIST}               # create copy of git version
 	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
-	#cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
+	# install front-end sources
 	mkdir ${KICS2DIST}/frontend
-	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-base.git
-	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-frontend.git
+	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-base.git
+	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-frontend.git
 	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
