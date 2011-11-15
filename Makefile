@@ -153,7 +153,7 @@ dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
 	git clone . ${KICS2DIST}               # create copy of git version
 	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
-	cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
+	#cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
 	mkdir ${KICS2DIST}/frontend
 	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-base.git
 	cd ${KICS2DIST}/frontend && git clone http://www-ps.informatik.uni-kiel.de/~bjp/repos/curry-frontend.git
