@@ -2,6 +2,7 @@
 
 import qualified Curry_Prelude as CP
 
+import Control.Exception as C (IOException, catch)
 import Network.BSD (getHostName)
 import System.Cmd
 import System.CPUTime (getCPUTime)
@@ -22,7 +23,10 @@ external_d_C_getArgs = fromHaskellIO0 getArgs
 
 external_d_C_prim_getEnviron :: CP.C_String -> CP.C_IO CP.C_String
 external_d_C_prim_getEnviron =
-  fromHaskellIO1 (\var -> getEnv var `catch` (\_ -> return ""))
+  fromHaskellIO1 (\var -> getEnv var `C.catch` handleIOException)
+  where
+  handleIOException :: IOException -> IO String
+  handleIOException _ = return ""
 
 external_d_C_getHostname :: CP.C_IO CP.C_String
 external_d_C_getHostname = fromHaskellIO0 getHostName
