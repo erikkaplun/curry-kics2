@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=12/10/11
+COMPILERDATE=15/11/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -152,6 +152,8 @@ dist:
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
+	# copy documentation:
+	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cd ${KICS2DIST}/bin && rm -f idc idc.bak idci idci.bak # clean execs
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
