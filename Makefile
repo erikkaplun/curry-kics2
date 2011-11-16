@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=12/10/11
+COMPILERDATE=15/11/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -65,6 +65,8 @@ libdoc:
 frontend:
 	# install the mcc front-end if necessary:
 	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
+	@if [ -d frontend/curry-base ] ; then cd frontend/curry-base && cabal install ; fi
+	@if [ -d frontend/curry-frontend ] ; then cd frontend/curry-frontend && cabal install ; fi
 
 .PHONY: Compile
 Compile: ${INSTALLCURRY}
@@ -133,29 +135,25 @@ cleanall: clean
 
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
-# directory with distribution of mcc front-end:
-MCCPARSERHOME=/home/mh/lehrstuhl/frontend/mcc
-MCCPARSERDIST=${MCCPARSERHOME}/dist
-MCCSRCDIST=${MCCPARSERDIST}/mcc_for_pakcs_src.tar.gz
-
-# install mcc parser sources (without make) from current distribution:
-.PHONY: installmcc
-installmcc:
-	rm -rf mccparser
-	gunzip -c ${MCCSRCDIST} | tar xf -
+# repository with new front-end:
+FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/~bjp/repos
 
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	cd ${MCCPARSERHOME} && ${MAKE} dist    # make mcc frontend distribution
 	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
 	git clone . ${KICS2DIST}               # create copy of git version
 	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
-	cd ${KICS2DIST} && ${MAKE} installmcc  # install front-end sources
+	# install front-end sources
+	mkdir ${KICS2DIST}/frontend
+	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-base.git
+	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-frontend.git
 	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
+	# copy documentation:
+	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cd ${KICS2DIST}/bin && rm -f idc idc.bak idci idci.bak # clean execs
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
