@@ -32,7 +32,7 @@ mccparser
 # binaries
 benchmarks/Benchmarks
 bin/idc
-bin/idci
+bin/.local
 cpns/CPNSD
 examples/comptest
 tools/GenInt

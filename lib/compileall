@@ -2,7 +2,7 @@
 
 # Compile all a Curry programs in this directory
 SYSDIR=`dirname "$0"`/..
-IDCI=$SYSDIR/bin/idci
+IDCI=$SYSDIR/bin/kics2
 
 for i in *curry ; do
   echo "Compiling $i"

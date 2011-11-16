@@ -6,6 +6,10 @@ PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
 KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
 CYMAKE="$KICS2HOME/mccparser/bin/cymake"
 if [ ! -x "$CYMAKE" ] ; then
+  # try cymake of local installation
+  CYMAKE="$KICS2HOME/bin/.local/cymake"
+fi
+if [ ! -x "$CYMAKE" ] ; then
   # try cymake of cabal installation
   CYMAKE="$HOME/.cabal/bin/cymake"
 fi

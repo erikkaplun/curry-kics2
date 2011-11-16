@@ -15,6 +15,8 @@ INSTALLCURRY=src/Installation.curry
 # Logfile for make:
 MAKELOG=make.log
 BOOTLOG=boot.log
+# Directory where local executables are stored:
+LOCALBIN=bin/.local
 
 .PHONY: all
 all:
@@ -40,7 +42,7 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: ${INSTALLCURRY} frontend Compile REPL
+install: ${INSTALLCURRY} installfrontend Compile REPL
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
@@ -61,12 +63,22 @@ libdoc:
 	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
 	@echo "Make libdoc process logged in file ${MAKELOG}"
 
-.PHONY: frontend
-frontend:
-	# install the mcc front-end if necessary:
+# install the front end if necessary:
+.PHONY: installfrontend
+installfrontend:
+	@if [ ! -d ${LOCALBIN} ] ; then mkdir ${LOCALBIN} ; fi
+	# install mcc front end if sources are present:
 	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
-	@if [ -d frontend/curry-base ] ; then cd frontend/curry-base && cabal install ; fi
-	@if [ -d frontend/curry-frontend ] ; then cd frontend/curry-frontend && cabal install ; fi
+	# install local front end if sources are present:
+	@if [ -d frontend ] ; then ${MAKE} installlocalfrontend ; fi
+
+# install local front end:
+.PHONY: installlocalfrontend
+installlocalfrontend:
+	cd frontend/curry-base && cabal install
+	cd frontend/curry-frontend && cabal install
+	# copy cabal installation of front end into local directory
+	@if [ -f ${HOME}/.cabal/bin/cymake ] ; then cp -p ${HOME}/.cabal/bin/cymake ${LOCALBIN} ; fi
 
 .PHONY: Compile
 Compile: ${INSTALLCURRY}
@@ -127,7 +139,7 @@ clean:
 .PHONY: cleanall
 cleanall: clean
 	bin/cleancurry -r
-	rm -f bin/idc bin/idci
+	rm -rf bin/idc ${LOCALBIN}
 
 
 ###############################################################################
@@ -154,7 +166,7 @@ dist:
 	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
-	cd ${KICS2DIST}/bin && rm -f idc idc.bak idci idci.bak # clean execs
+	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak idci idci.bak # clean execs
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
@@ -169,6 +181,8 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
+	rm -rf frontend/curry-base/.git frontend/curry-base/.gitignore
+	rm -rf frontend/curry-frontend/.git frontend/curry-frontend/.gitignore
 	rm -rf docs/src
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
