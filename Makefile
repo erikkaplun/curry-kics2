@@ -155,11 +155,11 @@ FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/~bjp/repos
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
 	git clone . ${KICS2DIST}               # create copy of git version
-	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
 	# install front-end sources
 	mkdir ${KICS2DIST}/frontend
 	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-base.git
 	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-frontend.git
+	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
 	cd bin && cp idc ${KICS2DIST}/bin      # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
