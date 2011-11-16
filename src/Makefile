@@ -87,6 +87,7 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
 	@if [ ! -d ${LOCALBIN} ] ; then mkdir ${LOCALBIN} ; fi
 	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
+	mkdir -p `dirname ${REPL}`
 	mv REPLBoot ${REPL}
 
 # Translate Curry->Haskell compiler into Haskell:
