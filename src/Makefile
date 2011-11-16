@@ -32,7 +32,7 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 # binary directory and executables
 BINDIR=../bin
 COMP=${BINDIR}/idc
-REPL=${BINDIR}/idci
+REPL=${BINDIR}/.local/idci
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -94,6 +94,9 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Installation.hs: Installation.curry
 	${COMP} -v2 -i../lib Installation.curry
+	# recompile compiler with new installation information:
+	rm ${COMP}
+	${MAKE} CompileBoot
 
 ########################################################################
 # clean
