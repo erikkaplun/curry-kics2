@@ -160,13 +160,13 @@ dist:
 	mkdir ${KICS2DIST}/frontend
 	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-base.git
 	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-frontend.git
-	cd bin && cp idc idci ${KICS2DIST}/bin # copy bootstrap compiler
+	cd bin && cp idc ${KICS2DIST}/bin      # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
-	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak idci idci.bak # clean execs
+	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak # clean execs
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .

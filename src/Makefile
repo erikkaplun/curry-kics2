@@ -31,8 +31,9 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
 # binary directory and executables
 BINDIR=../bin
+LOCALBIN=${BINDIR}/.local
 COMP=${BINDIR}/idc
-REPL=${BINDIR}/.local/idci
+REPL=${LOCALBIN}/idci
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -84,6 +85,7 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 REPLBoot: .curry/kics2/Curry_REPL.hs \
 	  .curry/kics2/Curry_Installation.hs REPLBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} REPLBoot.hs
+	@if [ ! -d ${LOCALBIN} ] ; then mkdir ${LOCALBIN} ; fi
 	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
 	mv REPLBoot ${REPL}
 

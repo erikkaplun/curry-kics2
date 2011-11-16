@@ -5,7 +5,7 @@ pdf : manual.pdf
 
 manual.pdf: manual.tex currydoc.tex markdown_syntax.tex ../../lib/TEXDOC/LAST
 	pdflatex manual
-	bibtex manual
+	#bibtex manual
 	pdflatex manual
 	makeindex manual.idx
 	pdflatex manual
