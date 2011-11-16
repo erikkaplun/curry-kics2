@@ -10,7 +10,7 @@
 ------------------------------------------------------------------------------
 
 module AbstractHaskellPrinter
-  ( showProg, showTypeDecls, showTypeDecl, showTypeExpr, showFuncDecl
+  ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl, showTypeExpr, showFuncDecl
   , showLiteral, showExpr, showPattern, showInt, showFloat
   ) where
 
@@ -40,24 +40,31 @@ defaultOptions = { currentModule = "" }
 showProg :: Prog -> String
 showProg (Prog m imports typedecls funcdecls opdecls) =
   intercalate "\n\n" $ filter (not . null) $
-    [ showModuleHeader m typedecls funcdecls
-    , showImports imports
-    , showOpDecls opdecls
+    [ showModuleHeader m typedecls funcdecls imports
+    , showDecls m opdecls typedecls funcdecls
+    ]
+
+showModuleHeader :: String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
+showModuleHeader m typedecls funcdecls imps
+  =  "module " ++ m
+  ++ if null exports then "" else "(" ++ exports ++ ")"
+  ++ " where"
+  ++ if null imports then "" else "\n\n" ++ imports
+  where exports = showExports typedecls funcdecls
+        imports = showImports imps
+
+showDecls :: String -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> String
+showDecls m opdecls typedecls funcdecls
+  = intercalate "\n\n" $ filter (not . null)
+    [ showOpDecls opdecls
     , showTypeDecls opts typedecls
     , showFuncDecls opts funcdecls
     ]
-  where opts = { currentModule = m }
+    where opts = { currentModule = m }
 
 -- ---------------------------------------------------------------------------
 -- Module Header
 -- ---------------------------------------------------------------------------
-
-showModuleHeader :: String -> [TypeDecl] -> [FuncDecl] -> String
-showModuleHeader m typedecls funcdecls =
-     "module " ++ m
-  ++ if null exports then "" else "(" ++ exports ++ ")"
-  ++ " where"
-  where exports = showExports typedecls funcdecls
 
 showExports :: [TypeDecl] -> [FuncDecl] -> String
 showExports types funcs =
@@ -92,19 +99,18 @@ showExports types funcs =
     getFuncName (Func _ (_,name) _ _ _ _) =
       if isInfixOpName name then "(" ++ name ++ ")" else name
 
+showImports :: [String] -> String
+showImports imports = prefixInter showImport imports "\n"
+  where
+  showImport imp
+      -- Haskell modules are imported unqualified
+    | isHaskellModule imp = "import " ++ imp
+      -- all Curry modules are imported qualified
+    | otherwise           = "import qualified " ++ imp
+
 -- ---------------------------------------------------------------------------
 -- Imports + infix operator declarations
 -- ---------------------------------------------------------------------------
-
-showImports :: [String] -> String
-showImports imports = prefixInter showImport imports "\n"
-
-showImport :: String -> String
-showImport imp
-    -- Haskell modules are imported unqualiified
-  | isHaskellModule imp = "import " ++ imp
-    -- all Curry modules are imported qualified
-  | otherwise           = "import qualified " ++ imp
 
 showOpDecls :: [OpDecl] -> String
 showOpDecls opdecls = prefixInter showOpDecl opdecls "\n"

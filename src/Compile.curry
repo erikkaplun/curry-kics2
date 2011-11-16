@@ -9,8 +9,9 @@ module Compile where
 import Prelude
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
   , lookupFM, plusFM)
+import Char (isSpace)
 import Maybe (fromJust, fromMaybe, isJust)
-import List (intersperse, find)
+import List (find, intersperse, isPrefixOf)
 import Directory (doesFileExist)
 import FileGoodies
 import FlatCurry
@@ -19,7 +20,7 @@ import ReadShowTerm (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG
-import AbstractHaskellPrinter (showProg,showLiteral,showInt,showFloat)
+import AbstractHaskellPrinter (showModuleHeader, showDecls,showLiteral,showInt,showFloat)
 import Analysis
 import CompilerOpts
 import Files
@@ -207,9 +208,13 @@ integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (stripSuffix fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
-      prog' = AH.Prog m (imps ++ extimps) td fd od
   return $ unlines $ filter (not . null)
-    [unlines (defaultPragmas : pragmas), showProg prog', unlines extdecls]
+    [ unlines (defaultPragmas : pragmas)
+    , showModuleHeader m td fd imps
+    , unlines extimps
+    , showDecls m od td fd
+    , unlines extdecls
+    ]
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -217,21 +222,23 @@ lookupExternals :: Options -> String -> IO String
 lookupExternals opts fn = do
   exists <- doesFileExist extName
   if exists
-    then showDetail opts "External file found" >> readFile extName
+    then showDetail opts    "External file found" >> readFile extName
     else showDetail opts "No External file found" >> return ""
     where extName = externalFile fn
 
 -- Split an external file into a pragma String, a list of imports and the rest
 -- TODO: This is a bloody hack
 splitExternals :: String -> ([String], [String], [String])
-splitExternals content = se (lines content) ([], [], []) where
-  se [] res = res
-  se (ln:lns) res
-    | take 3 ln == "{-#" -- -} Comment to fix syntax highlighting in emacs
-        = (ln : pragmas, imps, decls)
-    | take 7 ln == "import " = (pragmas, drop 7 ln : imps, decls)
-    | otherwise              = (pragmas, imps, ln : decls)
-      where (pragmas, imps, decls) = se lns res
+splitExternals content = (pragmas, imports, decls)
+  where
+  (pragmas, rest ) = span isPragma (lines content)
+  (imports, decls) = span isImport rest
+  isPragma line    = all isSpace line || "{-#"    `isPrefixOf` line
+  isImport line    = all isSpace line || "import" `isPrefixOf` line
+                                      || "#"      `isPrefixOf` line
+                                      || isComment line
+  isComment line   = "-- " `isPrefixOf` line 
+                     && not ("-- #endimport" `isPrefixOf` line)
 
 -- Dump an intermediate result to a file
 dump :: DumpFormat -> Options -> String -> String -> IO ()
