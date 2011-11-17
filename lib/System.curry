@@ -5,10 +5,12 @@
 --- @version August 2007
 ------------------------------------------------------------------------------
 
-module System(getCPUTime,getElapsedTime,
-              getArgs,getEnviron,setEnviron,unsetEnviron,
-              getHostname,getPID,getProgName,
-              system,exitWith,sleep) where
+module System
+  ( getCPUTime,getElapsedTime
+  , getArgs, getEnviron, setEnviron, unsetEnviron, getProgName
+  , getHostname, getPID, system, exitWith, sleep
+  , isPosix, isWindows
+  ) where
 
 import Global
 
@@ -16,7 +18,7 @@ import Global
 
 getCPUTime :: IO Int
 getCPUTime external
- 
+
 --- Returns the current elapsed time of the process in milliseconds.
 --- This operation is not supported (always returns 0),
 --- only included for compatibility reasons.
@@ -29,7 +31,7 @@ getElapsedTime external
 
 getArgs :: IO [String]
 getArgs external
- 
+
 --- Returns the value of an environment variable.
 --- The empty string is returned for undefined environment variables.
 
@@ -37,10 +39,10 @@ getEnviron :: String -> IO String
 getEnviron evar = do
   envs <- readGlobal environ
   maybe (prim_getEnviron $## evar) return (lookup evar envs)
-  
+
 prim_getEnviron :: String -> IO String
 prim_getEnviron external
- 
+
 --- internal state of environment variables set via setEnviron
 environ :: Global [(String,String)]
 environ = global [] Temporary
@@ -55,7 +57,7 @@ setEnviron :: String -> String -> IO ()
 setEnviron evar val = do
   envs <- readGlobal environ
   writeGlobal environ ((evar,val) : filter ((/=evar) . fst) envs)
- 
+
 --- Removes an environment variable that has been set by
 --- <code>setEnviron</code>.
 
@@ -63,7 +65,7 @@ unsetEnviron :: String -> IO ()
 unsetEnviron evar = do
   envs <- readGlobal environ
   writeGlobal environ (filter ((/=evar) . fst) envs)
- 
+
 --- Returns the hostname of the machine running this process.
 
 getHostname :: IO String
@@ -119,3 +121,11 @@ sleep n = prim_sleep $# n
 
 prim_sleep :: Int -> IO ()
 prim_sleep external
+
+--- Is the underlying operating system a POSIX system (unix, MacOS)?
+isPosix :: Bool
+isPosix = not isWindows
+
+--- Is the underlying operating system a Windows system?
+isWindows :: Bool
+isWindows external

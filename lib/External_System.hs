@@ -68,3 +68,10 @@ external_d_C_prim_exitWith c = fromIO (exitWith (fromCurry c))
 external_d_C_prim_sleep :: CP.C_Int -> CP.C_IO CP.OP_Unit
 external_d_C_prim_sleep =
   fromHaskellIO1 (\i -> system ("sleep "++show (i :: Int)) >> return ())
+
+external_d_C_isWindows :: CP.C_Bool
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
+external_d_C_isWindows = CP.C_True
+#else
+external_d_C_isWindows = CP.C_False
+#endif
