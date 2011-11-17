@@ -58,7 +58,8 @@ transformAll trans term =
    (getOneValue (trans term)) >>= maybe (return term) (transformAll trans)
 
 
-test5 = assertEqual "simplify1" (someValue (simplify (Mul (Lit 1) (Var "x")))) (Var "x")
+test5 = assertEqual "simplify1" (someValue (simplify (Mul (Lit 1) (Var "x"))))
+                                (Var "x")
 test6 = assertIO    "simplify2" (transformAll simplify exp) (Var "x")
 
 exp = Mul (Lit 1) (Add (Var "x") (Lit 0))
@@ -101,8 +102,10 @@ test8 = assertEqual "Dutch Flag"
 test9 = assertValues "test9" (y =:<= True & x =:= True & x =:= y) [success]
   where x, y free
 
-test10 = assertValues "test10" (y =:<= [True] &> x =:<= ([]?[False]) &> x=:=y &> x) []
+test10 = assertValues "test10"
+                      (y =:<= [True] &> x =:<= ([]?[False]) &> x=:=y &> x) []
   where x,y free
 
-test10 = assertValues "test11" (y =:<= [True] &> x =:<= ([False]?[]) &> x=:=y &> x) []
+test11 = assertValues "test11"
+                      (y =:<= [True] &> x =:<= ([False]?[]) &> x=:=y &> x) []
   where x,y free
