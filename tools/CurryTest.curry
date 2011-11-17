@@ -273,7 +273,7 @@ execTestFunctions prtmsg portnum modname fs@(_:_) = do
          (if portnum/=0 then " >> showTestEnd "++show portnum++"" else "")
   --putStrLn testgoal
   system ("echo ':l "++modname++"\n:add Assertion\n"++testgoal++"\n:q\n' | \"" ++
-          "kics2\" 2>&1" ++
+          installDir++"/bin/kics2\" 2>&1" ++
           if portnum==0 then "" else " &")
   done
 
