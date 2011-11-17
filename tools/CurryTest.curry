@@ -5,7 +5,7 @@
 -- and summarizes the results in a GUI.
 --
 -- @author Michael Hanus
--- @version June 2011
+-- @version November 2011
 ---------------------------------------------------------------------
 
 import Socket
@@ -255,18 +255,19 @@ testModuleIfPossible prtmsg portnum modname (Left prog) =
 execTestFunctions prtmsg portnum _ [] = do
   prtmsg "No test functions found.\n\n"
   if portnum==0 then done else showTestEnd portnum
-execTestFunctions prtmsg portnum modname (f:fs) = do
+execTestFunctions prtmsg portnum modname fs@(_:_) = do
   prtmsg ("Exported top-level test functions:\n"
-            ++ concatMap (++" ") (f:fs) ++ "\n\n")
+            ++ concatMap (++" ") fs ++ "\n\n")
   if portnum/=0 then showTestMod portnum modname else done
   let testgoal =
          "putStrLn (take 60 (repeat (chr 61))) >> " ++
          "putStrLn (\"Testing module \\\""++modname++"\\\"...\") >> " ++
          concat
            (intersperse " `seqStrActions` "
-             (map (("checkAssertion " ++
-                    if portnum/=0 then "(showTestCase "++show portnum++") "
-                                  else "return ") ++) (f:fs))) ++
+             (map (\f -> "checkAssertion \"" ++ f ++ "\" " ++
+                         (if portnum/=0 then "(showTestCase "++show portnum++") "
+                                        else "return ") ++ f)
+                  fs)) ++
          " >>= writeAssertResult " ++
          " >> putStrLn (take 60 (repeat (chr 61)))" ++
          (if portnum/=0 then " >> showTestEnd "++show portnum++"" else "")

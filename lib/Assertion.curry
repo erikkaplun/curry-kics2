@@ -3,7 +3,7 @@
 --- Curry module tester "currytest".
 ---
 --- @author Michael Hanus
---- @version May 2011
+--- @version November 2011
 ------------------------------------------------------------------------------
 
 module Assertion(-- for writing test cases:
@@ -89,49 +89,84 @@ seqStrActions a1 a2 =
 --- @param protocol - an action to be applied after test execution
 --- @param assertion - an assertion to be tested
 --- @return a protocol string and a flag whether the test was successful
-checkAssertion :: ((String,Bool) -> IO (String,Bool)) -> Assertion _
+checkAssertion :: String -> ((String,Bool) -> IO (String,Bool)) -> Assertion _
+               -> IO (String,Bool)
+checkAssertion asrtfname prot assrt =
+   catchNDIO asrtfname prot (checkAnAssertion prot assrt)
+
+checkAnAssertion :: ((String,Bool) -> IO (String,Bool)) -> Assertion _
                                                       -> IO (String,Bool)
-checkAssertion prot (AssertTrue name cond) =
+checkAnAssertion prot (AssertTrue name cond) =
   catchFail (checkAssertTrue name cond)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-checkAssertion prot (AssertEqual name call result) =
+checkAnAssertion prot (AssertEqual name call result) =
   catchFail (checkAssertEqual name call result)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-checkAssertion prot (AssertValues name expr results) =
+checkAnAssertion prot (AssertValues name expr results) =
   catchFail (checkAssertValues name expr results)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-checkAssertion prot (AssertSolutions name constr results) =
+checkAnAssertion prot (AssertSolutions name constr results) =
   catchFail (checkAssertSolutions name constr results)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-checkAssertion prot (AssertIO name action result) =
+checkAnAssertion prot (AssertIO name action result) =
   catchFail (checkAssertIO name action result)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
-checkAssertion prot (AssertEqualIO name action1 action2) =
+checkAnAssertion prot (AssertEqualIO name action1 action2) =
   catchFail (checkAssertEqualIO name action1 action2)
             (return ("FAILURE of "++name++": no solution or error\n",False))
    >>= prot
 
+-- Execute I/O action for assertion checking and report any failure
+-- or non-determinism.
+catchNDIO :: String -> ((String,Bool) -> IO (String,Bool))
+          -> IO ((String,Bool)) -> IO ((String,Bool))
+catchNDIO fname prot a = getAllValues a >>= checkIOActions
+ where
+  checkIOActions results
+    | null results
+     = prot ("ERROR in operation "++fname++": computation failed\n",False)
+    | not (null (tail results))
+     = prot ("ERROR in operation "++fname++
+             ": computation is non-deterministic\n",False)
+    | otherwise = head results
+
 -- Checks Boolean assertion.
 checkAssertTrue :: String -> Bool -> IO (String,Bool)
 checkAssertTrue name cond =
-  if cond
-    then return ("OK: "++name++"\n",True)
-    else return ("FAILURE of "++name++": assertion not satisfied\n",False)
+  getAllValues cond >>= checkResults
+ where
+  checkResults results
+    | null results
+     = return ("FAILURE of "++name++": computation of assertion failed\n",False)
+    | not (null (tail results))
+     = return ("FAILURE of "++name++
+               ": computation of assertion non-deterministic\n",False)
+    | head results = return ("OK: "++name++"\n",True)
+    | otherwise
+     = return ("FAILURE of "++name++": assertion not satisfied:\n",False)
 
 -- Checks equality assertion.
 checkAssertEqual :: String -> a -> a -> IO (String,Bool)
-checkAssertEqual name call result = do
-  let r = call
-  if r==result
-   then return ("OK: "++name++"\n",True)
-   else return ("FAILURE of "++name++": equality assertion not satisfied:\n"++
-                "Computed answer: "++show r++"\n"++
-                "Expected answer: "++show result++"\n",False)
+checkAssertEqual name call result =
+  getAllValues (call==result) >>= checkResults
+ where
+  checkResults results
+    | null results
+     = return ("FAILURE of "++name++
+               ": computation of equality assertion failed\n",False)
+    | not (null (tail results))
+     = return ("FAILURE of "++name++
+               ": computation of equality assertion non-deterministic\n",False)
+    | head results = return ("OK: "++name++"\n",True)
+    | otherwise
+     = return ("FAILURE of "++name++": equality assertion not satisfied:\n"++
+               "Computed answer: "++show call++"\n"++
+               "Expected answer: "++show result++"\n",False)
 
 -- Checks all values assertion.
 checkAssertValues :: String -> a -> [a] -> IO (String,Bool)
