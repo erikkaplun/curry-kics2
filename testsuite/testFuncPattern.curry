@@ -20,7 +20,7 @@ someValue = head . allValuesDFS . someSearchTree
 last :: [a] -> a
 last (_++[x]) = x
 
-test1 = assertEqual  "last1" (someValue (last (map (+1) [1..200]))) 201
+test1 = assertEqual  "last1" (last (map (+1) [1..200])) 201
 
 test2 = assertValues "last2" (last (take 10000 (repeat failed) ++ [1])) [1]
 
@@ -30,7 +30,7 @@ pali :: [a] -> Success
 pali (xs ++ reverse xs) = success
 --pali l | xs ++ reverse xs =:<= l = success      where xs free
 
-test3 = assertEqual "palindrome1" (someValue (pali "otto")) success
+test3 = assertEqual "palindrome1" (pali "otto") success
 test4 = assertValues "palindrome2" (pali "toto") []
 
 --------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ transformAll trans term =
    (getOneValue (trans term)) >>= maybe (return term) (transformAll trans)
 
 
-test5 = assertEqual "simplify1" (someValue (simplify (Mul (Lit 1) (Var "x"))))
+test5 = assertEqual "simplify1" (simplify (Mul (Lit 1) (Var "x")))
                                 (Var "x")
 test6 = assertIO    "simplify2" (transformAll simplify exp) (Var "x")
 
