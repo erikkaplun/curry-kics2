@@ -164,7 +164,7 @@ fi
 
 # compile main module:
 echo "Generating saved state for initial expression: $MAIN"
-$KICS2HOME/bin/kics2 :l $MAINMOD :save $MAINCALL :q
+$KICS2HOME/bin/kics2 :l $MAINMOD :set prdfs :save $MAINCALL :q
 STATE=$MAINMOD
 
 # now the file $STATE should contain the executable computing the HTML form:

@@ -1,9 +1,11 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 -- ---------------------------------------------------------------------------
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
   ( -- * Constraints
-    Constraint (..), Constraints
+    Constraint (..), Constraints(..), getConstrList
     -- * Choices
   , Choice (..), defaultChoice, isDefaultChoice
     -- * IDs
@@ -29,12 +31,27 @@ data Constraint
   -- |Unsolvable constraint
   | Unsolvable
   -- |Non-deterministic choice between two lists of constraints
-  | ConstraintChoice ID Constraints Constraints
+  | ConstraintChoice ID [Constraint] [Constraint]
   -- |Non-deterministic choice between a list of lists of constraints
-  | ConstraintChoices ID [Constraints]
-    deriving (Eq, Show)
+  | ConstraintChoices ID [[Constraint]]
+ deriving (Show,Eq)
 
-type Constraints = [Constraint]
+-- A Value Constraint is used to bind a Value to an id it also contains the
+-- structural constraint information that describes the choice to be taken
+-- for a given id, a Struct Constraint has only the structural information
+data Constraints = forall a . ValConstr ID a [Constraint] | StructConstr [Constraint]
+
+-- a selector to get the strucural constraint information from a constraint
+getConstrList :: Constraints -> [Constraint]
+getConstrList (ValConstr _ _ c) = c
+getConstrList (StructConstr c) = c
+
+instance Show Constraints where
+  showsPrec _ (ValConstr _ _ c) = ("(ValC " ++) .  shows c . (')':)
+  showsPrec _ (StructConstr c) = ("(StructC " ++) . shows c . (')':)
+
+instance Eq Constraints where 
+ c1 == c2 = getConstrList c1 == getConstrList c2
 
 -- ---------------------------------------------------------------------------
 -- Choice
@@ -60,7 +77,7 @@ data Choice
   | BoundTo ID Int
     -- |A free variable is lazily bound to an expression by a function
    --   pattern
-  | LazyBind Constraints
+  | LazyBind [Constraint]
     deriving Show
 
 

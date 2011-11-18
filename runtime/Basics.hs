@@ -20,24 +20,24 @@ nonAsciiChr :: Int# -> Char#
 nonAsciiChr i = chr# i
 
 -- Apply a function to the head normal form
-d_dollar_bang :: (NonDet a, NonDet b) => (a -> b) -> a -> b
-d_dollar_bang f x = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard f x
+d_dollar_bang :: (NonDet a, NonDet b) => (a -> ConstStore -> b) -> a -> ConstStore -> b
+d_dollar_bang f x cs = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard (flip f cs) x
   where
-   hnfChoice i a b  = choiceCons i (d_dollar_bang f a) (d_dollar_bang f b)
-   hnfNarrowed i xs = choicesCons i (map (d_dollar_bang f) xs)
-   hnfFree i xs     = f (choicesCons i xs)
-   hnfGuard c e     = guardCons c (d_dollar_bang f e)
+   hnfChoice i a b  = choiceCons i (d_dollar_bang f a cs) (d_dollar_bang f b cs)
+   hnfNarrowed i xs = choicesCons i (map (\y -> d_dollar_bang f y cs) xs)
+   hnfFree i xs     = f (choicesCons i xs) cs
+   hnfGuard c e     = guardCons c (d_dollar_bang f e $! combConstr c cs)
 
 -- Apply a non-deterministic function to the head normal form
-nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> b
-nd_dollar_bang f x s = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard hnfVal x
+nd_dollar_bang :: (NonDet a, NonDet b) => (Func a b) -> a -> IDSupply -> ConstStore -> b
+nd_dollar_bang f x s cs = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard hnfVal x
   where
-   hnfVal v         = nd_apply f v s
+   hnfVal v         = nd_apply f v s cs
    -- TODO Do we better use leftSupply and rightSupply?
-   hnfChoice i a b  = choiceCons i (nd_dollar_bang f a s) (nd_dollar_bang f b s)
-   hnfNarrowed i xs = choicesCons i (map (\x -> nd_dollar_bang f x s) xs)
-   hnfFree i xs     = nd_apply f (choicesCons i xs) s
-   hnfGuard c e     = guardCons c (nd_dollar_bang f e s)
+   hnfChoice i a b  = choiceCons i (nd_dollar_bang f a s cs) (nd_dollar_bang f b s cs)
+   hnfNarrowed i xs = choicesCons i (map (\x -> nd_dollar_bang f x s cs) xs)
+   hnfFree i xs     = nd_apply f (choicesCons i xs) s cs
+   hnfGuard c e     = guardCons c (nd_dollar_bang f e s $! combConstr c cs)
 
 -- ---------------------------------------------------------------------------
 -- Matching for Integers
@@ -45,29 +45,29 @@ nd_dollar_bang f x s = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard hnf
 
 -- TODO: use unboxed int
 
-matchInteger :: NonDet a => [(Int, a)] -> BinInt -> a
-matchInteger rules (Neg nat)              =
-  matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat
-matchInteger rules Zero                   = maybe failCons id $ lookup 0 rules
-matchInteger rules (Pos nat)              = matchNat (filter ((>0).fst) rules) nat
-matchInteger rules (Choice_BinInt i l r) =
-  narrow i (matchInteger rules l) (matchInteger rules r)
-matchInteger rules (Choices_BinInt i cs) =
-  narrows i $ map (matchInteger rules) cs
-matchInteger _     Fail_BinInt           = failCons
-matchInteger rules (Guard_BinInt cs int) = guardCons cs (matchInteger rules int)
+matchInteger :: NonDet a => [(Int, a)] -> BinInt -> ConstStore -> a
+matchInteger rules (Neg nat) cs             =
+  matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat cs
+matchInteger rules Zero cs                  = maybe failCons id $ lookup 0 rules
+matchInteger rules (Pos nat) cs             = matchNat (filter ((>0).fst) rules) nat cs
+matchInteger rules (Choice_BinInt i l r) cs =
+  narrow i (matchInteger rules l cs) (matchInteger rules r cs)
+matchInteger rules (Choices_BinInt i xs) cs =
+  narrows cs i (\x -> matchInteger rules x cs) xs
+matchInteger _     Fail_BinInt _            = failCons
+matchInteger rules (Guard_BinInt c int)  cs = guardCons c (matchInteger rules int $! combConstr c cs)
 
-matchNat :: NonDet a => [(Int, a)] -> Nat -> a
-matchNat []    _                  = failCons
-matchNat rules IHi                = maybe failCons id $ lookup 1 rules
-matchNat rules (O nat)            = matchNat (map halfKey $ filter (evenPos.fst) rules) nat
+matchNat :: NonDet a => [(Int, a)] -> Nat -> ConstStore -> a
+matchNat []    _  _                 = failCons
+matchNat rules IHi _                = maybe failCons id $ lookup 1 rules
+matchNat rules (O nat) cs           = matchNat (map halfKey $ filter (evenPos.fst) rules) nat cs
   where
    evenPos n = even n && (0 < n)
-matchNat rules (I nat)            = matchNat (map halfKey $ filter (odd.fst) rules) nat
-matchNat rules (Choice_Nat i l r) = narrow i (matchNat rules l) (matchNat rules r)
-matchNat rules (Choices_Nat i cs) = narrows i $ map (matchNat rules) cs
-matchNat _     Fail_Nat           = failCons
-matchNat rules (Guard_Nat cs nat) = guardCons cs $ matchNat rules nat
+matchNat rules (I nat) cs            = matchNat (map halfKey $ filter (odd.fst) rules) nat cs
+matchNat rules (Choice_Nat i l r) cs = narrow i (matchNat rules l cs) (matchNat rules r cs)
+matchNat rules (Choices_Nat i xs) cs = narrows cs i (\x -> matchNat rules x cs) xs
+matchNat _     Fail_Nat _            = failCons
+matchNat rules (Guard_Nat c nat) cs  = guardCons c $ matchNat rules nat $! combConstr c cs
 
 
 halfKey :: (Int,a) -> (Int,a)
@@ -80,16 +80,17 @@ mapFst f (a,b) = (f a,b)
 -- Matching for Chars
 -- ---------------------------------------------------------------------------
 
-matchChar :: NonDet a => [(Char,a)] -> BinInt -> a
-matchChar rules = matchInteger (map (mapFst ord) rules)
+matchChar :: NonDet a => [(Char,a)] -> BinInt -> ConstStore -> a
+matchChar rules cs = matchInteger (map (mapFst ord) rules) cs
 
 
-(&) :: C_Success -> C_Success -> C_Success
-(&) C_Success                s = s
-(&) x@Fail_C_Success         _ = x
-(&) (Guard_C_Success cs e)   s = Guard_C_Success cs (e & s)
-(&) (Choice_C_Success i a b) s = Choice_C_Success i (a & s) (b & s)
-(&) (Choices_C_Success i xs) s = Choices_C_Success (narrowID i) (map (& s) xs)
+(&) :: C_Success -> C_Success -> ConstStore -> C_Success
+(&) C_Success                s _  = s
+(&) x@Fail_C_Success         _ _  = x
+(&) (Guard_C_Success c e)    s cs = Guard_C_Success c ((e & s) $! combConstr c cs)
+(&) (Choice_C_Success i a b) s cs = Choice_C_Success i ((a & s) cs) ((b & s) cs)
+(&) (Choices_C_Success i xs) s cs = 
+    Choices_C_Success (narrowID i) (map (\x -> (x & s) cs) xs)
 
 {- parallel & from Bernd
 (&) :: C_Success -> C_Success -> C_Success
@@ -127,23 +128,28 @@ fromHaskellIO3 hact ca cb cc =
  fromIO (hact (fromCurry ca) (fromCurry cb) (fromCurry cc) >>= return . toCurry)
 
 -- ---------------------------------------------------------------------------
--- Auxiliaries for non-determinism
+-- Auxiliaries for non-determinism and higher order
 -- ---------------------------------------------------------------------------
 
 -- make a deterministic function non-deterministic
-nd :: (a -> b) -> a -> IDSupply -> b
-nd f a _ = f a
+nd :: (a -> ConstStore -> b) -> a -> IDSupply -> ConstStore -> b
+nd f a _ cs = f a cs
 
-wrapDX :: (c -> b) -> (a -> c) -> Func a b
+wrapDX :: (c -> b) -> (a -> ConstStore -> c) -> Func a b
 wrapDX wrap f = wrapNX wrap (nd f)
 
-wrapNX :: (c -> b) -> (a -> IDSupply -> c) -> Func a b
-wrapNX wrap f = Func (\a s -> wrap $ f a s)
+wrapNX :: (c -> b) -> (a -> IDSupply -> ConstStore -> c) -> Func a b
+wrapNX wrap f = Func (\a s cs -> wrap $ f a s cs)
 
-d_apply :: (a -> b) -> a -> b
-d_apply f a = f a
+-- used to make higher order functions take a constraint store
+-- after each argument
+addCs ::  (b -> c)-> (a -> b) -> a -> ConstStore -> c
+addCs cont f x _ = cont (f x) 
 
-nd_apply :: NonDet b => Func a b -> a -> IDSupply -> b
-nd_apply fun a s = apply `d_dollar_bang` fun
-  where apply (Func f) = f a s
-        apply _        = error "Basics.nd_apply.apply: no ground term"
+d_apply :: (a -> ConstStore -> b) -> a -> ConstStore -> b
+d_apply f a cs = f a cs
+
+nd_apply :: NonDet b => Func a b -> a -> IDSupply -> ConstStore -> b
+nd_apply fun a s cs = d_dollar_bang apply fun cs
+  where apply (Func f)  cs' = f a s cs'
+        apply _         _ = error "Basics.nd_apply.apply: no ground term"

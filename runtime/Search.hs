@@ -4,7 +4,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Control.Parallel.TreeSearch
 import qualified Data.Map
-
+import System.IO.Unsafe (unsafePerformIO)
 import Debug
 import ID
 import MonadList
@@ -12,27 +12,47 @@ import PrimTypes
 import Solver (SolutionTree (..), solves)
 import Types
 
--- TODO what to do whith choices and failures
-toIO :: C_IO a -> IO a
-toIO (C_IO io) = io
-toIO (Choice_C_IO _ _ _) = error "toIO: Non-determinism in IO occured"
-toIO (Guard_C_IO constraints e) = do
-  st <- solves constraints
+toIO :: C_IO a -> ConstStore -> IO a
+toIO (C_IO io) _ = io
+toIO (Choice_C_IO _ _ _) _ = error "toIO: Non-determinism in IO occured"
+toIO (Guard_C_IO constraints e) cs = do
+  st <- solves (getConstrList constraints)
   case st of
-    SuccessST _ -> toIO e
+    SuccessST _ -> do
+      -- adds the constraint to the global constraint store
+      -- to make it available to subsequent operations
+      -- this is safe because no backtracking is done in IO
+      addToGlobalCs constraints
+      toIO e $! (combConstr constraints cs)
     FailST           -> error "toIO (Guard): failed"
     ChoiceST  _ _ _  -> error "toIO (Guard): Non-determinism in IO occured"
     ChoicesST _ _    -> error "toIO (Guard): Non-determinism in IO occured"
-toIO Fail_C_IO = error "toIO: failed"
-toIO (Choices_C_IO i choices) = do
+toIO Fail_C_IO _ = error "toIO: failed"
+-- TODO: lookup value in constraint map and global map?
+toIO (Choices_C_IO i@(NarrowedID _ _) choices) cs = followToIO i choices cs
+
+toIO (Choices_C_IO i@(FreeID _ _) choices) cs = do
+  -- bindings of free variables are looked up first in the local
+  -- constraint store and then in the global constraint store
+  lookupCs cs i (flip toIO cs) tryGlobal
+ where
+  tryGlobal = do
+    csg <- lookupGlobalCs
+    lookupCs csg i (flip toIO cs) (followToIO i choices cs)
+
+followToIO :: ID -> [C_IO a] -> ConstStore -> IO a
+followToIO i choices cs =  do
   c <- lookupChoice i
   case c of
-    ChooseN idx _ -> toIO (choices !! idx)
+    ChooseN idx _ -> toIO (choices !! idx) cs
     NoChoice -> error "toIO (Choices): Non-determinism in IO occured"
-    LazyBind constraints -> toIO (guardCons constraints (choicesCons i choices))
+    LazyBind constraints -> toIO (guardCons (StructConstr constraints) (choicesCons i choices)) cs
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
+
+ 
+ 
 
 -- ---------------------------------------------------------------------------
 -- Simple evaluation
@@ -41,29 +61,31 @@ fromIO io = C_IO io
 eval :: Show a => (IDSupply -> a) -> IO ()
 eval goal = initSupply >>= print . goal
 
-evalD :: Show a => a -> IO ()
-evalD goal = print goal
+evalD :: Show a => (ConstStore -> a) -> IO ()
+evalD goal = print (goal emptyCs)
 
-evalIO :: NormalForm a => (IDSupply -> C_IO a) -> IO ()
--- evalIO goal = initSupply >>= toIO . goal >>= print
-evalIO goal = computeWithDFS goal >>= execIOList
+-- TODO: switch back to computeWithDFS
+evalIO :: NormalForm a => (IDSupply -> ConstStore -> C_IO a) -> IO ()
+evalIO goal = initSupply >>= \supp -> toIO  (goal supp emptyCs) emptyCs >>= print
+--evalIO goal = computeWithDFS goal >>= execIOList
 
-evalDIO :: NormalForm a => C_IO a -> IO ()
-evalDIO goal = toIO goal >> return ()
+
+evalDIO :: NormalForm a => (ConstStore -> C_IO a) -> IO ()
+evalDIO goal = toIO (goal emptyCs) emptyCs >> return ()
 
 execIOList :: IOList (C_IO a) -> IO ()
 execIOList MNil                 = return ()
-execIOList (MCons xact getRest) = toIO xact >> getRest >>= execIOList
+execIOList (MCons xact getRest) = toIO xact emptyCs >> getRest >>= execIOList
 execIOList (WithReset l _)      = l >>= execIOList
 
 -- ---------------------------------------------------------------------------
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
 -- and print the choice structure of all results.
 
-prtChoices :: (Show a, NormalForm a) => (IDSupply -> a) -> IO ()
+prtChoices :: (Show a, NormalForm a) => (IDSupply -> ConstStore -> a) -> IO ()
 prtChoices mainexp = do
   s <- initSupply
-  let ndvalue = id $!! (mainexp s)
+  let ndvalue = (const $!! (mainexp s)) emptyCs
   putStrLn (show ndvalue)
 
 -- ---------------------------------------------------------------------------
@@ -73,10 +95,10 @@ prtChoices mainexp = do
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
 -- and print all results in depth-first order.
 -- The first argument is the operation to print a result (e.g., Prelude.print).
-prdfs :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
+prdfs :: NormalForm a => (a -> IO ()) -> (IDSupply -> ConstStore ->  a) -> IO ()
 prdfs prt mainexp = do
   s <- initSupply
-  printValsDFS False prt (id $!! (mainexp s))
+  printValsDFS False prt ((const $!! (mainexp s emptyCs)) emptyCs)
 
 printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFS fb cont a = do
@@ -119,13 +141,13 @@ printValsDFS fb cont a = do
 
        prFree i xs   = lookupChoiceID i >>= choose
         where
-          choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
+          choose (LazyBind cs, _) = processLazyBind fb (StructConstr cs) i xs (printValsDFS fb cont)
           choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
           choose (NoChoice   , j) = cont $ choicesCons j xs
 
        prNarrowed i@(NarrowedID pns _) xs = lookupChoiceID i >>= choose
          where
-          choose (LazyBind cs, _) = processLazyBind fb cs i xs (printValsDFS fb cont)
+          choose (LazyBind cs, _) = processLazyBind fb (StructConstr cs) i xs (printValsDFS fb cont)
           choose (ChooseN c _, _) = printValsDFS fb cont (xs !! c)
           choose (NoChoice   , j) =
 --       doWithChoices_ fb i $ zipWithButLast mkChoice mkLastChoice [0 ..] xs
@@ -146,7 +168,7 @@ printValsDFS fb cont a = do
 
           choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
 
-       prGuard cs e = solves cs >>= traverse fb
+       prGuard cs e = solves (getConstrList cs) >>= traverse fb
         where
            traverse _     FailST               = return ()
            traverse True  (SuccessST reset)    = printValsDFS True  cont e >> reset
@@ -195,7 +217,7 @@ mapButLast f lastf (x:xs) = f x : mapButLast f lastf xs
 -- ---------------------------------------------------------------------------
 -- Depth-first search into a monadic list
 -- ---------------------------------------------------------------------------
-
+{-
 -- Print all values of an expression in a depth-first manner.
 -- The first argument is the operation to print a result (e.g., Prelude.print).
 printDFS :: NormalForm a => (a -> IO ()) -> (IDSupply -> a) -> IO ()
@@ -578,6 +600,7 @@ processLazyBind' :: (NormalForm a, MonadPlus m) => ID
 processLazyBind' i cont cs branches = do
   setChoice' i NoChoice
   searchMPlus' cont (guardCons cs (choicesCons i branches))
+-}
 ----------------------------------------------------------------------
 -- Auxiliary Functions
 ----------------------------------------------------------------------

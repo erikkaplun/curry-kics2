@@ -1,29 +1,27 @@
 ------------------------------------------------------------------------------
 --- Library for HTML and CGI programming.
---- <a href="http://www.informatik.uni-kiel.de/~mh/papers/PADL01.html">
---- This paper</a> contains a description of the basic ideas
---- behind this library.
+--- [This paper](http://www.informatik.uni-kiel.de/~mh/papers/PADL01.html)
+--- contains a description of the basic ideas behind this library.
 ---
 --- The installation of a cgi script written with this library
 --- can be done by the command
 --- 
---- <code>makecurrycgi -m initialForm -o /home/joe/public_html/prog.cgi prog</code>
+---     makecurrycgi -m initialForm -o /home/joe/public_html/prog.cgi prog
 ---
---- where <code>prog</code> is the name of the Curry program with
---- the cgi script, <code>/home/joe/public_html/prog.cgi</code> is
+--- where `prog` is the name of the Curry program with
+--- the cgi script, `/home/joe/public_html/prog.cgi` is
 --- the desired location of the
---- compiled cgi script, and <code>initialForm</code> is the Curry expression
+--- compiled cgi script, and `initialForm` is the Curry expression
 --- (of type IO HtmlForm) computing the HTML form (where makecurrycgi
---- is a shell script stored in <i>pakcshome</i>/bin).
+--- is a shell script stored in *pakcshome*/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version September 2011
+--- @version October 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
             HtmlForm(..),FormParam(..),CookieParam(..),
             CgiRef,idOfCgiRef,CgiEnv,HtmlHandler,
-            HtmlElem,Form, -- for backward compatibility
             defaultEncoding, defaultBackground,
             form,standardForm,answerText,answerEncText,
             cookieForm,getCookies,
@@ -42,13 +40,13 @@ module HTML(HtmlExp(..),HtmlPage(..),PageParam(..),
             selection,selectionInitial,multipleSelection,
             hiddenfield,htmlQuote,htmlIsoUmlauts,addAttr,addAttrs,
             showHtmlExps,showHtmlExp,showHtmlPage,
-            showHtmlDoc,showHtmlDocCSS,
             runFormServerWithKey,runFormServerWithKeyAndFormParams,
             intForm,intFormMain,
             getUrlParameter,urlencoded2string,string2urlencoded,
             showLatexExps,showLatexExp,showLatexDoc,showLatexDocs,
             showLatexDocsWithPackages,showLatexDocWithPackages,
-            germanLatexDoc,addSound,addCookies) where
+            germanLatexDoc,htmlSpecialChars2tex,
+            addSound,addCookies) where
 
 import System
 import Char
@@ -107,10 +105,17 @@ data HtmlExp =
  | HtmlCRef   HtmlExp CgiRef
  | HtmlEvent  HtmlExp HtmlHandler
 
---- A single HTML element with a tag, attributes, but no contents
---- (deprecated, included only for backward compatibility).
-HtmlElem :: String -> [(String,String)] -> HtmlExp
-HtmlElem tag attrs = HtmlStruct tag attrs []
+--- Extracts the textual contents of a list of HTML expressions.
+---
+--- For instance,
+--- <code>textOf [HtmlText "xy", HtmlStruct "a" [] [HtmlText "bc"]] == "xy bc"</code>
+textOf :: [HtmlExp] -> String
+textOf = unwords . filter (not . null) . map textOfHtmlExp
+ where
+   textOfHtmlExp (HtmlText s) = s
+   textOfHtmlExp (HtmlStruct _ _ hs) = textOf hs
+   textOfHtmlExp (HtmlCRef   hexp _) = textOf [hexp]
+   textOfHtmlExp (HtmlEvent  hexp _) = textOf [hexp]
 
 
 ------------------------------------------------------------------------------
@@ -186,14 +191,6 @@ data CookieParam = CookieExpire ClockTime
 --- @return an HTML form
 form :: String -> [HtmlExp] -> HtmlForm
 form title hexps = HtmlForm title [BodyAttr defaultBackground] hexps
-
---- A basic HTML form for active web pages
---- (deprecated, included only for backward compatibility).
---- @param title - the title of the form
---- @param hexps - the form's body (list of HTML expressions)
---- @return an HTML form
-Form :: String -> [HtmlExp] -> HtmlForm
-Form = form
 
 --- A standard HTML form for active web pages where the title is included
 --- in the body as the first header.
@@ -731,7 +728,7 @@ selectionInitial cref sellist sel
 --- if the corresponding name is selected. If flag is True, the
 --- corresonding name is initially selected. If more than one name
 --- has been selected, all values are returned in one string
---- where the values are separated by '\n' characters.
+--- where the values are separated by newline (`'\n'`) characters.
 multipleSelection :: CgiRef -> [(String,String,Bool)] -> HtmlExp
 multipleSelection cref sellist
   | cref =:= CgiRef ref -- instantiate cref argument
@@ -755,9 +752,8 @@ hiddenfield name value =
 
 
 ------------------------------------------------------------------------------
---- Quotes special characters (<,>,&,", umlauts) in a string
+--- Quotes special characters (`<`,`>`,`&`,`"`, umlauts) in a string
 --- as HTML special characters.
-
 htmlQuote :: String -> String
 htmlQuote [] = []
 htmlQuote (c:cs) | c=='<' = "&lt;"   ++ htmlQuote cs
@@ -880,26 +876,6 @@ showsHtmlOpenTag tag attrs close =
 
 
 ------------------------------------------------------------------------------
---- Transforms HTML expressions into string representation of complete
---- HTML document with title
---- (deprecated, included only for backward compatibility).
---- @param title - the title of the HTML document
---- @param hexps - the body (list of HTML expressions) of the document
---- @return string representation of the HTML document
-showHtmlDoc :: String -> [HtmlExp] -> String
-showHtmlDoc title html = showHtmlPage (page title html)
-
---- Transforms HTML expressions into string representation of complete
---- HTML document with title and a URL for a style sheet file
---- (deprecated, included only for backward compatibility).
---- @param title - the title of the HTML document
---- @param css - the URL for a CSS file for this document
---- @param hexps - the body (list of HTML expressions) of the document
---- @return string representation of the HTML document
-showHtmlDocCSS :: String -> String -> [HtmlExp] -> String
-showHtmlDocCSS title css html =
-  showHtmlPage (page title html `addPageParam` pageCSS css)
-
 --- Transforms HTML page into string representation.
 --- @param page - the HTML page
 --- @return string representation of the HTML document
@@ -908,7 +884,7 @@ showHtmlPage (HtmlPage title params html) =
   htmlPrelude ++
   showHtmlExp (HtmlStruct "html" htmlTagAttrs
                   [HtmlStruct "head" []
-                       ([HtmlStruct "title" [] [HtmlText title]] ++
+                       ([HtmlStruct "title" [] [HtmlText (htmlQuote title)]] ++
                        concatMap param2html params),
                    HtmlStruct "body" [defaultBackground] html])
  where
@@ -1339,6 +1315,7 @@ htmlForm2html (HtmlForm title params html) crefnr = do
 numberCgiRefs :: [HtmlExp] -> Int -> ([HtmlExp],Int)
 -- arguments: HTMLExps, number for cgi-refs
 -- result: translated HTMLExps, new number for cgi-refs
+{-
 numberCgiRefs [] i = ([],i)
 numberCgiRefs (HtmlText s : hexps) i =
    let (nhexps,j) = numberCgiRefs hexps i
@@ -1355,7 +1332,23 @@ numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
   = let ([nhexp],j) = numberCgiRefs [hexp] (i+1)
         (nhexps,k) = numberCgiRefs hexps j
     in (nhexp : nhexps, k)
-
+-}
+numberCgiRefs [] i = ([],i)
+numberCgiRefs (HtmlText s : hexps) i =
+   (\ (nhexps,j) -> (HtmlText s : nhexps, j)) (numberCgiRefs hexps i)
+numberCgiRefs (HtmlStruct tag attrs hexps1 : hexps2) i =
+   (\ (nhexps1,j) ->
+         (\ (nhexps2,k) -> (HtmlStruct tag attrs nhexps1 : nhexps2, k))
+          (numberCgiRefs hexps2 j))
+   (numberCgiRefs hexps1 i)
+numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
+   (\ (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j))
+   (numberCgiRefs hexps i)
+numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
+  | ref =:= ("FIELD_"++show i)
+  = (\ ([nhexp],j) -> (\ (nhexps,k) -> (nhexp : nhexps, k))
+                      (numberCgiRefs hexps j))
+    (numberCgiRefs [hexp] (i+1))
 
 -- translate all event handlers into their internal form:
 -- (assumption: all CgiRefs have already been instantiated and eliminated)
@@ -1386,8 +1379,9 @@ showForm cenv url (HtmlForm title params html) =
   htmlPrelude ++
   showHtmlExp
    (HtmlStruct "html" htmlTagAttrs
-     [HtmlStruct "head" [] ([HtmlStruct "title" [] [HtmlText title]] ++
-                            concatMap param2html params),
+     [HtmlStruct "head" []
+                 ([HtmlStruct "title" [] [HtmlText (htmlQuote title)]] ++
+                  concatMap param2html params),
       HtmlStruct "body" bodyattrs
        ((if null url then id
          else \he->[HtmlStruct "form"
@@ -1478,7 +1472,7 @@ showLatexExp (HtmlStruct tag attrs htmlexp)
  | tag=="tt"   = "{\\tt " ++ showLatexExps htmlexp ++ "}"
  | tag=="code" = "{\\tt " ++ showLatexExps htmlexp ++ "}"
  | tag=="center" = latexEnvironment "center" (showLatexExps htmlexp)
- | tag=="pre"  = latexEnvironment "verbatim" (showLatexExps htmlexp)
+ | tag=="pre"  = latexEnvironment "verbatim" (textOf htmlexp)
  | tag=="font" = showLatexExps htmlexp  -- ignore font changes
  | tag=="address" = showLatexExps htmlexp
  | tag=="blink"   = showLatexExps htmlexp
@@ -1581,32 +1575,44 @@ findHtmlAttr atag ((t,f):attrs) =
              else findHtmlAttr atag attrs
 
 
--- convert special characters into TeX representation:
-specialchars2tex [] = []
-specialchars2tex (c:cs)
-  | c==chr 228  = "\\\"a"  ++ specialchars2tex cs
-  | c==chr 246  = "\\\"o"  ++ specialchars2tex cs
-  | c==chr 252  = "\\\"u"  ++ specialchars2tex cs
-  | c==chr 196  = "\\\"A"  ++ specialchars2tex cs
-  | c==chr 214  = "\\\"O"  ++ specialchars2tex cs
-  | c==chr 220  = "\\\"U"  ++ specialchars2tex cs
-  | c==chr 223  = "\\ss{}" ++ specialchars2tex cs
-  | c=='~'      = "{\\char126}" ++ specialchars2tex cs
-  | c=='\\'     = "{\\char92}" ++ specialchars2tex cs
-  | c=='<'      = "{$<$}" ++ specialchars2tex cs
-  | c=='>'      = "{$>$}" ++ specialchars2tex cs
-  | c=='_'      = "\\_" ++ specialchars2tex cs
-  | c=='#'      = "\\#" ++ specialchars2tex cs
-  | c=='$'      = "\\$" ++ specialchars2tex cs
-  | c=='%'      = "\\%" ++ specialchars2tex cs
-  | c=='{'      = "\\{" ++ specialchars2tex cs
-  | c=='}'      = "\\}" ++ specialchars2tex cs
+--- Convert special characters into TeX representation, if necessary.
+specialchars2tex :: String -> String
+specialchars2tex = htmlSpecialChars2tex . escapeLaTeXSpecials
+
+escapeLaTeXSpecials :: String -> String
+escapeLaTeXSpecials [] = []
+escapeLaTeXSpecials (c:cs)
+  | c=='^'      = "{\\tt\\char94}" ++ escapeLaTeXSpecials cs
+  | c=='~'      = "{\\tt\\char126}" ++ escapeLaTeXSpecials cs
+  | c=='\\'     = "{\\tt\\char92}" ++ escapeLaTeXSpecials cs
+  | c=='<'      = "{\\tt\\char60}" ++ escapeLaTeXSpecials cs
+  | c=='>'      = "{\\tt\\char62}" ++ escapeLaTeXSpecials cs
+  | c=='_'      = "\\_" ++ escapeLaTeXSpecials cs
+  | c=='#'      = "\\#" ++ escapeLaTeXSpecials cs
+  | c=='$'      = "\\$" ++ escapeLaTeXSpecials cs
+  | c=='%'      = "\\%" ++ escapeLaTeXSpecials cs
+  | c=='{'      = "\\{" ++ escapeLaTeXSpecials cs
+  | c=='}'      = "\\}" ++ escapeLaTeXSpecials cs
+  | otherwise   = c : escapeLaTeXSpecials cs
+
+--- Convert special HTML characters into their LaTeX representation,
+--- if necessary.
+htmlSpecialChars2tex :: String -> String
+htmlSpecialChars2tex [] = []
+htmlSpecialChars2tex (c:cs)
+  | c==chr 228  = "\\\"a"  ++ htmlSpecialChars2tex cs
+  | c==chr 246  = "\\\"o"  ++ htmlSpecialChars2tex cs
+  | c==chr 252  = "\\\"u"  ++ htmlSpecialChars2tex cs
+  | c==chr 196  = "\\\"A"  ++ htmlSpecialChars2tex cs
+  | c==chr 214  = "\\\"O"  ++ htmlSpecialChars2tex cs
+  | c==chr 220  = "\\\"U"  ++ htmlSpecialChars2tex cs
+  | c==chr 223  = "\\ss{}" ++ htmlSpecialChars2tex cs
   | c=='&'      = let (special,rest) = break (==';') cs
                   in  if null rest
-                      then "\\&" ++ specialchars2tex special -- wrong format
+                      then "\\&" ++ htmlSpecialChars2tex special -- wrong format
                       else htmlspecial2tex special ++
-                           specialchars2tex (tail rest)
-  | otherwise   = c : specialchars2tex cs
+                           htmlSpecialChars2tex (tail rest)
+  | otherwise   = c : htmlSpecialChars2tex cs
 
 htmlspecial2tex special
   | special=="Auml"   =  "{\\\"A}"

@@ -27,17 +27,17 @@ instance ConvertCurryHaskell C_CalendarTime T.CalendarTime where
                          (toCurry s)
                          (toCurry tz)
 
-external_d_C_getClockTime :: CP.C_IO C_ClockTime
-external_d_C_getClockTime =
+external_d_C_getClockTime ::  ConstStore -> CP.C_IO C_ClockTime
+external_d_C_getClockTime _ =
   fromIO (T.getClockTime >>= return . toCurry)
 
-external_d_C_prim_toCalendarTime :: C_ClockTime -> CP.C_IO C_CalendarTime
-external_d_C_prim_toCalendarTime ct =
+external_d_C_prim_toCalendarTime :: C_ClockTime -> ConstStore -> CP.C_IO C_CalendarTime
+external_d_C_prim_toCalendarTime ct _ =
   fromIO (T.toCalendarTime (fromCurry ct) >>= return . toCurry)
 
-external_d_C_prim_toUTCTime :: C_ClockTime -> C_CalendarTime
-external_d_C_prim_toUTCTime ct = toCurry (T.toUTCTime (fromCurry ct))
+external_d_C_prim_toUTCTime :: C_ClockTime ->  ConstStore -> C_CalendarTime
+external_d_C_prim_toUTCTime ct _ = toCurry (T.toUTCTime (fromCurry ct))
 
-external_d_C_prim_toClockTime :: C_CalendarTime -> C_ClockTime
-external_d_C_prim_toClockTime ct =
+external_d_C_prim_toClockTime :: C_CalendarTime -> ConstStore -> C_ClockTime
+external_d_C_prim_toClockTime ct _ =
   toCurry (T.toClockTime (fromCurry ct))
