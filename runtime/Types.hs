@@ -47,6 +47,7 @@ globalCs = unsafePerformIO $ newIORef emptyCs
 -- adds a Constraint to the global constraint store
 addToGlobalCs :: Constraints -> IO ()
 addToGlobalCs (StructConstr _) = return ()
+addToGlobalCs _ = return ()
 addToGlobalCs cs@(ValConstr i x _ ) = do
   gcs <- readIORef globalCs
   let gcs' = combConstr cs gcs
