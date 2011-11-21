@@ -31,7 +31,8 @@ import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, consPrefix, funcPrefix
   , mkChoiceName, mkChoicesName, mkGuardName
-  , externalFunc, externalFile, destFile, analysisFile, funcInfoFile )
+  , externalFunc, externalFile, destFile, analysisFile, funcInfoFile
+  , mkGlobalName )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate, unless, when)
@@ -460,9 +461,34 @@ transFunc f@(Func qn _ _ _ _) =
           returnM [fn]
         D -> case hoCl of
           FO ->
-            -- create deterministic function
-            transPureFunc f `bindM` \ fd ->
-            returnM [fd]
+            -- check if the Function is intended to represent a global variable
+            -- i.e. has the form name = global val Temporary
+            -- this will be translated into 
+            -- d_C_name _ = global_C_name
+            -- global_C_name = d_C_global (tr val) C_Temporary emptyCs
+            -- to make it a constant 
+            case f of
+             (Func _ 0 vis t (Rule [] (Comb FuncCall fname 
+                                   [val, Comb ConsCall cname []])))
+              ->
+                 if fname == renameQName ("Global","global") 
+                    && cname == renameQName ("Global","Temporary")
+                 then  transCompleteExpr val `bindM` \trVal ->
+                       renameFun qn          `bindM` \newqn ->
+                       renameFun fname       `bindM` \newfname ->
+                       returnM $
+                         [Func newqn 1 vis (check42 (transTypeExpr 0) t) 
+                          (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
+                         ,Func (mkGlobalName qn) 0 Private t 
+                          (Rule [] (Comb FuncCall newfname 
+                                   [trVal
+                                   ,Comb ConsCall cname []
+                                   ,Comb FuncCall (basics,"emptyCs") []]))]
+                 else  transPureFunc f `bindM` (returnM . (:[]))
+
+             _ ->  
+              -- create deterministic function
+              transPureFunc f `bindM` (returnM . (:[]))
           HO ->
             -- create deterministic as well as non-deterministic function
             transPureFunc f `bindM` \ fd ->
@@ -565,7 +591,7 @@ transBody qn vs exp = case exp of
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
     returnM $ Case ct e' (bs'' ++ ns)
-  _ -> transCompleteExpr exp
+  _ ->transCompleteExpr exp
 
 addUnifIntCharRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
 addUnifIntCharRule bs bs' =
