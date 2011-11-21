@@ -43,7 +43,10 @@ prim_getEnviron external
  
 --- internal state of environment variables set via setEnviron
 environ :: Global [(String,String)]
-environ = global [] Temporary
+environ = prim_environ
+
+prim_environ :: Global [(String,String)]
+prim_environ external
 
 --- Set an environment variable to a value.
 --- The new value will be passed to subsequent shell commands
