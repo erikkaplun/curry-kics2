@@ -561,8 +561,11 @@ solves' (c:cs) = solve c >> solves' cs
 
 
 -- Collect results of a non-deterministic computation in a monadic structure.
+-}
 
 searchMPlus :: (NormalForm a, MonadPlus m) => a -> m a
+searchMPlus = error "searchMPlus is not implemented"
+{-
 searchMPlus x = evalStateT (searchMPlus' return (id $!! x)) Data.Map.empty
 
 searchMPlus' :: (NormalForm a, MonadPlus m) =>
