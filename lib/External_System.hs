@@ -47,10 +47,3 @@ external_d_C_prim_exitWith c _ = fromIO (exitWith (fromCurry c))
 external_d_C_prim_sleep :: CP.C_Int -> ConstStore -> CP.C_IO CP.OP_Unit
 external_d_C_prim_sleep x _ =
   fromHaskellIO1 (\i -> system ("sleep "++show (i :: Int)) >> return ()) x
-
-
-external_d_C_prim_environ _ = persistent_environ
-
-persistent_environ = Curry_Global.d_C_global Curry_Prelude.OP_List
-                                             Curry_Global.C_Temporary 
-                                             emptyCs
