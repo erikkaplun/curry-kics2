@@ -465,7 +465,8 @@ transFunc f@(Func qn _ _ _ _) =
             -- i.e. has the form name = global val Temporary
             -- this will be translated into 
             -- d_C_name _ = global_C_name
-            -- global_C_name = d_C_global (tr val) C_Temporary emptyCs
+            -- global_C_name = d_C_global (let 3500 = emptyCs in (tr val)) 
+            --                            C_Temporary emptyCs
             -- to make it a constant 
             case f of
              (Func _ 0 vis t (Rule [] (Comb FuncCall fname 
@@ -481,7 +482,9 @@ transFunc f@(Func qn _ _ _ _) =
                           (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
                          ,Func (mkGlobalName qn) 0 Private t 
                           (Rule [] (Comb FuncCall newfname 
-                                   [trVal
+                                   [Let [(constStoreVarIdx
+                                         ,Comb FuncCall (basics,"emptyCs") [] )]
+                                        trVal
                                    ,Comb ConsCall cname []
                                    ,Comb FuncCall (basics,"emptyCs") []]))]
                  else  transPureFunc f `bindM` (returnM . (:[]))
