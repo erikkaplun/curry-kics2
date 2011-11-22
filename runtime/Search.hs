@@ -66,7 +66,7 @@ evalD goal = print (goal emptyCs)
 
 -- TODO: switch back to computeWithDFS
 evalIO :: NormalForm a => (IDSupply -> ConstStore -> C_IO a) -> IO ()
-evalIO goal = initSupply >>= \supp -> toIO  (goal supp emptyCs) emptyCs >>= print
+evalIO goal = initSupply >>= \supp -> toIO  (goal supp emptyCs) emptyCs >> return ()
 --evalIO goal = computeWithDFS goal >>= execIOList
 
 
