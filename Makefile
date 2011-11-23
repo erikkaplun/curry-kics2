@@ -148,7 +148,7 @@ cleanall: clean
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
 # repository with new front-end:
-FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/~bjp/repos
+FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/kics2/repos
 
 # generate a source distribution of KICS2:
 .PHONY: dist
