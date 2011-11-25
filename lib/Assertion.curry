@@ -92,35 +92,24 @@ seqStrActions a1 a2 =
 checkAssertion :: String -> ((String,Bool) -> IO (String,Bool)) -> Assertion _
                -> IO (String,Bool)
 checkAssertion asrtfname prot assrt =
-   catchNDIO asrtfname prot (checkAnAssertion prot assrt)
-
-checkAnAssertion :: ((String,Bool) -> IO (String,Bool)) -> Assertion _
-                                                      -> IO (String,Bool)
-checkAnAssertion prot (AssertTrue name cond) =
-  catchFail (checkAssertTrue name cond)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-checkAnAssertion prot (AssertEqual name call result) =
-  catchFail (checkAssertEqual name call result)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-checkAnAssertion prot (AssertValues name expr results) =
-  catchFail (checkAssertValues name expr results)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-checkAnAssertion prot (AssertSolutions name constr results) =
-  catchFail (checkAssertSolutions name constr results)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-checkAnAssertion prot (AssertIO name action result) =
-  catchFail (checkAssertIO name action result)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-checkAnAssertion prot (AssertEqualIO name action1 action2) =
-  catchFail (checkAssertEqualIO name action1 action2)
-            (return ("FAILURE of "++name++": no solution or error\n",False))
-   >>= prot
-
+   catchNDIO asrtfname prot (execAsrt assrt)
+ where
+  execAsrt (AssertTrue name cond) =
+    catch (checkAssertTrue name cond) (returnError name) >>= prot
+  execAsrt (AssertEqual name call result) =
+    catch (checkAssertEqual name call result) (returnError name) >>= prot
+  execAsrt (AssertValues name expr results) =
+    catch (checkAssertValues name expr results) (returnError name) >>= prot
+  execAsrt (AssertSolutions name constr results) =
+    catch (checkAssertSolutions name constr results) (returnError name) >>= prot
+  execAsrt (AssertIO name action result) =
+    catch (checkAssertIO name action result) (returnError name) >>= prot
+  execAsrt (AssertEqualIO name action1 action2) =
+    catch (checkAssertEqualIO name action1 action2) (returnError name) >>= prot
+  
+  returnError name err =
+    return ("FAILURE of "++name++": "++showError err++"\n",False)
+  
 -- Execute I/O action for assertion checking and report any failure
 -- or non-determinism.
 catchNDIO :: String -> ((String,Bool) -> IO (String,Bool))
@@ -145,7 +134,7 @@ checkAssertTrue name cond =
      = return ("FAILURE of "++name++": computation of assertion failed\n",False)
     | not (null (tail results))
      = return ("FAILURE of "++name++
-               ": computation of assertion non-deterministic\n",False)
+               ": computation of assertion is non-deterministic\n",False)
     | head results = return ("OK: "++name++"\n",True)
     | otherwise
      = return ("FAILURE of "++name++": assertion not satisfied:\n",False)
@@ -161,7 +150,7 @@ checkAssertEqual name call result =
                ": computation of equality assertion failed\n",False)
     | not (null (tail results))
      = return ("FAILURE of "++name++
-               ": computation of equality assertion non-deterministic\n",False)
+               ": computation of equality assertion is non-deterministic\n",False)
     | head results = return ("OK: "++name++"\n",True)
     | otherwise
      = return ("FAILURE of "++name++": equality assertion not satisfied:\n"++

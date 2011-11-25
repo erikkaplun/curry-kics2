@@ -16,7 +16,7 @@
 --- is a shell script stored in *pakcshome*/bin).
 --- 
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version October 2011
+--- @version November 2011
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
@@ -1317,21 +1317,20 @@ numberCgiRefs :: [HtmlExp] -> Int -> ([HtmlExp],Int)
 -- result: translated HTMLExps, new number for cgi-refs
 numberCgiRefs [] i = ([],i)
 numberCgiRefs (HtmlText s : hexps) i =
-   let (nhexps,j) = numberCgiRefs hexps i
-   in (HtmlText s : nhexps, j)
+  case numberCgiRefs hexps i of
+    (nhexps,j) -> (HtmlText s : nhexps, j)
 numberCgiRefs (HtmlStruct tag attrs hexps1 : hexps2) i =
-   let (nhexps1,j) = numberCgiRefs hexps1 i
-       (nhexps2,k) = numberCgiRefs hexps2 j
-   in (HtmlStruct tag attrs nhexps1 : nhexps2, k)
+  case numberCgiRefs hexps1 i of
+    (nhexps1,j) -> case numberCgiRefs hexps2 j of
+                     (nhexps2,k) -> (HtmlStruct tag attrs nhexps1 : nhexps2, k)
 numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
-   let (nhexps,j) = numberCgiRefs hexps i
-   in (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j)
+  case numberCgiRefs hexps i of
+    (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j)
 numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
   | ref =:= ("FIELD_"++show i)
-  = let ([nhexp],j) = numberCgiRefs [hexp] (i+1)
-        (nhexps,k) = numberCgiRefs hexps j
-    in (nhexp : nhexps, k)
-
+  = case numberCgiRefs [hexp] (i+1) of
+      ([nhexp],j) -> case numberCgiRefs hexps j of
+                       (nhexps,k) -> (nhexp : nhexps, k)
 
 -- translate all event handlers into their internal form:
 -- (assumption: all CgiRefs have already been instantiated and eliminated)
