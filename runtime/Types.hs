@@ -48,11 +48,10 @@ globalCs = unsafePerformIO $ newIORef emptyCs
 -- adds a Constraint to the global constraint store
 addToGlobalCs :: Constraints -> IO ()
 addToGlobalCs (StructConstr _) = return ()
-addToGlobalCs _ = return ()
--- addToGlobalCs cs@(ValConstr i x _ ) = do
---   gcs <- readIORef globalCs
---   let gcs' = combConstr cs gcs
---   writeIORef globalCs $! gcs'
+addToGlobalCs cs@(ValConstr i x _ ) = do
+  gcs <- readIORef globalCs
+  let gcs' = combConstr cs gcs
+  writeIORef globalCs $! gcs'
 
 lookupGlobalCs :: IO ConstStore
 lookupGlobalCs = readIORef globalCs
@@ -130,11 +129,13 @@ narrow _              = error "Basics.narrow: no ChoiceID"
 -- |If the varible is bound in either the local or the global constraint store
 -- |the value found in the store is used
 narrows :: NonDet b => ConstStore -> ID -> (a -> b) -> [a] -> b
-narrows cs i f xs = lookupCs cs i f
-                       (lookupCs gcs i f
-                            ((choicesCons $! narrowID i) (map f xs)))
+narrows cs i@(FreeID p s) f xs = 
+  lookupCs cs i f (lookupCs gcs i f
+                            (choicesCons (NarrowedID p s) (map f xs)))
  where
   gcs = unsafePerformIO lookupGlobalCs
+narrows cs i@(NarrowedID _ _) f xs = choicesCons i (map f xs)
+narrows _ (ChoiceID _) _ _ = error "Types.narrows: ChoiceID"
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
 -- ---------------------------------------------------------------------------
