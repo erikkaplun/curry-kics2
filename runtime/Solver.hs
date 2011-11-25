@@ -1,131 +1,81 @@
 -- ---------------------------------------------------------------------------
 -- Constraint Solving
 -- ---------------------------------------------------------------------------
-module Solver
-  ( Solution, SolutionTree (..), solves
-  ) where
+module Solver (Solution, solves, solve) where
 
 import ID
-import Debug
+import Types
 
--- |Type for an action to reset a choice made earlier
-type Reset = IO ()
+type Solution m a = m (Maybe (m (), a))
 
-type Solution = IO SolutionTree
+mkDecision :: Monad m => m (m ()) -> a -> Solution m a
+mkDecision decide a = decide >>= \reset -> return $ Just (reset, a)
 
-data SolutionTree
-  = FailST
-  | SuccessST Reset
-  | ChoiceST  Reset Solution Solution
-  | ChoicesST Reset [Solution]
+mkSolution :: Monad m => a -> Solution m a
+mkSolution a = return $ Just (return (), a)
 
-mkSolution :: IO Reset -> Solution
-mkSolution mkReset = mkReset >>= return . SuccessST
+noSolution :: Monad m => Solution m a
+noSolution = return Nothing
 
-solved :: Solution
-solved = return $ SuccessST $ return ()
+(>>-) :: Monad m => Solution m a -> (a -> Solution m b) -> Solution m b
+ma >>- mbf = do
+  mbSolutionA <- ma
+  case mbSolutionA of
+    Nothing          -> noSolution
+    Just (resetA, a) -> do
+      mbSolutionB <- mbf a
+      case mbSolutionB of
+        Nothing          -> resetA >> noSolution
+        Just (resetB, b) -> return $ Just (resetB >> resetA, b)
 
-unsolvable :: Solution
-unsolvable = return FailST
+solves :: (Store m, NonDet a) => Constraints -> a -> Solution m a
+solves []     a = mkSolution a
+solves (c:cs) a = solve c a >>- solves cs
 
-(>>>) :: Solution -> Solution -> Solution
-a >>> b = do
-  tmra <- a
-  case tmra of
-    FailST -> unsolvable
-    SuccessST ra -> do
-      tmrb <- b
-      case tmrb of
-        FailST           -> ra >> unsolvable
-        SuccessST rb     -> return $ SuccessST (rb >> ra)
-        ChoiceST cr l r  -> return $ ChoiceST  (cr >> ra) l r
-        ChoicesST cr sl  -> return $ ChoicesST (cr >> ra) sl
-    ChoiceST cr l r -> return $ ChoiceST cr (l >>> b) (r >>> b)
-    ChoicesST cr sl -> return $ ChoicesST cr (map (>>> b) sl)
-
-solves :: [Constraint] -> Solution
-solves [] = solved
-solves (c:cs) = do
-  trace $ "solving " ++ take 200 (show c)
-  solve c >>> solves cs
-
-solve :: Constraint -> Solution
-solve Unsolvable = unsolvable
-
-solve (ConstraintChoice i lcs rcs) = lookupChoice i >>= chooseCC
+solve :: (Store m, NonDet a) => Constraint -> a -> Solution m a
+solve Unsolvable _ = noSolution
+solve (ConstraintChoice i lcs rcs) e = lookupChoice i >>= choose
   where
-    chooseCC ChooseLeft  = solves lcs
-    chooseCC ChooseRight = solves rcs
-    chooseCC NoChoice    = return $ ChoiceST
-      (return ())
-      (mkSolution (setUnsetChoice i ChooseLeft ) >>> solves lcs)
-      (mkSolution (setUnsetChoice i ChooseRight) >>> solves rcs)
-    chooseCC c           = error $ "Solver.solve.chooseCC: " ++ show c
+  choose ChooseLeft  = mkSolution $ guardCons lcs e
+  choose ChooseRight = mkSolution $ guardCons rcs e
+  choose NoChoice    = mkSolution $ choiceCons i
+                                    (guardCons lcs e) (guardCons rcs e)
+  choose c           = error $ "Solver.solve.choose: CC:" ++ show c
 
-solve cc@(ConstraintChoices i@(NarrowedID pns _) css) = lookupChoice i >>= chooseCCs
+solve cc@(ConstraintChoices i css) e = lookupChoice i >>= choose
   where
-    chooseCCs (ChooseN c _) = solves (css !! c)
-    chooseCCs NoChoice      = return $
-      ChoicesST (return ()) $ zipWith3 mkChoice [0 ..] css pns
-    chooseCCs (LazyBind cs) = solves cs >>> solve cc
-    chooseCCs c           = error $ "Solver.solve.chooseCCs: " ++ show c
+  choose (ChooseN c _) = mkSolution $ guardCons (css !! c) e
+  choose NoChoice      = mkSolution $ choicesCons i
+                                    $ map (\cs -> guardCons cs e) css
+  choose (LazyBind cs) = mkSolution $ guardCons (cs ++ [cc]) e
+  choose c             = error $ "Solver.solve.choose: CCs:" ++ show c
 
-    mkChoice n cs pn = mkSolution (setUnsetChoice i (ChooseN n pn)) >>> solves cs
-solve ccs@(ConstraintChoices _ _) = error $ "Solver.solve: " ++ show ccs
-
-solve (i :=: cc) = lookupChoice i >>= choose cc
+solve (i :=: cc) e = lookupChoice i >>= choose cc
   where
-  -- 1st param: the Choice which should be stored for i
-  -- 2nd param: the Choice for i in the store
-
-  -- store lazy binds for later use
-  choose (LazyBind  _) NoChoice      = mkSolution (setUnsetChoice i cc)
-  -- solve stored lazy binds when they are needed
-  choose _             (LazyBind cs) = mkSolution (setUnsetChoice i cc) >>> solves cs
-  choose (LazyBind cs) _             = solves cs
-  choose (BindTo j)    ci            = lookupChoice j >>= check i j ci
-  choose c             NoChoice      = mkSolution (setUnsetChoice i c)
-  choose c             ci            = if c == ci then solved else unsolvable
---     choose _             (LazyBind cs) = setChoice i NoChoice >> solves cs >>> solve (i :=: cc)
---     choose (LazyBind cs) (LazyBind cs2) = solves cs >>> solves cs2
---     choose (LazyBind cs) (ChooseN _ _)  = solves cs
---     choose (ChooseN _ _) (LazyBind cs) = (setUnsetChoice i NoChoice >>> solves cs) >>> solve (i :=: cc)
+  -- 1st param: the (new) Choice which should be stored for i
+  -- 2nd param: the (old) Choice for i in the store
+  choose (LazyBind  _) NoChoice      = mkDecision (setUnsetChoice i cc) e
+  choose _             (LazyBind cs) = mkDecision (setUnsetChoice i cc)
+                                     $ guardCons cs e
+  choose (LazyBind cs) _             = mkSolution $ guardCons cs e
+  choose (BindTo j)    ci            = lookupChoice j >>= \cj -> check i j ci cj e
+  choose c             NoChoice      = mkDecision (setUnsetChoice i c) e
+  choose c             ci            = if c == ci then mkSolution e
+                                                  else noSolution
 
 -- Check whether i can be bound to j and do so if possible
-check :: ID -> ID -> Choice -> Choice -> Solution
-check i j _        (LazyBind cs)          = mkSolution (setUnsetChoice j (BindTo i)) >>> solves cs
-check i j NoChoice _                      = mkSolution (setUnsetChoice i (BindTo j))
-check i j _        NoChoice               = mkSolution (setUnsetChoice j (BindTo i))
-check i j (ChooseN iN ip) (ChooseN jN jp) = if iN == jN && ip == jp
-                                              then solves $ zipWith (\childi childj -> childi :=: BindTo childj)
-                                                                    (nextNIDs i ip) (nextNIDs j ip)
-                                              else unsolvable
-check _ _ ci       cj                     = if ci == cj then solved else unsolvable
-
--- ---------------
--- Former approach
--- ---------------
-
---  -- Nothing -> Constraint is unsolvable
---  -- Just reset -> Constraint has been solved
--- type Solved = IO (Maybe (IO ()))
---
--- mkSolved :: IO (IO ()) -> Solved
--- mkSolved mkReset = mkReset >>= return . Just
---
--- solved :: Solved
--- solved = return (Just (return ()))
---
--- unsolvable :: Solved
--- unsolvable = return Nothing
---
--- (>>>) :: Solved -> Solved -> Solved
--- a >>> b = do
---   mra <- a
---   case mra of
---     Nothing -> return Nothing
---     Just ra -> do
---       mrb <- b
---       case mrb of
---         Nothing -> ra >> return Nothing
---         Just rb -> return (Just (ra >> rb))
+check :: (Store m, NonDet a) => ID -> ID -> Choice -> Choice -> a -> Solution m a
+check i j _               (LazyBind cs)   e
+  = mkDecision (setUnsetChoice j (BindTo i)) $ guardCons cs e
+check i j NoChoice        _               e
+  = mkDecision (setUnsetChoice i (BindTo j)) e
+check i j _               NoChoice        e
+  = mkDecision (setUnsetChoice j (BindTo i)) e
+check i j (ChooseN iN ip) (ChooseN jN jp) e
+  = if iN == jN && ip == jp
+    then mkSolution $ guardCons
+        (zipWith (\ci cj -> ci :=: BindTo cj) (nextNIDs i ip) (nextNIDs j ip))
+        e
+    else noSolution
+check _ _ ci              cj              e
+  = if ci == cj then mkSolution e else noSolution

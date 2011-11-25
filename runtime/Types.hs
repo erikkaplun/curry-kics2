@@ -10,14 +10,20 @@ import ID
 
 -- TODO: Reason about pros and cons of reusing Choices for free, narrowed, (?)
 
--- |Data type to wrap values in a generic structure
+-- |Data type to represent non-deterministic values in a generic structure.
+--
+-- The 'Try' structure is used to provide a type-independent representation
+-- of non-deterministic values in the runtime system, e.g. for implementing
+-- the search strategies.
 data Try a
-  = Val a               -- ^Value in head normal form (HNF)
-  | Fail                -- ^Fail
-  | Choice ID a a       -- ^Binary choice, used for (?)
-  | Narrowed ID [a]     -- ^N-ary choice for narrowed variable
-  | Free ID [a]         -- ^N-ary choice for free variable
-  | Guard Constraints a -- ^Constrained value
+  = Val a               -- ^ Value in head normal form (HNF)
+  | Fail                -- ^ Failure
+  | Choice ID a a       -- ^ Binary choice, introduced by the (?) operator
+  | Narrowed ID [a]     -- ^ N-ary choice for narrowed variable
+  | Free ID [a]         -- ^ N-ary choice for free variable, where
+                        --   N corresponds to the number of constructors of
+                        --   the underlying type
+  | Guard Constraints a -- ^ Constrained value
     deriving Show
 
 -- |Convert a binary choice of type a into one of type 'Try' a
@@ -35,31 +41,33 @@ tryChoices i@(NarrowedID _ _) = Narrowed i
 -- Non-determinism
 -- ---------------------------------------------------------------------------
 
--- |Class for data that supports nondeterministic values
+-- |Class for types that support nondeterministic values
 class NonDet a where
-  -- |Constructor for a binary choice, used for (?)
+  -- |Construct a binary choice, used by the (?) operator
   choiceCons :: ID -> a -> a -> a
-  -- |Constructor for a n-ary choice, used for free variables and narrowing
+  -- |Construct a n-ary choice, used for free variables and narrowing
   choicesCons:: ID -> [a] -> a
-  -- |Constructor for a failed computation
+  -- |Construct a failed computation
   failCons   :: a
-  -- |Constructor for a constrained value
+  -- |Construct a constrained value
   guardCons  :: Constraints -> a -> a
-  -- |conversion of a value into its generic 'Try' structure
+  -- |Convert a value into the generic 'Try' structure
   try        :: a -> Try a
-
-  -- Alternative approach: Replace generic Try structure with a matching
-  -- function to gain more efficiency.
-
-  -- |Matching with different function for the respective constructors
-  match      :: (ID -> a -> a -> b)     -- ^binary Choice
-             -> (ID -> [a] -> b)        -- ^n-ary Choice for narrowed variable
-             -> (ID -> [a] -> b)        -- ^n-ary Choice for free variable
-             -> b                       -- ^Failure
-             -> (Constraints -> a -> b) -- ^Constrained value
-             -> (a -> b)                -- ^Head Normal Form
-             -> a                       -- ^value to apply the function to
+  -- |Apply the adequate function to a non-deterministic value, where each of
+  --  the supplied functions handles a different constructor.
+  --
+  -- /Note:/ This functionality was introduced to render the conversion from
+  -- and to the 'Try' structure obsolete. Nonetheless, the performance impact
+  -- still is to be analyzed.
+  match      :: (ID -> a -> a -> b)     -- ^ Binary Choice
+             -> (ID -> [a] -> b)        -- ^ n-ary Choice for narrowed variable
+             -> (ID -> [a] -> b)        -- ^ n-ary Choice for free variable
+             -> b                       -- ^ Failure
+             -> (Constraints -> a -> b) -- ^ Constrained value
+             -> (a -> b)                -- ^ Head Normal Form
+             -> a                       -- ^ value to apply the functions to
              -> b
+
 
 narrow :: NonDet a => ID -> a -> a -> a
 narrow i@(ChoiceID _) = choiceCons i
@@ -70,13 +78,18 @@ narrows :: NonDet a => ID -> [a] -> a
 narrows i = choicesCons $! narrowID i
 
 -- ---------------------------------------------------------------------------
--- Computations to normal form
+-- Computation of normal forms
 -- ---------------------------------------------------------------------------
 
--- Class for data that supports the computaton of its normal form.
--- The normal form computation is combined with a continuation to be
--- applied to the normal form.
-class (Show a, NonDet a) => NormalForm a where
+-- |Class for types that support the computaton of its normal form (NF) and
+--  ground normal form (GNF).
+--
+-- While NF allows free variables, GNF does not, therefore free variables will
+-- be narrowed when computing the GNF.
+--
+-- The NF/GNF computation is combined with a continuation to be applied to
+-- the NF/GNF.
+class (NonDet a, Show a) => NormalForm a where
   -- |Apply a continuation to the normal form
   ($!!) :: NonDet b => (a -> b) -> a -> b
   -- |Apply a continuation to the ground normal form
@@ -86,37 +99,31 @@ class (Show a, NonDet a) => NormalForm a where
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
-
--- Auxiliaries for $!!
-
--- Auxiliary function to create a binary Choice and apply a continuation to
--- the normal forms of its two alternatives
+-- |Auxiliary function to apply the continuation to the normal forms of the
+-- two alternatives of a binary choice.
 nfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
 nfChoice cont i@(ChoiceID _) x1 x2 = choiceCons i (cont $!! x1) (cont $!! x2)
 nfChoice _ _ _ _ = error "Basics.nfChoice: no ChoiceID"
--- nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
 
--- Auxiliary function to create a n-ary Choice and apply a continuation to
--- the normal forms of its alternatives
+-- |Auxiliary function to apply the continuation to the normal forms of the
+-- n alternatives of a n-ary choice.
 nfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
 nfChoices _      (ChoiceID _)     _  = error "Basics.nfChoices: ChoiceID"
 nfChoices cont i@(FreeID _ _)     xs = cont (choicesCons i xs)
 nfChoices cont i@(NarrowedID _ _) xs = choicesCons i (map (cont $!!) xs)
 
-
--- Auxiliaries for $##
-
+-- |Auxiliary function to apply the continuation to the ground normal forms of
+-- the two alternatives of a binary choice.
 gnfChoice :: (NormalForm a, NonDet b) => (a -> b) -> ID -> a -> a -> b
 gnfChoice cont i@(ChoiceID _) x1 x2 = choiceCons i (cont $## x1) (cont $## x2)
 gnfChoice _ _ _ _ = error "Basics.gnfChoice: no ChoiceID"
 
+-- |Auxiliary function to apply the continuation to the ground normal forms of
+-- the n alternatives of a n-ary choice.
 gnfChoices :: (NormalForm a, NonDet b) => (a -> b) -> ID -> [a] -> b
 gnfChoices cont i xs = narrows i (map (cont $##) xs)
 
-
--- Auxiliaries for $!<
-
-nfChoiceIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> a -> a -> IO b
+nfChoiceIO :: (NormalForm a) => (a -> IO b) -> ID -> a -> a -> IO b
 nfChoiceIO cont i@(ChoiceID _) x1 x2 = cont $ choiceCons i x1 x2
 nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ChoiceID"
 -- nfChoiceIO cont i@(ID _) x1 x2 = do
@@ -124,8 +131,7 @@ nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ChoiceID"
 --   x2' <- return $!< x2
 --   cont (choiceCons i x1' x2')
 
-
-nfChoicesIO :: (NormalForm a, NonDet a) => (a -> IO b) -> ID -> [a] -> IO b
+nfChoicesIO :: (NormalForm a) => (a -> IO b) -> ID -> [a] -> IO b
 nfChoicesIO _      (ChoiceID _)     _  = error "Basics.nfChoicesIO: ChoiceID"
 nfChoicesIO cont i@(FreeID _ _) xs = lookupChoiceID i >>= choose
   where
@@ -144,8 +150,10 @@ nfChoicesIO cont i@(NarrowedID  _ _) xs = cont (choicesCons i xs)
 -- Generators
 -- ---------------------------------------------------------------------------
 
--- Class for data that supports generators
+-- |Class for types that support generator functions to represent free
+-- variables.
 class NonDet a => Generable a where
+  -- |Generate a free variable for the given 'IDSupply'
   generate :: IDSupply -> a
 
 -- ---------------------------------------------------------------------------
@@ -153,7 +161,7 @@ class NonDet a => Generable a where
 -- ---------------------------------------------------------------------------
 
 -- Class for data that supports unification
-class NormalForm a => Unifiable a where
+class NonDet a => Unifiable a where
   -- |Unification on constructor-rooted terms
   (=.=)    :: a -> a -> C_Success
   -- |Lazy unification on constructor-rooted terms,

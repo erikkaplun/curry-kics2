@@ -24,6 +24,9 @@ data MList m a
 mnil :: Monad m => m (MList m a)
 mnil = return MNil
 
+msingleton :: Monad m => a -> m (MList m a)
+msingleton x = mcons x mnil
+
 -- Construct a non-empty monadic list
 mcons :: Monad m => a -> m (MList m a) -> m (MList m a)
 mcons x xs = return (MCons x xs)

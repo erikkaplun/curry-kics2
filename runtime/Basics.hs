@@ -35,7 +35,7 @@ nd_dollar_bang f x s = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard hnf
    hnfVal v         = nd_apply f v s
    -- TODO Do we better use leftSupply and rightSupply?
    hnfChoice i a b  = choiceCons i (nd_dollar_bang f a s) (nd_dollar_bang f b s)
-   hnfNarrowed i xs = choicesCons i (map (\x -> nd_dollar_bang f x s) xs)
+   hnfNarrowed i xs = choicesCons i (map (\y -> nd_dollar_bang f y s) xs)
    hnfFree i xs     = nd_apply f (choicesCons i xs) s
    hnfGuard c e     = guardCons c (nd_dollar_bang f e s)
 
