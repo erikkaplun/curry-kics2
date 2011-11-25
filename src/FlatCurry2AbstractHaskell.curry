@@ -72,12 +72,12 @@ fcy2absExpr (FC.Lit l) = Lit (fcy2absLit l)
 -- TODO: This is probably the dirtiest hack in the compiler:
 -- Because FlatCurry does not allow lambda abstractions, in the module Compile
 -- we construct a call to a function like "\f x1 x2 x-42 x3" which is replaced
--- with the expression (map (\z -> f x1 x2 z x3) x1001).
+-- with the expression (\z -> f x1 x2 z x3).
 -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
 fcy2absExpr (FC.Comb _ qf es)
-  | isMapLambdaHack = applyMapLambdaHack qf es
+  | isLambdaHack = applyLambdaHack qf es
   | otherwise      = applyF qf (map fcy2absExpr es)
-  where isMapLambdaHack = head (snd qf) == '\\'
+  where isLambdaHack = head (snd qf) == '\\'
 fcy2absExpr (FC.Let bs expr)  = Let (map ldecl bs) (fcy2absExpr expr)
   where ldecl (i,e) = LocalPat (PVar (fcy2absVar i)) (fcy2absExpr e) []
 fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . fcy2absVar) vs)
@@ -86,9 +86,9 @@ fcy2absExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2absExpr [e1, e2])
 --fcy2absExpr (FC.Case FC.Flex _ _) = error "fcy2absExpr: Flex Case occurred!"
 fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map fcy2absBranch brs)
 
-applyMapLambdaHack :: QName -> [FC.Expr] -> Expr
-applyMapLambdaHack (q, fn) es = applyF (pre "map") [Lambda [PVar (1003, "z")]
-  (applyF funcName (map applyLambda es)), Var (1001, "x1001")]
+applyLambdaHack :: QName -> [FC.Expr] -> Expr
+applyLambdaHack (q, fn) es = Lambda [PVar (1003, "z")]
+  (applyF funcName (map applyLambda es))
   where
     applyLambda e
       | e == (FC.Var (-42)) = Var (1003, "z")

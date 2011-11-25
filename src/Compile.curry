@@ -32,7 +32,8 @@ import ModuleDeps (ModuleIdent, Source, deps)
 import Names
   ( renameModule, renameFile, renameQName, consPrefix, funcPrefix
   , mkChoiceName, mkChoicesName, mkGuardName
-  , externalFunc, externalFile, destFile, analysisFile, funcInfoFile )
+  , externalFunc, externalFile, destFile, analysisFile, funcInfoFile
+  , mkGlobalName )
 import SimpleMake (smake)
 import Splits (mkSplits)
 import Utils (foldIO, intercalate, unless, when)
@@ -467,9 +468,37 @@ transFunc f@(Func qn _ _ _ _) =
           returnM [fn]
         D -> case hoCl of
           FO ->
-            -- create deterministic function
-            transPureFunc f `bindM` \ fd ->
-            returnM [fd]
+            -- check if the Function is intended to represent a global variable
+            -- i.e. has the form name = global val Temporary
+            -- this will be translated into 
+            -- d_C_name _ = global_C_name
+            -- global_C_name = d_C_global (let 3500 = emptyCs in (tr val)) 
+            --                            C_Temporary emptyCs
+            -- to make it a constant 
+            case f of
+             (Func _ 0 vis t (Rule [] (Comb FuncCall fname 
+                                   [val, Comb ConsCall cname []])))
+              ->
+                 if fname == renameQName ("Global","global") 
+                    && cname == renameQName ("Global","Temporary")
+                 then  transCompleteExpr val `bindM` \trVal ->
+                       renameFun qn          `bindM` \newqn ->
+                       renameFun fname       `bindM` \newfname ->
+                       returnM $
+                         [Func newqn 1 vis (check42 (transTypeExpr 0) t) 
+                          (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
+                         ,Func (mkGlobalName qn) 0 Private t 
+                          (Rule [] (Comb FuncCall newfname 
+                                   [Let [(constStoreVarIdx
+                                         ,Comb FuncCall (basics,"emptyCs") [] )]
+                                        trVal
+                                   ,Comb ConsCall cname []
+                                   ,Comb FuncCall (basics,"emptyCs") []]))]
+                 else  transPureFunc f `bindM` (returnM . (:[]))
+
+             _ ->  
+              -- create deterministic function
+              transPureFunc f `bindM` (returnM . (:[]))
           HO ->
             -- create deterministic as well as non-deterministic function
             transPureFunc f `bindM` \ fd ->
@@ -482,14 +511,14 @@ transPureFunc :: FuncDecl -> M FuncDecl
 transPureFunc (Func qn a v t r) = doInDetMode True $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' a v t r')
+  returnM (Func qn' (a + 1) v (check42 (transTypeExpr a) t) r')
 
 -- translate into non-deterministic function
 transNDFunc :: FuncDecl -> M FuncDecl
 transNDFunc (Func qn a v t r) = doInDetMode False $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' (a + 1) v (check42 (transTypeExpr a) t) r')
+  returnM (Func qn' (a + 2) v (check42 (transNDTypeExpr a) t) r')
 
 -- renaming of functions respective to their order and the determinism mode
 renameFun :: QName -> M QName
@@ -511,35 +540,52 @@ check42 f t = case t of
   (TVar (-42)) -> t
   _            -> f t
 
--- translate a type expression by replacing (->) with Funcs and inserting
--- an additional IDSupply type
+-- translate a type expressen by inserting an additional ConstStore type
+
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
-transTypeExpr n t
-    -- all arguments are applied, i.e. functions as a result are represented
-    -- as Funcs, other results of type a are represented as IDSupply -> a
-  | n == 0 = FuncType supplyType (transHOTypeExpr t)
+transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
+                                  (FuncType storeType)
+
+-- translate a type expression by replacing (->) with Funcs and inserting
+-- additional IDSupply and ConstStore types
+transNDTypeExpr :: Int -> TypeExpr -> TypeExpr
+transNDTypeExpr  = transTypeExprWith funcType 
+                                     (FuncType supplyType . FuncType storeType)
+
+transTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr)
+                    -> (TypeExpr -> TypeExpr)
+                    -> Int -> TypeExpr -> TypeExpr
+transTypeExprWith combFunc addArgs n t
+    -- all arguments are applied
+  | n == 0 = addArgs (transHOTypeExprWith combFunc t)
   | n >  0 = case t of
               (FuncType t1 t2) ->
-                FuncType (transHOTypeExpr t1) (transTypeExpr (n-1) t2)
-              _ -> error $ "transTypeExpr: " ++ show (n, t)
-  | n <  0 = error $ "transTypeExpr: " ++ show (n, t)
+                FuncType (transHOTypeExprWith combFunc t1) 
+                         (transTypeExprWith combFunc addArgs (n-1) t2)
+              _ -> error $ "transTypeExprWith: " ++ show (n, t)
+  | n <  0 = error $ "transTypeExprWith: " ++ show (n, t)
 
--- Recursively translate (->) into Func
-transHOTypeExpr :: TypeExpr -> TypeExpr
-transHOTypeExpr t@(TVar _)       = t
-transHOTypeExpr (FuncType t1 t2) = funcType (transHOTypeExpr t1)
-                                            (transHOTypeExpr t2)
-transHOTypeExpr (TCons qn ts)    = TCons qn (map transHOTypeExpr ts)
 
--- translate a single rule of a function
+-- transforms higher order type expressions using a function that combines
+-- the two type-expressions of FuncTypes.
+transHOTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
+transHOTypeExprWith _        t@(TVar _)       = t
+transHOTypeExprWith combFunc (FuncType t1 t2) 
+  = combFunc (transHOTypeExprWith combFunc t1)
+             (transHOTypeExprWith combFunc t2)
+transHOTypeExprWith combFunc (TCons qn ts)    = 
+  TCons qn (map (transHOTypeExprWith combFunc) ts)
+
+-- translate a single rule of a function adds a supply argument
+-- to non-deterministic versions and a constStore argument to all functions
 transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule (if dm then vs else vs ++ [suppVarIdx]) e'
+  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) ++ [constStoreVarIdx]) e'
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = if dm then [1 .. a] else [1 .. a] ++ [suppVarIdx] in
+  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) ++ [constStoreVarIdx] in
   returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
@@ -555,7 +601,7 @@ transBody qn vs exp = case exp of
     -- TODO: superfluous?
     transExpr e `bindM` \(_, e') ->
     returnM $ Case ct e' (bs'' ++ ns)
-  _ -> transCompleteExpr exp
+  _ ->transCompleteExpr exp
 
 addUnifIntCharRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
 addUnifIntCharRule bs bs' =
@@ -571,7 +617,7 @@ addUnifIntCharRule bs bs' =
       -- TODO: magic number
       _ -> Branch (Pattern (constr isInt) [5000])
                   (funcCall (matchFun isInt)
-                    [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000])
+                    [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000,Var constStoreVarIdx ])
           : bs2
     matchFun True  = (basics,"matchInteger")
     matchFun False = (basics,"matchChar")
@@ -610,24 +656,29 @@ newBranches qn' vs i pConsName =
   -- lookup type name to create appropriate constructor names
   getType pConsName `bindM` \ typeName ->
   let Just pos = find (==i) vs
-      is = if dm then [] else [suppVarIdx]
+      suppVar = if dm then [] else [suppVarIdx]
       (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ is)
+      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ suppVar ++ [constStoreVarIdx])
+      -- pattern matching on guards will combine the new constraints with the given
+      -- constraint store
+      guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar))
+      		     	      	       	 (combConstr cVar constStoreVarIdx)
+      combConstr cVar constVar = funcCall combConstrName [Var cVar, Var constVar]
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
       -- TODO: This is probably the dirtiest hack in the compiler:
       -- Because FlatCurry does not allow lambda abstractions, we construct
       -- a call to a function like "\f x1 x2 x-42 x3" which is replaced to
-      -- the expression (map (\z -> f x1 x2 z x3) x1001) in the module
+      -- the expression (\z -> f x1 x2 z x3) in the module
       -- FlatCurry2AbstractHaskell.
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      mapLambdaCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ is) in
+      lCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++  [constStoreVarIdx]) in
   returnM $
     [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002])
              (liftOr [Var 1000, call 1001, call 1002])
     , Branch (Pattern (mkChoicesName typeName) [1000, 1001])
-             (liftOrs [Var 1000, mapLambdaCall])
+             (liftOrs [Var constStoreVarIdx, Var 1000, lCall, Var 1001])
     , Branch (Pattern (mkGuardName typeName) [1000, 1001])
-             (liftGuard [Var 1000, call 1001])
+             (liftGuard [Var 1000, guardCall 1000 1001])
     , Branch (Pattern ("", "_") [])
              liftFail
     ] -- TODO Magic numbers?
@@ -679,9 +730,9 @@ transExpr (Comb FuncCall qn es) =
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
-    then genIds g (Comb FuncCall qn' es')
+    then genIds g (Comb FuncCall qn' (es' ++ [Var constStoreVarIdx]))
     else takeNextID `bindM` \i ->
-         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
+         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
@@ -747,6 +798,9 @@ idVar      = 2000
 -- Variable index for supply variable
 suppVarIdx = 3000
 
+-- Variable index for constraint store
+constStoreVarIdx = 3500
+
 freshVars :: [Int] -> [Int]
 freshVars used = filter (`elem` used) [0 .. ]
 
@@ -758,9 +812,22 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- ---------------------------------------------------------------------------
 
 myWrap :: Bool -> Bool -> NDClass -> HOClass -> Int -> Expr -> Expr
-myWrap True  _   _  _  _ e = e
-myWrap False opt nd ho a e = newWrap a iw e
+myWrap True  _   _  _  a e = wrapCs a e
+myWrap False opt nd ho a e = newWrap a iw (wrapCs a e)
   where iw = if opt && nd == D && ho == FO then wrapDX else wrapNX
+
+-- adding Constraintstore arguments after every argument of a higher order funchtion
+wrapCs :: Int -> Expr -> Expr
+wrapCs n e | n == 1 = if isConstr then addCs [funId,e] else e
+           | n >  1 = addCs [mkWraps (n - 1)
+                              (if isConstr then (addCs [funId]) else funId)
+                            ,e]
+ where
+  mkWraps m expr | m < 2     = expr
+                 | otherwise = mkWraps (m - 1) (addCs [expr])
+  isConstr = case e of
+    (Comb (ConsPartCall _) _ _) -> True
+    _                           -> False
 
 newWrap :: Int -> ([Expr] -> Expr) -> Expr -> Expr
 newWrap n innermostWrapper e
@@ -774,6 +841,7 @@ newWrap n innermostWrapper e
 
 wrapDX exprs = fun 2 (basics,"wrapDX") exprs
 wrapNX exprs = fun 2 (basics,"wrapNX") exprs
+addCs  exprs = fun 2 (basics,"addCs")  exprs
 funId = fun 1 (prelude,"id") []
 
 
@@ -805,6 +873,9 @@ curryFloat = renameQName (prelude, "Float")
 curryChar :: QName
 curryChar = renameQName (prelude, "Char")
 
+combConstrName :: QName
+combConstrName = (basics,"combConstr")
+
 -- type expressions
 
 tOrRef :: TypeExpr
@@ -815,6 +886,9 @@ tConstraint = TCons (basics, "Constraint") []
 
 supplyType :: TypeExpr
 supplyType  = TCons (basics, "IDSupply") []
+
+storeType :: TypeExpr
+storeType = TCons (basics, "ConstStore") []
 
 funcType :: TypeExpr -> TypeExpr -> TypeExpr
 funcType t1 t2 = TCons (basics, "Func") [t1, t2]
@@ -836,6 +910,9 @@ strictLet decls e = Let decls $ foldr seqCall e $ map (Var . fst) decls
 
 seqCall :: Expr -> Expr -> Expr
 seqCall e1 e2 = funcCall (prelude, "seq") [e1, e2]
+
+strictCall :: Expr -> Expr -> Expr
+strictCall f e = funcCall (prelude, "$!") [f,e]
 
 funcCall n xs = Comb FuncCall n xs
 lambdaCall (q,n) xs = Comb FuncCall (q, '\\' : n) xs

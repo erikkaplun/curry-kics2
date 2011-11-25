@@ -5,7 +5,7 @@
 ---
 --- The installation of a cgi script written with this library
 --- can be done by the command
---- 
+---
 ---     makecurrycgi -m initialForm -o /home/joe/public_html/prog.cgi prog
 ---
 --- where `prog` is the name of the Curry program with
@@ -14,12 +14,12 @@
 --- compiled cgi script, and `initialForm` is the Curry expression
 --- (of type IO HtmlForm) computing the HTML form (where makecurrycgi
 --- is a shell script stored in *pakcshome*/bin).
---- 
+---
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
 --- @version November 2011
 ------------------------------------------------------------------------------
 
-module HTML(HtmlExp(..),HtmlPage(..),PageParam(..), 
+module HTML(HtmlExp(..),HtmlPage(..),PageParam(..),
             HtmlForm(..),FormParam(..),CookieParam(..),
             CgiRef,idOfCgiRef,CgiEnv,HtmlHandler,
             defaultEncoding, defaultBackground,
@@ -272,7 +272,7 @@ addFormParams hform (fp:fps) = addFormParams (hform `addFormParam` fp) fps
 --- Adds redirection to given HTML form.
 --- @param secs - Number of seconds to wait before executing autromatic redirection
 --- @param url - The URL whereto redirect to
---- @param form - The form to add the header information to 
+--- @param form - The form to add the header information to
 redirect :: Int -> String -> HtmlForm -> HtmlForm
 redirect secs url hform =
   hform `addFormParam`
@@ -281,7 +281,7 @@ redirect secs url hform =
 
 --- Adds expire time to given HTML form.
 --- @param secs - Number of seconds before document expires
---- @param form - The form to add the header information to 
+--- @param form - The form to add the header information to
 expires :: Int -> HtmlForm -> HtmlForm
 expires secs hform =
   hform `addFormParam`
@@ -290,22 +290,22 @@ expires secs hform =
 
 --- Adds sound to given HTML form. The functions adds two different declarations
 --- for sound, one invented by Microsoft for the internet explorer, one introduced
---- for netscape. As neither is an official part of HTML, addsound might not work 
---- on all systems and browsers. The greatest chance is by using sound files 
+--- for netscape. As neither is an official part of HTML, addsound might not work
+--- on all systems and browsers. The greatest chance is by using sound files
 --- in MID-format.
 --- @param soundfile - Name of file containing the sound to be played
 --- @param loop - Should sound go on infinitely? Use with care.
---- @param form - The form to add sound to 
+--- @param form - The form to add sound to
 addSound :: String -> Bool -> HtmlForm -> HtmlForm
 addSound soundfile loop (HtmlForm title params conts) =
   HtmlForm title
-           (HeadInclude 
-             (HtmlStruct "bgsound" 
+           (HeadInclude
+             (HtmlStruct "bgsound"
                          [("src",soundfile),
-                         ("loop",if loop then "infinite" else "1")] []):params) 
-           (HtmlStruct "embed" 
+                         ("loop",if loop then "infinite" else "1")] []):params)
+           (HtmlStruct "embed"
              ((if loop then [("loop","true")] else []) ++
-              [("src",soundfile),("autostart","true"), ("hidden","true"), 
+              [("src",soundfile),("autostart","true"), ("hidden","true"),
                ("height","0"), ("width","0")]) []:
               conts)
 addSound _ _ (HtmlAnswer _ _)
@@ -486,12 +486,12 @@ headedTable :: [[[HtmlExp]]] -> HtmlExp
 headedTable = withinTable . table
  where
   withinTable (HtmlStruct "table" attrs (HtmlStruct "tr" rowAttrs row:rows)) =
-      HtmlStruct "table" attrs 
+      HtmlStruct "table" attrs
         (HtmlStruct "tr" rowAttrs (map addTh row):rows)
   addTh x = case x of
              (HtmlStruct "td" attrs conts) -> HtmlStruct "th" attrs conts
              other -> other
-  
+
 --- Add a row of items (where each item is a list of HTML expressions)
 --- as headings to a table. If the first argument is not a table,
 --- the headings are ignored.
@@ -802,7 +802,7 @@ type ShowS = String -> String
 
 showString s = (s++)
 showChar   c = (c:)
-nl    = showChar '\n' 
+nl    = showChar '\n'
 
 concatS [] = id
 concatS xs@(_:_) = foldr1 (\ f g -> f . g) xs
@@ -968,7 +968,7 @@ parseCookies str = if str=="" then [] else
 coordinates :: CgiEnv -> Maybe (Int,Int)
 coordinates env = let x = env (CgiRef "x")
                       y = env (CgiRef "y")
-                   in if x/="" && y/="" 
+                   in if x/="" && y/=""
                         then Just (tryReadNat 0 x, tryReadNat 0 y)
                         else Nothing
 
@@ -1074,12 +1074,12 @@ serveCgiMessagesForForm servertimeout url cgikey portname
               ": server terminated by stop message"
     unregisterCgiServer portname
     sClose socket
-  
+
   serveCgiMessage state hdl CleanServer = do
     hClose hdl
     nstate <- cleanOldEventHandlers state
     serveCgiMessages nstate
-  
+
   serveCgiMessage oldstate hdl GetLoad = do
     state <- cleanOldEventHandlers oldstate
     serverload <- getServerLoad state
@@ -1093,7 +1093,7 @@ serveCgiMessagesForForm servertimeout url cgikey portname
     hPutStrLn hdl serverstatus
     hClose hdl
     serveCgiMessages state
-  
+
   serveCgiMessage state hdl SketchHandlers =
     reportStatus state hdl sketchEventHandler
    where
@@ -1102,7 +1102,7 @@ serveCgiMessagesForForm servertimeout url cgikey portname
       return $ "No. " ++ show key ++ " (" ++ showGroupKey gkey ++
                "), expires at: " ++
                calendarTimeToString ltime ++ "\n"
-  
+
   serveCgiMessage state hdl ShowStatus =
     reportStatus state hdl showEventHandler
    where
@@ -1284,7 +1284,7 @@ getMaxFieldNr ((name,_):env) =
   if take 6 name == "FIELD_"
   then max (tryReadNat 0 (drop 6 name)) (getMaxFieldNr env)
   else getMaxFieldNr env
- 
+
 max x y = if x>y then x else y
 
 -- try to read a natural number in a string or return first argument:
@@ -1315,6 +1315,7 @@ htmlForm2html (HtmlForm title params html) crefnr = do
 numberCgiRefs :: [HtmlExp] -> Int -> ([HtmlExp],Int)
 -- arguments: HTMLExps, number for cgi-refs
 -- result: translated HTMLExps, new number for cgi-refs
+{-
 numberCgiRefs [] i = ([],i)
 numberCgiRefs (HtmlText s : hexps) i =
   case numberCgiRefs hexps i of
@@ -1328,9 +1329,26 @@ numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
     (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j)
 numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
   | ref =:= ("FIELD_"++show i)
-  = case numberCgiRefs [hexp] (i+1) of
-      ([nhexp],j) -> case numberCgiRefs hexps j of
-                       (nhexps,k) -> (nhexp : nhexps, k)
+  = let ([nhexp],j) = numberCgiRefs [hexp] (i+1)
+        (nhexps,k) = numberCgiRefs hexps j
+    in (nhexp : nhexps, k)
+-}
+numberCgiRefs [] i = ([],i)
+numberCgiRefs (HtmlText s : hexps) i =
+   (\ (nhexps,j) -> (HtmlText s : nhexps, j)) (numberCgiRefs hexps i)
+numberCgiRefs (HtmlStruct tag attrs hexps1 : hexps2) i =
+   (\ (nhexps1,j) ->
+         (\ (nhexps2,k) -> (HtmlStruct tag attrs nhexps1 : nhexps2, k))
+          (numberCgiRefs hexps2 j))
+   (numberCgiRefs hexps1 i)
+numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
+   (\ (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j))
+   (numberCgiRefs hexps i)
+numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
+  | ref =:= ("FIELD_"++show i)
+  = (\ ([nhexp],j) -> (\ (nhexps,k) -> (nhexp : nhexps, k))
+                      (numberCgiRefs hexps j))
+    (numberCgiRefs [hexp] (i+1))
 
 -- translate all event handlers into their internal form:
 -- (assumption: all CgiRefs have already been instantiated and eliminated)
@@ -1469,9 +1487,9 @@ showLatexExp (HtmlStruct tag attrs htmlexp)
  | tag=="dl"   = latexEnvironment "description" (showLatexExps htmlexp)
  | tag=="dt"  = "\\item[" ++ showLatexExps htmlexp ++ "]~\\\\\n"
  | tag=="dd"  = showLatexExps htmlexp
- -- tables will be set using the longtable environment, 
+ -- tables will be set using the longtable environment,
  -- (The package longtable is added by default to every latex document)
- | tag=="table" = attrLatexEnv "longtable" (latexTabFormat htmlexp) 
+ | tag=="table" = attrLatexEnv "longtable" (latexTabFormat htmlexp)
                                            (showLatexTableContents htmlexp)
  | tag=="tr"   = let cells = map showLatexExp htmlexp
                   in concat (intersperse " & " cells) ++ "\\\\\n"
@@ -1498,7 +1516,7 @@ attrLatexEnv env attr content
  ++"\n\\end{"++env++"}\n"
 
 -- yield the format of a table, e.g. {lll} from list of html rows.
--- for longtables we set the chunksize big enough 
+-- for longtables we set the chunksize big enough
 -- to avoid having to rerun latex for inaccurat tables.
 latexTabFormat :: [HtmlExp] -> String
 latexTabFormat rows = "{" ++ replicate breadth 'l' ++ "}"
@@ -1663,7 +1681,7 @@ showLatexDoc htmlexps = showLatexDocs [htmlexps]
 --- e.g. "ngerman"
 
 showLatexDocWithPackages :: [HtmlExp] -> [String] -> String
-showLatexDocWithPackages hexps packages 
+showLatexDocWithPackages hexps packages
   = showLatexDocsWithPackages [hexps] packages
 
 --- Transforms a list of HTML expressions into a string representation
@@ -1890,7 +1908,7 @@ storeEnvHandlers ostate multipleuse cgikey env handlerkeys = do
                  cstate
                  handlerkeys
   seq nstate done -- to ensure that handler keys are instantiated
-  return nstate 
+  return nstate
  where
    generateEventServerMessages _ _ state [] = state
    generateEventServerMessages groupkey expiredate state ((handler,hkey):evhs)
@@ -1936,7 +1954,7 @@ cleanOldEventHandlers state@(stime,maxkey,cleandate,ehs@(_:_)) = do
 -- Returns Nothing if the handler is no longer available, i.e., expired.
 retrieveEnvHandlers :: ServerState -> String -> String
                     -> IO (ServerState,Maybe ([(String,String)],HtmlHandler))
-retrieveEnvHandlers state cgikey skey = 
+retrieveEnvHandlers state cgikey skey =
   let (numstring,datestring) = break (==' ') skey
       dateps = readsQTerm datestring
       num    = tryReadNat (-1) numstring
@@ -1973,7 +1991,7 @@ retrieveEnvHandlers state cgikey skey =
       if groupkey==gk
       then deleteEvInGroup groupkey es
       else let des = deleteEv groupkey es in seq des (ev : des)
- 
+
     deleteEvInGroup _ [] = []
     deleteEvInGroup _        (ev@(_,_,_,_,Nothing):es) = ev : es
     deleteEvInGroup groupkey (ev@(_,_,_,_,Just gk):es) =

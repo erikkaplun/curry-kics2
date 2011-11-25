@@ -25,8 +25,8 @@ instance Show IDSupply where
   show (IDSupply i) = show i
 
 -- |Retrieve an 'Integer' representation of the unique identifier
-mkInteger :: IDSupply -> Integer
-mkInteger = unique
+mkInteger :: Unique -> Integer
+mkInteger = id
 
 leftSupply :: IDSupply -> IDSupply
 leftSupply  (IDSupply i) = IDSupply (2 * i)
@@ -41,20 +41,20 @@ initSupply = return (IDSupply 1)
 -- |Type class for a Choice 'Store'
 class (Monad m) => Store m where
   -- |Get the stored 'Choice', defaulting to 'defaultChoice'
-  getChoiceRaw    :: IDSupply -> m Choice
+  getChoiceRaw    :: Unique -> m Choice
   -- |Set the 'Choice'
-  setChoiceRaw    :: IDSupply -> Choice -> m ()
+  setChoiceRaw    :: Unique -> Choice -> m ()
   -- |Unset the 'Choice'
-  unsetChoiceRaw  :: IDSupply -> m ()
+  unsetChoiceRaw  :: Unique -> m ()
 
 store :: IORef (Map.Map Unique Choice)
 store = unsafePerformIO (newIORef Map.empty)
 {-# NOINLINE store #-}
 
 instance Store IO where
-  getChoiceRaw s        = Map.findWithDefault defaultChoice (unique s)
+  getChoiceRaw u        = Map.findWithDefault defaultChoice u
                           `liftM` readIORef store
-  setChoiceRaw    s c
-    | isDefaultChoice c = modifyIORef store $ Map.delete (unique s)
-    | otherwise         = modifyIORef store $ Map.insert (unique s) c
-  unsetChoiceRaw  s     = modifyIORef store $ Map.delete (unique s)
+  setChoiceRaw u c
+    | isDefaultChoice c = modifyIORef store $ Map.delete u
+    | otherwise         = modifyIORef store $ Map.insert u c
+  unsetChoiceRaw u      = modifyIORef store $ Map.delete u

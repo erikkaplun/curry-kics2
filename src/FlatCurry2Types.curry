@@ -5,7 +5,7 @@
 --- program with instance declarations that can be easily pretty printed
 ---
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version July 2011
+--- @version October 2011
 -- ---------------------------------------------------------------------------
 module FlatCurry2Types (fcyTypes2abs) where
 
@@ -74,8 +74,9 @@ fcy2absCDecl hoResult (FC.Cons qf ar vis texps)
 fcy2absTExp :: FC.TypeExpr -> TypeExpr
 fcy2absTExp (FC.TVar i)         = TVar (fcy2absTVar i)
 fcy2absTExp (FC.TCons qf texps) = TCons qf (map fcy2absTExp texps)
-fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (fcy2absTExp t2)
-
+fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (FuncType cStoreT (fcy2absTExp t2))
+  where
+ cStoreT = TCons (basics "ConstStore") []
 
 fcy2absHOTExp :: FC.TypeExpr -> TypeExpr
 fcy2absHOTExp (FC.TVar i)         = TVar (fcy2absTVar i)
@@ -101,14 +102,14 @@ showInstance hoResult (FC.Type qf _ tnums cdecls)
       )
     , ( pre "showsPrec"
       , simpleRule [PVar d, mkGuardPattern qf]
-          (applyF (basics "showsGuard")   [Var d, Var cs, Var e])
+          (applyF (basics "showsGuard")   [Var d, Var c, Var e])
       )
     , ( pre "showsPrec"
       , simpleRule [PVar us, mkFailPattern qf]
           (applyF (pre "showChar")        [charc '!'])
       )
     ] ++ concatMap (showConsRule hoResult) cdecls
-  where [d,i,x,y,xs,cs,e,us] = newVars ["d","i","x","y","xs","cs","e","_"]
+  where [d,i,x,y,xs,c,e,us] = newVars ["d","i","x","y","xs","c","e","_"]
         targs = map fcy2absTVar tnums
         ctype = TCons qf (map TVar targs)
 
@@ -299,10 +300,10 @@ tryRules qf = map nameRule
   [ simpleRule [mkChoicePattern  qf] $ applyF (basics "tryChoice")  [i, x, y]
   , simpleRule [mkChoicesPattern qf] $ applyF (basics "tryChoices") [i, xs]
   , simpleRule [mkFailPattern    qf] $ applyF (basics "Fail")       []
-  , simpleRule [mkGuardPattern   qf] $ applyF (basics "Guard")      [cs, e]
+  , simpleRule [mkGuardPattern   qf] $ applyF (basics "Guard")      [c, e]
   , simpleRule [PVar (2,"x")       ] $ applyF (basics "Val")        [x]
   ]
-  where [i,x,y,xs,cs,e] = map Var $ newVars ["i","x","y","xs","cs","e"]
+  where [i,x,y,xs,c,e] = map Var $ newVars ["i","x","y","xs","c","e"]
         nameRule rule  = (basics "try", rule)
 
 {-
@@ -311,7 +312,7 @@ match _ f _ _ _ _ (Choices i@(NarrowedID _ _) xs) = f i xs
 match _ _ f _ _ _ (Choices i@(FreeID _ _) xs) = f i xs
 match _ _ _ _ _ _ (Choices (ChoiceID _ _) _) = error " ..."
 match _ _ _ f _ _ Fail = f
-match _ _ _ _ f _ (Guard cs e) = f cs e
+match _ _ _ _ f _ (Guard c e) = f c e
 match _ _ _ _ _ f x = f x
 -}
 matchRules :: QName -> [(QName, Rule)]
@@ -332,12 +333,12 @@ matchRules qf = map nameRule
   , simpleRule (matchAt 3 ++ [mkFailPattern qf])
     $ (Var f)
   , simpleRule (matchAt 4 ++ [mkGuardPattern qf])
-    $ applyV f [cs, e]
+    $ applyV f [c, e]
   , simpleRule (matchAt 5 ++ [PVar (7,"x")])
     $ applyV f [x]
   ]
   where underscores = map PVar $ newVars ["_","_","_","_","_"]
-        [i,x,y,xs,cs,e] = map Var $ newVars ["i","x","y","xs","cs","e"]
+        [i,x,y,xs,e,c] = map Var $ newVars ["i","x","y","xs","e","c"]
         f = (1, "f")
         nameRule rule  = (basics "match", rule)
         matchAt n = take n underscores ++ PVar f : drop n underscores
@@ -377,15 +378,15 @@ normalformInstance :: HOResult -> FC.TypeDecl -> TypeDecl
 normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
   mkInstance (basics "NormalForm") [] ctype targs $ concat
     -- $!!
-  [ concatMap (normalformConsRule hoResult (basics "$!!")) cdecls
+  [ concatMap (normalformConsRule hoResult (basics "$!!") True) cdecls
   , normalFormExtConsRules qf (basics "$!!")
       (basics "nfChoice") (basics "nfChoices")
     -- $##
-  , concatMap (normalformConsRule hoResult (basics "$##")) cdecls
+  , concatMap (normalformConsRule hoResult (basics "$##") True) cdecls
   , normalFormExtConsRules qf (basics "$##")
       (basics "gnfChoice") (basics "gnfChoices")
     -- $!<
-  , concatMap (normalformConsRule hoResult (basics "$!<")) cdecls
+  , concatMap (normalformConsRule hoResult (basics "$!<") False) cdecls
   , [ ( basics "$!<", simpleRule [PVar cont, mkChoicePattern qf]
         (applyF (basics "nfChoiceIO")  [Var cont, Var i, Var x, Var y]))
     , ( basics "$!<", simpleRule [PVar cont, mkChoicesPattern qf]
@@ -402,8 +403,8 @@ normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
         [cont,i,x,y,xs] = newVars ["cont","i","x","y","xs"]
 
 -- Generate NormalForm instance rule for a data constructor
-normalformConsRule :: HOResult -> QName -> FC.ConsDecl -> [(QName, Rule)]
-normalformConsRule hoResult funcName (FC.Cons qn _ _ texps)
+normalformConsRule :: HOResult -> QName -> Bool -> FC.ConsDecl -> [(QName, Rule)]
+normalformConsRule hoResult funcName withCs (FC.Cons qn _ _ texps)
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
 
@@ -411,31 +412,33 @@ normalformConsRule hoResult funcName (FC.Cons qn _ _ texps)
     isHoCons = lookupFM hoResult qn == Just HO
     carity = length texps
     rule name = (funcName, simpleRule
-      [PVar (1,"cont"), PComb name (map (\i -> PVar (i,'x':show i)) [1..carity])]
+      ([PVar (1,"cont"), PComb name (map (\i -> PVar (i,'x':show i)) [1..carity])] ++ csPVar)
           (nfBody name))
 
     nfBody name =
       foldr (\i exp -> applyF funcName
-                        [Lambda [PVar (i,'y':show i)] exp,Var (i,'x':show i)])
+                        ([Lambda ([PVar (i,'y':show i)] ++ csPVar) exp,Var (i,'x':show i)] ++ csVar))
             (applyV (1,"cont")
-                    [applyF name (map (\i -> Var (i,'y':show i)) [1..carity])])
+                    ([applyF name (map (\i -> Var (i,'y':show i)) [1..carity])] ++ csVar))
             [1..carity]
+    csPVar = if withCs then [PVar (3,"cs")] else []
+    csVar  = if withCs then [Var (3,"cs")] else [] 
 
 normalFormExtConsRules :: QName -> QName -> QName -> QName -> [(QName, Rule)]
 normalFormExtConsRules qf funcName choiceFunc choicesFunc =
   [ (funcName, simpleRule [PVar (1,"cont"),
-      PComb (mkChoiceName qf) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")]]
+      PComb (mkChoiceName qf) [PVar (2,"i"), PVar (3,"x"), PVar (4,"y")], PVar (5,"cs")]
         (applyF choiceFunc
-                [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y")]))
+                [Var (1,"cont"),Var (2,"i"), Var (3,"x"),Var (4,"y"), Var (5,"cs")]))
   , (funcName, simpleRule [PVar (1,"cont"),
-      PComb (mkChoicesName qf) [PVar (2,"i"), PVar (3,"xs")]]
+      PComb (mkChoicesName qf) [PVar (2,"i"), PVar (3,"xs")], PVar (4,"cs")]
         (applyF choicesFunc
-                [Var (1,"cont"),Var (2,"i"), Var (3,"xs")]))
+                [Var (1,"cont"),Var (2,"i"), Var (3,"xs"), Var (4, "cs")]))
   , (funcName, simpleRule [PVar (1,"cont"),
-      PComb (mkGuardName qf) [PVar (2,"c"),PVar (3,"x")]]
+      PComb (mkGuardName qf) [PVar (2,"c"),PVar (3,"x")], PVar (4,"cs")]
         (applyF (basics "guardCons")
-                [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x")]]))
-  , (funcName, simpleRule [PVar (1,"_"), mkFailPattern qf]
+                [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x"),applyF (basics "combConstr") [Var (2,"c"), Var (4,"cs")]]]))
+  , (funcName, simpleRule [PVar (1,"_"), mkFailPattern qf, PVar (2,"_")]
                 (Symbol (basics "failCons")))
   ]
 
@@ -515,15 +518,16 @@ unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
 
   where
     isHoCons = lookupFM hoResult qn == Just HO
-    rule name = ( consFunc, simpleRule [consPattern name "x" carity, consPattern name "y" carity]
+    rule name = ( consFunc, simpleRule [consPattern name "x" carity, consPattern name "y" carity, PVar cs]
               (unifBody genFunc) )
     unifBody funcName
       | carity == 0 = constF (basics "C_Success")
-      | otherwise   = foldr1 (\x xs -> applyF (basics "&") [x, xs])
+      | otherwise   = foldr1 (\x xs -> applyF (basics "&") [x, xs, Var cs])
                         (map (\i -> applyF funcName
-                          [Var (i,'x':show i), Var (i,'y':show i)])
+                          [Var (i,'x':show i), Var (i,'y':show i), Var cs])
                         [1 .. carity])
     carity = length texps
+    cs = (carity +1, "cs")
 
 -- Generate bindRules for a data constructor:
 --  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
@@ -618,10 +622,10 @@ bindFailRule qf funcName = (funcName,
 -- lazyBind i (Guard_TYPENAME cs e) = cs ++ [i :=: LazyBind (lazyBind i e)]
 bindGuardRule :: QName -> Bool -> (QName, Rule)
 bindGuardRule qf lazy = (funcName,
-  simpleRule [PVar i, PComb (mkGuardName qf) [PVar cs, PVar e]]
-    (applyF (pre "++") [Var cs, bindings]))
+  simpleRule [PVar i, PComb (mkGuardName qf) [PVar c, PVar e]]
+    (applyF (pre "++") [applyF (basics "getConstrList") [Var c], bindings]))
   where
-    [i,cs,e] = newVars ["i","cs","e"]
+    [i,c,e] = newVars ["i","c","e"]
     funcName = basics $ if lazy then "lazyBind" else "bind"
     bindings = if lazy
       then list2ac [applyF (basics ":=:")
@@ -657,39 +661,37 @@ curryInstance hoResult (FC.Type qf _ tnums cdecls) =
 
 extConsRules :: QName -> QName -> [(QName,Rule)]
 extConsRules funcName qf = map nameRule
-  [ simpleRule [mkChoicePattern qf, PVar z]
+  [ simpleRule [mkChoicePattern qf, PVar z, PVar cs]
     (applyF narrow [ Var i
-                    , applyF funcName [Var x, Var z]
-                    , applyF funcName [Var y, Var z]
+                    , applyF funcName [Var x, Var z, Var cs]
+                    , applyF funcName [Var y, Var z, Var cs]
                     ])
-  , simpleRule [mkChoicesPattern qf, PVar y]
-    (applyF narrows [ Var i
-                    , applyF (pre "map")
-                      [ Lambda [PVar x] (applyF funcName [Var x ,Var y])
-                      , Var xs
-                      ]])
-  , simpleRule [mkGuardPattern qf, PVar y]
-    (applyF (basics "guardCons") [ Var cs, applyF funcName [Var e, Var y]])
-  , simpleRule [mkFailPattern qf, PVar p]
+  , simpleRule [mkChoicesPattern qf, PVar y, PVar cs]
+    (applyF narrows [ Var cs, Var i
+                    , Lambda [PVar x] (applyF funcName [Var x ,Var y, Var cs])
+                    , Var xs
+                    ])
+  , simpleRule [mkGuardPattern qf, PVar y, PVar cs]
+    (applyF (basics "guardCons") [ Var c, applyF funcName [Var e, Var y, applyF (basics "combConstr") [Var c, Var cs]]])
+  , simpleRule [mkFailPattern qf, PVar p, PVar p]
     (Symbol (basics "failCons"))
-  , simpleRule [PVar z, mkChoicePattern qf]
+  , simpleRule [PVar z, mkChoicePattern qf, PVar cs]
     (applyF narrow [ Var i
-                    , applyF funcName [Var z, Var x]
-                    , applyF funcName [Var z, Var y]
+                    , applyF funcName [Var z, Var x, Var cs]
+                    , applyF funcName [Var z, Var y, Var cs]
                     ])
-  , simpleRule [PVar y, mkChoicesPattern qf]
-    (applyF narrows [ Var i
-                    , applyF (pre "map")
-                      [ Lambda [PVar x] (applyF funcName [Var y, Var x])
-                      , Var xs
-                      ]])
-  , simpleRule [PVar y, mkGuardPattern qf]
-    (applyF (basics "guardCons") [Var cs, applyF funcName [Var y, Var e]])
-  , simpleRule [PVar p, mkFailPattern qf]
+  , simpleRule [PVar y, mkChoicesPattern qf, PVar cs]
+    (applyF narrows [ Var cs, Var i
+                    , Lambda [PVar x] (applyF funcName [Var y, Var x, Var cs])
+                    , Var xs
+                    ])
+  , simpleRule [PVar y, mkGuardPattern qf, PVar cs]
+    (applyF (basics "guardCons") [Var c, applyF funcName [Var y, Var e, applyF (basics "combConstr")[Var c, Var cs]]])
+  , simpleRule [PVar p, mkFailPattern qf, PVar p]
     (Symbol (basics "failCons"))
   ]
     where nameRule rule = (funcName, rule)
-          [i,x,y,z,xs,cs,e,p] = newVars ["i","x","y","z","xs","cs","e","_"]
+          [i,x,y,z,xs,c,e,cs,p] = newVars ["i","x","y","z","xs","c","e","cs","_"]
 
 -- Generate equality instance rule for a data constructor
 eqConsRules :: HOResult -> [FC.ConsDecl] -> [(QName, Rule)]
@@ -704,14 +706,16 @@ eqConsRule hoResult (FC.Cons qn carity _ _)
     rule name = ( curryPre "=?="
                 , simpleRule [ consPattern name "x" carity
                              , consPattern name "y" carity
+                             , PVar cs
                              ] eqBody
                 )
     eqBody    = if carity == 0
       then constF (curryPre "C_True")
       else foldr1
-          (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x, xs])
-          (map (\i -> applyF (curryPre "=?=") [mkVar "x" i, mkVar "y" i])
+          (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x, xs, Var cs])
+          (map (\i -> applyF (curryPre "=?=") [mkVar "x" i, mkVar "y" i, Var cs])
                 [1..carity])
+    cs = (2 * carity + 1, "cs")
 
 -- Generate <?= rule for data constructors
 ordConsRules :: HOResult -> [FC.ConsDecl] -> [(QName, Rule)]
@@ -723,17 +727,19 @@ ordConsRules hoResult (FC.Cons qn carity _ _ : cds)
     isHoCons    = lookupFM hoResult qn == Just HO
     rule name   = firstRule name : concatMap (ordCons2Rule hoResult (name, carity)) cds
     firstRule n = ( curryPre "<?=", simpleRule
-                    [consPattern n "x" carity, consPattern n "y" carity]
+                    [consPattern n "x" carity, consPattern n "y" carity, PVar cs]
                     (ordBody [1..carity]))
 
     ordBody l = case l of
       []     -> constF (curryPre "C_True")
-      [i]    -> applyF (curryPre "<?=") [mkVar "x" i, mkVar "y" i]
+      [i]    -> applyF (curryPre "<?=") [mkVar "x" i, mkVar "y" i, Var cs]
       (i:is) -> applyF (curryPre "d_OP_bar_bar")
                   [ applyF (curryPre "d_OP_lt") xiyi
                   , applyF (curryPre "d_OP_ampersand_ampersand")
-                      [applyF (curryPre "=?=") xiyi, ordBody is]
-                  ] where xiyi = [mkVar "x" i, mkVar "y" i]
+                      [applyF (curryPre "=?=") xiyi, ordBody is, Var cs]
+                  , Var cs
+                  ] where xiyi = [mkVar "x" i, mkVar "y" i, Var cs]
+    cs = (1,"cs")
 
 ordCons2Rule :: HOResult -> (QName, Int) -> FC.ConsDecl -> [(QName, Rule)]
 ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
@@ -742,7 +748,7 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
   where
     isHoCons2 = lookupFM hoResult qn2 == Just HO
     rule name = (curryPre "<?=", simpleRule
-                    [consPattern qn1 "_" ar1, consPattern name "_" carity2]
+                    [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_")]
                     (constF $ curryPre "C_True"))
 
 -- ---------------------------------------------------------------------------
@@ -763,8 +769,8 @@ mkChoiceChoicesPattern qn = PComb (mkChoicesName qn)
  [PAs i (PComb (basics "ChoiceID") [PVar u]), PVar xs]
  where [i,u,xs] = newVars ["i","_","_"]
 mkFailPattern    qn = PComb (mkFailName    qn) []
-mkGuardPattern   qn = PComb (mkGuardName   qn) [PVar cs, PVar e]
-  where [cs,e] = newVars ["cs","e"]
+mkGuardPattern   qn = PComb (mkGuardName   qn) [PVar c, PVar e]
+  where [c,e] = newVars ["c","e"]
 
 mkPVar n i = PVar $ mkVarName n i
 
@@ -784,7 +790,7 @@ consPattern qn varName carity
   = PComb qn $ map (PVar . mkVarName varName) [1 .. carity]
 
 catchAllCase qn retVal
-  = [(qn, simpleRule [PVar (1,"_"), PVar (2,"_")] (constF retVal))]
+  = [(qn, simpleRule [PVar (1,"_"), PVar (2,"_"), PVar (3, "_")] (constF retVal))]
 
 simpleRule patterns body = Rule patterns [noGuard body] []
 

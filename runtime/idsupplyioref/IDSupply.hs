@@ -11,27 +11,34 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import GHC.IO  (unsafeDupableInterleaveIO)
 import UniqSupply
   (UniqSupply, mkSplitUniqSupply, splitUniqSupply, uniqFromSupply)
-import Unique (Unique, getKey)
+import qualified Unique as GHC (Unique, getKey)
 
 -- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Choice, defaultChoice)
 
+data Unique = Unique { unqRef:: (IORef Choice), unqKey :: GHC.Unique }
+
+instance Eq Unique where
+  Unique ref1 _ == Unique ref2 _ = ref1 == ref2
+
+instance Show Unique where
+  show = tail . show . unqKey
+
 data IDSupply = IDSupply
-  { ref         :: IORef Choice -- ^ Choice for this IDSupply
-  , unique      :: Unique       -- ^ unique identifier
-  , leftSupply  :: IDSupply     -- ^ path to the left IDSupply
-  , rightSupply :: IDSupply     -- ^ path to the right IDSupply
+  { unique      :: Unique   -- ^ Choice and unique identifier for this IDSupply
+  , leftSupply  :: IDSupply -- ^ path to the left IDSupply
+  , rightSupply :: IDSupply -- ^ path to the right IDSupply
   }
 
 instance Eq IDSupply where
   s1 == s2 = unique s1 == unique s2
 
 instance Show IDSupply where
-  show = tail . show . unique -- tail to avoid showing of leading 'a'
+  show = show . unique -- tail to avoid showing of leading 'a'
 
 -- |Retrieve an 'Integer' representation of the unique identifier
-mkInteger :: IDSupply -> Integer
-mkInteger = toInteger . getKey . unique
+mkInteger :: Unique -> Integer
+mkInteger = toInteger . GHC.getKey . unqKey
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply
@@ -54,19 +61,19 @@ getPureSupply uniqS = do
   s1 <- unsafeDupableInterleaveIO $ getPureSupply leftS
   s2 <- unsafeDupableInterleaveIO $ getPureSupply rightS
   r  <- unsafeDupableInterleaveIO $ newIORef defaultChoice
-  return (IDSupply r (uniqFromSupply uniqS) s1 s2)
+  return (IDSupply (Unique r (uniqFromSupply uniqS)) s1 s2)
 {-# NOINLINE getPureSupply #-}
 
 -- |Type class for a Choice 'Store'
 class (Monad m) => Store m where
   -- |Get the stored 'Choice', defaulting to 'defaultChoice'
-  getChoiceRaw    :: IDSupply -> m Choice
+  getChoiceRaw    :: Unique -> m Choice
   -- |Set the 'Choice'
-  setChoiceRaw    :: IDSupply -> Choice -> m ()
+  setChoiceRaw    :: Unique -> Choice -> m ()
   -- |Unset the 'Choice'
-  unsetChoiceRaw  :: IDSupply -> m ()
+  unsetChoiceRaw  :: Unique -> m ()
 
 instance Store IO where
-  getChoiceRaw    s   = readIORef  (ref s)
-  setChoiceRaw    s c = writeIORef (ref s) c
-  unsetChoiceRaw  s   = writeIORef (ref s) defaultChoice
+  getChoiceRaw    u   = readIORef  (unqRef u)
+  setChoiceRaw    u c = writeIORef (unqRef u) c
+  unsetChoiceRaw  u   = writeIORef (unqRef u) defaultChoice

@@ -113,6 +113,9 @@ consPrefix _     FO = ""
 consPrefix True  HO = ""
 consPrefix False HO = "HO_"
 
+mkGlobalName :: (String,String) -> (String,String)
+mkGlobalName (rnMod,rnFun) = (rnMod, "global_" ++ rnFun)
+
 -- rename modules
 mkModName :: String -> String
 mkModName = ("Curry_" ++)
