@@ -222,7 +222,7 @@ data Func t0 t1
      | Fail_Func
      | Guard_Func (Constraints) (Func t0 t1)
 
-instance Show (Func a b) where show = error "show for Func"
+instance Show (Func a b) where show = error "ERROR: no show for Func"
 
 instance Read (Func a b) where readsPrec = error "readsPrec for Func"
 
@@ -290,7 +290,7 @@ data C_IO t0
      | Fail_C_IO
      | Guard_C_IO Constraints (C_IO t0)
 
-instance Show (C_IO a) where show = error "show for C_IO"
+instance Show (C_IO a) where show = error "ERROR: no show for C_IO"
 
 instance Read (C_IO a) where readsPrec = error "readsPrec for C_IO"
 
@@ -362,7 +362,7 @@ data PrimData t0
      | Fail_PrimData
      | Guard_PrimData (Constraints) (PrimData t0)
 
-instance Show (PrimData a) where show = error "show for PrimData"
+instance Show (PrimData a) where show = error "ERROR: no show for PrimData"
 
 instance Read (PrimData a) where readsPrec = error "readsPrec for PrimData"
 

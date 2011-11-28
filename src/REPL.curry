@@ -375,9 +375,12 @@ insertFreeVarsInMainGoal :: ReplState -> String -> IO MainGoalCompile
 insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
   maybe (return GoalError)
    (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
-    let freevars = freeVarsInFuncRule mfunc
+    let (CFunc _ _ _ maintype _) = mfunc
+        freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings) || (rst->ndMode) == PrtChoices
-       || length freevars > 5 -- due to limited definitions in PrintBindings
+       || isIOType maintype
+       || length freevars > 10 -- due to limited size of tuples used
+                               -- in PrintBindings
      then return (GoalWithoutBindings prog)
      else let (exp,whereclause) = break (=="where") (words goal)
            in if null whereclause then return (GoalWithoutBindings prog) else do
@@ -478,7 +481,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMain rst goalstate isdet isio =
   let printOperation = case goalstate of
-                         GoalWithBindings _ n _ -> "printWithBindings"++show n
+                         GoalWithBindings _ n _ -> printWithBindings n
                          _                      -> "print"
       mainPrefix = if isdet then "d_C_" else "nd_C_"
       mainOperation =
@@ -502,9 +505,22 @@ createHaskellMain rst goalstate isdet isio =
        "module Main where\n"++
        "import MonadList\n"++
        "import Basics\n"++
-       (if printOperation=="print" then "" else "import PrintBindings\n") ++
+       (if printOperation=="print"
+        then ""
+        else "import PrintBindings\nimport Curry_Prelude\n") ++
        "import Curry_"++stripSuffix mainGoalFile++"\n"++
        "main = "++mainOperation++" "++mainPrefix++"idcMainGoal\n"
+ where
+  -- Create the following Haskell expression for printing goals with bindings:
+  -- (\ (OP_Tuple<n+2> result names v1 ... v<n>) ->
+  --  printWithBindings (zip (fromCurry names) [show v1,..., show v<n>]) result)
+  printWithBindings n =
+    "(\\ (OP_Tuple"++show (n+2)++" result names"++
+    concatMap (\i->' ':'v':show i) [1..n]++
+    " ) ->"++
+    " printWithBindings (zip (fromCurry names) ["++
+    concat (intersperse "," (map (\i->"show v"++show i) [1..n])) ++
+    "]) result)"
 
 
 -- Execute main program and show run time:
@@ -999,6 +1015,11 @@ isPolyType (CTCons _ typelist) = any isPolyType typelist
 isFunctionalType :: CTypeExpr -> Bool
 isFunctionalType texp = case texp of CFuncType _ _ -> True
                                      _             -> False
+
+--- Returns true if the type expression is (IO t).
+isIOType :: CTypeExpr -> Bool
+isIOType texp = case texp of CTCons tc _ -> tc==(prelude,"IO")
+                             _           -> False
 
 --- Returns true if the type expression is (IO t) with t/=() and
 --- t is not functional

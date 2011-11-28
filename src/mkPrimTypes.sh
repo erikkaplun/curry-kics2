@@ -50,7 +50,7 @@ function replace ()
   | sed "s/\((<?=) (C_Char x1) (C_Char y1) = \).*$/\1toCurry (x1 \`leChar#\` y1)/" \
   | sed "s/C_IOPrim/IO/" \
   | sed "/showsPrec d.*C_IO/d" \
-  | sed 's/instance .* Show (C_IO t0) where.*$/instance Show (C_IO a) where show = error "show for C_IO"/' \
+  | sed 's/instance .* Show (C_IO t0) where.*$/instance Show (C_IO a) where show = error "ERROR: no show for C_IO"/' \
   | sed "/readsPrec d.*C_IO/d" \
   | sed 's/instance .* Read (C_IO t0) where.*$/instance Read (C_IO a) where readsPrec = error "readsPrec for C_IO"/' \
   | sed "/generate.*C_IO/d" \
@@ -66,7 +66,7 @@ function replace ()
   | sed "/(<?=).*C_IO/d" \
   | sed "s/C_IDSupply/IDSupply/" \
   | sed "/showsPrec d.*C_Func/d" \
-  | sed 's/instance .* Show (C_Func t0 t1) where.*$/instance Show (C_Func a b) where show = error "show for Func"/' \
+  | sed 's/instance .* Show (C_Func t0 t1) where.*$/instance Show (C_Func a b) where show = error "ERROR: no show for Func"/' \
   | sed "/readsPrec d.*C_Func/d" \
   | sed 's/instance .* Read (C_Func t0 t1) where.*$/instance Read (C_Func a b) where readsPrec = error "readsPrec for Func"/' \
   | sed "/generate .*C_Func/d" \
@@ -81,7 +81,7 @@ function replace ()
   | sed "/(=?=).*C_Func/d" \
   | sed "/(<?=).*C_Func/d" \
   | sed "s/C_Func/Func/g" \
-  | sed 's/instance .* Show (C_PrimData t0) where.*$/instance Show (C_PrimData a) where show = error "show for PrimData"/' \
+  | sed 's/instance .* Show (C_PrimData t0) where.*$/instance Show (C_PrimData a) where show = error "ERROR: no show for PrimData"/' \
   | sed "/showsPrec d.*C_PrimData/d" \
   | sed "/readsPrec d.*C_PrimData/d" \
   | sed 's/instance .* Read (C_PrimData t0) where.*$/instance Read (C_PrimData a) where readsPrec = error "readsPrec for PrimData"/' \
