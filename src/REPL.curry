@@ -458,8 +458,9 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                      ,"-XFlexibleInstances"
                      ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
                      , case rst->idSupply of
-                        "ghc" -> "-package ghc"
-                        _     -> ""
+                        "ghc"   -> "-package ghc"
+                        "ioref" -> "-package ghc"
+                        _       -> ""
                      ,case rst->ndMode of
                         Par _ -> "-threaded"
                         _     -> ""
