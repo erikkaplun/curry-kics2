@@ -81,21 +81,20 @@ inside the current module whereas the text
 of the module \code{Prelude}.
 If one wants to write single quotes without this specific
 meaning, one can escape them with a backslash:
-\begin{verbatim}
+\begin{curry}
 --- This is a comment without a \'reference\'.
-\end{verbatim}
+\end{curry}
 To simplify the writing of documentation comments,
 such escaping is only necessary for single words,
 i.e., if the text inside quotes has not the syntax of
 an identifier, the escaping can be omitted, as in
-\begin{verbatim}
+\begin{curry}
 --- This isn't a reference.
-\end{verbatim}
+\end{curry}
 %
 The following example text shows a Curry program with some
 documentation comments:
-{\renewcommand{\baselinestretch}{1.0}
-\begin{verbatim}
+\begin{curry}
 --- This is an
 --- example module.
 --- @author Michael Hanus
@@ -121,13 +120,12 @@ last xs | conc ys [x] =:= xs  = x   where x,ys free
 --- @cons Leaf - a leaf of the tree
 --- @cons Node - an inner node of the tree
 data Tree a = Leaf a | Node [Tree a]
-\end{verbatim}
-}
+\end{curry}
 \noindent
 To generate the documentation, execute the command\pindex{currydoc}
-\startprog
+\begin{curry}
 currydoc Example
-\stopprog
+\end{curry}
 (\code{currydoc} is a command usually stored in \code{$kics2home$/bin}
 where $kics2home$ is the installation directory of KiCS2;
 see Section~\ref{sec-general}).
@@ -138,9 +136,9 @@ and all its imported modules in this directory together with
 a main index file \code{index.html}.
 If one prefers another directory for the documentation files,
 one can also execute the command
-\startprog
+\begin{curry}
 currydoc docdir Example
-\stopprog
+\end{curry}
 where \code{docdir} is the directory for the documentation files.
 
 In order to generate the common documentation for large collections

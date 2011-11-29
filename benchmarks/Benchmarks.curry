@@ -16,7 +16,7 @@ idcHome = "../.."
 -- home directory of the monadic curry compiler
 monHome = "$HOME/.cabal/bin"
 monlib  = "$HOME/.cabal/share/curry2monad-0.1"
-monInstalled = True -- is the monadic curry compiler installed?
+monInstalled = False -- is the monadic curry compiler installed?
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
@@ -135,6 +135,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
   let imports = [idcHome++"/runtime",idcHome++"/runtime/idsupply"++idsupply,
                  ".curry/kics2",idcHome++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
+                            if idsupply=="ioref" then "-package ghc" else "",
                             "-XMultiParamTypeClasses","-XFlexibleInstances",
                             "-fforce-recomp",
                             "-i"++concat (intersperse ":" imports),"Main.hs"]
@@ -410,8 +411,8 @@ outputFile :: String -> String -> CalendarTime -> String
 outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
-main = run 3 allBenchmarks
---main = run 1 allBenchmarks
+--main = run 3 allBenchmarks
+main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
