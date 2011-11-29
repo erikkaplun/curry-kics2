@@ -2,7 +2,7 @@
 --- Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus
---- @version October 2011
+--- @version November 2011
 --- --------------------------------------------------------------------------
 
 import RCFile
@@ -64,7 +64,9 @@ type ReplState =
   , showTime     :: Bool       -- show execution of main goal?
   , useGhci      :: Bool       -- use ghci to evaluate main goal
   , cmpOpts      :: String     -- additional options for calling kics2 compiler
+  , ghcOpts      :: String     -- additional options for ghc compilation
   , rtsOpts      :: String     -- run-time options for ghc
+  , rtsArgs      :: String     -- run-time arguments passed to main application
   , quit         :: Bool       -- terminate the REPL?
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
   , ghcicomm     :: Maybe GhciCommunication -- possible ghci comm. info
@@ -166,7 +168,9 @@ initReplState =
   , showTime     = False
   , useGhci      = False
   , cmpOpts      = ""
+  , ghcOpts      = ""
   , rtsOpts      = ""
+  , rtsArgs      = ""
   , quit         = False
   , sourceguis   = []
   , ghcicomm     = Nothing
@@ -457,14 +461,15 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                      ,"-XMultiParamTypeClasses"
                      ,"-XFlexibleInstances"
                      ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
-                     , case rst->idSupply of
+                     ,case rst->idSupply of
                         "ghc"   -> "-package ghc"
                         "ioref" -> "-package ghc"
                         _       -> ""
                      ,case rst->ndMode of
                         Par _ -> "-threaded"
                         _     -> ""
-                     , "-cpp" -- use the c pre processor
+                     ,"-cpp" -- use the C pre processor
+                     ,rst -> ghcOpts
                      ,"-i"++concat (intersperse ":" ghcImports)
                      ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
@@ -535,7 +540,8 @@ execMain rst cmpstatus mainexp = do
       maincmd = ("." </> rst -> outputSubdir </> "Main") ++
                 (if null (rst->rtsOpts) && null paropts
                  then " "
-                 else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS")
+                 else " +RTS "++rst->rtsOpts++" "++paropts++" -RTS ") ++
+                rst->rtsArgs
       tcmd    = timecmd ++ maincmd
       icmd    = if rst->interactive && cmpstatus==MainNonDet
                 then execInteractive rst tcmd
@@ -747,7 +753,7 @@ processSetOption rst option
           else processThisOption rst (head allopts) (strip args)
 
 allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
-              "copts","rts",
+              "cmp","ghc","rts","args",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
                        ["interactive","first","optimize","bindings",
@@ -798,8 +804,10 @@ processThisOption rst option args
   | option=="+ghci"        = return (Just { useGhci := True  | rst })
   | option=="-ghci"        = do rst' <- stopGhciComm rst
                                 return (Just { useGhci := False | rst' })
-  | option=="copts"        = return (Just { cmpOpts := args | rst })
+  | option=="cmp"          = return (Just { cmpOpts := args | rst })
+  | option=="ghc"          = return (Just { ghcOpts := args | rst })
   | option=="rts"          = return (Just { rtsOpts := args | rst })
+  | option=="args"         = return (Just { rtsArgs := args | rst })
   | otherwise = writeErrorMsg ("unknown option: '"++option++"'") >>
                 return Nothing
 
@@ -822,14 +830,17 @@ printOptions rst = putStrLn $
   "+/-bindings    - show bindings of free variables in initial goal\n"++
   "+/-time        - show execution time\n"++
   "+/-ghci        - use ghci instead of ghc to evaluate main expression\n"++
-  "copts <opts>   - additional options passed to KiCS2 compiler\n" ++
-  "rts   <opts>   - run-time options for ghc (+RTS <opts> -RTS)\n" ++
+  "cmp <opts>     - additional options passed to KiCS2 compiler\n" ++
+  "ghc <opts>     - additional options passed to GHC\n"++
+  "                 (e.g., -DDISABLE_CS, -DSTRICT_VAL_BIND)\n" ++
+  "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
+  "args <args>    - run-time arguments passed to main program\n" ++
   showCurrentOptions rst
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
-  "import paths     : " ++
+  "import paths      : " ++
      concat (intersperse ":" ("." : rst->importPaths)) ++ "\n" ++
-  "search mode      : " ++
+  "search mode       : " ++
       (case (rst->ndMode) of
          PrDFS      -> "primitive non-monadic depth-first search"
          PrtChoices -> "show choice structure"
@@ -838,10 +849,12 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
          IDS d      -> "iterative deepening (initial depth: "++show d++")"
          Par s      -> "parallel search with "++show s++" threads"
       ) ++ "\n" ++
-  "idsupply         : " ++ rst->idSupply ++ "\n" ++
-  "compiler options : " ++ rst->cmpOpts ++ "\n" ++
-  "run-time options : " ++ rst->rtsOpts ++ "\n" ++
-  "verbosity        : " ++ show (rst->verbose) ++ "\n" ++
+  "idsupply          : " ++ rst->idSupply ++ "\n" ++
+  "compiler options  : " ++ rst->cmpOpts ++ "\n" ++
+  "ghc options       : " ++ rst->ghcOpts ++ "\n" ++
+  "run-time options  : " ++ rst->rtsOpts ++ "\n" ++
+  "run-time arguments: " ++ rst->rtsArgs ++ "\n" ++
+  "verbosity         : " ++ show (rst->verbose) ++ "\n" ++
   showOnOff (rst->interactive)  ++ "interactive " ++
   showOnOff (rst->firstSol)     ++ "first " ++
   showOnOff (rst->optim)        ++ "optimize " ++

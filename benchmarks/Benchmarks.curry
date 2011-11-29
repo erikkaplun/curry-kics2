@@ -134,11 +134,15 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
   putStrLn $ "Main expression: " ++ mainexp
   let imports = [idcHome++"/runtime",idcHome++"/runtime/idsupply"++idsupply,
                  ".curry/kics2",idcHome++"/lib/.curry/kics2"]
-      compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
-                            if idsupply=="ioref" then "-package ghc" else "",
-                            "-XMultiParamTypeClasses","-XFlexibleInstances",
-                            "-fforce-recomp",
-                            "-i"++concat (intersperse ":" imports),"Main.hs"]
+      compileCmd = unwords ["ghc",if optim then "-O2" else ""
+                           ,"--make"
+                           ,if idsupply=="ioref" then "-package ghc" else ""
+                           ,"-cpp" -- use the C preprocessor
+                           ,"-DDISABLE_CS" -- disable constraint store
+                           --,"-DSTRICT_VAL_BIND" -- strict value bindings
+                           ,"-XMultiParamTypeClasses","-XFlexibleInstances"
+                           ,"-fforce-recomp"
+                           ,"-i"++concat (intersperse ":" imports),"Main.hs"]
                      -- also:  -funbox-strict-fields ?
   putStrLn $ "Executing: "++compileCmd
   system compileCmd
