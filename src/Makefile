@@ -5,7 +5,7 @@
 # The Curry installation info
 INSTALLCURRY=Installation.curry
 # ghc options
-GHCOPTIONS=-O2 --make -v1
+GHCOPTIONS=-O2 --make -v1 -cpp
 # ghc language extensions for compiling translating Curry programs:
 GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec -package ghc
 # ghc includes for compiling translating Curry programs:

@@ -25,37 +25,56 @@ emptyCs = Map.empty
 
 -- combines a constraint and a constraint sote
 combConstr :: Constraints -> ConstStore -> ConstStore
+#ifdef DISABLE_CS
+combConstr = const
+#else
 combConstr (StructConstr _)  cs = cs
 combConstr (ValConstr i v _) cs = Map.insert (getKey i) (V v) cs
-
+#endif
 -- combines two constraint stores
 combConstStores :: ConstStore -> ConstStore -> ConstStore
+#ifdef DISABLE_CS
+combConstStores = const
+#else
 combConstStores = Map.union
+#endif
 
 -- lookupCs looks for a velue bound in a constraint store
 -- if the value is found the given function is applied,
 -- if not, the default value is returned
 lookupCs :: ConstStore -> ID -> (a -> b) -> b -> b
+#ifdef DISABLE_CS
+lookupCs _ _ _ def = def
+#else
 lookupCs cs i f def = maybe def (f . unV) (Map.lookup (getKey i) cs)
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Global Constraint Store
 ------------------------------------------------------------------------------
-
+#ifndef DISABLE_CS
 globalCs :: IORef ConstStore
 globalCs = unsafePerformIO $ newIORef emptyCs
+#endif
 
 -- adds a Constraint to the global constraint store
 addToGlobalCs :: Constraints -> IO ()
+#ifdef DISABLE_CS
+addToGlobalCs = return ()
+#else
 addToGlobalCs (StructConstr _) = return ()
 addToGlobalCs cs@(ValConstr i x _ ) = do
   gcs <- readIORef globalCs
   let gcs' = combConstr cs gcs
   writeIORef globalCs $! gcs'
+#endif
 
 lookupGlobalCs :: IO ConstStore
+#ifdef DISABLE_CS
+lookupGlobalCs = return emptyCs
+#else
 lookupGlobalCs = readIORef globalCs
-
+#endif
 -- ---------------------------------------------------------------------------
 -- Try structure
 -- ---------------------------------------------------------------------------
@@ -238,7 +257,7 @@ class NormalForm a => Unifiable a where
   where
   uniChoice i x1 x2 = checkFail (choiceCons i ((x1 =:= y) cs) ((x2 =:= y) cs)) y
   uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> (x' =:= y) cs) xs)) y
-  uniFree i _       = lookupCs cs i (\xval -> (xval =:= y) cs) (bindTo cs y)
+  uniFree i _       = lookupCs cs i (\xval -> (xval =:= y) cs) (bindTo cs y) -- TODO: use global cs
     where
     bindTo cs' = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal
       where
@@ -246,7 +265,12 @@ class NormalForm a => Unifiable a where
       bindNarrowed j ys  = choicesCons j (map (bindTo cs') ys)
       bindFree j _       = lookupCs cs j (bindTo cs') (guardCons (ValConstr i y [i :=: BindTo j]) C_Success)
       bindGuard c      = guardCons c . (bindTo $! combConstr c cs')
-      bindVal v          = ((\v' _ -> guardCons (ValConstr i v' (bind i v')) C_Success) $!! v) cs' -- TODO: too strict?
+#ifdef STRICT_VAL_BIND
+      bindVal v          = ((\v' _ -> guardCons (ValConstr i v' (bind i v')) C_Success) $!! v) cs'
+#else
+      bindVal v          = guardCons (ValConstr i v (bind i v)) C_Success
+#endif
+      
   uniGuard c e      = checkFail (guardCons c ((e =:= y) $! combConstr c cs)) y
   uniVal v          = uniWith cs y
     where
@@ -254,7 +278,11 @@ class NormalForm a => Unifiable a where
       where
       univChoice j y1 y2   = choiceCons j (uniWith cs' y1) (uniWith cs' y2)
       univNarrowed j ys    = choicesCons j (map (uniWith cs') ys)
+#ifdef STRICT_VAL_BIND
+      univFree j _         = lookupCs cs j (uniWith cs') (guardCons (ValConstr j v (bind j v)) C_Success) -- TODO: use global cs
+#else
       univFree j _         = lookupCs cs j (uniWith cs') (((\v' _ -> (guardCons (ValConstr j v' (bind j v')) C_Success)) $!! v) cs)
+#endif
       univGuard c        = guardCons c . (uniWith $! combConstr c cs')
       univVal w            = (v =.= w) cs'
   checkFail e = match (\_ _ _ -> e) const2 const2 failCons const2 (const e)

@@ -460,6 +460,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                      ,case rst->ndMode of
                         Par _ -> "-threaded"
                         _     -> ""
+                     , "-cpp" -- use the c pre processor
                      ,"-i"++concat (intersperse ":" ghcImports)
                      ,"." </> rst -> outputSubdir </> "Main.hs"]
                      -- also: -fforce-recomp -funbox-strict-fields ?
