@@ -59,8 +59,8 @@ fromIO io = C_IO io
 
 type NonDetExpr a = IDSupply -> ConstStore -> a
 
-eval :: Show a => (IDSupply -> a) -> IO ()
-eval goal = initSupply >>= print . goal
+eval :: Show a => NonDetExpr a -> IO ()
+eval goal = initSupply >>= \s -> print (goal s emptyCs)
 
 evalD :: Show a => (ConstStore -> a) -> IO ()
 evalD goal = print (goal emptyCs)

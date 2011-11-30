@@ -3,4 +3,5 @@
 make
 export PATH=/home/sicstus/sicstus4/bin:$PATH # for SICStus benchmarks
 export SWIPL=/home/swiprolog/bin/swipl # for SWI-Prolog benchmarks
-cd suite && ../Benchmarks $*
+cd suite && ../Benchmarks $* 2>&1 | tee ../bench.log
+

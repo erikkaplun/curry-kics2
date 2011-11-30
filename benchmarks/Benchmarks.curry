@@ -10,8 +10,11 @@ import Char
 import ReadShowTerm
 import Float
 
--- home directory of IDC:
-idcHome = "../.."
+-- home directory of KiCS2:
+kics2Home = "../.."
+
+-- Set whether only KiCS2 benchmarks should be executed:
+onlyKiCS2 = True
 
 -- home directory of the monadic curry compiler
 monHome = "$HOME/.cabal/bin"
@@ -45,6 +48,7 @@ benchmarkCommand cmd = do
   hClose hin
   putStr outcnt
   putStr errcnt
+  hFlush stdout
   return (extractTimeInOutput errcnt)
 
 -- extract benchmark time from timing output:
@@ -96,6 +100,7 @@ runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
   putStrLn ("RUNTIMES: " ++ concat (intersperse " | " times))
+  hFlush stdout
   if all isFloatString times
    then return (name,map readFloat times)
    else return ("ERROR: "++name++": "++ concat (intersperse " | " times),[])
@@ -115,14 +120,17 @@ readFloat s = if isFloatString s then readQTerm s
 ----------------------------------------------------------------------
 -- Command to compile a module and execute main with idcompiler:
 -- arg1: module name
--- arg2: compile with optimization?
--- arg3: idsupply implementation (integer or ioref)
--- arg4: main (Haskell!) call
-idcCompile mod optim idsupply mainexp = do
-  let compileCmd = idcHome++"/bin/idc -q -i "++idcHome++"/lib"++" "++mod
+-- arg2: compile with higher-order optimization?
+-- arg3: compile Haskell target with GHC optimization?
+-- arg4: idsupply implementation (integer or ioref)
+-- arg5: main (Haskell!) call
+idcCompile mod hooptim ghcoptim idsupply mainexp = do
+  let compileCmd = kics2Home++"/bin/idc -q "
+                            ++(if hooptim then "" else "-O 0 ")
+                            ++"-i "++kics2Home++"/lib"++" "++mod
   putStrLn $ "Executing: "++compileCmd
   system compileCmd
-  createHaskellMainAndCompile mod optim idsupply mainexp
+  createHaskellMainAndCompile mod ghcoptim idsupply mainexp
 
 -- Create the Main.hs program containing the call to the initial expression:
 createHaskellMainAndCompile mod optim idsupply mainexp = do
@@ -132,8 +140,8 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
        "import Curry_"++mod++"\n"++
        "main = "++mainexp++"\n"
   putStrLn $ "Main expression: " ++ mainexp
-  let imports = [idcHome++"/runtime",idcHome++"/runtime/idsupply"++idsupply,
-                 ".curry/kics2",idcHome++"/lib/.curry/kics2"]
+  let imports = [kics2Home++"/runtime",kics2Home++"/runtime/idsupply"++idsupply,
+                 ".curry/kics2",kics2Home++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else ""
                            ,"--make"
                            ,if idsupply=="ioref" then "-package ghc" else ""
@@ -202,121 +210,131 @@ swiCompile mod = system $
 ----------------------------------------------------------------------
 -- Benchmarks for various systems
 
-idcBenchmark tag mod optim idsupply mainexp =
-  (mod++"@"++tag, idcCompile mod optim idsupply mainexp,
-   "./Main", "rm Main* .curry/kics2/Curry_*")
-monBenchmarkIf withmon tag mod optim mainexp =
+idcBenchmark tag mod hooptim ghcoptim idsupply mainexp =
+  [(mod++"@"++tag, idcCompile mod hooptim ghcoptim idsupply mainexp,
+    "./Main", "rm Main* .curry/"++mod++".* .curry/kics2/Curry_*")]
+monBenchmark withmon tag mod optim mainexp =
   if monInstalled && withmon
   then [(mod++"@"++tag, monCompile mod optim mainexp,
          "./Main", "rm Main* Curry_*")]
   else []
 pakcsBenchmark options mod =
-  (mod++"@PAKCS ",pakcsCompile options mod,
-   "./"++mod++".state","rm "++mod++".state")
+  if onlyKiCS2 then [] else
+  [(mod++"@PAKCS ",pakcsCompile options mod,
+    "./"++mod++".state","rm "++mod++".state")]
 mccBenchmark options mod =
-  (mod++"@MCC   ",mccCompile options mod,"./a.out +RTS -h512m -RTS",
-   "rm a.out "++mod++".icurry")
+  if onlyKiCS2 then [] else
+  [(mod++"@MCC   ",mccCompile options mod,"./a.out +RTS -h512m -RTS",
+    "rm a.out "++mod++".icurry")]
 ghcBenchmark mod =
-  (mod++"@GHC   ",ghcCompile mod,"./"++mod,
-   "rm "++mod++" "++mod++".hi "++mod++".o")
+  if onlyKiCS2 then [] else
+  [(mod++"@GHC   ",ghcCompile mod,"./"++mod,
+    "rm "++mod++" "++mod++".hi "++mod++".o")]
 ghcOBenchmark mod =
-  (mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
-   "rm "++mod++" "++mod++".hi "++mod++".o")
+  if onlyKiCS2 then [] else
+  [(mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
+    "rm "++mod++" "++mod++".hi "++mod++".o")]
 sicsBenchmark mod =
-  (mod++"@SICS  ", sicstusCompile mod,
-   "./"++mod++".state", "rm "++mod++".state")
+  if onlyKiCS2 then [] else
+  [(mod++"@SICS  ", sicstusCompile mod,
+    "./"++mod++".state", "rm "++mod++".state")]
 swiBenchmark  mod =
-  (mod++"@SWI   ", swiCompile mod, "./"++mod++".state", "rm "++mod++".state")
+  if onlyKiCS2 then [] else
+  [(mod++"@SWI   ", swiCompile mod, "./"++mod++".state", "rm "++mod++".state")]
 
 ----------------------------------------------------------------------
 -- The various kinds of benchmarks:
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
-benchFPpl prog withMon =
- [idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
+benchFPpl prog withMon = concat
+ [idcBenchmark "IDC_D"  prog True False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D" prog True True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
  ,sicsBenchmark  (map toLower prog)
  ,swiBenchmark   (map toLower prog)
- ]
- ++ monBenchmarkIf withMon "MON+" prog True "main"
+ ,monBenchmark withMon "MON+" prog True "main"]
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
-benchHOFP prog withMon =
- [idcBenchmark "IDC"    prog False "integer" "eval nd_C_main"
- ,idcBenchmark "IDC+"   prog True  "integer" "eval nd_C_main"
- ,idcBenchmark "IDC_D"  prog False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D" prog True  "integer" "evalD d_C_main"
+benchHOFP prog withMon = concat
+ [idcBenchmark "IDC"    prog False False "integer" "eval d_C_main"
+ ,idcBenchmark "IDC+"   prog False True  "integer" "eval d_C_main"
+ ,idcBenchmark "IDC_D"  prog True  False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D" prog True  True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
  ,ghcOBenchmark  prog
- ]
- ++ monBenchmarkIf withMon "MON+" prog True "main"
-
+ ,monBenchmark withMon "MON+" prog True "main"]
+  
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
-benchFLPDFS prog withMon =
- [idcBenchmark "IDC_PrDFS"        prog False "integer" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS"       prog True  "integer" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref"   "prdfs print nd_C_main"
+benchFLPDFS prog withMon = concat
+ [idcBenchmark "IDC_PrDFS"     prog True False "integer" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS"    prog True True  "integer" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_IORef" prog True True "ioref" "prdfs print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
- ]++ monBenchmarkIf withMon "MON+" prog True "main"
+ ,monBenchmark withMon "MON+" prog True "main"]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
-benchFLPDFSU prog =
- [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref" "printDFS print nd_C_main"
+benchFLPDFSU prog = concat
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True True "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef" prog True True "ioref" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
 
 -- Benchmarking functional patterns with idc/pakcs
-benchFunPats prog =
- [idcBenchmark "IDC+_PrDFS_IORef" prog True  "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef"   prog True  "ioref" "printDFS print nd_C_main"
+benchFunPats prog = concat
+ [idcBenchmark "IDC+_PrDFS_IORef" prog True True  "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_IORef" prog True True "ioref" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
-benchFLPDFSWithMain prog name =
+benchFLPDFSWithMain prog name = concat
  [idcBenchmark ("IDC_PrDFS:"++name)
-               prog False "integer" ("prdfs print nd_C_"++name)
+               prog True False "integer" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_PrDFS:"++name)
-               prog True  "integer" ("prdfs print nd_C_"++name)
+               prog True True  "integer" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True  "ioref" ("prdfs print nd_C_"++name)
+               prog True True  "ioref" ("prdfs print nd_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
  ]
 
 -- Benchmarking functional logic programs with different search strategies
-benchFLPSearch prog =
- [idcBenchmark "IDC+PrDFS_IOREF" prog True "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+DFS_IOREF"   prog True "ioref" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_IOREF"   prog True "ioref" "printBFS print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"   prog True "ioref" "printIDS 100 print nd_C_main"
+benchFLPSearch prog = concat
+ [idcBenchmark "IDC+PrDFS_IOREF"
+               prog True True "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+DFS_IOREF"
+               prog True True "ioref" "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_IOREF"
+               prog True True "ioref" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"
+               prog True True "ioref" "printIDS 100 print nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
-benchFLPCompleteSearch prog =
- [idcBenchmark "IDC+BFS_IOREF" prog True "ioref" "printBFS1 print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF" prog True "ioref" "printIDS1 100 print nd_C_main"
+benchFLPCompleteSearch prog = concat
+ [idcBenchmark "IDC+BFS_IOREF"
+               prog True True "ioref" "printBFS1 print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"
+               prog True True "ioref" "printIDS1 100 print nd_C_main"
  ]
 
 -- Benchmarking =:<=, =:= and ==
-benchFLPDFSKiCS2WithMain prog name pakcs mcc =
+benchFLPDFSKiCS2WithMain prog name pakcs mcc = concat
  [idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True  "ioref" ("prdfs print nd_C_"++name)
+               prog True True  "ioref" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_DFS_IORef:"++name)
-               prog True  "ioref" ("printDFS print nd_C_"++name)
+               prog True True  "ioref" ("printDFS print nd_C_"++name)
  ]
- ++ (if pakcs then [pakcsBenchmark ("-m \"print "++name++"\"") prog] else [])
- ++ (if mcc then [mccBenchmark ("-e\""++name++"\"") prog]  else [])
+ ++ (if pakcs then pakcsBenchmark ("-m \"print "++name++"\"") prog else [])
+ ++ (if mcc   then mccBenchmark ("-e\""++name++"\"") prog  else [])
 
 allBenchmarks =
   [ benchFPpl "ReverseUser"     True
@@ -420,7 +438,7 @@ main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
---main = run 1 [benchHOFP "PrimesPeano" True]
+--main = run 1 [benchHOFP "ReverseHO" True]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
