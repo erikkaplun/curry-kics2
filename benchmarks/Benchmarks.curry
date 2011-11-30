@@ -96,6 +96,7 @@ runBenchmark :: Int -> (String,IO Int,String,String) -> IO (String,[Float])
 runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
   let line = take 8 (repeat '-')
   putStr (unlines [line, "Running benchmark: "++name, line])
+  hFlush stdout
   preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
   system cleancmd
@@ -122,13 +123,14 @@ readFloat s = if isFloatString s then readQTerm s
 -- arg1: module name
 -- arg2: compile with higher-order optimization?
 -- arg3: compile Haskell target with GHC optimization?
--- arg4: idsupply implementation (integer or ioref)
+-- arg4: idsupply implementation (pureio|ioref|ghc|integer)
 -- arg5: main (Haskell!) call
 idcCompile mod hooptim ghcoptim idsupply mainexp = do
   let compileCmd = kics2Home++"/bin/idc -q "
                             ++(if hooptim then "" else "-O 0 ")
                             ++"-i "++kics2Home++"/lib"++" "++mod
   putStrLn $ "Executing: "++compileCmd
+  hFlush stdout
   system compileCmd
   createHaskellMainAndCompile mod ghcoptim idsupply mainexp
 
@@ -144,7 +146,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
                  ".curry/kics2",kics2Home++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else ""
                            ,"--make"
-                           ,if idsupply=="ioref" then "-package ghc" else ""
+                           ,"-package ghc"
                            ,"-cpp" -- use the C preprocessor
                            ,"-DDISABLE_CS" -- disable constraint store
                            --,"-DSTRICT_VAL_BIND" -- strict value bindings
@@ -153,6 +155,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
                            ,"-i"++concat (intersperse ":" imports),"Main.hs"]
                      -- also:  -funbox-strict-fields ?
   putStrLn $ "Executing: "++compileCmd
+  hFlush stdout
   system compileCmd
 
 ----------------------------------------------------------------------
@@ -273,23 +276,23 @@ benchHOFP prog withMon = concat
 benchFLPDFS prog withMon = concat
  [idcBenchmark "IDC_PrDFS"     prog True False "integer" "prdfs print nd_C_main"
  ,idcBenchmark "IDC+_PrDFS"    prog True True  "integer" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_IORef" prog True True "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio" "prdfs print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,monBenchmark withMon "MON+" prog True "main"]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU prog = concat
- [idcBenchmark "IDC+_PrDFS_IORef" prog True True "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef" prog True True "ioref" "printDFS print nd_C_main"
+ [idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_PUREIO" prog True True "pureio" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ]
 
 -- Benchmarking functional patterns with idc/pakcs
 benchFunPats prog = concat
- [idcBenchmark "IDC+_PrDFS_IORef" prog True True  "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_IORef" prog True True "ioref" "printDFS print nd_C_main"
+ [idcBenchmark "IDC+_PrDFS_PUREIO" prog True True  "pureio" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_DFS_PUREIO" prog True True "pureio" "printDFS print nd_C_main"
  ,pakcsBenchmark "" prog
  ]
 
@@ -300,38 +303,50 @@ benchFLPDFSWithMain prog name = concat
                prog True False "integer" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_PrDFS:"++name)
                prog True True  "integer" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True True  "ioref" ("prdfs print nd_C_"++name)
+ ,idcBenchmark ("IDC+_PrDFS_PUREIO:"++name)
+               prog True True  "pureio" ("prdfs print nd_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
  ]
 
+-- Benchmarking functional logic programs with different id supply and DFS:
+benchIDSupply prog = concat
+ [idcBenchmark "IDC+DFS_PUREIO"
+               prog True True "pureio"  "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+DFS_IOREF"
+               prog True True "ioref"   "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+DFS_GHC"
+               prog True True "ghc"     "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+DFS_INTEGER"
+               prog True True "integer" "printDFS print nd_C_main"
+ ]
+
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concat
- [idcBenchmark "IDC+PrDFS_IOREF"
-               prog True True "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+DFS_IOREF"
-               prog True True "ioref" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_IOREF"
-               prog True True "ioref" "printBFS print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"
-               prog True True "ioref" "printIDS 100 print nd_C_main"
+ [idcBenchmark "IDC+PrDFS_PUREIO"
+               prog True True "pureio" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+DFS_PUREIO"
+               prog True True "pureio" "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_PUREIO"
+               prog True True "pureio" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+IDS_PUREIO"
+               prog True True "pureio" "printIDS 100 print nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concat
- [idcBenchmark "IDC+BFS_IOREF"
-               prog True True "ioref" "printBFS1 print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"
-               prog True True "ioref" "printIDS1 100 print nd_C_main"
+ [idcBenchmark "IDC+BFS_PUREIO"
+               prog True True "pureio" "printBFS1 print nd_C_main"
+ ,idcBenchmark "IDC+IDS_PUREIO"
+               prog True True "pureio" "printIDS1 100 print nd_C_main"
  ]
 
 -- Benchmarking =:<=, =:= and ==
 benchFLPDFSKiCS2WithMain prog name pakcs mcc = concat
- [idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True True  "ioref" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_DFS_IORef:"++name)
-               prog True True  "ioref" ("printDFS print nd_C_"++name)
+ [idcBenchmark ("IDC+_PrDFS_PUREIO:"++name)
+               prog True True  "pureio" ("prdfs print nd_C_"++name)
+ ,idcBenchmark ("IDC+_DFS_PUREIO:"++name)
+               prog True True  "pureio" ("printDFS print nd_C_"++name)
  ]
  ++ (if pakcs then pakcsBenchmark ("-m \"print "++name++"\"") prog else [])
  ++ (if mcc   then mccBenchmark ("-e\""++name++"\"") prog  else [])
@@ -360,6 +375,10 @@ allBenchmarks =
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
   , benchFLPDFSU "Last"
   , benchFLPDFSU "RegExp"
+  , benchIDSupply "PermSort"
+  , benchIDSupply "Half"
+  , benchIDSupply "Last"
+  , benchIDSupply "RegExp"
   , benchFunPats "LastFunPats"
   , benchFunPats "ExpVarFunPats"
   , benchFunPats "ExpSimpFunPats"
@@ -434,7 +453,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 3 allBenchmarks
-main = run 1 allBenchmarks
+--main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
@@ -446,3 +465,4 @@ main = run 1 allBenchmarks
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
 --main = run 3 unif
+main = run 1 [benchIDSupply "Last", benchIDSupply "RegExp"]
