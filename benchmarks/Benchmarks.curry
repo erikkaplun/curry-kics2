@@ -123,7 +123,7 @@ readFloat s = if isFloatString s then readQTerm s
 -- arg1: module name
 -- arg2: compile with higher-order optimization?
 -- arg3: compile Haskell target with GHC optimization?
--- arg4: idsupply implementation (pureio|ioref|ghc|integer)
+-- arg4: idsupply implementation (integer or pureio)
 -- arg5: main (Haskell!) call
 idcCompile mod hooptim ghcoptim idsupply mainexp = do
   let compileCmd = kics2Home++"/bin/idc -q "
@@ -262,9 +262,7 @@ benchFPpl prog withMon = concat
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog withMon = concat
- [idcBenchmark "IDC"    prog False False "integer" "eval d_C_main"
- ,idcBenchmark "IDC+"   prog False True  "integer" "eval d_C_main"
- ,idcBenchmark "IDC_D"  prog True  False "integer" "evalD d_C_main"
+ [idcBenchmark "IDC_D"  prog True  False "integer" "evalD d_C_main"
  ,idcBenchmark "IDC+_D" prog True  True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
@@ -457,7 +455,7 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
 --                  ["goal1","goal2","goal3"])
---main = run 1 [benchHOFP "ReverseHO" True]
+main = run 1 [benchHOFP "Primes" True]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
@@ -465,4 +463,4 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
 --main = run 3 unif
-main = run 1 [benchIDSupply "Last", benchIDSupply "RegExp"]
+--main = run 1 [benchIDSupply "Last", benchIDSupply "RegExp"]
