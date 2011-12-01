@@ -1,7 +1,7 @@
 -- This program defines the execution of all benchmarks and summarizes
 -- their results.
 
-import List(isPrefixOf,isInfixOf,intersperse)
+import List(isPrefixOf,isInfixOf,intersperse,last)
 import IO
 import IOExts
 import System
@@ -57,8 +57,9 @@ extractTimeInOutput =
        . lines
 
 -- Run a set of benchmarks and return the timings
-runBenchmarks num benchmarks = do
-  results <- mapIO (runBenchmark num) benchmarks
+runBenchmarks rpts numbenchs (startnum,benchmarks) = do
+  results <- mapIO (runBenchmark rpts numbenchs)
+                   (zip [startnum ..] benchmarks)
   let maxnamelength = foldr1 max (map (length . fst) results)
   return $ unlines $
     take 8 (repeat '-') :
@@ -91,14 +92,25 @@ processTimes timings =
 
   truncateFloat x = i2f (round (x*.100)) /. 100
 
+-------------------------------------------------------------------------
+-- Axuiliary operations for running benchmarks.
+
+-- Each benchmark consists of a name, an action to prepare the benchmark
+-- (e.g., compile the program), a command to run the benchmark
+-- and a command to clean up all auxiliary files at the end of a benchmark
+type Benchmark = (String,IO Int,String,String)
+
 -- Run a benchmark and return the timings
-runBenchmark :: Int -> (String,IO Int,String,String) -> IO (String,[Float])
-runBenchmark num (name,preparecmd,benchcmd,cleancmd) = do
+runBenchmark :: Int -> Int -> (Int,Benchmark) -> IO (String,[Float])
+runBenchmark rpts allnum (num,(name,preparecmd,benchcmd,cleancmd)) = do
   let line = take 8 (repeat '-')
-  putStr (unlines [line, "Running benchmark: "++name, line])
+  putStr (unlines
+           [line,
+            "Running benchmark ["++show num++" of "++show allnum++"]: "++name,
+            line])
   hFlush stdout
   preparecmd
-  times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..num]
+  times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..rpts]
   system cleancmd
   putStrLn ("RUNTIMES: " ++ concat (intersperse " | " times))
   hFlush stdout
@@ -294,6 +306,15 @@ benchFunPats prog = concat
  ,pakcsBenchmark "" prog
  ]
 
+-- Benchmarking functional programs with idc/pakcs/mcc
+-- with a given name for the main operation
+benchFPWithMain prog name = concat
+ [idcBenchmark ("IDC+_D:"++name)
+               prog True True "integer" ("evalD d_C_"++name)
+ ,pakcsBenchmark ("-m \"print "++name++"\"") prog
+ ,mccBenchmark ("-e\""++name++"\"")   prog
+ ]
+
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name = concat
@@ -368,7 +389,7 @@ allBenchmarks =
   , benchFLPSearch "PermSortPeano"
   , benchFLPSearch "Half"
   , benchFLPCompleteSearch "NDNums"
-  , benchFLPDFSWithMain "ShareNonDet" "goal1"
+  , benchFPWithMain "ShareNonDet" "goal1"
   , benchFLPDFSWithMain "ShareNonDet" "goal2"
   , benchFLPDFSWithMain "ShareNonDet" "goal3"
   , benchFLPDFSU "Last"
@@ -429,9 +450,13 @@ unif =
      ]
 
 -- Run all benchmarks and show results
-run num benchmarks = do
+run :: Int -> [[Benchmark]] -> IO ()
+run rpts benchmarks = do
   args <- getArgs
-  results <- mapIO (runBenchmarks num) benchmarks
+  let numbenchs = length (concat benchmarks)
+      startnums = map (\n -> 1+foldr (+) 0 (map length (take (n-1) benchmarks)))
+                      [1..(length benchmarks)]
+  results <- mapIO (runBenchmarks rpts numbenchs) (zip startnums benchmarks)
   ltime <- getLocalTime
   info <- evalCmd "uname -a"
   mach <- evalCmd "uname -n"
@@ -453,9 +478,9 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
 --main = run 3 allBenchmarks
 --main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
---main = run 1 (map (\g -> benchFLPDFSWithMain "ShareNonDet" g)
---                  ["goal1","goal2","goal3"])
-main = run 1 [benchHOFP "Primes" True]
+main = run 1 (benchFPWithMain "ShareNonDet" "goal1" :
+             map (\g -> benchFLPDFSWithMain "ShareNonDet" g) ["goal2","goal3"])
+--main = run 1 [benchHOFP "Primes" True]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
@@ -464,3 +489,18 @@ main = run 1 [benchHOFP "Primes" True]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
 --main = run 3 unif
 --main = run 1 [benchIDSupply "Last", benchIDSupply "RegExp"]
+
+
+----------------------
+-- Evaluate log file of benchmark, i.e., compress it to show all results:
+
+showLogFile = do
+  logs <- readFile "bench.log.kics2_nocs"
+  putStrLn (unlines (splitBMTime (lines logs)))
+ where
+  splitBMTime xs =
+    let (ys,zs) = break (\cs -> take 14 cs == "BENCHMARKTIME=") xs
+     in if null zs
+        then []
+        else drop (length ys - 2) ys ++ take 2 zs ++ ["------"] ++
+             splitBMTime (drop 2 zs)
