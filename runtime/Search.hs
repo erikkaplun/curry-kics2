@@ -99,57 +99,79 @@ prtChoices mainexp = do
 -- which is internally expanded to apply the constructors encountered during
 -- search.
 prdfs :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
-prdfs cont goal = initSupply >>= (printValsDFS cont . flip (const $!!) emptyCs . flip goal emptyCs)
+prdfs cont goal = initSupply >>= (printValsDFS False cont . flip (const $!!) emptyCs . flip goal emptyCs)
 
-printValsDFS :: NormalForm a => (a -> IO ()) -> a -> IO ()
-printValsDFS cont = match prChoice prNarrowed prFree skip prGuard prVal
+-- the first argument doBT (indicates whether backtracking is needed)
+printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFS doBT cont = match prChoice prNarrowed prFree skip prGuard prVal
   where
   skip  = return ()
-  prVal = searchNF printValsDFS cont
+  prVal = searchNF (printValsDFS doBT) cont
   prChoice i x y = lookupChoice i >>= choose
     where
-    choose ChooseLeft  = printValsDFS cont x
-    choose ChooseRight = printValsDFS cont y
-    choose NoChoice    = do
-      newChoice ChooseLeft  x
-      newChoice ChooseRight y
+    choose ChooseLeft  = printValsDFS doBT cont x
+    choose ChooseRight = printValsDFS doBT cont y
+    choose NoChoice    = 
+     if doBT 
+     then do
+      newChoice True ChooseLeft  x
+      newChoice True ChooseRight y
       setChoice i NoChoice
+     else do
+      newChoice True  ChooseLeft x
+      newChoice False ChooseRight y
       where
         -- Assumption 1: Binary choices can only be set to one of
         -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
         -- be ignored in between
-      newChoice c a = setChoice i c >> printValsDFS cont a
+      newChoice bt c a = setChoice i c >> printValsDFS bt cont a
     choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
 
   prFree i xs   = lookupChoiceID i >>= choose
     where
-    choose (LazyBind cs, _) = processLazyBind cs i xs (printValsDFS cont)
-    choose (ChooseN c _, _) = printValsDFS cont (xs !! c)
+    choose (LazyBind cs, _) = processLazyBind doBT cs i xs 
+                                              (printValsDFS doBT cont)
+    choose (ChooseN c _, _) = printValsDFS doBT cont (xs !! c)
     choose (NoChoice   , j) = cont $ choicesCons j xs
     choose c                = error $ "Basics.printValsDFS.choose: " ++ show c
 
   prNarrowed i@(NarrowedID pns _) xs = lookupChoice i >>= choose
     where
-    choose (LazyBind cs) = processLazyBind cs i xs (printValsDFS cont)
-    choose (ChooseN c _) = printValsDFS cont (xs !! c)
-    choose NoChoice      = do
-      foldr1 (>>) $ zipWith3 newChoice [0 ..] xs pns
-      setChoice i NoChoice
+    choose (LazyBind cs) = processLazyBind doBT cs i xs (printValsDFS doBT cont)
+    choose (ChooseN c _) = printValsDFS doBT cont (xs !! c)
+    choose NoChoice      =
+      if doBT then do
+       foldr1 (>>) $ zipWith3 (newChoice True) [0 ..] xs pns
+       setChoice i NoChoice
+      else do
+       foldr1 (>>) $ zipWithButLast3 (newChoice True) (newChoice False) [0 ..] xs pns
       where
-      newChoice n a pn = setChoice i (ChooseN n pn) >> printValsDFS cont a
-    choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
+      newChoice bt n a pn = setChoice i (ChooseN n pn) >> printValsDFS bt cont a
+    choose c            = error $ "Basics.printValsDFS.choose: " ++ show c
   prNarrowed i _ = error $ "prDFS: Bad narrowed ID " ++ show i
 
   prGuard cs e = solves (getConstrList cs) e >>= \mbSolution -> case mbSolution of
     Nothing          -> skip
-    Just (reset, e') -> printValsDFS cont e' >> reset
+    Just (reset, e') -> if doBT then printValsDFS True cont e' >> reset
+                                else printValsDFS False cont e'
 
-processLazyBind :: NonDet a => [Constraint] -> ID -> [a] -> (a -> IO ()) -> IO ()
-processLazyBind cs i xs search = do
+processLazyBind :: NonDet a => Bool -> [Constraint] -> ID -> [a] -> (a -> IO ()) -> IO ()
+processLazyBind True cs i xs search = do
   reset <- setUnsetChoice i NoChoice
   search $ guardCons (StructConstr cs) $ choicesCons i xs
   reset
+processLazyBind False cs i xs search = do
+  setChoice i NoChoice
+  search $ guardCons (StructConstr cs) $ choicesCons i xs
 
+zipWithButLast3 :: (a -> b -> c -> d) -> (a -> b -> c -> d) -> [a] -> [b] -> [c] -> [d]
+zipWithButLast3 _ _     []     _      _      = []
+zipWithButLast3 _ _      _     []     _      = []
+zipWithButLast3 _ _      _     _      []     = []
+zipWithButLast3 _ lastf (a:[]) (b:_ ) (c:_)  = lastf a b c : []
+zipWithButLast3 _ lastf (a:_ ) (b:[]) (c:_)  = lastf a b c : []
+zipWithButLast3 _ lastf (a:_ ) (b:_ ) (c:[]) = lastf a b c : []
+zipWithButLast3 f lastf (a:as) (b:bs) (c:cs) = f a b c : zipWithButLast3 f lastf as bs cs
 -- ---------------------------------------------------------------------------
 -- Depth-first search into a monadic list
 -- ---------------------------------------------------------------------------
