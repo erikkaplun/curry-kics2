@@ -123,12 +123,6 @@ CGISERVERFILE=$CGIFILEPATHNAME/$CGIPROG.server
 # unique key for this cgi script:
 CGIKEY="$CGIFILEPATHNAME/$CGIPROG `date '+%m/%d/%y/%H/%M/%S'`"
 
-# stop old server, if necessary:
-if [ -f $CGISERVERFILE ] ; then
-  echo "Stop old version of the server '$CGISERVERFILE'..."
-  $KICS2HOME/www/Registry stopscript "$CGISERVERFILE"
-fi
-
 # generate cgi script:
 rm -f $CGIFILE
 echo "#!/bin/sh" >> $CGIFILE
@@ -175,6 +169,13 @@ if test ! -f $STATE ; then
   exit 1
 fi
 
+# stop old server, if necessary:
+if [ -f $CGISERVERFILE ] ; then
+  echo "Stop old version of the server '$CGISERVERFILE'..."
+  $KICS2HOME/www/Registry stopscript "$CGISERVERFILE"
+fi
+
+# move compiled executable to final position:
 mv $STATE $CGISERVERFILE
 chmod 755 $CGISERVERFILE
 

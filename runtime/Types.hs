@@ -26,7 +26,7 @@ emptyCs = Map.empty
 -- combines a constraint and a constraint sote
 combConstr :: Constraints -> ConstStore -> ConstStore
 #ifdef DISABLE_CS
-combConstr = const
+combConstr _ = id
 #else
 combConstr (StructConstr _)  cs = cs
 combConstr (ValConstr i v _) cs = Map.insert (getKey i) (V v) cs
@@ -60,7 +60,7 @@ globalCs = unsafePerformIO $ newIORef emptyCs
 -- adds a Constraint to the global constraint store
 addToGlobalCs :: Constraints -> IO ()
 #ifdef DISABLE_CS
-addToGlobalCs = return ()
+addToGlobalCs _ = return ()
 #else
 addToGlobalCs (StructConstr _) = return ()
 addToGlobalCs cs@(ValConstr i x _ ) = do
