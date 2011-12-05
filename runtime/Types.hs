@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, Rank2Types, ExistentialQuantification #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, Rank2Types, ExistentialQuantification #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Types where
 
@@ -63,7 +63,7 @@ addToGlobalCs :: Constraints -> IO ()
 addToGlobalCs _ = return ()
 #else
 addToGlobalCs (StructConstr _) = return ()
-addToGlobalCs cs@(ValConstr i x _ ) = do
+addToGlobalCs cs@(ValConstr _ _ _ ) = do
   gcs <- readIORef globalCs
   let gcs' = combConstr cs gcs
   writeIORef globalCs $! gcs'
@@ -139,7 +139,19 @@ class NonDet a where
              -> a                       -- ^ value to apply the functions to
              -> b
 
+  try = match Choice Narrowed Free Fail Guard Val
 
+  match chc nrwd fr fl grd vl x = case try x of
+    Val v          -> vl v
+    Fail           -> fl
+    Choice i x1 x2 -> chc i x1 x2
+    Narrowed i xs  -> nrwd i xs
+    Free i xs      -> fr i xs
+    Guard cs e     -> grd cs e
+
+-- |Lift a choice encountered at pattern matching to the result value.
+-- The name of this function is misleading because of historical reasons
+-- and should be renamed to sth. like "choice"
 narrow :: NonDet a => ID -> a -> a -> a
 narrow i@(ChoiceID _) = choiceCons i
 narrow _              = error "Basics.narrow: no ChoiceID"
@@ -148,13 +160,14 @@ narrow _              = error "Basics.narrow: no ChoiceID"
 -- |If the varible is bound in either the local or the global constraint store
 -- |the value found in the store is used
 narrows :: NonDet b => ConstStore -> ID -> (a -> b) -> [a] -> b
-narrows cs i@(FreeID p s) f xs = 
+narrows cs i@(FreeID p s) f xs =
   lookupCs cs i f (lookupCs gcs i f
                             (choicesCons (NarrowedID p s) (map f xs)))
  where
   gcs = unsafePerformIO lookupGlobalCs
-narrows cs i@(NarrowedID _ _) f xs = choicesCons i (map f xs)
+narrows _ i@(NarrowedID _ _) f xs = choicesCons i (map f xs)
 narrows _ (ChoiceID _) _ _ = error "Types.narrows: ChoiceID"
+
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
 -- ---------------------------------------------------------------------------
@@ -187,7 +200,7 @@ nfChoice _ _ _ _ _ = error "Basics.nfChoice: no ChoiceID"
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- n alternatives of a n-ary choice.
 nfChoices :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> [a] -> ConstStore -> b
-nfChoices _      (ChoiceID _)     _  _ = error "Basics.nfChoices: ChoiceID"
+nfChoices _      (ChoiceID _)     _  _  = error "Basics.nfChoices: ChoiceID"
 nfChoices cont i@(FreeID _ _)     xs cs = cont (choicesCons i xs) cs
 nfChoices cont i@(NarrowedID _ _) xs cs = choicesCons i (map (\x -> (cont $!! x) cs) xs)
 
@@ -250,10 +263,16 @@ class NormalForm a => Unifiable a where
   bind     :: ID -> a -> [Constraint]
   -- |Lazily bind a free variable to a value
   lazyBind :: ID -> a -> [Constraint]
+  -- |
+  tryBind :: ID -> a -> C_Success
+  tryBind i v = guardCons (ValConstr i v (bind i v)) C_Success
 
 -- |Unification on general terms
 (=:=) :: Unifiable a => a -> a -> ConstStore -> C_Success
-(=:=) x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
+(=:=) = unifyMatch
+
+unifyMatch :: Unifiable a => a -> a -> ConstStore -> C_Success
+unifyMatch x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
   uniChoice i x1 x2 = checkFail (choiceCons i ((x1 =:= y) cs) ((x2 =:= y) cs)) y
   uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> (x' =:= y) cs) xs)) y
@@ -270,7 +289,7 @@ class NormalForm a => Unifiable a where
 #else
       bindVal v          = guardCons (ValConstr i v (bind i v)) C_Success
 #endif
-      
+
   uniGuard c e      = checkFail (guardCons c ((e =:= y) $! combConstr c cs)) y
   uniVal v          = uniWith cs y
     where
@@ -287,6 +306,44 @@ class NormalForm a => Unifiable a where
       univVal w            = (v =.= w) cs'
   checkFail e = match (\_ _ _ -> e) const2 const2 failCons const2 (const e)
     where const2 _ _ = e
+
+unifyTry :: Unifiable a => a -> a -> ConstStore -> C_Success
+unifyTry xVal yVal csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF hx, hy
+  where
+  -- failure
+  unify Fail _    _ = failCons
+  unify  _   Fail _ = failCons
+  -- binary choice
+  unify (Choice i x1 x2) hy cs = choiceCons i (unify (try x1) hy cs)
+                                              (unify (try x2) hy cs)
+  unify hx (Choice j y1 y2) cs = choiceCons j (unify hx (try y1) cs)
+                                              (unify hx (try y2) cs)
+  -- n-ary choice
+  unify (Narrowed i xs) hy cs = choicesCons i (map (\x -> unify (try x) hy cs) xs)
+  unify hx (Narrowed j ys) cs = choicesCons j (map (\y -> unify hx (try y) cs) ys)
+  -- constrained value
+  unify (Guard c x) hy cs = guardCons c (unify (try x) hy $! combConstr c cs)
+  unify hx (Guard c y) cs = guardCons c (unify hx (try y) $! combConstr c cs)
+  -- constructor-rooted terms
+  unify (Val x) (Val y) cs = (x =.= y) cs
+  -- two free variables
+  unify hx@(Free i _) hy@(Free j nfy) cs = lookupCs cs i
+    (\x -> unify (try x) hy cs)
+    (lookupCs cs j (\y -> unify hx (try y) cs)
+                   (guardCons (ValConstr i nfy [i :=: BindTo j]) C_Success))
+  -- one free variable and one value
+  unify (Free i _) hy@(Val y) cs = lookupCs cs i
+    (\x -> unify (try x) hy cs) (valBind i y cs)
+  -- one free variable and one value
+  unify hx@(Val x) (Free j _) cs = lookupCs cs j
+    (\y -> unify hx (try y) cs) (valBind j x cs)
+
+#ifdef STRICT_VAL_BIND
+  valBind i v cs =
+    (\v' _ -> guardCons (ValConstr j v' $ bind j v') C_Success $!! v) cs
+#else
+  valBind i v _ = guardCons (ValConstr i v (bind i v)) C_Success
+#endif
 
   -- TODO2: Occurs check?
 
