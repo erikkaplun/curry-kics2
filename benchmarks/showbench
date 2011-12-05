@@ -1,7 +1,6 @@
 #!/bin/sh
 # run all current benchmarks (defined in Benchmarks.curry)
 make
-export PATH=/home/sicstus/sicstus4/bin:$PATH # for SICStus benchmarks
-export SWIPL=/home/swiprolog/bin/swipl # for SWI-Prolog benchmarks
+export PATH=~sicstus/sicstus4/bin:$PATH # for SICStus benchmarks
+export SWIPL=~swiprolog/bin/swipl # for SWI-Prolog benchmarks
 cd suite && ../Benchmarks $* 2>&1 | tee ../bench.log
-
