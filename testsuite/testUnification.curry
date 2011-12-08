@@ -84,7 +84,7 @@ test29 = assertValues "test29" (x =:= (True:(y =:= [] &> y)) &> x) [[True]] wher
 
 test30 = assertValues "test30" (x =:= [True] &> y =:= [False] &> x =:= y) [] where x , y free
 
-test31 = assertValues "test31" (x =:= [] &> y ++ [False] =:= x) [] where x, y free
-test32 = assertValues "test32" (x =:= [] &> y1:(y2 ++ [False]) =:= x) [] where x, y1, y2 free
-test33 = assertValues "test33" (x =:= [] &> (y2 ++ [False]) =:= x) [] where x, y2 free
+--test31 = assertValues "test31" (x =:= [] &> y ++ [False] =:= x) [] where x, y free
+--test32 = assertValues "test32" (x =:= [] &> y1:(y2 ++ [False]) =:= x) [] where x, y1, y2 free
+--test33 = assertValues "test33" (x =:= [] &> (y2 ++ [False]) =:= x) [] where x, y2 free
 test34 = assertValues "test34" (x =:= [] &> y1:[False] =:= x) [] where x, y1 free
