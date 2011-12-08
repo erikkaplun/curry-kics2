@@ -1,4 +1,4 @@
-module Main where
+module erd2curry where
 
 import PrettyAbstract
 import XML

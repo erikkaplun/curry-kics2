@@ -20,6 +20,7 @@
 *.idx
 *.ilg
 *.ind
+*.tpt
 
 # intermediate files
 stage[1,2,3]
@@ -54,3 +55,5 @@ www/submitform
 lib/CDOC
 lib/TEXDOC
 docs/src/lib
+docs/markdown_syntax.html
+docs/src/markdown_syntax.tex
