@@ -77,7 +77,7 @@ defaultOptions =
   , optExtensions   = []
   }
 
-debugOptions = { optVerbosity := VerbDetails 
+debugOptions = { optVerbosity := VerbDetails
                , optForce := True | defaultOptions }
 
 parseVerbosity :: String -> Verbosity -> Verbosity
@@ -88,14 +88,14 @@ parseVerbosity s v = case s of
   "3" -> VerbAnalysis
   "4" -> VerbDetails
   _   -> v
-  
+
 parseOptimization :: String -> OptimLevel -> OptimLevel
 parseOptimization s o = case s of
   "0" -> OptimNone
   "1" -> OptimHigherOrder
   "2" -> OptimStrictSupply
   _   -> o
-  
+
 parseExtension :: String -> Extension
 parseExtension s = case map toLower s of
   "noimplicitprelude" -> ExtNoImplicitPrelude
@@ -130,7 +130,7 @@ options =
   , Option ['O'] ["optimization"]
       (ReqArg (\arg opts -> { optOptimization :=
         parseOptimization arg (opts -> optOptimization) | opts }) "<n>")
-      "set optimization level (0 = none, 1 = higher order, 2 = strict supply eval)"      
+      "set optimization level (0 = none, 1 = higher order, 2 = strict supply evaluation (default))"
   , Option [] ["no-opt"]
       (NoArg (\opts -> { optOptimization := OptimNone | opts } ))
       "disable optimization"
@@ -162,7 +162,7 @@ options =
       (NoArg (\opts -> { optDump := allDumps | opts }))
       "dump all intermediate results"
   , Option ['X'] []
-      (ReqArg (\arg opts -> { optExtensions := 
+      (ReqArg (\arg opts -> { optExtensions :=
         nub (parseExtension arg : opts -> optExtensions) | opts }) "EXT")
       "enable language extension EXT"
   ]
@@ -205,7 +205,7 @@ compilerOpts = do
   prog <- getProgName
   processOpts prog $ parseOpts args
 
-processOpts :: String -> (Options, [String], [String]) 
+processOpts :: String -> (Options, [String], [String])
             -> IO (Options, [String])
 processOpts prog (opts, files, errs)
   | opts -> optHelp    = printUsage prog
