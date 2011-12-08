@@ -1,0 +1,106 @@
+KiCS2: The Kiel Curry System (Version 2)
+========================================
+
+Installation Instructions
+-------------------------
+
+KiCS2 compiles [Curry programs](http://www.curry-language.org)
+into [Haskell programs](http://www.haskell.org/).
+This distribution runs on Unix-based platforms
+and has been developed and tested under Linux (Ubuntu).
+However, it should also run under similar platforms like SunOS or Mac OS X.
+If you want to install and run the complete system
+on your computer, you need a Haskell implementation,
+in particular the
+[Glasgow Haskell Compiler](http://www.haskell.org/ghc/) and
+[Cabal](http://www.haskell.org/cabal/),
+a Haskell package management system.
+For instance, if you run Ubuntu Linux, you can easily install
+these packages by
+
+    sudo apt-get install ghc6 cabal-install
+
+After unpacking the distribution file, go into the main directory
+of the distribution (which is denoted by `kics2home` in the following):
+
+    tar xvzf kics2.tar.gz
+    cd kics2
+
+If you install KiCS2 for the first time, you need to install
+some Haskell packages via Cabal, i.e., run the command
+
+    make installhaskell
+
+Now you are ready to install KiCS2 with all its components by
+
+    make
+
+The complete installation with all tools take some time.
+If you do not want to wait so long and are interested
+only in a kernel system to run some simple Curry programs,
+you can install this kernel system by
+
+    make kernel
+
+This installs the compiler and the interactive environment
+to execute Curry programs.
+When the installation is finished,
+the commands to use KiCS2 are installed in the local
+directory `bin`.
+In order to use the system easily,
+add the directory "`kics2home/bin`"
+to your path, e.g., by the command
+"`export PATH=$PATH:kics2home/bin`"
+in the `bash`.
+Now you can start KiCS2 via the command `kics2`.
+
+
+Notes
+-----
+
+1. The current distribution is designed as a local user installation
+   since some system libraries are re-compiled according to the current options.
+   Thus, it is not a good idea to install this distribution globally
+   where users have no write permission.
+2. You can configure the behavior of KiCS2 by various settings
+   in the file `~/.kics2rc` which is created when you use
+   KiCS2 for the first time.
+3. If you like to have support for _line editing or history functionality_
+   in the KiCS2 interactive environment (as supported by the readline
+   library), you should have the Unix/Linux command "rlwrap" installed
+   on your local machine (e.g., by "`sudo apt-get install rlwrap`").
+   KiCS2 uses "rlwrap" if called on a terminal
+   without the parameter "`--noreadline`".
+4. If you want to use the **library for GUI programming in Curry**
+   (`kics2home/lib/GUI.curry`), you need also a
+   Tcl/Tk implementation (including the windowing shell `wish`)
+   which can be downloaded
+   [here](http://www.scriptics.com/software/tcltk/) or
+   installed in a Ubuntu distribution by
+
+       sudo apt-get install tk tcl
+
+   In this case, the windowing shell `wish` must be
+   in your path (or you can also modify the definition of the
+   operation `openGuiPort` in the library `GUI.curry`).
+
+
+Changing system constants
+-------------------------
+
+The distribution of KiCS2 is configured with a
+**maximal tuple arity of 15**, i.e., Curry programs containing larger
+tuple sizes cannot be compiled. If you want to increase this size
+(usually, it is preferable to change your program), you have to change
+(in a source distribution of KiCS2)
+two system files and install your system as follows:
+
+1. Change the definition of the constant `maxTupleArity` in the file
+   `kics2home/frontend/curry-frontend/src/Generators/GenFlatCurry.hs`
+   according to your required maximal arity.
+2. Delete the file `kics2home/lib/.curry/Prelude.fcy`.
+3. Re-install KiCS2 by running `make`.
+
+-------------------------------------------------------------
+
+Contact: [Michael Hanus](http://www.informatik.uni-kiel.de/~mh/)

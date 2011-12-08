@@ -1,0 +1,74 @@
+KiCS2: The Kiel Curry System (Version 2)
+========================================
+
+KiCS2 is an implementation of the multi-paradigm declarative language
+[Curry programs](http://www.curry-language.org) developed by the
+[Programming Languages and Compiler Construction](http://www.informatik.uni-kiel.de/en/prog/)
+group at the [University of Kiel](http://www.uni-kiel.de/).
+KiCS2 compiles Curry programs into [Haskell programs](http://www.haskell.org/)
+using the [Glasgow Haskell Compiler](http://www.haskell.org/ghc/)
+as its back end.
+Similarly to many other implementations of Curry,
+KiCS2 has an interactive environment (read/eval/print loop)
+to ease the development of Curry applications.
+
+This directory contains:
+
+`INSTALL.txt`:
+Instructions how to install the system.
+
+`bin`:
+A directory containing various executables
+to execute the components of KiCS2.
+
+`cpns`:
+This directory contains scripts and executables for the
+Curry Port Name Server (CPNS) which is responsible for managing the
+symbolic names assigned to the named sockets on a local machine
+(see library `NamedSocket` for more details).
+
+`docs`:
+This directory contains some documentation, in particular,
+the KiCS2 User Manual.
+
+`frontend`: 
+This directory contains the Curry front-end, i.e., a parser for
+Curry programs. It is adapted from the parser of the
+[Muenster Curry Compiler](http://danae.uni-muenster.de/~lux/curry/).
+
+`include`:
+This directory contains some resources which are included
+by various tools delivered with KiCS2.
+
+`lib`:
+ This directory contains a collection of standard libraries
+implemented in Curry (including the standard prelude).
+
+`runtime`:
+This directory contains Haskell programs used by the run time
+system of KiCS2.
+
+`src`:
+This directory contains the implementation of the KiCS2 compiler
+and interactive environment. Note that both are implemented
+in Curry so that some bootstrapping is necessary to generate
+the complete system.
+
+`testsuite`:
+This directory contains a collection of Curry programs
+implementing unit tests to check the functionality of the system using
+the currytest tool. All tests can be executed by the shell script
+`doTest` in this directory.
+
+`tools`:
+This directory contains various tools for the KiCS2 system.
+
+`www`:
+This directory contains scripts and executables for the
+event handler server that is required to execute dynamic web
+pages implemented with the libraries HTML or WUI.
+
+
+-------------------------------------------------------------
+
+Contact: [Michael Hanus](http://www.informatik.uni-kiel.de/~mh/)

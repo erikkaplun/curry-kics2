@@ -44,6 +44,10 @@ if [ -f "$KICS2RC" ] ; then
       MCCOVERLAPWARN="--no-overlap-warn"
     fi
   done
-  fi
+else
+  # if there is no rc file, we use the extensions since they
+  # are necessary for bootstrapping the system
+  MCCEXTENDED="--extended"
+fi
 
 "$CYMAKE" $MCCEXTENDED $MCCOVERLAPWARN ${1+"$@"}

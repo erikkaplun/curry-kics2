@@ -13,6 +13,7 @@
 *.nav
 *.snm
 *.toc
+*.tpt
 *.vrb
 *.pdf
 *.blg
@@ -35,6 +36,7 @@ bin/idc
 bin/.local
 cpns/CPNSD
 examples/comptest
+frontend
 tools/GenInt
 tools/ImportCalls
 tools/AddTypes
@@ -43,6 +45,7 @@ tools/CurryTest
 tools/browser/BrowserGUI
 tools/curry2js/Curry2JS
 tools/currydoc/CurryDoc
+tools/erd2curry/Main
 tools/SourceProgGUI
 www/Registry
 www/submitform
