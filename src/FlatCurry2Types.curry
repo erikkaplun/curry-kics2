@@ -437,7 +437,7 @@ normalFormExtConsRules qf funcName choiceFunc choicesFunc =
   , (funcName, simpleRule [PVar (1,"cont"),
       PComb (mkGuardName qf) [PVar (2,"c"),PVar (3,"x")], PVar (4,"cs")]
         (applyF (basics "guardCons")
-                [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x"),applyF (basics "combConstr") [Var (2,"c"), Var (4,"cs")]]]))
+                [Var (2,"c"),applyF funcName [Var (1,"cont"),Var (3,"x"),applyF (basics "addCs") [Var (2,"c"), Var (4,"cs")]]]))
   , (funcName, simpleRule [PVar (1,"_"), mkFailPattern qf, PVar (2,"_")]
                 (Symbol (basics "failCons")))
   ]
@@ -672,7 +672,7 @@ extConsRules funcName qf = map nameRule
                     , Var xs
                     ])
   , simpleRule [mkGuardPattern qf, PVar y, PVar cs]
-    (applyF (basics "guardCons") [ Var c, applyF funcName [Var e, Var y, applyF (basics "combConstr") [Var c, Var cs]]])
+    (applyF (basics "guardCons") [ Var c, applyF funcName [Var e, Var y, applyF (basics "addCs") [Var c, Var cs]]])
   , simpleRule [mkFailPattern qf, PVar p, PVar p]
     (Symbol (basics "failCons"))
   , simpleRule [PVar z, mkChoicePattern qf, PVar cs]
@@ -686,7 +686,7 @@ extConsRules funcName qf = map nameRule
                     , Var xs
                     ])
   , simpleRule [PVar y, mkGuardPattern qf, PVar cs]
-    (applyF (basics "guardCons") [Var c, applyF funcName [Var y, Var e, applyF (basics "combConstr")[Var c, Var cs]]])
+    (applyF (basics "guardCons") [Var c, applyF funcName [Var y, Var e, applyF (basics "addCs")[Var c, Var cs]]])
   , simpleRule [PVar p, mkFailPattern qf, PVar p]
     (Symbol (basics "failCons"))
   ]

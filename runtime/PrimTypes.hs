@@ -3,6 +3,7 @@ module PrimTypes where
 
 import System.IO (Handle)
 
+import ConstStore
 import ID
 import Types
 
@@ -60,14 +61,14 @@ instance NormalForm BinInt where
   ($!!) cont (Pos x1) cs = ((\y1 cs1 -> cont (Pos y1) cs1) $!! x1) cs
   ($!!) cont (Choice_BinInt i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_BinInt i xs) cs = nfChoices cont i xs cs
-  ($!!) cont (Guard_BinInt c x) cs = guardCons c ((cont $!! x) $! combConstr c cs)
+  ($!!) cont (Guard_BinInt c x) cs = guardCons c ((cont $!! x) $! addCs c cs)
   ($!!) _ Fail_BinInt _ = failCons
   ($##) cont (Neg x1) cs = ((\y1 cs1 -> cont (Neg y1) cs1) $## x1) cs
   ($##) cont Zero cs = cont Zero cs
   ($##) cont (Pos x1) cs = ((\y1 cs1 -> cont (Pos y1) cs1) $## x1) cs
   ($##) cont (Choice_BinInt i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_BinInt i xs) cs = gnfChoices cont i xs cs
-  ($##) cont (Guard_BinInt c x) cs = guardCons c ((cont $## x) $! combConstr c cs)
+  ($##) cont (Guard_BinInt c x) cs = guardCons c ((cont $## x) $! addCs c cs)
   ($##) _ Fail_BinInt _ = failCons
   ($!<) cont (Neg x1) = (\y1 -> cont (Neg y1)) $!< x1
   ($!<) cont Zero = cont Zero
@@ -163,14 +164,14 @@ instance NormalForm Nat where
   ($!!) cont (I x1) cs = ((\y1 cs1 -> cont (I y1) cs1) $!! x1) cs
   ($!!) cont (Choice_Nat i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_Nat i xs) cs = nfChoices cont i xs cs
-  ($!!) cont (Guard_Nat c x) cs = guardCons c ((cont $!! x) $! combConstr c cs)
+  ($!!) cont (Guard_Nat c x) cs = guardCons c ((cont $!! x) $! addCs c cs)
   ($!!) _ Fail_Nat _ = failCons
   ($##) cont IHi cs = cont IHi cs
   ($##) cont (O x1) cs = ((\y1 cs1 -> cont (O y1) cs1) $## x1) cs
   ($##) cont (I x1) cs = ((\y1 cs1 -> cont (I y1) cs1) $## x1) cs
   ($##) cont (Choice_Nat i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_Nat i xs) cs = gnfChoices cont i xs cs
-  ($##) cont (Guard_Nat c x) cs = guardCons c ((cont $## x) $! combConstr c cs)
+  ($##) cont (Guard_Nat c x) cs = guardCons c ((cont $## x) $! addCs c cs)
   ($##) _ Fail_Nat _ = failCons
   ($!<) cont IHi = cont IHi
   ($!<) cont (O x1) = (\y1 -> cont (O y1)) $!< x1
@@ -250,12 +251,12 @@ instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
   ($!!) cont f@(Func _) cs = cont f cs
   ($!!) cont (Choice_Func i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_Func i xs) cs = nfChoices cont i xs cs
-  ($!!) cont (Guard_Func c x) cs = guardCons c ((cont $!! x) $! combConstr c cs)
+  ($!!) cont (Guard_Func c x) cs = guardCons c ((cont $!! x) $! addCs c cs)
   ($!!) _ Fail_Func _ = failCons
   ($##) cont f@(Func _) cs = cont f cs
   ($##) cont (Choice_Func i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_Func i xs) cs = gnfChoices cont i xs cs
-  ($##) cont (Guard_Func c x) cs = guardCons c ((cont $## x) $! combConstr c cs)
+  ($##) cont (Guard_Func c x) cs = guardCons c ((cont $## x) $! addCs c cs)
   ($##) _ Fail_Func _ = failCons
   ($!<) cont (Choice_Func i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_Func i xs) = nfChoicesIO cont i xs
@@ -318,12 +319,12 @@ instance (NormalForm t0) => NormalForm (C_IO t0) where
   ($!!) cont io@(C_IO _) cs = cont io cs
   ($!!) cont (Choice_C_IO i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_C_IO i xs) cs = nfChoices cont i xs cs
-  ($!!) cont (Guard_C_IO c x) cs = guardCons c ((cont $!! x)$! combConstr c cs)
+  ($!!) cont (Guard_C_IO c x) cs = guardCons c ((cont $!! x)$! addCs c cs)
   ($!!) _ Fail_C_IO _= failCons
   ($##) cont io@(C_IO _) cs = cont io cs
   ($##) cont (Choice_C_IO i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_C_IO i xs) cs = gnfChoices cont i xs cs
-  ($##) cont (Guard_C_IO c x) cs = guardCons c ((cont $## x)$! combConstr c cs)
+  ($##) cont (Guard_C_IO c x) cs = guardCons c ((cont $## x)$! addCs c cs)
   ($##) _ Fail_C_IO _ = failCons
   ($!<) cont (Choice_C_IO i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_IO i xs) = nfChoicesIO cont i xs
@@ -390,12 +391,12 @@ instance NormalForm (PrimData a) where
   ($!!) cont p@(PrimData _) cs = cont p cs
   ($!!) cont (Choice_PrimData i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_PrimData i xs) cs = nfChoices cont i xs cs
-  ($!!) cont (Guard_PrimData c x) cs = guardCons c ((cont $!! x)$! combConstr c cs)
+  ($!!) cont (Guard_PrimData c x) cs = guardCons c ((cont $!! x)$! addCs c cs)
   ($!!) _ Fail_PrimData _ = failCons
   ($##) cont p@(PrimData _) cs = cont p cs
   ($##) cont (Choice_PrimData i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_PrimData i xs) cs = gnfChoices cont i xs cs
-  ($##) cont (Guard_PrimData c x) cs = guardCons c ((cont $## x) $! combConstr c cs)
+  ($##) cont (Guard_PrimData c x) cs = guardCons c ((cont $## x) $! addCs c cs)
   ($##) _ Fail_PrimData _ = failCons
   ($!<) cont (Choice_PrimData i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_PrimData i xs) = nfChoicesIO cont i xs

@@ -5,8 +5,10 @@ module Search where
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Parallel.TreeSearch
+import Data.List (intercalate)
 import qualified Data.Map as Map
 
+import ConstStore
 import ID
 import IDSupply
 import MonadList
@@ -15,43 +17,56 @@ import Solver (solves)
 import Types
 
 toIO :: C_IO a -> ConstStore -> IO a
-toIO (C_IO io) _ = io
-toIO Fail_C_IO _ = error "toIO: failed"
-toIO (Choice_C_IO _ _ _) _ = error "toIO: Non-determinism in IO occured"
-toIO (Guard_C_IO constraints e) cs = do
-  mbSolution <- solves (getConstrList constraints) e
+toIO (C_IO io)           _     = io
+toIO Fail_C_IO           _     = error "toIO: failed"
+toIO (Choice_C_IO _ _ _) _     = error "toIO: Non-determinism in IO occured"
+toIO (Guard_C_IO cs e)   store = do
+  mbSolution <- solves (getConstrList cs) e
   case mbSolution of
     Nothing       -> error "toIO (Guard): failed"
     Just (_, val) -> do
-      -- adds the constraint to the global constraint store
-      -- to make it available to subsequent operations
-      -- this is safe because no backtracking is done in IO
-      addToGlobalCs constraints
-      toIO val $! (combConstr constraints cs)
+      -- add the constraint to the global constraint store to make it
+      -- available to subsequent operations.
+      -- This is valid because no backtracking is done in IO
+      addToGlobalCs cs
+      toIO val (cs `addCs` store)
 
--- TODO: lookup value in constraint map and global map?
-toIO (Choices_C_IO (ChoiceID _) _) _ = error "choices with ChoiceID"
-toIO (Choices_C_IO i@(NarrowedID _ _) choices) cs = followToIO i choices cs
-toIO (Choices_C_IO i@(FreeID _ _) choices) cs = do
+-- TODO@fre: lookup value in constraint map and global map?
+toIO (Choices_C_IO   (ChoiceID     _)  _) _  = error "choices with ChoiceID"
+toIO (Choices_C_IO i@(NarrowedID _ _) xs) cs = followToIO i xs cs
+toIO (Choices_C_IO i@(FreeID     _ _) xs) cs = do
   -- bindings of free variables are looked up first in the local
   -- constraint store and then in the global constraint store
   lookupCs cs i (flip toIO cs) tryGlobal
  where
   tryGlobal = do
     csg <- lookupGlobalCs
-    lookupCs csg i (flip toIO cs) (followToIO i choices cs)
+    lookupCs csg i (flip toIO cs) (followToIO i xs cs)
 
 followToIO :: ID -> [C_IO a] -> ConstStore -> IO a
-followToIO i choices cs =  do
+followToIO i xs store =  do
   c <- lookupChoice i
   case c of
-    ChooseN idx _ -> toIO (choices !! idx) cs
-    NoChoice -> error "toIO (Choices): Non-determinism in IO occured"
-    LazyBind constraints -> toIO (guardCons (StructConstr constraints) (choicesCons i choices)) cs
-    _ -> error $ "followToIO: " ++ show c
+    ChooseN idx _ -> toIO (xs !! idx) store
+    NoChoice      -> error "toIO (Choices): Non-determinism in IO occured"
+    LazyBind cs   -> toIO (guardCons (StructConstr cs) (choicesCons i xs)) store
+    _             -> error $ "followToIO: " ++ show c
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
+
+-- |This function is used to print the main expression with the bindings of
+-- free variables.
+--
+-- The REPL translates an expression "exp where x1,...,xn free" into the main
+-- expression (exp,["x1",...,"xn"],x1,...,xn).
+-- The normal form of this expression is then printed in a nicely readable
+-- form.
+printWithBindings :: Show a => [(String, String)] -> a -> IO ()
+printWithBindings []       result = print result
+printWithBindings bindings result = putStrLn $
+  "{" ++ intercalate ", " (map (\(n, v) -> n ++ " = " ++ v) bindings) ++ "} "
+  ++ show result
 
 -- ---------------------------------------------------------------------------
 -- Simple evaluation without search or normal form computation

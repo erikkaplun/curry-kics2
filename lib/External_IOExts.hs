@@ -86,12 +86,12 @@ instance NormalForm (C_IORef a) where
   ($!!) cont ioref@(C_IORef _)          cs = cont ioref cs
   ($!!) cont (Choice_C_IORef i io1 io2) cs = nfChoice cont i io1 io2 cs
   ($!!) cont (Choices_C_IORef i ios)    cs = nfChoices cont i ios cs
-  ($!!) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $!! io) (combConstr c cs)) 
+  ($!!) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $!! io) (addCs c cs)) 
   ($!!) _    Fail_C_IORef               cs = failCons
   ($##) cont io@(C_IORef _)             cs = cont io cs
   ($##) cont (Choice_C_IORef i io1 io2) cs = gnfChoice cont i io1 io2 cs
   ($##) cont (Choices_C_IORef i ios)    cs = gnfChoices cont i ios cs
-  ($##) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $## io) (combConstr c cs)) 
+  ($##) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $## io) (addCs c cs)) 
   ($##) _    Fail_C_IORef               cs = failCons
   ($!<) cont (Choice_C_IORef i x y)     = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_IORef i xs)     = nfChoicesIO cont i xs

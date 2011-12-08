@@ -841,15 +841,13 @@ newWrap n innermostWrapper e
 
 wrapDX exprs = fun 2 (basics,"wrapDX") exprs
 wrapNX exprs = fun 2 (basics,"wrapNX") exprs
-addCs  exprs = fun 2 (basics,"addCs")  exprs
+addCs  exprs = fun 2 (basics,"acceptCs")  exprs
 funId = fun 1 (prelude,"id") []
 
 
 -- Strict or lazy computation of supplies
 letIdVar True  = strictLet
 letIdVar False = lazyLet
-
--- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
@@ -874,7 +872,7 @@ curryChar :: QName
 curryChar = renameQName (prelude, "Char")
 
 combConstrName :: QName
-combConstrName = (basics,"combConstr")
+combConstrName = (basics,"addCs")
 
 -- type expressions
 
