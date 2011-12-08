@@ -506,17 +506,17 @@ createHaskellMain rst goalstate isdet isio =
               in ("print" ++ case (rst->ndMode) of
                               DFS   -> "DFS"++searchSuffix
                               BFS   -> "BFS"++searchSuffix
-                              IDS d -> "IDS"++searchSuffix++" "++show d
+                              IDS d -> "IDS"++searchSuffix++' ':show d
                               Par _ -> "Par"++searchSuffix )++' ':printOperation
-   in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $
-       "module Main where\n"++
-       "import MonadList\n"++
-       "import Basics\n"++
-       (if printOperation=="print"
-        then ""
-        else "import PrintBindings\nimport Curry_Prelude\n") ++
-       "import Curry_"++stripSuffix mainGoalFile++"\n"++
-       "main = "++mainOperation++" "++mainPrefix++"idcMainGoal\n"
+   in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $ unlines
+       [ "module Main where"
+       , "import MonadList"
+       , "import Basics"
+       , if printOperation == "print" then "" else "import Curry_Prelude"
+       , "import Curry_" ++ stripSuffix mainGoalFile
+       , ""
+       , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "idcMainGoal"
+       ]
  where
   -- Create the following Haskell expression for printing goals with bindings:
   -- (\ (OP_Tuple<n+2> result names v1 ... v<n>) ->
