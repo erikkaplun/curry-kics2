@@ -454,7 +454,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                    ]
                    ++ map (</> rst -> outputSubdir) (rst -> importPaths)
       ghcCompile = unwords $
-                     [if useghci then "ghci" else "ghc"
+                     [Inst.ghcExec ++ if useghci then "i" else ""
                      ,if rst->optim then "-O2" else ""] ++
                      (if useghci then [] else ["--make"]) ++
                      [if rst->verbose < 2 then "-v0" else "-v1"

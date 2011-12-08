@@ -335,7 +335,8 @@ widget2tcl label (CheckButton confs) =
    where refname = wLabel2Refname label
          (conf_tcl,conf_evs) = configs2tcl "checkbutton" label confs
 
-widget2tcl label (Entry confs) =
+widget2tcl label (Entry confs) = case configs2tcl "entry" label confs of
+  (conf_tcl,conf_evs) ->
     ("entry "++label++"\n" ++
      label++" configure -textvariable "++refname++"\n" ++
      "proc getvar"++refname++" {} { global "++refname++" ; return $"
@@ -343,8 +344,8 @@ widget2tcl label (Entry confs) =
      "proc setvar"++refname++" {s} { global "++refname++" ; set "
                                                      ++refname++" $s}\n" ++
      conf_tcl , conf_evs)
-   where refname = wLabel2Refname label
-         (conf_tcl,conf_evs) = configs2tcl "entry" label confs
+ where
+   refname = wLabel2Refname label
 
 widget2tcl label (Label confs) =
     ("label "++label++"\n" ++
@@ -446,34 +447,37 @@ widget2tcl label (TextEdit confs) =
            = label++" tag configure "++ camelCase color ++
              " -background \"" ++ color ++ "\""
 
-widget2tcl label (Row confs ws) =
-  ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
-    else "frame "++label++"\n") ++
-   wstcl ++
-   (snd $ foldl (\ (n,g) l->(n+1,g++"grid "++label ++ labelIndex2string (96+n)
-                                  ++" -row 1 -column "++show n++" "
-                                  ++confCollection2tcl confs
-                                  ++gridInfo2tcl n label "col" l ++ "\n")) 
-                (1,"")
-                wsGridInfo),
-   wsevs)
-  where (wstcl,wsevs) = widgets2tcl label 97 ws
-        wsGridInfo = widgets2gridinfo ws
+widget2tcl label (Row confs ws) = case widgets2tcl label 97 ws of
+  (wstcl,wsevs) ->
+    ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
+      else "frame "++label++"\n") ++
+     wstcl ++
+     (snd $ foldl (\ (n,g) l->(n+1,g++"grid "++label++labelIndex2string (96+n)
+                                    ++" -row 1 -column "++show n++" "
+                                    ++confCollection2tcl confs
+                                    ++gridInfo2tcl n label "col" l ++ "\n")) 
+                  (1,"")
+                  wsGridInfo),
+     wsevs)
+ where
+   wsGridInfo = widgets2gridinfo ws
         
 
-widget2tcl label (Col confs ws) =
-  ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
-    else "frame "++label++"\n") ++
-      wstcl ++
-      (snd $ foldl (\ (n,g) l->(n+1,g++"grid "++label ++ labelIndex2string (96+n)
-                                     ++" -column 1 -row "++show n++" "
-                                     ++confCollection2tcl confs
-                                     ++gridInfo2tcl n label "row" l ++ "\n"))
-                   (1,"")
-                   (widgets2gridinfo ws)),
-      wsevs)
-  where (wstcl,wsevs) = widgets2tcl label 97 ws
-        wsGridInfo = widgets2gridinfo ws
+widget2tcl label (Col confs ws) = case widgets2tcl label 97 ws of
+   (wstcl,wsevs) ->
+    ((if label=="" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n"
+      else "frame "++label++"\n") ++
+        wstcl ++
+        (snd $ foldl (\ (n,g) l->(n+1,g++"grid "++label
+                                       ++labelIndex2string (96+n)
+                                       ++" -column 1 -row "++show n++" "
+                                       ++confCollection2tcl confs
+                                       ++gridInfo2tcl n label "row" l ++ "\n"))
+                     (1,"")
+                     (widgets2gridinfo ws)),
+        wsevs)
+ where
+   wsGridInfo = widgets2gridinfo ws
 
 widget2tcl label (Matrix confs ws) = 
   ((if label == "" then "wm resizable . " ++ resizeBehavior wsGridInfo++"\n" 
@@ -489,7 +493,8 @@ matrix2tcl :: Int -> Int -> String -> [ConfCollection]
 matrix2tcl _ _ _ _ [] = ("",[])
 matrix2tcl nextLabel n label confs (ws:wss) =
    (wstcl ++ 
-   (snd $ foldl (\ (m,g) l->(m+1,g++"grid "++label ++ labelIndex2string (nextLabel+m-1)
+   (snd $ foldl (\ (m,g) l->(m+1,g++"grid "++label
+                                  ++labelIndex2string (nextLabel+m-1)
                                   ++" -row "++show n ++" -column "++show m++" "
                                   ++confCollection2tcl confs
                                   ++gridInfo2tcl m label "col" l ++ "\n"))
@@ -700,7 +705,7 @@ config2tcl wtype label (List l)
 
  where
    setlistelems [] = ""
-   setlistelems (e:es) = label++" insert end \""++escape_tcl e++"\"\n"++
+   setlistelems (e:es) = label++" insert end \""++escapeTcl e++"\"\n"++
                          setlistelems es
 
 -- items in a menu button:
@@ -720,9 +725,9 @@ config2tcl wtype label (Text s)
  | wtype=="canvas"
    = trace "WARNING: GUI.Text ignored for Canvas\n" ""
  | wtype=="checkbutton"
-   = label++" configure -text \""++escape_tcl s++"\"\n"
+   = label++" configure -text \""++escapeTcl s++"\"\n"
  | otherwise
-   = "setvar"++wLabel2Refname label++" \""++escape_tcl s++"\"\n"
+   = "setvar"++wLabel2Refname label++" \""++escapeTcl s++"\"\n"
 
 -- width of a widget:
 config2tcl wtype label (Width w)
@@ -749,14 +754,14 @@ menu2tcl label menu =
   setmenuelems menu 0
  where setmenuelems [] _ = ""
        setmenuelems (MButton _ text : es) i =
-          label++" add command -label \""++escape_tcl text++
+          label++" add command -label \""++escapeTcl text++
                 "\" -command { writeevent \""++label++"."++show i++
                                           event2tcl DefaultEvent++"\" }\n"++
           setmenuelems es (i+1)
        setmenuelems (MSeparator : es) i =
           label++" add separator\n"++ setmenuelems es (i+1)
        setmenuelems (MMenuButton text l : es) i =
-          label++" add cascade -label \""++escape_tcl text++
+          label++" add cascade -label \""++escapeTcl text++
                 "\" -menu "++label++labelIndex2string (i+97)++"\n"++
           menu2tcl (label++labelIndex2string (i+97)) l ++
           setmenuelems es (i+1)
@@ -813,7 +818,7 @@ canvasItem2tcl label (COval (x1,y1) (x2,y2) opts) =
     where refname = wLabel2Refname label
 canvasItem2tcl label (CText (x,y) text opts) = 
   label++ " create text "++show x++" "++show y++
-          " -text \""++escape_tcl text++"\" "++opts++"\n"++
+          " -text \""++escapeTcl text++"\" "++opts++"\n"++
   "set"++refname++"_scrollx "++show (x+5*(length text))++"\n"++
   "set"++refname++"_scrolly "++show y++"\n"
     where refname = wLabel2Refname label
@@ -831,9 +836,10 @@ wRefname2Label l = map (\c -> if c=='_' then '.' else c) l
 
 -- translate a list of widgets into pair Tcl string / event list:
 widgets2tcl _ _ [] = ("",[])
-widgets2tcl lab nr (w:ws) = (wtcl ++ wstcl, wevs ++ wsevs)
-  where (wtcl,wevs) = widget2tcl (lab++labelIndex2string nr) w
-        (wstcl,wsevs) = widgets2tcl lab (nr+1) ws
+widgets2tcl lab nr (w:ws) =
+  case widget2tcl (lab++labelIndex2string nr) w of
+    (wtcl,wevs) -> case widgets2tcl lab (nr+1) ws of
+                     (wstcl,wsevs) -> (wtcl ++ wstcl, wevs ++ wsevs)
 
 -- translate a label index into a textual label
 -- (e.g., 97->".a" or 123->".z1"):
@@ -931,7 +937,7 @@ openWish title params = do
 --- @param widget - the widget shown in the new window
 runPassiveGUI :: String -> Widget -> IO GuiPort
 runPassiveGUI title widget = do
-  gport <- openWish (escape_tcl title) ""
+  gport <- openWish (escapeTcl title) ""
   send2tk (fst (mainWidget2tcl widget)) gport
   return gport
 
@@ -957,7 +963,7 @@ runGUIwithParams title params widget =
 --- @param initcmd - the initial command executed before activating the GUI
 runInitGUI :: String -> Widget -> (GuiPort -> IO [ReconfigureItem]) -> IO ()
 runInitGUI title widget initcmd = do
-  gport <- openWish (escape_tcl title) ""
+  gport <- openWish (escapeTcl title) ""
   initSchedule widget gport [] initcmd
 
 --- IO action to run a Widget in a new window. The GUI events
@@ -966,9 +972,10 @@ runInitGUI title widget initcmd = do
 --- @param params - parameter string passed to the initial wish command
 --- @param widget - the widget shown in the new GUI window
 --- @param initcmd - the initial command executed before activating the GUI
-runInitGUIwithParams :: String -> String -> Widget -> (GuiPort -> IO [ReconfigureItem]) -> IO ()
+runInitGUIwithParams :: String -> String -> Widget
+                     -> (GuiPort -> IO [ReconfigureItem]) -> IO ()
 runInitGUIwithParams title params widget initcmd = do
-  gport <- openWish (escape_tcl title) params
+  gport <- openWish (escapeTcl title) params
   initSchedule widget gport [] initcmd
 
 
@@ -1003,7 +1010,7 @@ runControlledGUI title (widget,exth) hdl =
 runConfigControlledGUI :: String ->
        (Widget, String -> GuiPort -> IO [ReconfigureItem]) -> Handle -> IO ()
 runConfigControlledGUI title (widget,exth) hdl = do
-  gport <- openWish (escape_tcl title) ""
+  gport <- openWish (escapeTcl title) ""
   initSchedule widget gport [msgToIOHandler exth hdl] (\_->return [])
 
 --- Runs a Widget in a new GUI window and process GUI events
@@ -1021,7 +1028,7 @@ runConfigControlledGUI title (widget,exth) hdl = do
 runInitControlledGUI :: String -> (Widget, String -> GuiPort -> IO ()) ->
                         (GuiPort -> IO [ReconfigureItem]) -> Handle -> IO ()
 runInitControlledGUI title (widget,exth) initcmd hdl = do
-  gport <- openWish (escape_tcl title) ""
+  gport <- openWish (escapeTcl title) ""
   initSchedule widget gport
                [msgToIOHandler (\ x y -> exth x y >> return []) hdl]
                initcmd
@@ -1068,7 +1075,7 @@ runHandlesControlledGUI title widgethandlers handles =
 runInitHandlesControlledGUI :: String -> (Widget,[Handle -> GuiPort -> IO [ReconfigureItem]])
                                -> (GuiPort -> IO [ReconfigureItem]) -> [Handle] -> IO ()
 runInitHandlesControlledGUI title (widget,handlers) initcmd handles =
- do gport <- openWish (escape_tcl title) ""
+ do gport <- openWish (escapeTcl title) ""
     initSchedule widget gport
                  (map IOHandler (zip handles (map toIOHandler handlers)))
                  initcmd
@@ -1113,17 +1120,17 @@ scheduleTkEvents evs gport exthds = do
 
 -- process an event from the wish and return the new configuration items:
 processTkEvent :: [EventHandler] -> Handle -> GuiPort
-                  -> IO (Maybe [ReconfigureItem])
+               -> IO (Maybe [ReconfigureItem])
 processTkEvent evs str gport =
   hIsEOF str >>= \eof ->
   if eof then return Nothing -- connection closed (by wish)
-  else 
-    hGetLine str >>= \ans ->
-    reportTclTk ("GUI RECEIVED: "++ans) >>
-    if (take 4 ans)==":EVT"
-    then let (evwidget,evtype) = break (==' ') (drop 4 ans) in
-         selectEvent evwidget evtype evs gport >>= \configs ->
-         return (Just configs)
+  else do
+   ans <- hGetLine str
+   reportTclTk ("GUI RECEIVED: "++ans)
+   if (take 4 ans)==":EVT"
+    then do let (evwidget,evtype) = break (==' ') (drop 4 ans)
+            configs <- selectEvent evwidget evtype evs gport
+            return (Just configs)
     else do reportTclTkError("ERROR in scheduleTkEvents: Received: "++ans++"\n")
             -- ignore other outputs:
             return (Just [])
@@ -1173,7 +1180,7 @@ configStreamHandlers exths (RemoveStreamHandler handle : confitems) =
              else IOHandler (h',hr) : removeHandler h ehs
 
 -- transform external handler into an IO Handler used in the scheduler
--- which alwaus returns empty configurations:
+-- which always returns empty configurations:
 toIOHandler handler _ handle gport = handler handle gport >>= return . Just
 
 --- Changes the current configuration of a widget
@@ -1185,7 +1192,8 @@ setConfig (WRefLabel var wtype) confitem gport =
 
 
 selectEvent evwidget evtype [] _ =
-  trace ("Internal error in GUI.curry: no handler for event: "++evwidget++evtype++"\n")
+  trace ("Internal error in GUI.curry: no handler for event: "++
+         evwidget++evtype++"\n")
         (return [])
 selectEvent evwidget evtype ((ev,hevtype,handler):evs) gport =
   if evwidget==ev && event2tcl hevtype == evtype
@@ -1232,10 +1240,10 @@ getWidgetVarRemValue len gport =
 
 
 -- escape some Tcl special characters (brackets, dollars):
-escape_tcl [] = []
-escape_tcl (c:s) = if c=='[' || c==']' || c=='$' || c=='"' || c=='\\'
-                   then '\\':c:escape_tcl s
-                   else c:escape_tcl s
+escapeTcl [] = []
+escapeTcl (c:s) = if c=='[' || c==']' || c=='$' || c=='"' || c=='\\'
+                   then '\\':c:escapeTcl s
+                   else c:escapeTcl s
 
 
 ----------------------------------------------------------------------------
@@ -1255,7 +1263,7 @@ getValue (WRefLabel var _) gport =
 --- Sets the (String) value of a variable in a GUI.
 setValue :: WidgetRef -> String -> GuiPort -> IO ()
 setValue (WRefLabel var _) val gport = 
-  send2tk ("setvar"++var++" \""++escape_tcl val++"\"") gport
+  send2tk ("setvar"++var++" \""++escapeTcl val++"\"") gport
 
 --- Updates the (String) value of a variable w.r.t. to an update function.
 updateValue :: (String->String) -> WidgetRef -> GuiPort -> IO ()
@@ -1269,7 +1277,7 @@ appendValue :: WidgetRef -> String -> GuiPort -> IO ()
 appendValue (WRefLabel var wtype) val gport =
   if wtype/="textedit"
   then trace ("WARNING: GUI.appendValue ignored for widget type \""++wtype++"\"\n") done
-  else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\"") gport >>
+  else send2tk (wRefname2Label var++" insert end \""++escapeTcl val++"\"") gport >>
        send2tk (wRefname2Label var++" see end") gport
 
 --- Appends a String value with style tags to the contents of a TextEdit widget
@@ -1283,7 +1291,7 @@ appendStyledValue :: WidgetRef -> String -> [Style] -> GuiPort -> IO ()
 appendStyledValue (WRefLabel var wtype) val styles gport =
   if wtype/="textedit"
    then trace ("WARNING: GUI.appendStyledValue ignored for widget type \""++wtype++"\"\n") done
-   else send2tk (wRefname2Label var++" insert end \""++escape_tcl val++"\""
+   else send2tk (wRefname2Label var++" insert end \""++escapeTcl val++"\""
                  ++" \""++showStyles styles++"\"") gport >>
         send2tk (wRefname2Label var++" see end") gport
  where
