@@ -10,6 +10,9 @@ import Char
 import ReadShowTerm
 import Float
 
+-- Show benchmarks commands, like compiler calls, runtime calls,...?
+showBenchCmds = False
+
 -- home directory of KiCS2:
 kics2Home = "../.."
 
@@ -23,6 +26,8 @@ monInstalled = False -- is the monadic curry compiler installed?
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
+
+printBenchCmd s = if showBenchCmds then putStrLn s else done
 
 evalCmd :: String -> IO String
 evalCmd cmd =do h <- connectToCommand cmd 
@@ -93,7 +98,7 @@ processTimes timings =
   truncateFloat x = i2f (round (x*.100)) /. 100
 
 -------------------------------------------------------------------------
--- Axuiliary operations for running benchmarks.
+-- Auxiliary operations for running benchmarks.
 
 -- Each benchmark consists of a name, an action to prepare the benchmark
 -- (e.g., compile the program), a command to run the benchmark
@@ -106,8 +111,7 @@ runBenchmark rpts allnum (num,(name,preparecmd,benchcmd,cleancmd)) = do
   let line = take 8 (repeat '-')
   putStr (unlines
            [line,
-            "Running benchmark ["++show num++" of "++show allnum++"]: "++name,
-            line])
+            "Running benchmark ["++show num++" of "++show allnum++"]: "++name])
   hFlush stdout
   preparecmd
   times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..rpts]
@@ -141,7 +145,7 @@ idcCompile mod hooptim ghcoptim idsupply mainexp = do
   let compileCmd = kics2Home++"/bin/idc -q "
                             ++(if hooptim then "" else "-O 0 ")
                             ++"-i "++kics2Home++"/lib"++" "++mod
-  putStrLn $ "Executing: "++compileCmd
+  printBenchCmd $ "Executing: "++compileCmd
   hFlush stdout
   system compileCmd
   createHaskellMainAndCompile mod ghcoptim idsupply mainexp
@@ -153,11 +157,12 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
        "import Basics\n"++
        "import Curry_"++mod++"\n"++
        "main = "++mainexp++"\n"
-  putStrLn $ "Main expression: " ++ mainexp
+  printBenchCmd $ "Main expression: " ++ mainexp
   let imports = [kics2Home++"/runtime",kics2Home++"/runtime/idsupply"++idsupply,
                  ".curry/kics2",kics2Home++"/lib/.curry/kics2"]
       compileCmd = unwords ["ghc",if optim then "-O2" else ""
                            ,"--make"
+                           ,if showBenchCmds then "" else "-v0"
                            ,"-package ghc"
                            ,"-cpp" -- use the C preprocessor
                            ,"-DDISABLE_CS" -- disable constraint store
@@ -166,7 +171,7 @@ createHaskellMainAndCompile mod optim idsupply mainexp = do
                            ,"-fforce-recomp"
                            ,"-i"++concat (intersperse ":" imports),"Main.hs"]
                      -- also:  -funbox-strict-fields ?
-  putStrLn $ "Executing: "++compileCmd
+  printBenchCmd $ "Executing: "++compileCmd
   hFlush stdout
   system compileCmd
 
@@ -262,8 +267,8 @@ swiBenchmark  mod =
 
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl prog withMon = concat
- [idcBenchmark "IDC_D"  prog True False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D" prog True True  "integer" "evalD d_C_main"
+ [idcBenchmark "IDC_D_INTEGER"  prog True False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D_INTEGER" prog True True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -274,8 +279,8 @@ benchFPpl prog withMon = concat
 
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP prog withMon = concat
- [idcBenchmark "IDC_D"  prog True  False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D" prog True  True  "integer" "evalD d_C_main"
+ [idcBenchmark "IDC_D_INTEGER"  prog True  False "integer" "evalD d_C_main"
+ ,idcBenchmark "IDC+_D_INTEGER" prog True  True  "integer" "evalD d_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,ghcBenchmark   prog
@@ -284,9 +289,12 @@ benchHOFP prog withMon = concat
   
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS prog withMon = concat
- [idcBenchmark "IDC_PrDFS"     prog True False "integer" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS"    prog True True  "integer" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio" "prdfs print nd_C_main"
+ [idcBenchmark "IDC_PrDFS_INTEGER"  prog True False "integer"
+               "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_INTEGER" prog True True  "integer"
+               "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio"
+               "prdfs print nd_C_main"
  ,pakcsBenchmark "" prog
  ,mccBenchmark ""   prog
  ,monBenchmark withMon "MON+" prog True "main"]
@@ -309,7 +317,7 @@ benchFunPats prog = concat
 -- Benchmarking functional programs with idc/pakcs/mcc
 -- with a given name for the main operation
 benchFPWithMain prog name = concat
- [idcBenchmark ("IDC+_D:"++name)
+ [idcBenchmark ("IDC+_D_INTEGER:"++name)
                prog True True "integer" ("evalD d_C_"++name)
  ,pakcsBenchmark ("-m \"print "++name++"\"") prog
  ,mccBenchmark ("-e\""++name++"\"")   prog
@@ -318,9 +326,9 @@ benchFPWithMain prog name = concat
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain prog name = concat
- [idcBenchmark ("IDC_PrDFS:"++name)
+ [idcBenchmark ("IDC_PrDFS_INTEGER:"++name)
                prog True False "integer" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_PrDFS:"++name)
+ ,idcBenchmark ("IDC+_PrDFS_INTEGER:"++name)
                prog True True  "integer" ("prdfs print nd_C_"++name)
  ,idcBenchmark ("IDC+_PrDFS_PUREIO:"++name)
                prog True True  "pureio" ("prdfs print nd_C_"++name)
@@ -476,10 +484,10 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
   name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
 
 --main = run 3 allBenchmarks
---main = run 1 allBenchmarks
+main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
-main = run 1 (benchFPWithMain "ShareNonDet" "goal1" :
-             map (\g -> benchFLPDFSWithMain "ShareNonDet" g) ["goal2","goal3"])
+--main = run 1 (benchFPWithMain "ShareNonDet" "goal1" : [])
+--           map (\g -> benchFLPDFSWithMain "ShareNonDet" g) ["goal2","goal3"])
 --main = run 1 [benchHOFP "Primes" True]
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
@@ -495,7 +503,7 @@ main = run 1 (benchFPWithMain "ShareNonDet" "goal1" :
 -- Evaluate log file of benchmark, i.e., compress it to show all results:
 
 showLogFile = do
-  logs <- readFile "bench.log.kics2_nocs"
+  logs <- readFile "bench.log"
   putStrLn (unlines (splitBMTime (lines logs)))
  where
   splitBMTime xs =

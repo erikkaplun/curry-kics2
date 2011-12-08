@@ -42,13 +42,19 @@ installwithlogging:
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: ${INSTALLCURRY} installfrontend Compile REPL
+install: kernel
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
 	chmod -R go+rX .
+
+# install a kernel system without all tools
+.PHONY: kernel
+kernel: ${INSTALLCURRY} installfrontend
+	${MAKE} Compile
+	${MAKE} REPL
 
 #
 # Create documentation for system libraries:
