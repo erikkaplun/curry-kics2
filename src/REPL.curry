@@ -23,13 +23,15 @@ import qualified Installation as Inst
 import Files
 import Names (funcInfoFile)
 
-banner = unlines [bannerLine,bannerText,bannerDate,bannerLine]
+getBanner :: IO String
+getBanner = do
+  logo <- readFile (Inst.installDir++"/data/logo.txt")
+  return (logo++version)
  where
-   bannerText = "KiCS2 Curry->Haskell Compiler (Version "++
-                show Inst.majorVersion ++ "." ++ show Inst.minorVersion ++
-                " of "++ Inst.compilerDate ++ ")"
-   bannerDate = "(installed at "++Inst.installDate++")"
-   bannerLine = take (length bannerText) (repeat '=')
+  version = "Version "++
+            show Inst.majorVersion ++ "." ++ show Inst.minorVersion ++ " of "++
+            Inst.compilerDate ++
+            " (installed at " ++ Inst.installDate ++ ")"
 
 mainGoalFile = "Curry_Main_Goal.curry"
 
@@ -215,7 +217,7 @@ defaultImportPathsWith rst dirs =
 processArgsAndStart rst [] =
   if rst -> quit
   then cleanUpRepl rst
-  else do writeVerboseInfo rst 1 banner
+  else do getBanner >>= writeVerboseInfo rst 1
           writeVerboseInfo rst 1 "Type \":h\" for help"
           repl rst
 processArgsAndStart rst (arg:args) =
