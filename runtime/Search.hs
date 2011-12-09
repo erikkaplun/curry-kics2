@@ -15,6 +15,7 @@ import MonadList
 import PrimTypes
 import Solver (solves)
 import Types
+import Debug
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io
@@ -109,6 +110,44 @@ evalIO goal = initSupply >>= \s -> toIO (goal s emptyCs) emptyCs >> return ()
 prtChoices :: NormalForm a => NonDetExpr a -> IO ()
 prtChoices goal = getNormalForm goal >>= print
 
+-- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
+-- and print the choice structure of all results as a tree.
+prtChoiceTree :: NormalForm a => NonDetExpr a -> IO ()
+prtChoiceTree goal = getNormalForm goal >>= putStrLn . showTree
+  where
+  showTree = ($[]) . showsTree 0 [] . try
+  -- showsTree n l <tryVal>, where
+  --   * n is the number of indentations (one constructor)
+  --   * l is a stack of flags whether we show the last alternative
+  --     of the respective level (just for drawing nice corners)
+  showsTree n l (Val v)         = indent n l . shows v . nl
+  showsTree n l Fail            = indent n l . showChar '!' . nl
+  showsTree n l (Choice  i x y) = indent n l . shows i . nl
+                                . showsChildren (n+1) l [try x, try y]
+  showsTree n l (Narrowed i xs) = indent n l . shows i . nl
+                                . showsChildren (n+1) l (map try xs)
+  showsTree n l (Free     i xs) = indent n l . shows i . nl
+                                . showsChildren (n+1) l (map try xs)
+  showsTree n l (Guard    cs e) = indent n l . shows cs . nl
+                                . showsChildren (n+1) l [try e]
+
+  indent 0 _       = id
+  indent n (hd:tl) = showString (concatMap showLines $ reverse tl)
+                   . showChar (if hd then llc else lmc)
+                   . showString (hbar:hbar:" ")
+                     where showLines b = (if b then ' ' else vbar) : "   "
+
+  vbar = '\x2502'     -- vertical bar
+  hbar = '\x2500'     -- horizontal bar
+  llc  = '\x2514'     -- left lower corner
+  lmc  = '\x251c'     -- left middle corner
+  nl   = showChar '\n'-- newline :)
+
+  showsChildren n l []     = id
+  showsChildren n l [x]    = showsTree n (True :l) x
+  showsChildren n l (x:xs) = showsTree n (False:l) x . showsChildren n l xs
+
+
 -- ---------------------------------------------------------------------------
 -- Printing all results of a computation in a depth-first manner
 -- ---------------------------------------------------------------------------
@@ -124,56 +163,51 @@ prdfs cont goal = getNormalForm goal >>= printValsDFS False cont
 
 -- The first argument backTrack indicates whether backtracking is needed
 printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
-printValsDFS backTrack cont =
-  match prChoice prNarrowed prFree prFail prGuard prVal
+printValsDFS backTrack cont x = do
+  trace $ "prdfs: " ++ take 200 (show x)
+  match prChoice prNarrowed prFree prFail prGuard prVal x
   where
-  prFail = return ()
-  prVal = searchNF (printValsDFS backTrack) cont
-  prChoice i x y = lookupDecision i >>= choose
+  prFail         = return ()
+  prVal v        = searchNF (printValsDFS backTrack) cont v
+  prChoice i x y = lookupDecision i >>= follow
     where
-    choose ChooseLeft  = printValsDFS backTrack cont x
-    choose ChooseRight = printValsDFS backTrack cont y
-    choose NoDecision    =
-     if backTrack
-     then do
-      newDecision True ChooseLeft  x
-      newDecision True ChooseRight y
-      setDecision i NoDecision
-     else do
-      newDecision True  ChooseLeft x
-      newDecision False ChooseRight y
-      where
-        -- Assumption 1: Binary choices can only be set to one of
-        -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
-        -- be ignored in between
-      newDecision bt c a = setDecision i c >> printValsDFS bt cont a
-    choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
+    follow ChooseLeft  = printValsDFS backTrack cont x
+    follow ChooseRight = printValsDFS backTrack cont y
+    follow NoDecision  = if backTrack then do decide True ChooseLeft  x
+                                              decide True ChooseRight y
+                                              setDecision i NoDecision
+                                      else do decide True  ChooseLeft x
+                                              decide False ChooseRight y
+      -- Assumption 1: Binary choices can only be set to one of
+      -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
+      -- be ignored in between
+      where decide bt c a = setDecision i c >> printValsDFS bt cont a
+    follow c           = error $ "Basics.printValsDFS.follow: " ++ show c
 
-  prFree i xs   = lookupDecisionID i >>= choose
+  prFree i xs   = lookupDecisionID i >>= follow
     where
-    choose (LazyBind cs, _) = processLazyBind backTrack cs i xs
+    follow (LazyBind cs, _) = processLazyBind backTrack cs i xs
                                               (printValsDFS backTrack cont)
-    choose (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
-    choose (NoDecision   , j) = cont $ choicesCons j xs
-    choose c                = error $ "Basics.printValsDFS.choose: " ++ show c
+    follow (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
+    follow (NoDecision , j) = cont $ choicesCons j xs
+    follow c                = error $ "Basics.printValsDFS.follow: " ++ show c
 
-  prNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= choose
+  prNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
-    choose (LazyBind cs) = processLazyBind backTrack cs i xs (printValsDFS backTrack cont)
-    choose (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
-    choose NoDecision      =
+    follow (LazyBind cs) = processLazyBind backTrack cs i xs (printValsDFS backTrack cont)
+    follow (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
+    follow NoDecision    =
       if backTrack then do
-       foldr1 (>>) $ zipWith3 (newDecision True) [0 ..] xs pns
+       foldr1 (>>) $ zipWith3 (decide True) [0 ..] xs pns
        setDecision i NoDecision
       else do
-       foldr1 (>>) $ zipWithButLast3 (newDecision True) (newDecision False) [0 ..] xs pns
-      where
-      newDecision bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
-    choose c            = error $ "Basics.printValsDFS.choose: " ++ show c
+       foldr1 (>>) $ zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
+      where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
+    follow c           = error $ "Basics.printValsDFS.follow: " ++ show c
   prNarrowed i _ = error $ "prDFS: Bad narrowed ID " ++ show i
 
-  prGuard cs e = solves (getConstrList cs) e >>= \mbSolution -> case mbSolution of
-    Nothing          -> return ()
+  prGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+    Nothing                       -> return ()
     Just (reset, e') | backTrack -> printValsDFS True  cont e' >> reset
                      | otherwise -> printValsDFS False cont e'
 
@@ -220,9 +254,12 @@ computeWithDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 computeWithDFS goal = getNormalForm goal >>= searchDFS msingleton
 
 searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchDFS cont a = match dfsChoice dfsNarrowed dfsFree mnil dfsGuard dfsVal a
+searchDFS cont x = do
+  trace $ "dfs: " ++ take 200 (show x)
+  match dfsChoice dfsNarrowed dfsFree dfsFail dfsGuard dfsVal x
   where
-  dfsVal = searchNF searchDFS cont
+  dfsFail           = mnil
+  dfsVal v          = searchNF searchDFS cont v
   dfsChoice i x1 x2 = lookupDecision i >>= choose
     where
     choose ChooseLeft  = searchDFS cont x1
@@ -295,48 +332,48 @@ searchBFS act x = bfs act [] [] (return ()) (return ()) x
   -- right to left, TODO is this behavior desired?
   -- xs is the list of values to be processed in this level
   -- ys is the list of values to be processed in the next level
-  bfs cont xs ys set reset =
-    match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal
+  bfs cont xs ys set reset x = do
+    trace $ "bfs: " ++ take 200 (show x)
+    match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
     where
-    bfsFail  = reset >> next cont xs ys
-    bfsVal v = (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys)
-    bfsChoice i a b = set >> lookupDecision i >>= choose
+    bfsFail         = reset >> next cont xs ys
+    bfsVal v        = (set >> searchNF searchBFS cont v)
+                      +++ (reset >> next cont xs ys)
+    bfsChoice i a b = set >> lookupDecision i >>= follow
       where
-      choose ChooseLeft  = bfs cont xs ys (return ()) reset a
-      choose ChooseRight = bfs cont xs ys (return ()) reset b
-      choose NoDecision    = do
+      follow ChooseLeft  = bfs cont xs ys (return ()) reset a
+      follow ChooseRight = bfs cont xs ys (return ()) reset b
+      follow NoDecision  = do
         reset
-        next cont xs ((newSet ChooseLeft , newReset, a) :
-                (newSet ChooseRight, newReset, b) : ys)
-      choose c             = error $ "Basics.searchDFS: Bad choice " ++ show c
+        next cont xs (decide ChooseLeft a : decide ChooseRight b : ys)
+      follow c           = error $ "Basics.searchDFS: Bad choice " ++ show c
 
-      newSet c = set   >> setDecision i c
-      newReset = reset >> setDecision i NoDecision
+      decide c x = (set >> setDecision i c, reset >> setDecision i NoDecision, x)
 
-    bfsNarrowed i@(NarrowedID pns _) cs = set >> lookupDecision i >>= choose
+    bfsNarrowed i@(NarrowedID pns _) cs = set >> lookupDecision i >>= follow
       where
-      choose (LazyBind cns) = processLB cns
-      choose (ChooseN c _)  = bfs cont xs ys (return ()) reset (cs !! c)
-      choose NoDecision       = do
-        reset
-        next cont xs (zipWith3 newDecision [0..] cs pns ++ ys)
-      choose c             = error $ "Basics.searchDFS: Bad choice " ++ show c
-
-      newDecision n y pn = ( set >> setDecision i (ChooseN n pn)
-                         , reset >> setDecision i NoDecision
-                         , y)
-
-      processLB cns = do
+      follow (LazyBind cns) = do
         newReset <- setUnsetDecision i NoDecision
-        bfs cont xs ys (return ()) (reset >> newReset) (guardCons (StructConstr cns) (choicesCons i cs))
+        bfs cont xs ys (return ()) (reset >> newReset)
+            (guardCons (StructConstr cns) (choicesCons i cs))
+      follow (ChooseN c _)  = bfs cont xs ys (return ()) reset (cs !! c)
+      follow NoDecision     = do
+        reset
+        next cont xs (zipWith3 decide [0..] cs pns ++ ys)
+      follow c             = error $ "Basics.searchDFS: Bad choice " ++ show c
+
+      decide n y pn = ( set   >> setDecision i (ChooseN n pn)
+                      , reset >> setDecision i NoDecision
+                      , y)
+
     bfsNarrowed i _ = error $ "searchBFS: Bad narrowed ID " ++ show i
 
-    bfsFree i cs = set >> lookupDecision i >>= choose
+    bfsFree i cs = set >> lookupDecision i >>= follow
       where
-      choose (LazyBind cns) = processLB cns
-      choose (ChooseN c _) = bfs cont xs ys (return ()) reset (cs !! c)
-      choose NoDecision      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
-      choose c             = error $ "Basics.searchBFS.choose: " ++ show c
+      follow (LazyBind cns) = processLB cns
+      follow (ChooseN c _)  = bfs cont xs ys (return ()) reset (cs !! c)
+      follow NoDecision     = reset >> (cont (choicesCons i cs) +++ (next cont xs ys))
+      follow c              = error $ "Basics.searchBFS.choose: " ++ show c
 
       processLB cns = do
         newReset <- setUnsetDecision i NoDecision
