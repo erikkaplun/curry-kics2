@@ -1,7 +1,7 @@
 ############################################################################
 # KiCS2 configuration file
 #
-# The syntax of this file is 
+# The syntax of this file is
 #
 # property=value\n
 #
@@ -20,7 +20,7 @@ libraries=
 # Default value when asking for more solutions (values: yes | no | all)
 moresolutions=yes
 
-# Allow Curry extensions (currently: function patterns)
+# Allow Curry extensions (currently: function patterns and records)
 # (values: yes | no):
 curryextensions=yes
 
