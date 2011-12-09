@@ -13,11 +13,11 @@ import qualified Data.Map as Map (Map, empty, delete, findWithDefault, insert)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- SOURCE pragma to allow mutually recursive dependency
-import {-# SOURCE #-} ID (Choice, defaultChoice, isDefaultChoice)
+import {-# SOURCE #-} ID (Decision, defaultDecision, isDefaultDecision)
 
 type Unique = Integer
 
--- |References to 'Choice's are represented using 'Integer'
+-- |References to 'Decision's are represented using 'Integer'
 newtype IDSupply = IDSupply { unique :: Unique }
   deriving Eq
 
@@ -38,23 +38,23 @@ rightSupply (IDSupply i) = IDSupply (2 * i + 1)
 initSupply :: IO IDSupply
 initSupply = return (IDSupply 1)
 
--- |Type class for a Choice 'Store'
+-- |Type class for a Decision 'Store'
 class (Monad m) => Store m where
-  -- |Get the stored 'Choice', defaulting to 'defaultChoice'
-  getChoiceRaw    :: Unique -> m Choice
-  -- |Set the 'Choice'
-  setChoiceRaw    :: Unique -> Choice -> m ()
-  -- |Unset the 'Choice'
-  unsetChoiceRaw  :: Unique -> m ()
+  -- |Get the stored 'Decision', defaulting to 'defaultDecision'
+  getDecisionRaw    :: Unique -> m Decision
+  -- |Set the 'Decision'
+  setDecisionRaw    :: Unique -> Decision -> m ()
+  -- |Unset the 'Decision'
+  unsetDecisionRaw  :: Unique -> m ()
 
-store :: IORef (Map.Map Unique Choice)
+store :: IORef (Map.Map Unique Decision)
 store = unsafePerformIO (newIORef Map.empty)
 {-# NOINLINE store #-}
 
 instance Store IO where
-  getChoiceRaw u        = Map.findWithDefault defaultChoice u
-                          `liftM` readIORef store
-  setChoiceRaw u c
-    | isDefaultChoice c = modifyIORef store $ Map.delete u
-    | otherwise         = modifyIORef store $ Map.insert u c
-  unsetChoiceRaw u      = modifyIORef store $ Map.delete u
+  getDecisionRaw u        = Map.findWithDefault defaultDecision u
+                            `liftM` readIORef store
+  setDecisionRaw u c
+    | isDefaultDecision c = modifyIORef store $ Map.delete u
+    | otherwise           = modifyIORef store $ Map.insert u c
+  unsetDecisionRaw u      = modifyIORef store $ Map.delete u

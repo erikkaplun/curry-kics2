@@ -45,10 +45,10 @@ toIO (Choices_C_IO i@(FreeID     _ _) xs) cs = do
 
 followToIO :: ID -> [C_IO a] -> ConstStore -> IO a
 followToIO i xs store =  do
-  c <- lookupChoice i
+  c <- lookupDecision i
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
-    NoChoice      -> error "toIO (Choices): Non-determinism in IO occured"
+    NoDecision      -> error "toIO (Choices): Non-determinism in IO occured"
     LazyBind cs   -> toIO (guardCons (StructConstr cs) (choicesCons i xs)) store
     _             -> error $ "followToIO: " ++ show c
 
@@ -129,46 +129,46 @@ printValsDFS backTrack cont =
   where
   prFail = return ()
   prVal = searchNF (printValsDFS backTrack) cont
-  prChoice i x y = lookupChoice i >>= choose
+  prChoice i x y = lookupDecision i >>= choose
     where
     choose ChooseLeft  = printValsDFS backTrack cont x
     choose ChooseRight = printValsDFS backTrack cont y
-    choose NoChoice    =
+    choose NoDecision    =
      if backTrack
      then do
-      newChoice True ChooseLeft  x
-      newChoice True ChooseRight y
-      setChoice i NoChoice
+      newDecision True ChooseLeft  x
+      newDecision True ChooseRight y
+      setDecision i NoDecision
      else do
-      newChoice True  ChooseLeft x
-      newChoice False ChooseRight y
+      newDecision True  ChooseLeft x
+      newDecision False ChooseRight y
       where
         -- Assumption 1: Binary choices can only be set to one of
-        -- [NoChoice, ChooseLeft, ChooseRight], therefore the reset action may
+        -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
         -- be ignored in between
-      newChoice bt c a = setChoice i c >> printValsDFS bt cont a
+      newDecision bt c a = setDecision i c >> printValsDFS bt cont a
     choose c           = error $ "Basics.printValsDFS.choose: " ++ show c
 
-  prFree i xs   = lookupChoiceID i >>= choose
+  prFree i xs   = lookupDecisionID i >>= choose
     where
     choose (LazyBind cs, _) = processLazyBind backTrack cs i xs
                                               (printValsDFS backTrack cont)
     choose (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
-    choose (NoChoice   , j) = cont $ choicesCons j xs
+    choose (NoDecision   , j) = cont $ choicesCons j xs
     choose c                = error $ "Basics.printValsDFS.choose: " ++ show c
 
-  prNarrowed i@(NarrowedID pns _) xs = lookupChoice i >>= choose
+  prNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= choose
     where
     choose (LazyBind cs) = processLazyBind backTrack cs i xs (printValsDFS backTrack cont)
     choose (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
-    choose NoChoice      =
+    choose NoDecision      =
       if backTrack then do
-       foldr1 (>>) $ zipWith3 (newChoice True) [0 ..] xs pns
-       setChoice i NoChoice
+       foldr1 (>>) $ zipWith3 (newDecision True) [0 ..] xs pns
+       setDecision i NoDecision
       else do
-       foldr1 (>>) $ zipWithButLast3 (newChoice True) (newChoice False) [0 ..] xs pns
+       foldr1 (>>) $ zipWithButLast3 (newDecision True) (newDecision False) [0 ..] xs pns
       where
-      newChoice bt n a pn = setChoice i (ChooseN n pn) >> printValsDFS bt cont a
+      newDecision bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
     choose c            = error $ "Basics.printValsDFS.choose: " ++ show c
   prNarrowed i _ = error $ "prDFS: Bad narrowed ID " ++ show i
 
@@ -179,11 +179,11 @@ printValsDFS backTrack cont =
 
 processLazyBind :: NonDet a => Bool -> [Constraint] -> ID -> [a] -> (a -> IO ()) -> IO ()
 processLazyBind True cs i xs search = do
-  reset <- setUnsetChoice i NoChoice
+  reset <- setUnsetDecision i NoDecision
   search $ guardCons (StructConstr cs) $ choicesCons i xs
   reset
 processLazyBind False cs i xs search = do
-  setChoice i NoChoice
+  setDecision i NoDecision
   search $ guardCons (StructConstr cs) $ choicesCons i xs
 
 -- |Apply the first ternary function to the zipping of three lists, but
@@ -223,41 +223,41 @@ searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchDFS cont a = match dfsChoice dfsNarrowed dfsFree mnil dfsGuard dfsVal a
   where
   dfsVal = searchNF searchDFS cont
-  dfsChoice i x1 x2 = lookupChoice i >>= choose
+  dfsChoice i x1 x2 = lookupDecision i >>= choose
     where
     choose ChooseLeft  = searchDFS cont x1
     choose ChooseRight = searchDFS cont x2
-    choose NoChoice    = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
+    choose NoDecision    = newDecision ChooseLeft x1 +++ newDecision ChooseRight x2
     choose c           = error $ "Basics.searchDFS.choose: " ++ show c
 
-    newChoice c x = do
-      reset <- setUnsetChoice i c
+    newDecision c x = do
+      reset <- setUnsetDecision i c
       searchDFS cont x |< reset
 
-  dfsFree i xs = lookupChoiceID i >>= choose
+  dfsFree i xs = lookupDecisionID i >>= choose
     where
     choose (LazyBind cs, _) = processLB cs
     choose (ChooseN c _, _) = searchDFS cont (xs !! c)
-    choose (NoChoice   , j) = cont $ choicesCons j xs
+    choose (NoDecision   , j) = cont $ choicesCons j xs
     choose c                = error $ "Basics.searchDFS.choose: " ++ show c
 
     processLB cs = do
-      reset <- setUnsetChoice i NoChoice
+      reset <- setUnsetDecision i NoDecision
       searchDFS cont (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
 
-  dfsNarrowed i@(NarrowedID pns _) xs = lookupChoice i >>= choose
+  dfsNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= choose
     where
     choose (LazyBind cs) = processLB cs
     choose (ChooseN c _) = searchDFS cont (xs !! c)
-    choose NoChoice      = foldr1 (+++) $ zipWith3 newChoice [0 ..] xs pns
+    choose NoDecision      = foldr1 (+++) $ zipWith3 newDecision [0 ..] xs pns
     choose c             = error $ "Basics.searchDFS'.choose: " ++ show c
 
     processLB cs = do
-      reset <- setUnsetChoice i NoChoice
+      reset <- setUnsetDecision i NoDecision
       searchDFS cont (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
 
-    newChoice n x pn = do
-      reset <- setUnsetChoice i (ChooseN n pn)
+    newDecision n x pn = do
+      reset <- setUnsetDecision i (ChooseN n pn)
       searchDFS cont x |< reset
   dfsNarrowed i _ = error $ "searchDFS: Bad narrowed ID " ++ show i
 
@@ -300,46 +300,46 @@ searchBFS act x = bfs act [] [] (return ()) (return ()) x
     where
     bfsFail  = reset >> next cont xs ys
     bfsVal v = (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys)
-    bfsChoice i a b = set >> lookupChoice i >>= choose
+    bfsChoice i a b = set >> lookupDecision i >>= choose
       where
       choose ChooseLeft  = bfs cont xs ys (return ()) reset a
       choose ChooseRight = bfs cont xs ys (return ()) reset b
-      choose NoChoice    = do
+      choose NoDecision    = do
         reset
         next cont xs ((newSet ChooseLeft , newReset, a) :
                 (newSet ChooseRight, newReset, b) : ys)
       choose c             = error $ "Basics.searchDFS: Bad choice " ++ show c
 
-      newSet c = set   >> setChoice i c
-      newReset = reset >> setChoice i NoChoice
+      newSet c = set   >> setDecision i c
+      newReset = reset >> setDecision i NoDecision
 
-    bfsNarrowed i@(NarrowedID pns _) cs = set >> lookupChoice i >>= choose
+    bfsNarrowed i@(NarrowedID pns _) cs = set >> lookupDecision i >>= choose
       where
       choose (LazyBind cns) = processLB cns
       choose (ChooseN c _)  = bfs cont xs ys (return ()) reset (cs !! c)
-      choose NoChoice       = do
+      choose NoDecision       = do
         reset
-        next cont xs (zipWith3 newChoice [0..] cs pns ++ ys)
+        next cont xs (zipWith3 newDecision [0..] cs pns ++ ys)
       choose c             = error $ "Basics.searchDFS: Bad choice " ++ show c
 
-      newChoice n y pn = ( set >> setChoice i (ChooseN n pn)
-                         , reset >> setChoice i NoChoice
+      newDecision n y pn = ( set >> setDecision i (ChooseN n pn)
+                         , reset >> setDecision i NoDecision
                          , y)
 
       processLB cns = do
-        newReset <- setUnsetChoice i NoChoice
+        newReset <- setUnsetDecision i NoDecision
         bfs cont xs ys (return ()) (reset >> newReset) (guardCons (StructConstr cns) (choicesCons i cs))
     bfsNarrowed i _ = error $ "searchBFS: Bad narrowed ID " ++ show i
 
-    bfsFree i cs = set >> lookupChoice i >>= choose
+    bfsFree i cs = set >> lookupDecision i >>= choose
       where
       choose (LazyBind cns) = processLB cns
       choose (ChooseN c _) = bfs cont xs ys (return ()) reset (cs !! c)
-      choose NoChoice      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
+      choose NoDecision      = reset >> cont (choicesCons i cs) +++ (next cont xs ys)
       choose c             = error $ "Basics.searchBFS.choose: " ++ show c
 
       processLB cns = do
-        newReset <- setUnsetChoice i NoChoice
+        newReset <- setUnsetDecision i NoDecision
         bfs cont xs ys (return ()) (reset >> newReset) (guardCons (StructConstr cns) (choicesCons i cs))
 
     bfsGuard cs e = set >> solves (getConstrList cs) e >>= \mbSolution -> case mbSolution of
@@ -395,43 +395,43 @@ startIDS olddepth newdepth goal = idsHNF newdepth goal
     idsVal v | n < newdepth - olddepth = msingleton v
             | otherwise               = mnil
 
-    idsChoice i x1 x2 = lookupChoice i >>= choose
+    idsChoice i x1 x2 = lookupDecision i >>= choose
       where
       choose ChooseLeft  = idsHNF n x1
       choose ChooseRight = idsHNF n x2
-      choose NoChoice
-        | n > 0          = newChoice ChooseLeft x1 +++ newChoice ChooseRight x2
+      choose NoDecision
+        | n > 0          = newDecision ChooseLeft x1 +++ newDecision ChooseRight x2
         | otherwise      = abort
         where
-        newChoice c y = do
-          reset <- setUnsetChoice i c
+        newDecision c y = do
+          reset <- setUnsetDecision i c
           idsHNF (n - 1) y |< reset
       choose c           = error $ "idsHNF: Bad choice " ++ show c
 
-    idsFree i xs = lookupChoiceID i >>= choose
+    idsFree i xs = lookupDecisionID i >>= choose
       where
       choose (LazyBind cs, _) = processLB cs
       choose (ChooseN c _, _) = idsHNF n (xs !! c)
-      choose (NoChoice   , j) = msingleton $ choicesCons j xs
+      choose (NoDecision   , j) = msingleton $ choicesCons j xs
       choose c                = error $ "Basics.searchDFS.choose: " ++ show c
 
       processLB cs = do
-        reset <- setUnsetChoice i NoChoice
+        reset <- setUnsetDecision i NoDecision
         idsHNF n (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
 
-    idsNarrowed i@(NarrowedID pns _) xs = lookupChoice i >>= choose
+    idsNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= choose
       where
       choose (LazyBind cs) = processLB cs
       choose (ChooseN c _) = idsHNF n (xs !! c)
-      choose NoChoice      = foldr1 (+++) $ zipWith3 newChoice [0 ..] xs pns
+      choose NoDecision      = foldr1 (+++) $ zipWith3 newDecision [0 ..] xs pns
       choose c             = error $ "idsHNF.choose: " ++ show c
 
       processLB cs = do
-        reset <- setUnsetChoice i NoChoice
+        reset <- setUnsetDecision i NoDecision
         idsHNF n (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
 
-      newChoice m y pn = do
-        reset <- setUnsetChoice i (ChooseN m pn)
+      newDecision m y pn = do
+        reset <- setUnsetDecision i (ChooseN m pn)
         idsHNF (n - 1) y |< reset
     idsNarrowed i _ = error $ "idsHNF: Bad narrowed ID " ++ show i
 
@@ -459,56 +459,56 @@ printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
 computeWithPar goal = getNormalForm goal >>=
-  list2iolist . parSearch . flip evalStateT (Map.empty :: SetOfChoices)
+  list2iolist . parSearch . flip evalStateT (Map.empty :: SetOfDecisions)
                           . searchMPlus' return
 
 -- ---------------------------------------------------------------------------
 -- Generic search using MonadPlus as the result monad
 -- ---------------------------------------------------------------------------
 
-type SetOfChoices = Map.Map Integer Choice
+type SetOfDecisions = Map.Map Integer Decision
 
-instance Monad m => Store (StateT SetOfChoices m) where
-  getChoiceRaw u        = gets $ Map.findWithDefault defaultChoice (mkInteger u)
-  setChoiceRaw u c
-    | isDefaultChoice c = modify $ Map.delete (mkInteger u)
+instance Monad m => Store (StateT SetOfDecisions m) where
+  getDecisionRaw u        = gets $ Map.findWithDefault defaultDecision (mkInteger u)
+  setDecisionRaw u c
+    | isDefaultDecision c = modify $ Map.delete (mkInteger u)
     | otherwise         = modify $ Map.insert (mkInteger u) c
-  unsetChoiceRaw u      = modify $ Map.delete (mkInteger u)
+  unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
 
 -- Collect results of a non-deterministic computation in a monadic structure.
 searchMPlus :: (MonadPlus m, NormalForm a) => a -> ConstStore -> m a
 searchMPlus x store = evalStateT
                       (searchMPlus' return ((const $!!) x store))
-                      (Map.empty :: SetOfChoices)
+                      (Map.empty :: SetOfDecisions)
 
 searchMPlus' :: (NormalForm a, MonadPlus m, Store m) => (a -> m b) -> a -> m b
 searchMPlus' cont = match smpChoice smpNarrowed smpFree mzero smpGuard smpVal
   where
   smpVal v = searchNF searchMPlus' cont v
-  smpChoice i x y = lookupChoice i >>= choose
+  smpChoice i x y = lookupDecision i >>= choose
     where
     choose ChooseLeft  = searchMPlus' cont x
     choose ChooseRight = searchMPlus' cont y
-    choose NoChoice    = (setChoice i ChooseLeft  >> searchMPlus' cont x)
+    choose NoDecision    = (setDecision i ChooseLeft  >> searchMPlus' cont x)
                          `mplus`
-                         (setChoice i ChooseRight >> searchMPlus' cont y)
+                         (setDecision i ChooseRight >> searchMPlus' cont y)
     choose c           = error $ "searchMPlus: Bad choice " ++ show c
 
-  smpNarrowed i@(NarrowedID pns _)  bs = lookupChoice i >>= choose
+  smpNarrowed i@(NarrowedID pns _)  bs = lookupDecision i >>= choose
     where
     choose (ChooseN c _) = searchMPlus' cont (bs !! c)
-    choose NoChoice      =
+    choose NoDecision      =
       msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] bs pns
     choose (LazyBind cs) = processLazyBind' i cont cs bs
     choose c             = error $ "searchMPlus: Bad choice " ++ show c
 
-    pick c pn = setChoice i (ChooseN c pn)
+    pick c pn = setDecision i (ChooseN c pn)
   smpNarrowed i _ = error $ "searchMPlus: Bad narrowed ID " ++ show i
 
-  smpFree i branches = lookupChoice i >>= choose
+  smpFree i branches = lookupDecision i >>= choose
     where
     choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    choose NoChoice      = cont $ choicesCons i branches
+    choose NoDecision      = cont $ choicesCons i branches
     choose (LazyBind cs) = processLazyBind' i cont cs branches
     choose c             = error $ "searchMPlus: Bad choice " ++ show c
 
@@ -519,5 +519,5 @@ searchMPlus' cont = match smpChoice smpNarrowed smpFree mzero smpGuard smpVal
 processLazyBind' :: (NormalForm a, MonadPlus m, Store m)
                  => ID -> (a -> m b) -> [Constraint] -> [a] -> m b
 processLazyBind' i cont cs xs = do
-  setChoice i NoChoice
+  setDecision i NoDecision
   searchMPlus' cont (guardCons (StructConstr cs) (choicesCons i xs))

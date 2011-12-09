@@ -1,5 +1,5 @@
 module ID where
 
-data Choice
-defaultChoice :: Choice
-isDefaultChoice :: Choice -> Bool
+data Decision
+defaultDecision :: Decision
+isDefaultDecision :: Decision -> Bool

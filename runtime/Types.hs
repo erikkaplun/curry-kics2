@@ -169,14 +169,14 @@ nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ChoiceID"
 
 nfChoicesIO :: (NormalForm a) => (a -> IO b) -> ID -> [a] -> IO b
 nfChoicesIO _      (ChoiceID _)     _  = error "Basics.nfChoicesIO: ChoiceID"
-nfChoicesIO cont i@(FreeID _ _) xs = lookupChoiceID i >>= choose
+nfChoicesIO cont i@(FreeID _ _) xs = lookupDecisionID i >>= follow
   where
-  choose (ChooseN c _, _) = cont $!< (xs !! c)
-  choose (LazyBind cs, _) = do
-    setChoice i NoChoice
+  follow (ChooseN c _, _) = cont $!< (xs !! c)
+  follow (LazyBind cs, _) = do
+    setDecision i NoDecision
     cont (guardCons (StructConstr cs) (choicesCons i xs))
-  choose (NoChoice   , _) = cont (choicesCons i xs) -- TODO replace i with j?
-  choose c                = error $ "Basics.nfChoicesIO.choose: " ++ show c
+  follow (NoDecision,  _) = cont (choicesCons i xs) -- TODO replace i with j?
+  follow c                = error $ "Basics.nfChoicesIO.follow: " ++ show c
 nfChoicesIO cont i@(NarrowedID  _ _) xs = cont (choicesCons i xs)
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs

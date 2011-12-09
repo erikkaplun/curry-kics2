@@ -5,13 +5,13 @@
 module ID
   ( -- * Constraints
     Constraint (..), Constraints(..), getConstrList
-    -- * Choices
-  , Choice (..), defaultChoice, isDefaultChoice
+    -- * Decisions
+  , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
   , ID (..), leftID, rightID, narrowID, getKey
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
-    -- * Choice management
-  , lookupChoice, lookupID, lookupChoiceID, setChoice, setUnsetChoice
+    -- * Decision management
+  , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
   , nextNIDs, Store (..)
   ) where
 
@@ -25,8 +25,8 @@ import IDSupply
 
 -- |Type to encode constraints for a Choice(s) structure
 data Constraint
-  -- |Binding of an 'ID' to a 'Choice'
-  = ID :=: Choice
+  -- |Binding of an 'ID' to a 'Decision'
+  = ID :=: Decision
   -- |Unsolvable constraint
   | Unsolvable
   -- |Non-deterministic choice between two lists of constraints
@@ -38,28 +38,32 @@ data Constraint
 -- A Value Constraint is used to bind a Value to an id it also contains the
 -- structural constraint information that describes the choice to be taken
 -- for a given id, a Struct Constraint has only the structural information
-data Constraints = forall a . ValConstr ID a [Constraint] | StructConstr [Constraint]
+data Constraints
+  = forall a . ValConstr ID a [Constraint]
+  | StructConstr [Constraint]
 
 -- a selector to get the strucural constraint information from a constraint
 getConstrList :: Constraints -> [Constraint]
 getConstrList (ValConstr _ _ c) = c
-getConstrList (StructConstr c) = c
+getConstrList (StructConstr  c) = c
 
 instance Show Constraints where
-  showsPrec _ (ValConstr _ _ c) = ("(ValC " ++) .  shows c . (')':)
-  showsPrec _ (StructConstr c) = ("(StructC " ++) . shows c . (')':)
+  showsPrec _ (ValConstr _ _ c) = showParen True
+                                $ showString "ValC "    . shows c
+  showsPrec _ (StructConstr  c) = showParen True
+                                $ showString "StructC " . shows c
 
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
 
 -- ---------------------------------------------------------------------------
--- Choice
+-- Decision
 -- ---------------------------------------------------------------------------
 
--- |Type to encode the selection taken in a Choice(s) structure
-data Choice
-    -- |No choice has been made so far
-  = NoChoice
+-- |Type to encode the decision made for a Choice(s) structure
+data Decision
+    -- |No decision has been made so far
+  = NoDecision
     -- |The left value of an (?) is chosen
   | ChooseLeft
     -- |The right value of an (?) is chosen
@@ -79,25 +83,25 @@ data Choice
   | LazyBind [Constraint]
     deriving Show
 
-instance Eq Choice where
-  NoChoice    == NoChoice    = True
+instance Eq Decision where
+  NoDecision  == NoDecision  = True
   ChooseLeft  == ChooseLeft  = True
   ChooseRight == ChooseRight = True
   ChooseN c _ == ChooseN d _ = c == d
-  BindTo  _   == BindTo  _   = error "ID.Choice.(==): BindTo"
-  BoundTo _ _ == BoundTo _ _ = error "ID.Choice.(==): BoundTo"
-  LazyBind _  == LazyBind _  = error "ID.Choice.(==): LazyBind"
+  BindTo  _   == BindTo  _   = error "ID.Decision.(==): BindTo"
+  BoundTo _ _ == BoundTo _ _ = error "ID.Decision.(==): BoundTo"
+  LazyBind _  == LazyBind _  = error "ID.Decision.(==): LazyBind"
   _           == _           = False
 
--- |Default 'Choice'. The default 'Choice' is provided via a function to break
---  recursive dependencies.
-defaultChoice :: Choice
-defaultChoice = NoChoice
+-- |Default 'Decision'. The default 'Decision' is provided via a function to
+-- break recursive dependencies.
+defaultDecision :: Decision
+defaultDecision = NoDecision
 
--- |Is the given 'Choice' the 'defaultChoice'?
-isDefaultChoice :: Choice -> Bool
-isDefaultChoice NoChoice = True
-isDefaultChoice _        = False
+-- |Is the given 'Decision' the 'defaultDecision'?
+isDefaultDecision :: Decision -> Bool
+isDefaultDecision NoDecision = True
+isDefaultDecision _          = False
 
 -- ---------------------------------------------------------------------------
 -- ID
@@ -157,32 +161,32 @@ getUnique (FreeID     _ s) = unique s
 getUnique (NarrowedID _ s) = unique s
 
 -- ---------------------------------------------------------------------------
--- Looking up choices
+-- Looking up decisions
 -- ---------------------------------------------------------------------------
 
--- |Lookup the 'Choice' an 'ID' ultimately is bound to
-lookupChoice :: Store m => ID -> m Choice
-lookupChoice i = fst `liftM` lookupChoiceID i
+-- |Lookup the 'Decision' an 'ID' ultimately is bound to
+lookupDecision :: Store m => ID -> m Decision
+lookupDecision i = fst `liftM` lookupDecisionID i
 
 -- |Lookup the 'ID' an 'ID' ultimately is bound to
 lookupID :: Store m => ID -> m ID
-lookupID i = snd `liftM` lookupChoiceID i
+lookupID i = snd `liftM` lookupDecisionID i
 
--- |Lookup the 'Choice' and the 'ID' an 'ID' ultimately is bound to
-lookupChoiceID :: Store m => ID -> m (Choice, ID)
-lookupChoiceID i = getChoiceRaw (getUnique i) >>= unchain
+-- |Lookup the 'Decision' and the 'ID' an 'ID' ultimately is bound to
+lookupDecisionID :: Store m => ID -> m (Decision, ID)
+lookupDecisionID i = getDecisionRaw (getUnique i) >>= unchain
   where
     -- TODO: reactivate shortening of chains as soon as we know how
     --       to do this correct and efficient
     -- For BindTo, we shorten chains of multiple BindTos by directly binding
     -- to the last ID in the chain.
     unchain (BindTo j) = do
-      retVal@(c, _lastId) <- lookupChoiceID j
+      retVal@(c, _lastId) <- lookupDecisionID j
       case c of
-        NoChoice      -> return () --shortenTo lastId
+        NoDecision    -> return () --shortenTo lastId
         ChooseN _ num -> propagateBind i j num -- lastId num
         LazyBind _    -> return () --shortenTo lastId
-        _             -> error $ "ID.lookupChoiceID: " ++ show c
+        _             -> error $ "ID.lookupDecisionID: " ++ show c
       return retVal
 --       where
 --         shortenTo lastId = when (j /= lastId) $ do
@@ -194,48 +198,48 @@ lookupChoiceID i = getChoiceRaw (getUnique i) >>= unchain
     -- and therefore could not have been changed in between.
     -- TODO: check if the previous statement is correct
     unchain (BoundTo j num) = do
-      retVal@(c, _) <- lookupChoiceID j
+      retVal@(c, _) <- lookupDecisionID j
       case c of
-        NoChoice       -> return ()
+        NoDecision     -> return ()
         ChooseN _ num' -> checkPropagation i j num num'
         LazyBind _     -> return ()
-        _              -> error $ "ID.lookupChoiceID: " ++ show c
+        _              -> error $ "ID.lookupDecisionID: " ++ show c
       return retVal
 
     -- For all other choices, there are no chains at all
     unchain c           = return (c, i)
 
 -- ---------------------------------------------------------------------------
--- Setting choices
+-- Setting decisions
 -- ---------------------------------------------------------------------------
 
--- |Set the 'Choice' for the given 'ID'
-setChoice :: Store m => ID -> Choice -> m ()
-setChoice i c = setChoiceGetChange i c >> return ()
+-- |Set the 'Decision' for the given 'ID'
+setDecision :: Store m => ID -> Decision -> m ()
+setDecision i c = setDecisionGetChange i c >> return ()
 
--- Set the given 'Choice' for the given 'ID' and return an action to recover
--- the former 'Choice'
-setUnsetChoice :: Store m => ID -> Choice -> m (m ())
-setUnsetChoice i c = do
-  mChange <- setChoiceGetChange i c
+-- Set the given 'Decision' for the given 'ID' and return an action to recover
+-- the former 'Decision'
+setUnsetDecision :: Store m => ID -> Decision -> m (m ())
+setUnsetDecision i c = do
+  mChange <- setDecisionGetChange i c
   case mChange of
-    Nothing                     -> return (return ())
-    Just (oldChoice, changedId) -> return $ case c of
-      BindTo _ -> resetFreeVar changedId oldChoice
-      _        -> setChoiceRaw (getUnique changedId) oldChoice
+    Nothing                       -> return (return ())
+    Just (oldDecision, changedId) -> return $ case c of
+      BindTo _ -> resetFreeVar changedId oldDecision
+      _        -> setDecisionRaw (getUnique changedId) oldDecision
 
--- |Set the 'Choice' for the given 'ID', eventually following a chain and
---  return the ultimately changed 'ID' and its former 'Choice'
-setChoiceGetChange :: Store m => ID -> Choice -> m (Maybe (Choice, ID))
+-- |Set the 'Decision' for the given 'ID', eventually following a chain and
+--  return the ultimately changed 'ID' and its former 'Decision'
+setDecisionGetChange :: Store m => ID -> Decision -> m (Maybe (Decision, ID))
 -- We do not bind an ID to itself to avoid cycles
-setChoiceGetChange i (BindTo j) | supply i == supply j = return Nothing
-setChoiceGetChange i c = getChoiceRaw (getUnique i) >>= unchain
+setDecisionGetChange i (BindTo j) | supply i == supply j = return Nothing
+setDecisionGetChange i c = getDecisionRaw (getUnique i) >>= unchain
   where
   -- BindTo: change the last variable in the chain and propagate the binding
   -- TODO: At the moment the propagation is necessary, but may be removed
   -- later (cf. tests/Unification.curry, goal25)
   unchain (BindTo k)    = do
-    retVal <- setChoiceGetChange k c
+    retVal <- setDecisionGetChange k c
     case c of
       ChooseN _ num -> propagateBind i k num
       _             -> return ()
@@ -245,19 +249,19 @@ setChoiceGetChange i c = getChoiceRaw (getUnique i) >>= unchain
   -- has to be reset first. Otherwise after a lookup leading to BoundTo
   -- new propagations would be ignored, cf. tests/FunctionPattern.curry, goal2
   unchain (BoundTo k num) = do
-    retVal <- setChoiceGetChange k c
+    retVal <- setDecisionGetChange k c
     case c of
       ChooseN _ num' -> checkPropagation i k num num'
       _              -> return ()
     return retVal
-  unchain oldChoice     = case c of
+  unchain oldDecision     = case c of
     BindTo j -> do
       -- Avoid binding i to a variable which is transitively bound to i
       lastId <- lookupID j
       if getKey lastId == getKey i
         then return Nothing
-        else setChoiceRaw (getUnique i) c >> return (Just (oldChoice, i))
-    _     -> setChoiceRaw (getUnique i) c >> return (Just (oldChoice, i))
+        else setDecisionRaw (getUnique i) c >> return (Just (oldDecision, i))
+    _     -> setDecisionRaw (getUnique i) c >> return (Just (oldDecision, i))
 
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions
@@ -274,22 +278,22 @@ checkPropagation i j oldNum newNum = when (oldNum /= newNum) $ do
 propagateBind :: Store m => ID -> ID -> Int -> m ()
 propagateBind x y cnt = do
   -- bind i to j
-  setChoiceRaw (getUnique x) (BoundTo y cnt)
+  setDecisionRaw (getUnique x) (BoundTo y cnt)
   -- propagate the binding to the children
-  zipWithM_ (\a b -> setChoice a (BindTo b)) (nextNIDs x cnt) (nextNIDs y cnt)
+  zipWithM_ (\a b -> setDecision a (BindTo b)) (nextNIDs x cnt) (nextNIDs y cnt)
 
--- |Reset a free variable to its former 'Choice' and reset its children if
+-- |Reset a free variable to its former 'Decision' and reset its children if
 --  the binding has already been propagated
---  TODO: use set/lookupChoiceRef to avoid constructor wrapping
-resetFreeVar :: Store m => ID -> Choice -> m ()
-resetFreeVar i oldChoice = reset oldChoice i -- (supply i)
+--  TODO: use set/lookupDecisionRef to avoid constructor wrapping
+resetFreeVar :: Store m => ID -> Decision -> m ()
+resetFreeVar i oldDecision = reset oldDecision i -- (supply i)
   where
-  reset c j = getChoiceRaw (getUnique j) >>= propagate c j
+  reset c j = getDecisionRaw (getUnique j) >>= propagate c j
 
-  propagate c j (BindTo _)      = setChoiceRaw (getUnique j) c
+  propagate c j (BindTo _)      = setDecisionRaw (getUnique j) c
   propagate c j (BoundTo _ num) = do
-    setChoiceRaw (getUnique j) c
-    mapM_ (reset NoChoice) $ nextNIDs j num
+    setDecisionRaw (getUnique j) c
+    mapM_ (reset NoDecision) $ nextNIDs j num
   propagate _ _ _ = error "ID.resetFreeVar.propagate: no binding"
 
 -- Compute a list of the next n free 'ID's for a given 'ID'

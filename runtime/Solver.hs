@@ -8,8 +8,8 @@ import Types
 
 type Solution m a = m (Maybe (m (), a))
 
-mkDecision :: Monad m => m (m ()) -> a -> Solution m a
-mkDecision decide a = decide >>= \reset -> return $ Just (reset, a)
+mkDecision :: Store m => ID -> Decision -> a -> Solution m a
+mkDecision i d a = setUnsetDecision i d >>= \reset -> return $ Just (reset, a)
 
 mkSolution :: Monad m => a -> Solution m a
 mkSolution a = return $ Just (return (), a)
@@ -34,44 +34,44 @@ solves (c:cs) a = solve c a >>- solves cs
 
 solve :: (Store m, NonDet a) => Constraint -> a -> Solution m a
 solve Unsolvable _ = noSolution
-solve (ConstraintChoice i lcs rcs) e = lookupChoice i >>= choose
+solve (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
   where
-  choose ChooseLeft  = mkSolution $ guardCons (StructConstr lcs) e
-  choose ChooseRight = mkSolution $ guardCons (StructConstr rcs) e
-  choose NoChoice    = mkSolution $ choiceCons i
+  follow ChooseLeft  = mkSolution $ guardCons (StructConstr lcs) e
+  follow ChooseRight = mkSolution $ guardCons (StructConstr rcs) e
+  follow NoDecision  = mkSolution $ choiceCons i
                                     (guardCons (StructConstr lcs) e)
                                     (guardCons (StructConstr rcs) e)
-  choose c           = error $ "Solver.solve.choose: CC:" ++ show c
+  follow c           = error $ "Solver.solve.choose: CC:" ++ show c
 
-solve cc@(ConstraintChoices i css) e = lookupChoice i >>= choose
+solve cc@(ConstraintChoices i css) e = lookupDecision i >>= follow
   where
-  choose (ChooseN c _) = mkSolution $ guardCons (StructConstr (css !! c)) e
-  choose NoChoice      = mkSolution $ choicesCons i
+  follow (ChooseN c _) = mkSolution $ guardCons (StructConstr (css !! c)) e
+  follow NoDecision    = mkSolution $ choicesCons i
                                     $ map (\cs -> guardCons (StructConstr cs) e) css
-  choose (LazyBind cs) = mkSolution $ guardCons (StructConstr (cs ++ [cc])) e
-  choose c             = error $ "Solver.solve.choose: CCs:" ++ show c
+  follow (LazyBind cs) = mkSolution $ guardCons (StructConstr (cs ++ [cc])) e
+  follow c             = error $ "Solver.solve.choose: CCs:" ++ show c
 
-solve (i :=: cc) e = lookupChoice i >>= choose cc
+solve (i :=: cc) e = lookupDecision i >>= follow cc
   where
   -- 1st param: the (new) Choice which should be stored for i
   -- 2nd param: the (old) Choice for i in the store
-  choose (LazyBind  _) NoChoice      = mkDecision (setUnsetChoice i cc) e
-  choose _             (LazyBind cs) = mkDecision (setUnsetChoice i cc)
+  follow (LazyBind  _) NoDecision    = mkDecision i cc e
+  follow _             (LazyBind cs) = mkDecision i cc
                                      $ guardCons (StructConstr cs) e
-  choose (LazyBind cs) _             = mkSolution $ guardCons (StructConstr cs) e
-  choose (BindTo j)    ci            = lookupChoice j >>= \cj -> check i j ci cj e
-  choose c             NoChoice      = mkDecision (setUnsetChoice i c) e
-  choose c             ci            = if c == ci then mkSolution e
-                                                  else noSolution
+  follow (LazyBind cs) _             = mkSolution
+                                     $ guardCons (StructConstr cs) e
+  follow (BindTo j)    ci            = lookupDecision j >>= \cj -> check i j ci cj e
+  follow c             NoDecision    = mkDecision i c e
+  follow c             ci            | c == ci   = mkSolution e
+                                     | otherwise = noSolution
 
 -- Check whether i can be bound to j and do so if possible
-check :: (Store m, NonDet a) => ID -> ID -> Choice -> Choice -> a -> Solution m a
-check i j _               (LazyBind cs)   e
-  = mkDecision (setUnsetChoice j (BindTo i)) $ guardCons (StructConstr cs) e
-check i j NoChoice        _               e
-  = mkDecision (setUnsetChoice i (BindTo j)) e
-check i j _               NoChoice        e
-  = mkDecision (setUnsetChoice j (BindTo i)) e
+check :: (Store m, NonDet a) => ID -> ID -> Decision -> Decision -> a
+      -> Solution m a
+check i j _               (LazyBind cs)   e = mkDecision j (BindTo i)
+                                            $ guardCons (StructConstr cs) e
+check i j NoDecision      _               e = mkDecision i (BindTo j) e
+check i j _               NoDecision      e = mkDecision j (BindTo i) e
 check i j (ChooseN iN ip) (ChooseN jN jp) e
   = if iN == jN && ip == jp
     then mkSolution $ guardCons
@@ -79,5 +79,5 @@ check i j (ChooseN iN ip) (ChooseN jN jp) e
                                (nextNIDs i ip) (nextNIDs j ip)))
         e
     else noSolution
-check _ _ ci              cj              e
-  = if ci == cj then mkSolution e else noSolution
+check _ _ ci              cj              e | ci == cj  = mkSolution e
+                                            | otherwise = noSolution

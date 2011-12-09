@@ -14,9 +14,9 @@ import UniqSupply
 import qualified Unique as GHC (Unique, getKey)
 
 -- SOURCE pragma to allow mutually recursive dependency
-import {-# SOURCE #-} ID (Choice, defaultChoice)
+import {-# SOURCE #-} ID (Decision, defaultDecision)
 
-data Unique = Unique { unqRef:: (IORef Choice), unqKey :: GHC.Unique }
+data Unique = Unique { unqRef:: (IORef Decision), unqKey :: GHC.Unique }
 
 instance Eq Unique where
   Unique ref1 _ == Unique ref2 _ = ref1 == ref2
@@ -25,7 +25,7 @@ instance Show Unique where
   show = tail . show . unqKey
 
 data IDSupply = IDSupply
-  { unique      :: Unique   -- ^ Choice and unique identifier for this IDSupply
+  { unique      :: Unique   -- ^ Decision and unique identifier for this IDSupply
   , leftSupply  :: IDSupply -- ^ path to the left IDSupply
   , rightSupply :: IDSupply -- ^ path to the right IDSupply
   }
@@ -60,20 +60,20 @@ getPureSupply uniqS = do
   let (leftS, rightS) = splitUniqSupply uniqS
   s1 <- unsafeDupableInterleaveIO $ getPureSupply leftS
   s2 <- unsafeDupableInterleaveIO $ getPureSupply rightS
-  r  <- unsafeDupableInterleaveIO $ newIORef defaultChoice
+  r  <- unsafeDupableInterleaveIO $ newIORef defaultDecision
   return (IDSupply (Unique r (uniqFromSupply uniqS)) s1 s2)
 {-# NOINLINE getPureSupply #-}
 
--- |Type class for a Choice 'Store'
+-- |Type class for a Decision 'Store'
 class (Monad m) => Store m where
-  -- |Get the stored 'Choice', defaulting to 'defaultChoice'
-  getChoiceRaw    :: Unique -> m Choice
-  -- |Set the 'Choice'
-  setChoiceRaw    :: Unique -> Choice -> m ()
-  -- |Unset the 'Choice'
-  unsetChoiceRaw  :: Unique -> m ()
+  -- |Get the stored 'Decision', defaulting to 'defaultDecision'
+  getDecisionRaw    :: Unique -> m Decision
+  -- |Set the 'Decision'
+  setDecisionRaw    :: Unique -> Decision -> m ()
+  -- |Unset the 'Decision'
+  unsetDecisionRaw  :: Unique -> m ()
 
 instance Store IO where
-  getChoiceRaw    u   = readIORef  (unqRef u)
-  setChoiceRaw    u c = writeIORef (unqRef u) c
-  unsetChoiceRaw  u   = writeIORef (unqRef u) defaultChoice
+  getDecisionRaw    u   = readIORef  (unqRef u)
+  setDecisionRaw    u c = writeIORef (unqRef u) c
+  unsetDecisionRaw  u   = writeIORef (unqRef u) defaultDecision
