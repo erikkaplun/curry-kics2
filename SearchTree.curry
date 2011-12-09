@@ -27,7 +27,7 @@ someSearchTree external
 --- Returns True iff the argument is is defined, i.e., has a value.
 isDefined :: a -> Bool
 isDefined x = hasValue (someSearchTree x)
- where hasValue x = case x of Value _  -> True
+ where hasValue y = case y of Value _  -> True
                               Fail     -> False
                               Or t1 t2 -> hasValue t1 || hasValue t2
 
