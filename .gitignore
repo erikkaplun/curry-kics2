@@ -46,7 +46,7 @@ tools/CurryTest
 tools/browser/BrowserGUI
 tools/curry2js/Curry2JS
 tools/currydoc/CurryDoc
-tools/erd2curry/Main
+tools/erd2curry/erd2curry
 tools/SourceProgGUI
 www/Registry
 www/submitform
@@ -54,6 +54,7 @@ www/submitform
 # documentation
 lib/CDOC
 lib/TEXDOC
+docs/INSTALL.html
 docs/src/lib
 docs/markdown_syntax.html
 docs/src/markdown_syntax.tex
