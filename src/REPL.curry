@@ -138,7 +138,7 @@ hPutStrLnGhci rst h s = do
 --------------------------------------------------------------------------
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices
+data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices | PrtChoiceTree
 
 -- Result of compiling main goal
 data MainGoalCompile =
@@ -190,7 +190,7 @@ main = do
   rcdefs <- readRC
   args   <- getArgs
   let rst = { idcHome := Inst.installDir
-            , rcvars := rcdefs 
+            , rcvars := rcdefs
             | initReplState }
   ipath  <- defaultImportPaths rst
   processArgsAndStart { importPaths := ipath | rst }
@@ -381,7 +381,7 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
    (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let (CFunc _ _ _ maintype _) = mfunc
         freevars = freeVarsInFuncRule mfunc
-    if null freevars || not (rst -> showBindings) || (rst->ndMode) == PrtChoices
+    if null freevars || not (rst -> showBindings) || (rst->ndMode) `elem` [PrtChoices, PrtChoiceTree]
        || isIOType maintype
        || length freevars > 10 -- due to limited size of tuples used
                                -- in PrintBindings
@@ -486,38 +486,43 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                if isdet || isio then MainDet else MainNonDet)
 
 -- Create the Main.hs program containing the call to the initial expression:
-createHaskellMain rst goalstate isdet isio =
-  let printOperation = case goalstate of
-                         GoalWithBindings _ n _ -> printWithBindings n
-                         _                      -> "print"
-      mainPrefix = if isdet then "d_C_" else "nd_C_"
-      mainOperation =
-        if isio then (if isdet then "evalDIO" else "evalIO" ) else
-        if isdet then "evalD" else
-        if rst->ndMode == PrDFS then "prdfs "++printOperation else
-        if rst->ndMode == PrtChoices then "prtChoices"
-        else let moreDefault = case rcValue (rst->rcvars) "moresolutions" of
-                                 "yes" -> "MoreYes"
-                                 "no"  -> "MoreNo"
-                                 "all" -> "MoreAll"
-                                 _     -> "MoreYes"
-                 searchSuffix = if rst->interactive then "i "++moreDefault else
-                                if rst->firstSol    then "1" else ""
-              in ("print" ++ case (rst->ndMode) of
-                              DFS   -> "DFS"++searchSuffix
-                              BFS   -> "BFS"++searchSuffix
-                              IDS d -> "IDS"++searchSuffix++' ':show d
-                              Par _ -> "Par"++searchSuffix )++' ':printOperation
-   in writeFile ("." </> rst -> outputSubdir </> "Main.hs") $ unlines
-       [ "module Main where"
-       , "import MonadList"
-       , "import Basics"
-       , if printOperation == "print" then "" else "import Curry_Prelude"
-       , "import Curry_" ++ stripSuffix mainGoalFile
-       , ""
-       , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "idcMainGoal"
-       ]
- where
+createHaskellMain rst goalstate isdet isio
+  = writeFile ("." </> rst -> outputSubdir </> "Main.hs") $ unlines
+      [ "module Main where"
+      , "import MonadList"
+      , "import Basics"
+      , if printOperation == "print" then "" else "import Curry_Prelude"
+      , "import Curry_" ++ stripSuffix mainGoalFile
+      , ""
+      , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "idcMainGoal"
+      ]
+  where
+  printOperation = case goalstate of
+    GoalWithBindings _ n _ -> printWithBindings n
+    _                      -> "print"
+  mainPrefix     = if isdet then "d_C_" else "nd_C_"
+  mainOperation
+    | isio && isdet                  = "evalDIO"
+    | isio                           = "evalIO"
+    | isdet                          = "evalD"
+    | rst -> ndMode == PrtChoices    = "prtChoices"
+    | rst -> ndMode == PrtChoiceTree = "prtChoiceTree"
+    | otherwise                      = searchOperation ++ ' ' : printOperation
+  searchOperation = case rst -> ndMode of
+    PrDFS -> "prdfs"
+    DFS   -> "printDFS" ++ searchSuffix
+    BFS   -> "printBFS" ++ searchSuffix
+    IDS d -> "printIDS" ++ searchSuffix ++ ' ' : show d
+    Par _ -> "printPar" ++ searchSuffix
+  searchSuffix
+    | rst -> interactive = "i " ++ moreDefault
+    | rst -> firstSol    = "1"
+    | otherwise          = ""
+  moreDefault = case rcValue (rst -> rcvars) "moresolutions" of
+    "yes" -> "MoreYes"
+    "no"  -> "MoreNo"
+    "all" -> "MoreAll"
+    _     -> "MoreYes"
   -- Create the following Haskell expression for printing goals with bindings:
   -- (\ (OP_Tuple<n+2> result names v1 ... v<n>) ->
   --  printWithBindings (zip (fromCurry names) [show v1,..., show v<n>]) result)
@@ -752,7 +757,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
+allOptions = ["bfs","dfs","prdfs","choices","choicetree","ids","par","paths","supply",
               "cmp","ghc","rts","args",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
@@ -765,10 +770,11 @@ processThisOption rst option args
    = do ipath <- if null args then defaultImportPaths rst
                               else defaultImportPathsWith rst args
         return (Just { importPaths := ipath | rst })
-  | option=="bfs" = return (Just { ndMode := BFS | rst })
-  | option=="dfs" = return (Just { ndMode := DFS | rst })
-  | option=="prdfs" = return (Just { ndMode := PrDFS | rst })
-  | option=="choices" = return (Just { ndMode := PrtChoices | rst })
+  | option=="bfs"        = return (Just { ndMode := BFS           | rst })
+  | option=="dfs"        = return (Just { ndMode := DFS           | rst })
+  | option=="prdfs"      = return (Just { ndMode := PrDFS         | rst })
+  | option=="choices"    = return (Just { ndMode := PrtChoices    | rst })
+  | option=="choicetree" = return (Just { ndMode := PrtChoiceTree | rst })
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -820,6 +826,7 @@ printOptions rst = putStrLn $
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
   "choices        - set search mode to print the raw choice structure\n"++
+  "choiceTree     - set search mode to print the choice structure as a tree\n"++
   "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
@@ -842,12 +849,13 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
      concat (intersperse ":" ("." : rst->importPaths)) ++ "\n" ++
   "search mode       : " ++
       (case (rst->ndMode) of
-         PrDFS      -> "primitive non-monadic depth-first search"
-         PrtChoices -> "show choice structure"
-         DFS        -> "depth-first search"
-         BFS        -> "breadth-first search"
-         IDS d      -> "iterative deepening (initial depth: "++show d++")"
-         Par s      -> "parallel search with "++show s++" threads"
+         PrDFS         -> "primitive non-monadic depth-first search"
+         PrtChoices    -> "show choice structure"
+         PrtChoiceTree -> "show choice tree structure"
+         DFS           -> "depth-first search"
+         BFS           -> "breadth-first search"
+         IDS d         -> "iterative deepening (initial depth: "++show d++")"
+         Par s         -> "parallel search with "++show s++" threads"
       ) ++ "\n" ++
   "idsupply          : " ++ rst->idSupply ++ "\n" ++
   "compiler options  : " ++ rst->cmpOpts ++ "\n" ++
