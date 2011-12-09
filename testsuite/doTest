@@ -7,8 +7,8 @@ KICS2BIN=$KiCS2HOME/bin
 TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonStrictUnif testFuncPattern"
 
 # test for standard libraries
-#TESTLIBS="testDatabase testDynamic testGlobalVariable testSetFunctions"
-TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testFlatCurryXML testGlobal testInteger testIO testIOExts testList testRedBlackTree testSort testSystem testTraversal"
+#TESTLIBS="testGlobalVariable testSetFunctions"
+TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testFlatCurryXML testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testSort testSystem testTraversal"
 
 ALLTESTS="$TESTLANG $TESTLIBS"
 
