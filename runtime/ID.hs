@@ -118,7 +118,7 @@ data ID
     deriving Eq
 
 instance Show ID where
-  show (ChoiceID     i) = "?" ++ show i
+  show (ChoiceID     i) = "?" ++ showUnique i
   show (FreeID     _ i) = "_x" ++ show i
   show (NarrowedID _ i) = "Narrowed" ++ show i
 

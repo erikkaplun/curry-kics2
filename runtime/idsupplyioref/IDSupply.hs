@@ -3,7 +3,7 @@
 -- ---------------------------------------------------------------------------
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
-  , Unique, mkInteger
+  , Unique, mkInteger, showUnique
   , Store (..)
   ) where
 
@@ -22,7 +22,7 @@ instance Eq Unique where
   Unique ref1 _ == Unique ref2 _ = ref1 == ref2
 
 instance Show Unique where
-  show = tail . show . unqKey
+  show = showUnique . unqKey
 
 data IDSupply = IDSupply
   { unique      :: Unique   -- ^ Decision and unique identifier for this IDSupply
@@ -39,6 +39,9 @@ instance Show IDSupply where
 -- |Retrieve an 'Integer' representation of the unique identifier
 mkInteger :: Unique -> Integer
 mkInteger = toInteger . GHC.getKey . unqKey
+
+showUnique :: Unique -> String
+showUnique = tail . show -- tail to avoid showing of leading 'a'
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply

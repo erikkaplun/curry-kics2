@@ -3,7 +3,7 @@
 -- ---------------------------------------------------------------------------
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
-  , Unique, mkInteger
+  , Unique, mkInteger, showUnique
   , Store (..)
   ) where
 
@@ -33,6 +33,9 @@ leftSupply  (IDSupply i) = IDSupply (2 * i)
 
 rightSupply :: IDSupply -> IDSupply
 rightSupply (IDSupply i) = IDSupply (2 * i + 1)
+
+showUnique :: Unique -> String
+showUnique = show
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply

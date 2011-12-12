@@ -3,7 +3,7 @@
 -- ---------------------------------------------------------------------------
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
-  , Unique, mkInteger
+  , Unique, mkInteger, showUnique
   , Store (..)
   ) where
 
@@ -33,6 +33,9 @@ instance Show IDSupply where
 -- |Retrieve an 'Integer' representation of the unique identifier
 mkInteger :: Unique -> Integer
 mkInteger _ = 0
+
+showUnique :: Unique -> String
+showUnique _ = ""
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply

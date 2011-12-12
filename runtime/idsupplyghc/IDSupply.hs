@@ -3,7 +3,7 @@
 -- ---------------------------------------------------------------------------
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
-  , Unique, mkInteger
+  , Unique, mkInteger, showUnique
   , Store (..)
   ) where
 
@@ -25,7 +25,7 @@ instance Eq IDSupply where
   s1 == s2 = unique s1 == unique s2
 
 instance Show IDSupply where
-  show = tail . show . unique -- tail to avoid showing of leading 'a'
+  show = showUnique . unique
 
 -- |Retrieve an 'Unique' representation of the unique identifier
 mkInteger :: Unique -> Integer
@@ -39,6 +39,9 @@ rightSupply = IDSupply . snd . splitUniqSupply . uniqSupply
 
 unique :: IDSupply -> Unique
 unique = uniqFromSupply . uniqSupply
+
+showUnique :: Unique -> String
+showUnique = tail . show -- tail to avoid showing of leading 'a'
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply
