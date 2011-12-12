@@ -275,6 +275,7 @@ searchDFS act goal = do
     where
     dfsFail           = mnil
     dfsVal v          = searchNF searchDFS cont v
+
     dfsChoice i x1 x2 = lookupDecision i >>= follow
       where
       follow ChooseLeft  = dfs cont x1
@@ -293,8 +294,8 @@ searchDFS act goal = do
       where
       follow (LazyBind cs) = processLB i cs xs
       follow (ChooseN c _) = dfs cont (xs !! c)
-      follow NoDecision    = foldr1 (+++) $ zipWith3
-        (\n pn y -> decide i (ChooseN n pn) y) [0 ..] pns xs
+      follow NoDecision    = foldr1 (+++) $
+        zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0 ..] pns xs
       follow c             = error $ "Search.dfsNarrowed: Bad choice " ++ show c
     dfsNarrowed i _ = error $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
 
@@ -338,18 +339,15 @@ searchBFS act goal = do
   trace $ "Corresponding search tree:\n" ++ showChoiceTree goal
   bfs act [] [] (return ()) (return ()) goal
   where
-  -- bfs searches the levels in alternating order, left to right and then
-  -- right to left, TODO is this behavior desired?
   -- xs is the list of values to be processed in this level
   -- ys is the list of values to be processed in the next level
   bfs cont xs ys set reset x = do
     trace $ "bfs: " ++ take 200 (show x)
-    _ <- set
     match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
     where
     bfsFail         = reset >> next cont xs ys
     bfsVal v        = (searchNF searchBFS cont v) +++ (reset >> next cont xs ys) -- TODO: Check this!
-    bfsChoice i a b = lookupDecision i >>= follow
+    bfsChoice i a b = set >> lookupDecision i >>= follow
       where
       follow ChooseLeft  = bfs cont xs ys set reset a
       follow ChooseRight = bfs cont xs ys set reset b
@@ -358,7 +356,7 @@ searchBFS act goal = do
         next cont xs (decide i ChooseLeft a : decide i ChooseRight b : ys)
       follow c           = error $ "Search.bfsChoice: Bad choice " ++ show c
 
-    bfsNarrowed i@(NarrowedID pns _) zs = lookupDecision i >>= follow
+    bfsNarrowed i@(NarrowedID pns _) zs = set >> lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs zs
       follow (ChooseN c _) = bfs cont xs ys set reset (zs !! c)
@@ -367,20 +365,21 @@ searchBFS act goal = do
       follow c             = error $ "Search.bfsNarrowed: Bad choice " ++ show c
     bfsNarrowed i _ = error $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
 
-    bfsFree i zs = lookupDecisionID i >>= follow
+    bfsFree i zs = set >> lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs zs
       follow (ChooseN c _, _) = bfs cont xs ys set reset (zs !! c)
       follow (NoDecision , j) = reset >> (cont (choicesCons j zs) +++ (next cont xs ys))
       follow c                = error $ "Search.bfsFree: Bad choice " ++ show c
 
-    bfsGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+    bfsGuard cs e = set >> solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
       Just (newReset, a) -> bfs cont xs ys set (newReset >> reset) a
 
-    next _     []  []                   = mnil
-    next cont' []  ((setB,resetB,b):bs) = bfs cont' bs [] setB resetB b
-    next cont' ((setA,resetA,a):as) bs  = bfs cont' as bs setA resetA a
+    next _     []                   [] = mnil
+    next cont' []                   bs = next cont' (reverse bs) []
+    next cont' ((setA,resetA,a):as) bs = bfs cont' as bs setA resetA a
+--     next cont' []  ((setB,resetB,b):bs) = bfs cont' bs [] setB resetB b
 
     processLB i cs zs = do
       newReset <- setUnsetDecision i NoDecision
@@ -454,7 +453,7 @@ startIDS olddepth newdepth act goal = do
     idsVal v | n <= newdepth - olddepth = searchNF (startIDS olddepth n) cont v
              | otherwise                = mnil
 
-    idsChoice i x1 x2 = traceLookup lookupDecision i >>= follow
+    idsChoice i x1 x2 = lookupDecision i >>= follow
       where
       follow ChooseLeft  = ids n cont x1
       follow ChooseRight = ids n cont x2
@@ -462,14 +461,14 @@ startIDS olddepth newdepth act goal = do
                          $ decide i ChooseLeft x1 +++ decide i ChooseRight x2
       follow c           = error $ "Search.idsChoice: Bad choice " ++ show c
 
-    idsFree i xs = traceLookup lookupDecisionID i >>= follow
+    idsFree i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = ids n cont (xs !! c)
       follow (NoDecision , j) = cont $ choicesCons j xs
       follow c                = error $ "Search.idsFree: Bad choice " ++ show c
 
-    idsNarrowed i@(NarrowedID pns _) xs = traceLookup lookupDecision i >>= follow
+    idsNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs xs
       follow (ChooseN c _) = ids n cont (xs !! c)
@@ -485,11 +484,11 @@ startIDS olddepth newdepth act goal = do
     checkDepth deeper = if (n > 0) then deeper else abort
 
     processLB i cs xs = do
-      reset <- traceDecision setUnsetDecision i NoDecision
+      reset <- setUnsetDecision i NoDecision
       ids n cont (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
 
     decide i c y = do
-      reset <- traceDecision setUnsetDecision i c
+      reset <- setUnsetDecision i c
       ids (n - 1) cont y |< reset
 
 -- ---------------------------------------------------------------------------
@@ -512,8 +511,8 @@ printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
 computeWithPar goal = getNormalForm goal >>=
-  list2iolist . parSearch . flip evalStateT (Map.empty :: SetOfDecisions)
-                          . searchMPlus' return
+  fromList . parSearch . flip evalStateT (Map.empty :: SetOfDecisions)
+                       . searchMPlus' return
 
 -- ---------------------------------------------------------------------------
 -- Generic search using MonadPlus as the result monad
@@ -522,10 +521,11 @@ computeWithPar goal = getNormalForm goal >>=
 type SetOfDecisions = Map.Map Integer Decision
 
 instance Monad m => Store (StateT SetOfDecisions m) where
-  getDecisionRaw u        = gets $ Map.findWithDefault defaultDecision (mkInteger u)
+  getDecisionRaw u        = gets
+                          $ Map.findWithDefault defaultDecision (mkInteger u)
   setDecisionRaw u c
     | isDefaultDecision c = modify $ Map.delete (mkInteger u)
-    | otherwise         = modify $ Map.insert (mkInteger u) c
+    | otherwise           = modify $ Map.insert (mkInteger u) c
   unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
 
 -- Collect results of a non-deterministic computation in a monadic structure.
@@ -535,42 +535,42 @@ searchMPlus x store = evalStateT
                       (Map.empty :: SetOfDecisions)
 
 searchMPlus' :: (NormalForm a, MonadPlus m, Store m) => (a -> m b) -> a -> m b
-searchMPlus' cont = match smpChoice smpNarrowed smpFree mzero smpGuard smpVal
+searchMPlus' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
   where
-  smpVal v = searchNF searchMPlus' cont v
-  smpChoice i x y = lookupDecision i >>= choose
+  smpFail         = mzero
+  smpVal v        = searchNF searchMPlus' cont v
+
+  smpChoice i x y = lookupDecision i >>= follow
     where
-    choose ChooseLeft  = searchMPlus' cont x
-    choose ChooseRight = searchMPlus' cont y
-    choose NoDecision    = (setDecision i ChooseLeft  >> searchMPlus' cont x)
-                         `mplus`
-                         (setDecision i ChooseRight >> searchMPlus' cont y)
-    choose c           = error $ "searchMPlus: Bad choice " ++ show c
+    follow ChooseLeft  = searchMPlus' cont x
+    follow ChooseRight = searchMPlus' cont y
+    follow NoDecision  = decide i ChooseLeft x `mplus` decide i ChooseRight y
+    follow c           = error $ "Search.smpChoice: Bad choice " ++ show c
 
-  smpNarrowed i@(NarrowedID pns _)  bs = lookupDecision i >>= choose
+  smpNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
-    choose (ChooseN c _) = searchMPlus' cont (bs !! c)
-    choose NoDecision      =
-      msum $ zipWith3 (\n c pn -> pick n pn >> searchMPlus' cont c) [0..] bs pns
-    choose (LazyBind cs) = processLazyBind' i cont cs bs
-    choose c             = error $ "searchMPlus: Bad choice " ++ show c
+    follow (LazyBind cs) = processLB i cs xs
+    follow (ChooseN c _) = searchMPlus' cont (xs !! c)
+    follow NoDecision    = msum $
+      zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
+    follow c             = error $ "Search.smpNarrowed: Bad choice " ++ show c
+  smpNarrowed i _ = error $ "Search.smpNarrowed: Bad narrowed ID " ++ show i
 
-    pick c pn = setDecision i (ChooseN c pn)
-  smpNarrowed i _ = error $ "searchMPlus: Bad narrowed ID " ++ show i
-
-  smpFree i branches = lookupDecision i >>= choose
+  smpFree i xs = lookupDecisionID i >>= follow
     where
-    choose (ChooseN c _) = searchMPlus' cont (branches !! c)
-    choose NoDecision      = cont $ choicesCons i branches
-    choose (LazyBind cs) = processLazyBind' i cont cs branches
-    choose c             = error $ "searchMPlus: Bad choice " ++ show c
+    follow (LazyBind cs, _) = processLB i cs xs
+    follow (ChooseN c _, _) = searchMPlus' cont (xs !! c)
+    follow (NoDecision , j) = cont $ choicesCons j xs
+    follow c                = error $ "Search.smpFree: Bad choice " ++ show c
 
-  smpGuard cs e = solves (getConstrList cs) e >>= \mbSolution -> case mbSolution of
+  smpGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero
     Just (_, e') -> searchMPlus' cont e'
 
-processLazyBind' :: (NormalForm a, MonadPlus m, Store m)
-                 => ID -> (a -> m b) -> [Constraint] -> [a] -> m b
-processLazyBind' i cont cs xs = do
-  setDecision i NoDecision
-  searchMPlus' cont (guardCons (StructConstr cs) (choicesCons i xs))
+  decide i c y = do
+    setDecision i c
+    searchMPlus' cont y
+
+  processLB i cs xs = do
+    setDecision i NoDecision
+    searchMPlus' cont (guardCons (StructConstr cs) (choicesCons i xs))
