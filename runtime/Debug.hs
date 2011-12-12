@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fforce-recomp #-}
 module Debug (trace) where
 
 trace :: String -> IO ()
