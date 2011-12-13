@@ -368,6 +368,20 @@ benchFLPCompleteSearch prog = concat
                prog True True "pureio" "printIDS1 100 print nd_C_main"
  ]
 
+-- Benchmarking functional logic programs with different search strategies
+-- for "main" operations and goals for encapsulated search strategies
+benchFLPEncapsSearch prog maingoals = concat $
+ [idcBenchmark "IDC+DFS_GHC"
+               prog True True "ghc" "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_GHC"
+               prog True True "ghc" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+IDS_GHC"
+               prog True True "ghc" "printIDS 100 print nd_C_main"
+ ] ++
+ map (\name -> idcBenchmark ("IDC+PrDFS_GHC:"++name)
+                            prog True True "ghc" ("prdfs print nd_C_"++name))
+     maingoals
+
 -- Benchmarking =:<=, =:= and ==
 benchFLPDFSKiCS2WithMain prog name pakcs mcc = concat
  [idcBenchmark ("IDC+_PrDFS_PUREIO:"++name)
@@ -492,6 +506,8 @@ main = run 1 allBenchmarks
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
+--main = run 1 [benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS"]]
+--main = run 1 [benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS"]]
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
