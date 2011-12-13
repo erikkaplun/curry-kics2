@@ -1,0 +1,80 @@
+KiCS2: The Kiel Curry System (Version 2)
+========================================
+
+Installation Instructions for the GIT Repository
+------------------------------------------------
+
+If you want to install the up-to-date version of KiCS2
+from the developer's repository, you have to clone the
+[git repository](http://www-ps.informatik.uni-kiel.de/kics2/repos/kics2.git),
+e.g., by the shell command
+
+    git clone http://www-ps.informatik.uni-kiel.de/kics2/repos/kics2.git
+
+This creates a new directory `kics2` containing the current version.
+Go into this directory by
+
+    cd kics2
+
+Then, each future update can be obtained by the executing
+
+    git pull
+
+Since the front end used by KiCS2 is an independent development
+with its own repository, you should execute the command
+
+    make frontendsources
+
+to obtain the up-to-date sources of the front end.
+
+Due to the fact that the KiCS2 compiler and interactive environment
+is implemented in Curry, you need an executable Curry compiler
+to install KiCS2 via bootstrapping.
+Therefore, you have to install a distribution of some Curry
+implementation on your machine in order to start the
+bootstrapping process.
+Currently, there are at least two options:
+
+1. Bootstrapping with PAKCS
+
+   Download and install the PAKCS implementation of Curry from the
+   [PAKCS web site](http://www.informatik.uni-kiel.de/~pakcs).
+   If you successfully installed PAKCS, be sure to have the command
+   `pakcs` in your load path. Then you can generate the initial
+   KiCS2 compiler by the command
+   
+       make bootstrap
+   
+   in the directory `kics2`.
+   
+2. Bootstrapping with KiCS2
+
+   Download and install the KiCS2 distribution from the
+   [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
+   Be sure to use a different directory than `kics2` for this installation,
+   e.g., install this in `tmp/kics2`.
+   If you successfully installed this distribution (note that you do not
+   need the complete installation so that it is sufficient to install
+   this distribution by `make kernel`), you can copy the initial
+   KiCS2 compiler into the git version by the command
+   
+       cp -p tmp/kics2/bin/idc bin/idc
+   
+   in the directory `kics2`.
+
+If you install KiCS2 for the first time, you need to install
+some Haskell packages via Cabal, i.e., run the command
+
+    make installhaskell
+
+Now you are ready to install KiCS2 with all its components by
+
+    make
+
+Further information is available in the installation instructions
+of the KiCS2 distribution which can be found
+[here](http://www-ps.informatik.uni-kiel.de/kics2/download/INSTALL.html).
+
+-------------------------------------------------------------
+
+Contact: [Michael Hanus](http://www.informatik.uni-kiel.de/~mh/)
