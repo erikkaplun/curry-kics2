@@ -1,11 +1,11 @@
 ------------------------------------------------------------------
 --- This library defines a representation of a search space as
---- a tree and search strategies on this tree.
+--- a tree and various search strategies on this tree.
 ------------------------------------------------------------------
 
 module SearchTree(SearchTree(..),someSearchTree, getSearchTree,
                   isDefined, showSearchTree, searchTreeSize,
-                  allValuesDFS, allValuesBFS)
+                  allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith)
   where
 
 --- A search tree is a value, a failure, or a choice between to search trees.
@@ -75,3 +75,44 @@ values (Or _ _:ts)  = values ts
 allBFS :: [SearchTree a] -> [a]
 allBFS []     = [] 
 allBFS (t:ts) = values (t:ts) ++ allBFS (children (t:ts))
+
+
+--- Return all values in a search tree via iterative-deepening search.
+allValuesIDS :: SearchTree a -> [a]
+allValuesIDS = allValuesIDSwith 100 (2*)
+
+--- Return all values in a search tree via iterative-deepening search.
+--- The first argument is the initial depth bound and
+--- the second argument is a function to increase the depth in each
+--- iteration.
+allValuesIDSwith :: Int -> (Int->Int) -> SearchTree a -> [a]
+allValuesIDSwith initdepth incrdepth st =
+  iterIDS initdepth (collectInBounds 0 initdepth st)
+ where
+  iterIDS _ Nil = []
+  iterIDS n (Cons x xs) = x : iterIDS n xs
+  iterIDS n Abort = let newdepth = incrdepth n
+                     in iterIDS newdepth (collectInBounds n newdepth st)
+
+-- Collect solutions within some level bounds in a tree.
+collectInBounds :: Int -> Int -> SearchTree a -> AbortList a
+collectInBounds oldbound newbound st = collectLevel newbound st
+ where
+  collectLevel _ Fail      = Nil
+  collectLevel d (Value x) = if d<=newbound-oldbound then Cons x Nil else Nil
+  collectLevel d (Or x y)  =
+    if d>0 then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
+           else Abort
+
+-- List containing "aborts" are used to implement the iterative
+-- depeening strategy:
+
+data AbortList a = Nil | Cons a (AbortList a) | Abort
+
+-- Concatenation on abort lists where aborts are moved to the right.
+concA :: AbortList a -> AbortList a -> AbortList a
+concA Abort       Abort = Abort
+concA Abort       Nil = Abort
+concA Abort       (Cons x xs) = Cons x (concA Abort xs)
+concA Nil         ys = ys
+concA (Cons x xs) ys = Cons x (concA xs ys)
