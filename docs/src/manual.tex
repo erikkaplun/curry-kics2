@@ -84,7 +84,7 @@
 {\Huge\bf KiCS2 0.1}\\[4ex]
 {\huge The Kiel Curry System (Version 2)}\\[7ex]
 {\huge User Manual}\\[4ex]
-Version of November 29, 2011\\[6ex]
+Version of December 13, 2011\\[6ex]
 \Large
 Michael Hanus$^1$ [editor] \\[3ex]
 {\large Additional Contributors:}\\[2ex]
@@ -1719,7 +1719,7 @@ Currently, KiCS2 has no general interface to external operations,
 i.e., operations whose semantics is not defined by program rules
 in a Curry program but by some code written in another programming
 language.
-Therefore, if a new external operation should be added
+Thus, if an external operation should be added
 to the system, this operation must be declared as \code{external}
 in the Curry source code
 and an implementation for this external operation
@@ -1737,8 +1737,7 @@ Instead of the defining rules, you have to write
 \begin{curry}
 f external
 \end{curry}
-somewhere in the file containing the type declaration for 
-the external operation \code{f}.
+below the type declaration for the external operation \code{f}.
 \end{enumerate}
 Furthermore, an implementation of the external operation
 must be provided in the target language of the KiCS2 compiler,
@@ -1762,8 +1761,8 @@ that applies an operation to the \emph{normal form} of the given
 argument, i.e., this operation evaluates the argument
 to its normal form before applying the operation to it.\footnote{%
 There is also a similar prelude operation \code{(\$\#)}
-which evaluates the argument only to head-normal
-which is a bit more efficient and can be used for unstructured
+which evaluates the argument only to head-normal form.
+This is a bit more efficient and can be used for unstructured
 types like \code{Bool}.}
 Thus, we define \code{sconc} by
 \begin{curry}
@@ -1785,8 +1784,9 @@ Haskell code for the module \code{String} is stored in the file
 \begin{curry}
 d_C_prim_sconc :: Curry_Prelude.OP_List Curry_Prelude.C_Char
                -> Curry_Prelude.OP_List Curry_Prelude.C_Char
+               -> ConstStore
                -> Curry_Prelude.OP_List Curry_Prelude.C_Char
-d_C_prim_sconc x1 x2 = external_d_C_prim_sconc x1 x2
+d_C_prim_sconc x1 x2 x3500 = external_d_C_prim_sconc x1 x2 x3500
 \end{curry}
 The type constructors \code{OP_List} and \code{C_Char}
 of the prelude \code{Curry_Prelude}\footnote{Note that all
@@ -1794,8 +1794,14 @@ translated Curry modules are imported in the Haskell code fully qualified
 in order to avoid name conflicts.}
 correspond to the Curry type constructors for lists and characters.
 The Haskell operation \code{external_d_C_prim_sconc}
-is the external operation to be implemented in Haskell by the
-programmer. If \code{String.curry} contains the code
+is the external operation to be implemented in Haskell by the programmer.
+The additional argument of type \code{ConstStore}
+represents the current set of constraints when this
+operation is called. This argument is intended to provide
+a more efficient access to binding constraints and can be
+ignored in standard operations.
+
+If \code{String.curry} contains the code
 of the Curry function \code{sconc} described above,
 the Haskell code implementing the external operations
 occurring in the module \code{String} must be in the
@@ -1816,7 +1822,7 @@ Thus, we start with the following definitions:
 import qualified Curry_Prelude as CP
 
 external_d_C_prim_sconc :: CP.OP_List CP.C_Char -> CP.OP_List CP.C_Char
-                        -> CP.OP_List CP.C_Char
+                        -> ConstStore -> CP.OP_List CP.C_Char
 \end{curry}
 First, we import the standard prelude with the name \code{CP}
 in order to shorten the writing of type declarations.
@@ -1834,8 +1840,10 @@ For instance, \code{fromCurry} converts a Curry type into the
 corresponding Haskell type, and \code{toCurry} converts
 the Haskell type into the corresponding Curry type.
 Thus, we complete our example with the definition
+(note that we simply ignore the final argument representing the
+constraint store)
 \begin{curry}
-external_d_C_prim_sconc s1 s2 =
+external_d_C_prim_sconc s1 s2 _ =
   toCurry ((fromCurry s1 ++ fromCurry s2) :: String)
 \end{curry}
 Here, we use Haskell's concatenation operation \ccode{++}
@@ -1849,9 +1857,11 @@ function.
 In order to use Haskell I/O actions as an implementation
 for external Curry I/O actions in an easy manner, the KiCS2 implementation
 also provides a family of operations \code{fromHaskellIO$n$},
-where $n$ denotes the number of parameters of the I/O action,
-which map a Haskell I/O action into a Curry I/O action and performing
-all data conversions. For instance, if we want to implement
+where $n$ denotes the number of parameters of the I/O action.
+Each operation \code{fromHaskellIO$n$}
+maps a Haskell I/O action into a Curry I/O action and performs
+all data conversions for the arguments and result.
+For instance, if we want to implement
 an external operation to print some string as an output line,
 we start by declaring the external operations in the Curry module \code{String}:
 \begin{curry}
@@ -1865,8 +1875,9 @@ Next we add the corresponding implementation in the file
 \code{External_String.hs} (where \code{OP_Unit} is the name
 of the Haskell representation of the Curry datatype \ccode{()}):
 \begin{curry}
-external_d_C_prim_printString :: CP.OP_List CP.C_Char -> CP.C_IO CP.OP_Unit
-external_d_C_prim_printString = fromHaskellIO1 putStrLn
+external_d_C_prim_printString :: CP.OP_List CP.C_Char -> ConstStore
+                              -> CP.C_IO CP.OP_Unit
+external_d_C_prim_printString s _ = fromHaskellIO1 putStrLn s
 \end{curry}
 When we compile the Curry module \code{String},
 KiCS2 combines these definitions in the target program so that
@@ -1890,8 +1901,8 @@ if we declare the external operation
 the generated Haskell module contains the code
 \begin{curry}
 d_OP_lt_ampersand_gt :: Curry_Prelude.C_Int -> Curry_Prelude.C_Int
-                     -> Curry_Prelude.C_Int
-d_OP_lt_ampersand_gt x1 x2 = external_d_OP_lt_ampersand_gt x1 x2
+                     -> ConstStore -> Curry_Prelude.C_Int
+d_OP_lt_ampersand_gt x1 x2 x3500 = external_d_OP_lt_ampersand_gt x1 x2 x3500
 \end{curry}
 so that one has to implement the operation
 \code{external_d_OP_lt_ampersand_gt} in Haskell.

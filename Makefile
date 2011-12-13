@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=08/12/11
+COMPILERDATE=13/12/11
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -162,23 +162,29 @@ KICS2DIST=/tmp/kics2
 # repository with new front-end:
 FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/kics2/repos
 
+# install the sources of the front end from its repository
+.PHONY: frontendsources
+frontendsources:
+	if [ -d frontend ] ; then \
+	 cd frontend/curry-base && git pull && cd ../curry-frontend && git pull ; \
+	 else mkdir frontend && cd frontend && \
+	      git clone ${FRONTENDREPO}/curry-base.git && \
+	      git clone ${FRONTENDREPO}/curry-frontend.git ; fi
+
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	rm -rf kics2.tar.gz ${KICS2DIST}       # remove old distribution
-	git clone . ${KICS2DIST}               # create copy of git version
-	# install front-end sources
-	mkdir ${KICS2DIST}/frontend
-	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-base.git
-	cd ${KICS2DIST}/frontend && git clone ${FRONTENDREPO}/curry-frontend.git
-	cd ${KICS2DIST} && ${MAKE} cleandist   # delete unnessary files
-	cd bin && cp idc ${KICS2DIST}/bin      # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile     # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL        # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean       # clean object files
+	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
+	git clone . ${KICS2DIST}                   # create copy of git version
+	cd ${KICS2DIST} && ${MAKE} frontendsources # install front end sources
+	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
+	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
+	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean           # clean object files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
-	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak # clean execs
+	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak # clean executables
 	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
