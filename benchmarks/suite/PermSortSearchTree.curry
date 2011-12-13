@@ -20,3 +20,5 @@ main = sortmain 14
 mainDFS = allValuesDFS (someSearchTree main)
 
 mainBFS = allValuesBFS (someSearchTree main)
+
+mainIDS = allValuesIDS (someSearchTree main)

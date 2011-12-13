@@ -25,3 +25,5 @@ main = equal (toPeano 1000) (half (toPeano 2000))
 mainDFS = allValuesDFS (someSearchTree main)
 
 mainBFS = allValuesBFS (someSearchTree main)
+
+mainIDS = allValuesIDS (someSearchTree main)
