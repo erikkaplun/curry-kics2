@@ -21,9 +21,6 @@ data Unique = Unique { unqRef:: (IORef Decision), unqKey :: GHC.Unique }
 instance Eq Unique where
   Unique ref1 _ == Unique ref2 _ = ref1 == ref2
 
-instance Show Unique where
-  show = showUnique . unqKey
-
 data IDSupply = IDSupply
   { unique      :: Unique   -- ^ Decision and unique identifier for this IDSupply
   , leftSupply  :: IDSupply -- ^ path to the left IDSupply
@@ -34,14 +31,14 @@ instance Eq IDSupply where
   s1 == s2 = unique s1 == unique s2
 
 instance Show IDSupply where
-  show = show . unique -- tail to avoid showing of leading 'a'
+  show = showUnique . unique -- tail to avoid showing of leading 'a'
 
 -- |Retrieve an 'Integer' representation of the unique identifier
 mkInteger :: Unique -> Integer
 mkInteger = toInteger . GHC.getKey . unqKey
 
 showUnique :: Unique -> String
-showUnique = tail . show -- tail to avoid showing of leading 'a'
+showUnique = tail . show . unqKey -- tail to avoid showing of leading 'a'
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply
