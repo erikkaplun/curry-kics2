@@ -4,7 +4,7 @@
 -- ---------------------------------------------------------------------------
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiParamTypeClasses, Rank2Types #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fforce-recomp #-}
 
 module Types where
 
@@ -287,7 +287,7 @@ unifyTry xVal yVal csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF h
 
 bindToVal :: Unifiable a => ID -> a -> ConstStore -> C_Success
 #ifdef STRICT_VAL_BIND
-bindtoVal i v cs = (\w _ -> constrain i w $!! v) cs
+bindToVal i v cs = ((\w _ -> constrain i w) $!! v) cs
 #else
 bindToVal i v _ =           constrain i v
 #endif

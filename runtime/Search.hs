@@ -45,7 +45,7 @@ toIO (Choices_C_IO i@(FreeID     _ _) xs) cs = do
     lookupCs csg i (flip toIO cs) (followToIO i xs cs)
 
 followToIO :: ID -> [C_IO a] -> ConstStore -> IO a
-followToIO i xs store =  do
+followToIO i xs store = do
   c <- lookupDecision i
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
@@ -303,9 +303,8 @@ searchDFS act goal = do
       Nothing          -> mnil
       Just (reset, e') -> dfs cont e' |< reset
 
-    processLB i cs xs = do
-      reset <- setUnsetDecision i NoDecision
-      dfs cont (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
+    processLB i cs xs = decide i NoDecision
+                      $ guardCons (StructConstr cs) $ choicesCons i xs
 
     decide i c y = do
       reset <- setUnsetDecision i c
@@ -346,7 +345,7 @@ searchBFS act goal = do
     match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
     where
     bfsFail         = reset >> next cont xs ys
-    bfsVal v        = (searchNF searchBFS cont v) +++ (reset >> next cont xs ys) -- TODO: Check this!
+    bfsVal v        = (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys) -- TODO: Check this!
     bfsChoice i a b = set >> lookupDecision i >>= follow
       where
       follow ChooseLeft  = bfs cont xs ys set reset a
@@ -379,7 +378,6 @@ searchBFS act goal = do
     next _     []                   [] = mnil
     next cont' []                   bs = next cont' (reverse bs) []
     next cont' ((setA,resetA,a):as) bs = bfs cont' as bs setA resetA a
---     next cont' []  ((setB,resetB,b):bs) = bfs cont' bs [] setB resetB b
 
     processLB i cs zs = do
       newReset <- setUnsetDecision i NoDecision
