@@ -32,7 +32,8 @@ instance Show IDSupply where
 
 -- |Retrieve an 'Integer' representation of the unique identifier
 mkInteger :: Unique -> Integer
-mkInteger _ = 0
+mkInteger _ =
+ error "idsupply pureio: no integer representation available, use other supply!"
 
 showUnique :: Unique -> String
 showUnique _ = ""

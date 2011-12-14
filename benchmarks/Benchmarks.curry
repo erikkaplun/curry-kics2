@@ -373,8 +373,8 @@ benchFLPCompleteSearch prog = concat
 benchFLPEncapsSearch prog maingoals = concat $
  [idcBenchmark "IDC+DFS_GHC"
                prog True True "ghc" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_GHC"
-               prog True True "ghc" "printBFS print nd_C_main"
+ --,idcBenchmark "IDC+BFS_GHC"
+ --              prog True True "ghc" "printBFS print nd_C_main"
  ,idcBenchmark "IDC+IDS_GHC"
                prog True True "ghc" "printIDS 100 print nd_C_main"
  ] ++
@@ -424,6 +424,9 @@ allBenchmarks =
   , benchFunPats "ExpVarFunPats"
   , benchFunPats "ExpSimpFunPats"
   , benchFunPats "PaliFunPats"
+  , benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS","mainIDS"]
+  , benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]
+  , benchFLPEncapsSearch "LastSearchTree" ["mainDFS","mainBFS","mainIDS"]
   ]
 
 unif = 
@@ -506,8 +509,11 @@ main = run 1 allBenchmarks
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
---main = run 1 [benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS"]]
---main = run 1 [benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS"]]
+--main = run 1 [benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]]
+--main = run 1
+--  [benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS","mainIDS"]
+--  ,benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]
+--  ,benchFLPEncapsSearch "LastSearchTree" ["mainDFS","mainBFS","mainIDS"]]
 --main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
