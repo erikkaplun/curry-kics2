@@ -2,8 +2,11 @@
 -- Data structures and operations to collect and show results
 -- w.r.t. various search strategies
 -- ---------------------------------------------------------------------------
-{-# LANGUAGE BangPatterns #-}
-module MonadList where
+module MonadList
+  ( MList, mnil, msingleton, mcons, abort, (|<), (+++), (++++), fromList
+  , IOList, MoreDefault (..), countVals, printOneValue, printAllValues
+  , printValsOnDemand
+  ) where
 
 import Data.Char (toLower)
 import System.IO (hFlush, stdin, stdout, hSetBuffering, BufferMode (..))
@@ -11,11 +14,10 @@ import System.IO (hFlush, stdin, stdout, hSetBuffering, BufferMode (..))
 -- |Monadic lists as a general representation of values obtained in a
 -- monadic manner.
 --
--- The additional constructor 'Abort' represents an incomplete
+-- The additional constructor @Abort@ represents an incomplete
 -- list due to reaching the depth-bound in iterative deepening.
--- The constructor '(WithReset lis act)' represents a list where the monadic
--- monadic action act has to be performed at the end of the list.
-
+-- The constructor @(WithReset list act)@ represents a list where the monadic
+-- monadic reset action @act@ has to be performed at the end of the list.
 data List m a
   -- |Empty list
   = Nil
@@ -24,7 +26,7 @@ data List m a
   -- |Abortion at iterative deepening
   | Abort
   -- |Reset action to be performed afterwards
-  | WithReset (MList m a) (m ())
+  | Reset (MList m a) (m ())
 
 type MList m a = m (List m a)
 
@@ -40,130 +42,128 @@ msingleton x = mcons x mnil
 mcons :: Monad m => a -> MList m a -> MList m a
 mcons x xs = return (Cons x xs)
 
--- |Construct a monadic list from a pure list
-fromList :: Monad m => [a] -> MList m a
-fromList = foldr mcons mnil
-
--- |Aborts a monadic list due to reaching the search depth (in iter. deepening)
+-- |Aborts a monadic list due to reaching the maximum search depth
+-- (e.g., in iterative deepening)
 abort :: Monad m => MList m a
 abort = return Abort
 
 -- |Add a monadic reset action to the end of a monadic list.
 -- Used to reset a choice made via a dfs strategy.
 (|<) :: Monad m => MList m a ->  m () -> MList m a
-l |< r = return (WithReset l r)
-{-getXs |< reset = do
-  xs <- getXs
-  case xs of
-    MCons x getTail -> mcons x (getTail |< reset)
-    end -> reset >> return end
--}
+l |< r = return (Reset l r)
 
--- Concatenate two monadic lists
+-- |Append two monadic lists
 (+++) :: Monad m => MList m a -> MList m a -> MList m a
-get +++ getYs = withReset get (return ())
+get +++ getYs = traverse get (return ())
   where
-    withReset getList outerReset = do
-      l <- getList
-      case l of
-        WithReset getList' innerReset -> withReset getList' (innerReset >> outerReset)
-        Nil   -> outerReset >> getYs -- perform action before going to next list
-        Abort -> outerReset >> abortEnd getYs
-        Cons x getXs -> mcons x (withReset getXs outerReset) -- move action down to end
+  traverse getList reset = do
+    l <- getList
+    case l of
+      Nil                -> reset >> getYs -- perform reset before the next list
+      Abort              -> reset >> deferAbort getYs
+      Cons x getXs       -> x `mcons` traverse getXs reset -- move reset to end
+      Reset getXs reset' -> traverse getXs (reset' >> reset)
 
-    abortEnd getList = do -- move Abort down to end of second list
-      ys <- getList
-      case ys of
-        WithReset getYs' innerReset -> abortEnd getYs' |< innerReset
-        Nil   -> return Abort -- replace end of second list by Abort
-        Abort -> return Abort
-        Cons z getZs -> mcons z (abortEnd getZs)
+  deferAbort getList = do -- move Abort down to end of second list
+    ys <- getList
+    case ys of
+      Nil                -> return Abort -- replace end of second list by Abort
+      Abort              -> return Abort
+      Cons z getZs       -> z `mcons` deferAbort getZs
+      Reset getZs reset  -> deferAbort getZs |< reset
 
 -- Concatenate two monadic lists if the first ends with an Abort
 (++++) :: Monad m => MList m a -> MList m a -> MList m a
-get ++++ getYs = withReset get (return ())
+get ++++ getYs = traverse get (return ())
   where
-    withReset getList outerReset = do
-      l <- getList
-      case l of
-        WithReset getList' innerReset -> withReset getList' (innerReset >> outerReset)
-        Nil  -> outerReset >> mnil
-        Abort -> outerReset >> getYs -- ignore Abort when concatenating further vals
-        Cons x getXs -> mcons x (withReset getXs outerReset)
+  traverse getList reset = do
+    l <- getList
+    case l of
+      Nil                -> reset >> mnil
+      Abort              -> reset >> getYs -- ignore Abort when concatenating further vals
+      Cons x getXs       -> x `mcons` traverse getXs reset
+      Reset getXs reset' -> traverse getXs (reset' >> reset)
 
+-- |Construct a monadic list from a pure list
+fromList :: Monad m => [a] -> MList m a
+fromList = foldr mcons mnil
+
+-- ---------------------------------------------------------------------------
+-- IOList
+-- ---------------------------------------------------------------------------
 
 -- For convencience, we define a monadic list for the IO monad:
 type IOList a = List IO a
 
--- Count and print the number of elements of a IO monad list:
-countVals :: IOList a -> IO ()
-countVals x = putStr "Number of values: " >> count 0 x >>= print
-  where
-    count :: Integer -> IOList a -> IO Integer
-    count _ Abort = error "MonadList.countVals.count: Abort" -- TODO
-    count i Nil = return i
-    count i (WithReset l _) = l >>= count i
-    count i (Cons _ cont) = do
-      let !i' = i+1
-      cont >>= count i'
-
--- Print the first value of a IO monad list:
-printOneValue :: Show a => (a -> IO ()) -> IOList a -> IO ()
-printOneValue _   Abort           = error "MonadList.printOneValue: Abort" -- TODO
-printOneValue _   Nil            = putStrLn "No value"
-printOneValue prt (Cons x _)     = prt x
-printOneValue prt (WithReset l _) = l >>= printOneValue prt
-
--- Print all values of a IO monad list:
-printAllValues :: Show a => (a -> IO ()) -> IOList a -> IO ()
-printAllValues _   Abort             = error "MonadList.printAllValues: Abort" -- TODO
-printAllValues _   Nil              = putStrLn "No more values"
-printAllValues prt (Cons x getRest) = prt x >> getRest >>= printAllValues prt
-printAllValues prt (WithReset l _)   = l >>= printAllValues prt
-
-askKey :: IO ()
-askKey = do
-  putStr "Hit any key to terminate..."
-  hFlush stdout
-  hSetBuffering stdin NoBuffering
-  _ <- getChar
-  return ()
-
 -- Type of default actions for interactive value printing
 data MoreDefault = MoreYes | MoreNo | MoreAll deriving Eq
 
+-- |Count and print the number of elements of a IO monad list:
+countVals :: IOList a -> IO ()
+countVals x = putStr "Number of values: " >> count 0 x
+  where
+  count :: Integer -> IOList a -> IO ()
+  count i Nil            = print i
+  count i Abort          = print i >> warnAbort
+  count i (Cons _ getXs) = let i' = i + 1 in i' `seq` getXs >>= count i'
+  count i (Reset    l _) = l >>= count i
+
+-- Print the first value of a IO monad list:
+printOneValue :: Show a => (a -> IO ()) -> IOList a -> IO ()
+printOneValue _   Nil         = putStrLn "No value"
+printOneValue _   Abort       = warnAbort
+printOneValue prt (Cons  x _) = prt x
+printOneValue prt (Reset l _) = l >>= printOneValue prt
+
+-- Print all values of a IO monad list:
+printAllValues :: Show a => (a -> IO ()) -> IOList a -> IO ()
+printAllValues _   Nil            = putStrLn "No more values"
+printAllValues _   Abort          = warnAbort
+printAllValues prt (Cons x getXs) = prt x >> getXs >>= printAllValues prt
+printAllValues prt (Reset    l _) = l >>= printAllValues prt
+
 -- Print all values of a IO monad list on request by the user:
 printValsOnDemand :: Show a => MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
-printValsOnDemand = printValsInteractive True
+printValsOnDemand = printInteractive True
 
-printValsInteractive :: Show a => Bool -> MoreDefault
-                               -> (a -> IO ()) -> IOList a -> IO ()
-printValsInteractive _ _ _ Abort = error "MonadList.printValsInteractive: Abort" -- TODO
-printValsInteractive _ _ _ Nil = putStrLn "No more values" >> askKey
-printValsInteractive st md prt (Cons x getRest) =
-  prt x >> askMore st md prt getRest
-printValsInteractive st md prt (WithReset l _) =
-  l >>= printValsInteractive st md prt
+warnAbort :: IO ()
+warnAbort = putStrLn "Warning: Search aborted (maximum depth reached)"
+
+printInteractive :: Show a => Bool -> MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
+printInteractive _        _  _   Abort          = warnAbort
+printInteractive _        _  _   Nil            = putStrLn "No more values" >> askAnyKey
+printInteractive stepWise md prt (Cons x getXs) = prt x >> askMore stepWise md prt getXs
+printInteractive stepWise md prt (Reset    l _) = l >>= printInteractive stepWise md prt
+
+askAnyKey :: IO ()
+askAnyKey = askUserKey "Hit any key to terminate ..." >> return ()
 
 -- ask the user for more values
-askMore :: Show a => Bool -> MoreDefault
-                  -> (a -> IO ()) -> IO (IOList a) -> IO ()
-askMore st md prt getrest =
-    if not st then getrest >>= printValsInteractive st md prt else do
-  putStr $ "More values? ["++
-           (if md==MoreYes then 'Y' else 'y'):"(es)/"++
-           (if md==MoreNo  then 'N' else 'n'):"(o)/"++
-           (if md==MoreAll then 'A' else 'a'):"(ll)] "
-  hFlush stdout
-  hSetBuffering stdin NoBuffering
-  c <- getChar
+askMore :: Show a => Bool -> MoreDefault -> (a -> IO ()) -> IO (IOList a) -> IO ()
+askMore stepWise md prt getrest
+  | not stepWise = getrest >>= printInteractive stepWise md prt
+  | otherwise    = do
+      c <- askUserKey prompt
+      case toLower c of
+        'y'  -> getrest >>= printInteractive stepWise md prt
+        'n'  -> return ()
+        'a'  -> getrest >>= printInteractive False md prt
+        '\n' -> case md of
+                  MoreYes -> getrest >>= printInteractive stepWise md prt
+                  MoreNo  -> return ()
+                  MoreAll -> getrest >>= printInteractive False md prt
+        _    -> askMore stepWise md prt getrest
+  where
+  prompt = concat
+    [ "More values? ["
+    , (if md == MoreYes then 'Y' else 'y') : "(es)/"
+    , (if md == MoreNo  then 'N' else 'n') : "(o)/"
+    , (if md == MoreAll then 'A' else 'a') : "(ll)] "
+    ]
+
+askUserKey :: String -> IO Char
+askUserKey prompt = do
+  putStr prompt >> hFlush stdout
+  c <- hSetBuffering stdin NoBuffering >> getChar
   if c == '\n' then return () else putChar '\n'
-  case (toLower c) of
-    'y'  -> getrest >>= printValsInteractive st md prt
-    'n'  -> return ()
-    'a'  -> getrest >>= printValsInteractive False md prt
-    '\n' -> case md of
-              MoreYes -> getrest >>= printValsInteractive st md prt
-              MoreNo  -> return ()
-              MoreAll -> getrest >>= printValsInteractive False md prt
-    _    -> askMore st md prt getrest
+  return c
