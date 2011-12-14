@@ -4,6 +4,7 @@ module Search where
 
 import Control.Monad
 import Control.Monad.State.Strict
+import qualified Control.Monad.SearchTree as ST
 import Control.Parallel.TreeSearch
 import Data.List (intercalate)
 import qualified Data.Map as Map
@@ -332,6 +333,16 @@ printBFSi ud prt goal = computeWithBFS goal >>= printValsOnDemand ud prt
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
+-- computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . return . searchMPlus
+--   where
+--   bfsSearch [] = []
+--   bfsSearch ts = let (vs, cs) = splitVC ts in vs ++ bfsSearch cs
+--
+--   splitVC []                 = ([], [])
+--   splitVC (ST.None      :ts) = splitVC ts
+--   splitVC (ST.One x     :ts) = let (vs, cs) = splitVC ts in (x:vs, cs)
+--   splitVC (ST.Choice x y:ts) = let (vs, cs) = splitVC ts in (vs, x:y:cs)
+
 
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchBFS act goal = do
@@ -508,17 +519,23 @@ printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
-computeWithPar goal = getNormalForm goal >>=
-  fromList . parSearch . flip evalStateT (Map.empty :: SetOfDecisions)
-                       . searchMPlus' return
+computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMPlus
 
 -- ---------------------------------------------------------------------------
--- Generic search using MonadPlus as the result monad
+-- Encapsulated search
 -- ---------------------------------------------------------------------------
 
-type SetOfDecisions = Map.Map Integer Decision
+ -- |Collect results of a non-deterministic computation in a monadic structure
+encapsulatedSearch :: (MonadPlus m, NormalForm a) => a -> ConstStore -> m a
+encapsulatedSearch x store = searchMPlus $ const $!! x $ store
 
-instance Monad m => Store (StateT SetOfDecisions m) where
+-- ---------------------------------------------------------------------------
+-- Generic search using MonadPlus instances for the result
+-- ---------------------------------------------------------------------------
+
+type DecisionMap = Map.Map Integer Decision
+
+instance Monad m => Store (StateT DecisionMap m) where
   getDecisionRaw u        = gets
                           $ Map.findWithDefault defaultDecision (mkInteger u)
   setDecisionRaw u c
@@ -526,11 +543,8 @@ instance Monad m => Store (StateT SetOfDecisions m) where
     | otherwise           = modify $ Map.insert (mkInteger u) c
   unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
 
--- Collect results of a non-deterministic computation in a monadic structure.
-searchMPlus :: (MonadPlus m, NormalForm a) => a -> ConstStore -> m a
-searchMPlus x store = evalStateT
-                      (searchMPlus' return ((const $!!) x store))
-                      (Map.empty :: SetOfDecisions)
+searchMPlus :: (MonadPlus m, NormalForm a) => a -> m a
+searchMPlus x = evalStateT (searchMPlus' return x) (Map.empty :: DecisionMap)
 
 searchMPlus' :: (NormalForm a, MonadPlus m, Store m) => (a -> m b) -> a -> m b
 searchMPlus' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
@@ -565,10 +579,7 @@ searchMPlus' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
     Nothing      -> mzero
     Just (_, e') -> searchMPlus' cont e'
 
-  decide i c y = do
-    setDecision i c
-    searchMPlus' cont y
+  processLB i cs xs = decide i NoDecision
+                    $ guardCons (StructConstr cs) (choicesCons i xs)
 
-  processLB i cs xs = do
-    setDecision i NoDecision
-    searchMPlus' cont (guardCons (StructConstr cs) (choicesCons i xs))
+  decide i c y = setDecision i c >> searchMPlus' cont y

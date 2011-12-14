@@ -15,5 +15,5 @@ instance MonadPlus C_SearchTree where
   mplus = C_Or
 
 external_d_C_someSearchTree :: NormalForm a => a -> ConstStore -> C_SearchTree a
-external_d_C_someSearchTree = searchMPlus
+external_d_C_someSearchTree = encapsulatedSearch
 
