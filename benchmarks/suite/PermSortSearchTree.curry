@@ -17,8 +17,8 @@ sortmain n = psort (2:[n,n-1 .. 3]++[1])
 
 main = sortmain 14
 
-mainDFS = allValuesDFS (someSearchTree main)
+encDFS = allValuesDFS (someSearchTree main)
 
-mainBFS = allValuesBFS (someSearchTree main)
+encBFS = allValuesBFS (someSearchTree main)
 
-mainIDS = allValuesIDS (someSearchTree main)
+encIDS = allValuesIDS (someSearchTree main)

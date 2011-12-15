@@ -8,8 +8,8 @@ goal1 = last (replicate 100000 True)
 
 main = goal1
 
-mainDFS = allValuesDFS (someSearchTree main)
+encDFS = allValuesDFS (someSearchTree main)
 
-mainBFS = allValuesBFS (someSearchTree main)
+encBFS = allValuesBFS (someSearchTree main)
 
-mainIDS = allValuesIDS (someSearchTree main)
+encIDS = allValuesIDS (someSearchTree main)

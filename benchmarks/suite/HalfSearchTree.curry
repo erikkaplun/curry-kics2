@@ -22,8 +22,8 @@ half y | equal (add x x) y = x where x free
 
 main = equal (toPeano 1000) (half (toPeano 2000))
 
-mainDFS = allValuesDFS (someSearchTree main)
+encDFS = allValuesDFS (someSearchTree main)
 
-mainBFS = allValuesBFS (someSearchTree main)
+encBFS = allValuesBFS (someSearchTree main)
 
-mainIDS = allValuesIDS (someSearchTree main)
+encIDS = allValuesIDS (someSearchTree main)

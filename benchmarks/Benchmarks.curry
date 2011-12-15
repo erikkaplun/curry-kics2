@@ -350,22 +350,22 @@ benchIDSupply prog = concat
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concat
- [idcBenchmark "IDC+PrDFS_PUREIO"
-               prog True True "pureio" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+DFS_PUREIO"
-               prog True True "pureio" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_PUREIO"
-               prog True True "pureio" "printBFS print nd_C_main"
- ,idcBenchmark "IDC+IDS_PUREIO"
-               prog True True "pureio" "printIDS 100 print nd_C_main"
+ [idcBenchmark "IDC+PrDFS_IOREF"
+               prog True True "ioref" "prdfs print nd_C_main"
+ ,idcBenchmark "IDC+DFS_IOREF"
+               prog True True "ioref" "printDFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_IOREF"
+               prog True True "ioref" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"
+               prog True True "ioref" "printIDS 100 print nd_C_main"
  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concat
- [idcBenchmark "IDC+BFS_PUREIO"
-               prog True True "pureio" "printBFS1 print nd_C_main"
- ,idcBenchmark "IDC+IDS_PUREIO"
-               prog True True "pureio" "printIDS1 100 print nd_C_main"
+ [idcBenchmark "IDC+BFS_IOREF"
+               prog True True "ioref" "printBFS1 print nd_C_main"
+ ,idcBenchmark "IDC+IDS_IOREF"
+               prog True True "ioref" "printIDS1 100 print nd_C_main"
  ]
 
 -- Benchmarking functional logic programs with different search strategies
@@ -373,8 +373,8 @@ benchFLPCompleteSearch prog = concat
 benchFLPEncapsSearch prog maingoals = concat $
  [idcBenchmark "IDC+DFS_GHC"
                prog True True "ghc" "printDFS print nd_C_main"
- --,idcBenchmark "IDC+BFS_GHC"
- --              prog True True "ghc" "printBFS print nd_C_main"
+ ,idcBenchmark "IDC+BFS_GHC"
+               prog True True "ghc" "printBFS print nd_C_main"
  ,idcBenchmark "IDC+IDS_GHC"
                prog True True "ghc" "printIDS 100 print nd_C_main"
  ] ++
@@ -424,9 +424,9 @@ allBenchmarks =
   , benchFunPats "ExpVarFunPats"
   , benchFunPats "ExpSimpFunPats"
   , benchFunPats "PaliFunPats"
-  , benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS","mainIDS"]
-  , benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]
-  , benchFLPEncapsSearch "LastSearchTree" ["mainDFS","mainBFS","mainIDS"]
+  , benchFLPEncapsSearch "PermSortSearchTree" ["encDFS","encBFS","encIDS"]
+  , benchFLPEncapsSearch "HalfSearchTree"     ["encDFS","encBFS","encIDS"]
+  , benchFLPEncapsSearch "LastSearchTree"     ["encDFS","encBFS","encIDS"]
   ]
 
 unif = 
@@ -509,12 +509,12 @@ main = run 1 allBenchmarks
 --main = run 1 [benchFLPDFS "PermSort",benchFLPDFS "PermSortPeano"]
 --main = run 1 [benchFLPSearch "PermSort",benchFLPSearch "PermSortPeano"]
 --main = run 1 [benchFLPSearch "Half"]
---main = run 1 [benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]]
+--main = run 1 [benchFLPEncapsSearch "HalfSearchTree" ["encDFS","encBFS","encIDS"]]
 --main = run 1
---  [benchFLPEncapsSearch "PermSortSearchTree" ["mainDFS","mainBFS","mainIDS"]
---  ,benchFLPEncapsSearch "HalfSearchTree" ["mainDFS","mainBFS","mainIDS"]
---  ,benchFLPEncapsSearch "LastSearchTree" ["mainDFS","mainBFS","mainIDS"]]
---main = run 1 [benchFLPDFSU "Last"]
+--  [benchFLPEncapsSearch "PermSortSearchTree" ["encDFS","encBFS","encIDS"]
+--  ,benchFLPEncapsSearch "HalfSearchTree" ["encDFS","encBFS","encIDS"]
+--  ,benchFLPEncapsSearch "LastSearchTree" ["encDFS","encBFS","encIDS"]]
+----main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
 --main = run 3 unif
