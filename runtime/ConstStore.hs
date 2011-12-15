@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, ExistentialQuantification #-}
+{-# OPTIONS_GHC -fforce-recomp #-}
 
 module ConstStore where
 
@@ -36,32 +37,7 @@ lookupCs :: ConstStore -> ID -> (a -> b) -> b -> b
 
 lookupWithGlobalCs :: ConstStore -> ID -> (a -> b) -> b -> b
 
--- the implementation
-#ifdef DISABLE_CS
-
-addCs _   = id
-combineCs = const
-lookupCs _ _ _ def = def
-lookupWithGlobalCs _ _ _ def = def
-
-#else
-
-addCs (StructConstr  _) store = store
-addCs (ValConstr i v _) store = id $! Map.insert (getKey i) (V v) store
-
-combineCs = Map.union 
-
-lookupCs cs i f def = maybe def (f . unV) (Map.lookup (getKey i) cs)
-
-lookupWithGlobalCs cs i f def = lookupCs cs i f
-                              $ lookupCs pureGlobalCs i f def
-
-#endif
-
--- ---------------------------------------------------------------------------
--- Global Constraint Store
--- ---------------------------------------------------------------------------
-
+-- |The global 'ConstStore'
 pureGlobalCs :: ConstStore
 
 -- |Retrieve the global constraint store
@@ -70,25 +46,40 @@ lookupGlobalCs :: IO ConstStore
 -- adds a Constraint to the global constraint store
 addToGlobalCs :: Constraints -> IO ()
 
--- the implementation
+-- ---------------------------------------------------------------------------
+-- Implementation
+-- ---------------------------------------------------------------------------
 
-#ifdef DISABLE_CS
+#ifdef NOCS
 
-pureGlobalCs    = emptyCs
-lookupGlobalCs  = return emptyCs
-addToGlobalCs _ = return ()
+addCs                     _  = id
+combineCs                    = const
+lookupCs           _ _ _ def = def
+lookupWithGlobalCs _ _ _ def = def
+pureGlobalCs                 = emptyCs
+lookupGlobalCs               = return emptyCs
+addToGlobalCs              _ = return ()
 
 #else
 
-globalCs :: IORef ConstStore
-globalCs = unsafePerformIO $ newIORef emptyCs
-{-# NOINLINE globalCs #-}
+addCs (StructConstr  _) store = store
+addCs (ValConstr i v _) store = id $! Map.insert (getKey i) (V v) store
 
-pureGlobalCs = unsafePerformIO lookupGlobalCs
+combineCs = Map.union
 
+lookupCs cs i f def = maybe def (f . unV) (Map.lookup (getKey i) cs)
+
+lookupWithGlobalCs cs i f def = lookupCs cs i f
+                              $ lookupCs pureGlobalCs i f def
+
+pureGlobalCs   = unsafePerformIO lookupGlobalCs
 lookupGlobalCs = readIORef globalCs
 
 addToGlobalCs (StructConstr     _) = return ()
 addToGlobalCs cs@(ValConstr _ _ _) = modifyIORef globalCs (addCs cs)
+
+globalCs :: IORef ConstStore
+globalCs = unsafePerformIO $ newIORef emptyCs
+{-# NOINLINE globalCs #-}
 
 #endif
