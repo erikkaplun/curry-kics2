@@ -4,8 +4,6 @@ module Search where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import qualified Control.Monad.SearchTree as ST
-import Control.Parallel.TreeSearch
 import Data.List (intercalate)
 import qualified Data.Map as Map
 
@@ -14,16 +12,17 @@ import ID
 import IDSupply
 import MonadList
 import PrimTypes
-import Solver (solves)
+import Solver
 import Types
 import Debug
+import Strategies
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io
 toIO Fail_C_IO           _     = error "toIO: failed"
 toIO (Choice_C_IO _ _ _) _     = error "toIO: Non-determinism in IO occured"
 toIO (Guard_C_IO cs e)   store = do
-  mbSolution <- solves (getConstrList cs) e
+  mbSolution <- solve cs e
   case mbSolution of
     Nothing       -> error "toIO (Guard): failed"
     Just (_, val) -> do
@@ -217,7 +216,7 @@ printValsDFS backTrack cont goal = do
     follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
   prNarrowed i _ = error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
 
-  prGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+  prGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing                      -> return ()
     Just (reset, e') | backTrack -> printValsDFS True  cont e' >> reset
                      | otherwise -> printValsDFS False cont e'
@@ -244,6 +243,7 @@ zipWithButLast3 _ f' (a:_ ) (b:[]) (c:_)  = f' a b c : []
 zipWithButLast3 _ f' (a:_ ) (b:_ ) (c:[]) = f' a b c : []
 zipWithButLast3 f f' (a:as) (b:bs) (c:cs) = f  a b c :
                                             zipWithButLast3 f f' as bs cs
+
 -- ---------------------------------------------------------------------------
 -- Depth-first search into a monadic list
 -- ---------------------------------------------------------------------------
@@ -300,7 +300,7 @@ searchDFS act goal = do
       follow c             = error $ "Search.dfsNarrowed: Bad choice " ++ show c
     dfsNarrowed i _ = error $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
 
-    dfsGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+    dfsGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> dfs cont e' |< reset
 
@@ -332,17 +332,8 @@ printBFSi ud prt goal = computeWithBFS goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
-computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
--- computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . return . searchMPlus
---   where
---   bfsSearch [] = []
---   bfsSearch ts = let (vs, cs) = splitVC ts in vs ++ bfsSearch cs
---
---   splitVC []                 = ([], [])
---   splitVC (ST.None      :ts) = splitVC ts
---   splitVC (ST.One x     :ts) = let (vs, cs) = splitVC ts in (x:vs, cs)
---   splitVC (ST.Choice x y:ts) = let (vs, cs) = splitVC ts in (vs, x:y:cs)
-
+-- computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
+computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMPlus
 
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchBFS act goal = do
@@ -356,7 +347,8 @@ searchBFS act goal = do
     match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
     where
     bfsFail         = reset >> next cont xs ys
-    bfsVal v        = (set >> searchNF searchBFS cont v) +++ (reset >> next cont xs ys) -- TODO: Check this!
+    bfsVal v        = (set >> searchNF searchBFS cont v)
+                      +++ (reset >> next cont xs ys) -- TODO: Check this!
     bfsChoice i a b = set >> lookupDecision i >>= follow
       where
       follow ChooseLeft  = bfs cont xs ys set reset a
@@ -382,7 +374,7 @@ searchBFS act goal = do
       follow (NoDecision , j) = reset >> (cont (choicesCons j zs) +++ (next cont xs ys))
       follow c                = error $ "Search.bfsFree: Bad choice " ++ show c
 
-    bfsGuard cs e = set >> solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+    bfsGuard cs e = set >> solve cs e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
       Just (newReset, a) -> bfs cont xs ys set (newReset >> reset) a
 
@@ -398,19 +390,6 @@ searchBFS act goal = do
     decide i c y = ( setDecision i c          >> set
                    , setDecision i NoDecision >> reset
                    , y)
-
--- tracing
-traceLookup :: Show a => (ID -> IO a) -> ID -> IO a
-traceLookup lookUp i = do
-  d <- lookUp i
-  trace $ "lookup " ++ show i ++ " -> " ++ show d
-  return d
-
-traceDecision :: (ID -> Decision -> IO a) -> ID -> Decision -> IO a
-traceDecision set i c = do
-  reset <- set i c
-  trace $ "set " ++ show i ++ " -> " ++ show c
-  return reset
 
 -- ---------------------------------------------------------------------------
 -- Iterative depth-first search into a monadic list
@@ -443,10 +422,6 @@ computeWithIDS initDepth goal = getNormalForm goal >>= iter 0 initDepth
   where
   iter oldDepth newDepth expr = startIDS oldDepth newDepth msingleton expr
        ++++ iter newDepth (incrDepth4IDFS newDepth) expr
---   initSupply >>= \s -> iter s 0 initdepth
---   where
---   iter s olddepth newdepth = startIDS ((const $!!) (goal s emptyCs) emptyCs) olddepth newdepth
---                               ++++ iter s newdepth (incrDepth4IDFS newdepth)
 
 -- start iterative deepening for a given depth interval
 startIDS :: NormalForm a => Int -> Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
@@ -486,7 +461,7 @@ startIDS olddepth newdepth act goal = do
       follow c             = error $ "Search.idsNarrowed: Bad choice " ++ show c
     idsNarrowed i _ = error $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
 
-    idsGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+    idsGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> ids n cont e' |< reset
 
@@ -575,7 +550,7 @@ searchMPlus' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
     follow (NoDecision , j) = cont $ choicesCons j xs
     follow c                = error $ "Search.smpFree: Bad choice " ++ show c
 
-  smpGuard cs e = solves (getConstrList cs) e >>= \mbSltn -> case mbSltn of
+  smpGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero
     Just (_, e') -> searchMPlus' cont e'
 
