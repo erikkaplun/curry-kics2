@@ -474,6 +474,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
         , "." </> rst -> outputSubdir </> "Main.hs"
         ]
                      -- also: -fforce-recomp -funbox-strict-fields ?
+  writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
   rst' <- if useghci then startGhciComm rst ghcCompile
                           else return rst
   status <- if useghci
