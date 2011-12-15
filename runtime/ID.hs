@@ -11,12 +11,14 @@ module ID
   , ID (..), leftID, rightID, narrowID, getKey
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Decision management
+  , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
   , nextNIDs, Store (..)
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
 
+import Debug
 import IDSupply
 
 -- ---------------------------------------------------------------------------
@@ -48,10 +50,8 @@ getConstrList (ValConstr _ _ c) = c
 getConstrList (StructConstr  c) = c
 
 instance Show Constraints where
-  showsPrec _ (ValConstr _ _ c) = showParen True
-                                $ showString "ValC "    . shows c
-  showsPrec _ (StructConstr  c) = showParen True
-                                $ showString "StructC " . shows c
+  showsPrec _ (ValConstr _ _ c) = showString "ValC "    . shows c
+  showsPrec _ (StructConstr  c) = showString "StructC " . shows c
 
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
@@ -159,6 +159,22 @@ getUnique :: ID -> Unique
 getUnique (ChoiceID     u) = u
 getUnique (FreeID     _ s) = unique s
 getUnique (NarrowedID _ s) = unique s
+
+-- ---------------------------------------------------------------------------
+-- Tracing
+-- ---------------------------------------------------------------------------
+
+traceLookup :: Show a => (ID -> IO a) -> ID -> IO a
+traceLookup lookUp i = do
+  d <- lookUp i
+  trace $ "lookup " ++ show i ++ " -> " ++ show d
+  return d
+
+traceDecision :: (ID -> Decision -> IO a) -> ID -> Decision -> IO a
+traceDecision set i c = do
+  reset <- set i c
+  trace $ "set " ++ show i ++ " -> " ++ show c
+  return reset
 
 -- ---------------------------------------------------------------------------
 -- Looking up decisions

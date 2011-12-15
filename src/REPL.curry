@@ -448,34 +448,32 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst goalstate isdet isio
-  let useghci = rst->useGhci && not createexecutable
-                && not (rst->interactive)
+  let useghci    = rst->useGhci && not createexecutable && not (rst->interactive)
+      parSearch  = case rst -> ndMode of
+                     Par _ -> True
+                     _     -> False
       ghcImports = [ rst -> idcHome ++ "/runtime"
                    , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply
                    , "." </> rst -> outputSubdir
                    ]
                    ++ map (</> rst -> outputSubdir) (rst -> importPaths)
-      ghcCompile = unwords $
-                     [Inst.ghcExec ++ if useghci then "i" else ""
-                     ,if rst->optim then "-O2" else ""] ++
-                     (if useghci then [] else ["--make"]) ++
-                     [if rst->verbose < 2 then "-v0" else "-v1"
-                     ,"-XMultiParamTypeClasses"
-                     ,"-XFlexibleInstances"
-                     ,"-XRelaxedPolyRec" --due to problem in FlatCurryShow
-                     ,case rst->idSupply of
-                        "ghc"   -> "-package ghc"
-                        "ioref" -> "-package ghc"
-                        _       -> ""
-                     ,case rst->ndMode of
-                        Par _ -> "-threaded"
-                        _     -> ""
-                     ,"-cpp" -- use the C pre processor
-                     ,rst -> ghcOpts
-                     ,"-i"++concat (intersperse ":" ghcImports)
-                     ,"." </> rst -> outputSubdir </> "Main.hs"]
+      ghcCompile = unwords . filter (not . null) $
+        [ Inst.ghcExec ++ if useghci then "i" else ""
+        , if rst -> optim then "-O2" else ""
+        , if useghci then "" else "--make"
+        , if rst -> verbose < 2 then "-v0" else "-v1"
+        , "-XMultiParamTypeClasses"
+        , "-XFlexibleInstances"
+        , "-XRelaxedPolyRec" --due to problem in FlatCurryShow
+        , if (rst -> idSupply) `elem` ["ghc","ioref"] then "-package ghc" else ""
+        , if parSearch then "-threaded" else ""
+        , "-cpp" -- use the C pre processor -- TODO WHY?
+        , rst -> ghcOpts
+        , if not (null (rst -> rtsOpts)) || parSearch then "-rtsopts" else ""
+        , "-i" ++ (concat $ intersperse ":" ghcImports)
+        , "." </> rst -> outputSubdir </> "Main.hs"
+        ]
                      -- also: -fforce-recomp -funbox-strict-fields ?
-  writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
   rst' <- if useghci then startGhciComm rst ghcCompile
                           else return rst
   status <- if useghci
