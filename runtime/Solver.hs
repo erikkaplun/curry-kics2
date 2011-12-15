@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- Constraint Solving
 -- ---------------------------------------------------------------------------
-module Solver (Solution, solves, solve) where
+module Solver (Solution, solve) where
 
 import ID
 import Types
@@ -28,13 +28,15 @@ ma >>- mbf = do
         Nothing          -> resetA >> noSolution
         Just (resetB, b) -> return $ Just (resetB >> resetA, b)
 
-solves :: (Store m, NonDet a) => [Constraint] -> a -> Solution m a
-solves []     a = mkSolution a
-solves (c:cs) a = solve c a >>- solves cs
+solve :: (Store m, NonDet a) => Constraints -> a -> Solution m a
+solve cnstrs val = solve' (getConstrList cnstrs) val
+  where
+  solve' []     a = mkSolution a
+  solve' (c:cs) a = solveOne c a >>- solve' cs
 
-solve :: (Store m, NonDet a) => Constraint -> a -> Solution m a
-solve Unsolvable _ = noSolution
-solve (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
+solveOne :: (Store m, NonDet a) => Constraint -> a -> Solution m a
+solveOne Unsolvable _ = noSolution
+solveOne (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
   where
   follow ChooseLeft  = mkSolution $ guardCons (StructConstr lcs) e
   follow ChooseRight = mkSolution $ guardCons (StructConstr rcs) e
@@ -43,7 +45,7 @@ solve (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
                                     (guardCons (StructConstr rcs) e)
   follow c           = error $ "Solver.solve.choose: CC:" ++ show c
 
-solve cc@(ConstraintChoices i css) e = lookupDecision i >>= follow
+solveOne cc@(ConstraintChoices i css) e = lookupDecision i >>= follow
   where
   follow (ChooseN c _) = mkSolution $ guardCons (StructConstr (css !! c)) e
   follow NoDecision    = mkSolution $ choicesCons i
@@ -51,7 +53,7 @@ solve cc@(ConstraintChoices i css) e = lookupDecision i >>= follow
   follow (LazyBind cs) = mkSolution $ guardCons (StructConstr (cs ++ [cc])) e
   follow c             = error $ "Solver.solve.choose: CCs:" ++ show c
 
-solve (i :=: cc) e = lookupDecision i >>= follow cc
+solveOne (i :=: cc) e = lookupDecision i >>= follow cc
   where
   -- 1st param: the (new) Choice which should be stored for i
   -- 2nd param: the (old) Choice for i in the store
