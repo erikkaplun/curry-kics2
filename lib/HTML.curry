@@ -1315,7 +1315,6 @@ htmlForm2html (HtmlForm title params html) crefnr = do
 numberCgiRefs :: [HtmlExp] -> Int -> ([HtmlExp],Int)
 -- arguments: HTMLExps, number for cgi-refs
 -- result: translated HTMLExps, new number for cgi-refs
-{-
 numberCgiRefs [] i = ([],i)
 numberCgiRefs (HtmlText s : hexps) i =
   case numberCgiRefs hexps i of
@@ -1329,26 +1328,9 @@ numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
     (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j)
 numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
   | ref =:= ("FIELD_"++show i)
-  = let ([nhexp],j) = numberCgiRefs [hexp] (i+1)
-        (nhexps,k) = numberCgiRefs hexps j
-    in (nhexp : nhexps, k)
--}
-numberCgiRefs [] i = ([],i)
-numberCgiRefs (HtmlText s : hexps) i =
-   (\ (nhexps,j) -> (HtmlText s : nhexps, j)) (numberCgiRefs hexps i)
-numberCgiRefs (HtmlStruct tag attrs hexps1 : hexps2) i =
-   (\ (nhexps1,j) ->
-         (\ (nhexps2,k) -> (HtmlStruct tag attrs nhexps1 : nhexps2, k))
-          (numberCgiRefs hexps2 j))
-   (numberCgiRefs hexps1 i)
-numberCgiRefs (HtmlEvent (HtmlStruct tag attrs hes) handler : hexps) i =
-   (\ (nhexps,j) -> (HtmlEvent (HtmlStruct tag attrs hes) handler : nhexps, j))
-   (numberCgiRefs hexps i)
-numberCgiRefs (HtmlCRef hexp (CgiRef ref) : hexps) i
-  | ref =:= ("FIELD_"++show i)
-  = (\ ([nhexp],j) -> (\ (nhexps,k) -> (nhexp : nhexps, k))
-                      (numberCgiRefs hexps j))
-    (numberCgiRefs [hexp] (i+1))
+  = case numberCgiRefs [hexp] (i+1) of
+      ([nhexp],j) -> case numberCgiRefs hexps j of
+                       (nhexps,k) -> (nhexp : nhexps, k)
 
 -- translate all event handlers into their internal form:
 -- (assumption: all CgiRefs have already been instantiated and eliminated)
