@@ -50,7 +50,7 @@ addToGlobalCs :: Constraints -> IO ()
 -- Implementation
 -- ---------------------------------------------------------------------------
 
-#ifdef NOCS
+#ifdef DISABLE_CS
 
 addCs                     _  = id
 combineCs                    = const
