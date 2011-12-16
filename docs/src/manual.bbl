@@ -7,6 +7,11 @@ S.~Antoy and M.~Hanus.
   Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
   3901, 2005.
 
+\bibitem{AugustssonRittriSynek94}
+L.~Augustsson, M.~Rittri, and D.~Synek.
+\newblock On generating unique names.
+\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
 \bibitem{BrasselHanusMueller08PADL}
 B.~Bra{\ss}el, M.~Hanus, and M.~M{\"u}ller.
 \newblock High-level database programming in {Curry}.
