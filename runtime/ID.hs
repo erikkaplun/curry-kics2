@@ -8,7 +8,7 @@ module ID
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
-  , ID (..), leftID, rightID, narrowID, getKey
+  , ID (..), leftID, rightID, narrowID, getKey, mkInteger
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Decision management
   , traceLookup, traceDecision
