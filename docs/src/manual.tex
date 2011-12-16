@@ -84,7 +84,7 @@
 {\Huge\bf KiCS2 0.1}\\[4ex]
 {\huge The Kiel Curry System (Version 2)}\\[7ex]
 {\huge User Manual}\\[4ex]
-Version of December 13, 2011\\[6ex]
+Version of December 16, 2011\\[6ex]
 \Large
 Michael Hanus$^1$ [editor] \\[3ex]
 {\large Additional Contributors:}\\[2ex]
@@ -580,14 +580,34 @@ Similarly to \code{par} but use $n$ parallel threads.
 Show the internal choice structure
 (according to the implementation described in
 \cite{BrasselHanusPeemoellerReck11})
-resulting from the complete evaluation of the main expression.
-This mode is only useful for debugging purposes.
+resulting from the complete evaluation of the main expression
+in a tree-like structure.
+This mode is only useful for debugging or
+understanding the implementation of non-deterministic
+evaluations used in KiCS2.
 
 \item[\fbox{\code{supply $i$}}]\pindex{supply}
-Use the implementation $i$ for the identifier supply for choice structures
+Use implementation $i$ as the identifier supply for choice structures
 (see \cite{BrasselHanusPeemoellerReck11} for a detailed explanation).
-Currently, the values \code{ghc} (default), \code{integer},
-or \code{ioref} are supported for $i$.
+Currently, the following values for $i$ are supported:
+\begin{description}
+\item[\code{integer}:]\pindex{integer}
+Use unbounded integers as choice identifiers.
+This implementation is described in \cite{BrasselHanusPeemoellerReck11}.
+\item[\code{ghc} (default):]\pindex{ghc}
+Use a more sophisticated implementation of choice
+identifiers (based on the ideas described in \cite{AugustssonRittriSynek94})
+provided by the Glasgow Haskell Compiler.
+\item[\code{pureio}:]\pindex{pureio}
+Use IO references (i.e., memory cells) for choice identifiers.
+This is the most efficient implementation for top-level depth-first search
+but cannot be used for more sophisticated search methods
+like encapsulated search.
+\item[\code{ioref}:]\pindex{ioref}
+Use a mixture of \code{ghc} and \code{pureio}.
+IO references are used for top-level depth-first search
+and \code{ghc} identifiers are used for encapsulated search methods.
+\end{description}
 
 \item[\fbox{\code{v$n$}}]\pindex{v}\index{verbosity}
 Set the verbosity level to $n$. The following values are allowed
