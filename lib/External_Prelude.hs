@@ -219,7 +219,6 @@ curryint2primint (Pos n) = currynat2primint n
 curryint2primint (Neg n) = negateInt# (currynat2primint n)
 curryint2primint _ = error "KiCS2 error: Prelude.curryint2primint: no ground term"
 
-
 -- ---------------------------------------------------------------------------
 -- Float
 -- ---------------------------------------------------------------------------
@@ -468,9 +467,9 @@ instance ConvertCurryHaskell C_Int Integer where
    where
     int2C_Int (I# c) = C_Int c
 
-  fromCurry (C_Int i) = toInteger (I# i)
+  fromCurry (C_Int      i) = toInteger (I# i)
   fromCurry (C_CurryInt i) = toInteger (I# (curryint2primint i))
-  fromCurry _         = error "KiCS2 error: Int data with no ground term"
+  fromCurry _              = error "KiCS2 error: Int data with no ground term"
 
 instance ConvertCurryHaskell C_Float Float where
   toCurry (F# f) = C_Float f
@@ -481,9 +480,9 @@ instance ConvertCurryHaskell C_Float Float where
 instance ConvertCurryHaskell C_Char Char where
   toCurry (C# c) = C_Char c
 
-  fromCurry (C_Char c) = C# c
+  fromCurry (C_Char    c) = C# c
   fromCurry (CurryChar c) = C# (curryChar2primChar c)
-  fromCurry _          = error "KiCS2 error: Char data with no ground term"
+  fromCurry _             = error "KiCS2 error: Char data with no ground term"
 
 instance (ConvertCurryHaskell ct ht) =>
          ConvertCurryHaskell (OP_List ct) [ht] where

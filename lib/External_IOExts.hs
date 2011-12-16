@@ -125,7 +125,7 @@ external_d_C_newIORef :: CP.Curry a => a -> ConstStore -> CP.C_IO (C_IORef a)
 external_d_C_newIORef cv _ = toCurry (newIORef cv)
 
 external_d_C_prim_readIORef :: CP.Curry a => C_IORef a -> ConstStore -> CP.C_IO a
-external_d_C_prim_readIORef ref _ = toCurry (readIORef ref)
+external_d_C_prim_readIORef ref _ = fromIO (readIORef (fromCurry ref))
 
 external_d_C_prim_writeIORef :: CP.Curry a => C_IORef a -> a
                                            -> ConstStore -> CP.C_IO CP.OP_Unit

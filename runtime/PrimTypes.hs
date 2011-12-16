@@ -350,7 +350,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
 -- END GENERATED FROM PrimTypes.curry
 
 instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
-  where -- needs FlexibleInstances
+  where
   toCurry io  = C_IO (io >>= return . toCurry)
   fromCurry _ = error "C_IO.fromCurry: Use top-level search instead."
 
