@@ -195,5 +195,5 @@ last (_:x:xs) = last (x:xs)
 
 --- Returns the input list with the last element removed.
 init :: [a] -> [a]
-init [x]      = []
+init [_]      = []
 init (x:y:xs) = x : init (y:xs)

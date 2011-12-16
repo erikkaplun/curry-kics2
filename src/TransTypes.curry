@@ -7,7 +7,7 @@
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version October 2011
 -- ---------------------------------------------------------------------------
-module FlatCurry2Types (fcyTypes2abs) where
+module TransTypes (transTypes) where
 
 import qualified FlatCurry as FC
 import FlatCurryGoodies
@@ -28,8 +28,8 @@ import Analysis
 
 --- Translate a list of FlatCurry type declarations into the
 --- corresponding type and instance declarations for Haskell.
-fcyTypes2abs :: HOResult -> [FC.TypeDecl] -> [TypeDecl]
-fcyTypes2abs hoResult = concatMap (genTypeDeclarations hoResult)
+transTypes :: HOResult -> [FC.TypeDecl] -> [TypeDecl]
+transTypes hoResult = concatMap (genTypeDeclarations hoResult)
 
 
 genTypeDeclarations :: HOResult -> FC.TypeDecl -> [TypeDecl]
@@ -317,7 +317,7 @@ match _ _ _ _ _ f x = f x
 -}
 matchRules :: QName -> [(QName, Rule)]
 matchRules qf = map nameRule
-  [ simpleRule (matchAt 0 ++ [mkChoicePattern  qf]) 
+  [ simpleRule (matchAt 0 ++ [mkChoicePattern  qf])
     $ applyV f [i, x, y]
   , simpleRule (matchAt 1 ++ [mkNarrowedChoicesPattern qf])
     $ applyV f [i, xs]
@@ -422,7 +422,7 @@ normalformConsRule hoResult funcName withCs (FC.Cons qn _ _ texps)
                     ([applyF name (map (\i -> Var (i,'y':show i)) [1..carity])] ++ csVar))
             [1..carity]
     csPVar = if withCs then [PVar (3,"cs")] else []
-    csVar  = if withCs then [Var (3,"cs")] else [] 
+    csVar  = if withCs then [Var (3,"cs")] else []
 
 normalFormExtConsRules :: QName -> QName -> QName -> QName -> [(QName, Rule)]
 normalFormExtConsRules qf funcName choiceFunc choicesFunc =
@@ -603,8 +603,8 @@ bindChoicesRule qf funcName = (funcName,
     [ PVar us, mkChoiceChoicesPattern qf]
     ( applyF (pre "error")
       [ applyF (pre "++")
-        [ string2ac (showQName (unRenameQName qf) ++ '.' : snd funcName 
-                                  ++ ": Choices with ChoiceID: ") 
+        [ string2ac (showQName (unRenameQName qf) ++ '.' : snd funcName
+                                  ++ ": Choices with ChoiceID: ")
         , applyF (pre "show") [Var i]
         ]
       ]
