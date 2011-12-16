@@ -1854,13 +1854,13 @@ so that the type inference system of Haskell
 has problems to determine the right instance of the conversion
 function.
 
-In order to use Haskell I/O actions as an implementation
-for external Curry I/O actions in an easy manner, the KiCS2 implementation
-also provides a family of operations \code{fromHaskellIO$n$},
-where $n$ denotes the number of parameters of the I/O action.
-Each operation \code{fromHaskellIO$n$}
-maps a Haskell I/O action into a Curry I/O action and performs
-all data conversions for the arguments and result.
+The conversion between Curry types and Haskell types,
+i.e., the family of conversion operation \code{fromCurry}
+and \code{toCurry}, is defined in the KiCS2 implementation
+for all standard data types.
+In particular, it is also defined on function types so that one can
+easily implement external Curry I/O actions by using
+Haskell I/O actions.
 For instance, if we want to implement
 an external operation to print some string as an output line,
 we start by declaring the external operations in the Curry module \code{String}:
@@ -1872,12 +1872,19 @@ prim_printString :: String -> IO ()
 prim_printString external
 \end{curry}
 Next we add the corresponding implementation in the file
-\code{External_String.hs} (where \code{OP_Unit} is the name
-of the Haskell representation of the Curry datatype \ccode{()}):
+\code{External_String.hs} (where \code{C_IO} and \code{OP_Unit} are the names
+of the Haskell representation of the Curry type constructor \code{IO}
+and the Curry data type \ccode{()}, respectively):
 \begin{curry}
 external_d_C_prim_printString :: CP.OP_List CP.C_Char -> ConstStore
                               -> CP.C_IO CP.OP_Unit
-external_d_C_prim_printString s _ = fromHaskellIO1 putStrLn s
+external_d_C_prim_printString s _ = toCurry putStrLn s
+\end{curry}
+Here, Haskell's I/O action \code{putStrLn} of type \ccode{String -> IO ()}
+is transformed into a Curry I/O action \ccode{toCurry putStrLn}
+which has the type
+\begin{curry}
+CP.OP_List CP.C_Char -> CP.C_IO CP.OP_Unit
 \end{curry}
 When we compile the Curry module \code{String},
 KiCS2 combines these definitions in the target program so that

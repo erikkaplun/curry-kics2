@@ -10,10 +10,10 @@ external_d_C_getProcessInfos _ = fromIO $ do
                      CP.OP_List)
 
 external_d_C_garbageCollectorOff :: ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_garbageCollectorOff _ = CP.done -- not supported
+external_d_C_garbageCollectorOff _ = fromIO (return CP.OP_Unit) -- not supported
 
 external_d_C_garbageCollectorOn :: ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_garbageCollectorOn _ = CP.done -- not supported
+external_d_C_garbageCollectorOn _ = fromIO (return CP.OP_Unit) -- not supported
 
 external_d_C_garbageCollect :: ConstStore -> CP.C_IO CP.OP_Unit
 external_d_C_garbageCollect _ = toCurry performGC
