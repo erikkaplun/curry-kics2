@@ -38,27 +38,28 @@ external_d_C_stderr _ = PrimData (OneHandle stderr)
 external_d_C_prim_openFile :: CP.OP_List CP.C_Char -> C_IOMode
                            -> ConstStore -> CP.C_IO C_Handle
 external_d_C_prim_openFile fn  mode _ =
-  fromHaskellIO2 (\s m -> openFile s m >>= return . OneHandle) fn mode
+  toCurry (\s m -> openFile s m >>= return . OneHandle) fn mode
 
 external_d_C_prim_hClose :: C_Handle -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_hClose handle _ = fromHaskellIO1
+external_d_C_prim_hClose handle _ = toCurry
   (\ch -> case ch of OneHandle h       -> hClose h
                      InOutHandle h1 h2 -> hClose h1 >> hClose h2) handle
 
 external_d_C_prim_hFlush :: C_Handle -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_hFlush h _ = fromHaskellIO1 (hFlush . outputHandle) h
+external_d_C_prim_hFlush h _ = toCurry (hFlush . outputHandle) h
 
 external_d_C_prim_hIsEOF :: C_Handle -> ConstStore -> CP.C_IO CP.C_Bool
-external_d_C_prim_hIsEOF h _ = fromHaskellIO1 (hIsEOF . inputHandle) h
+external_d_C_prim_hIsEOF h _ = toCurry (hIsEOF . inputHandle) h
 
 external_d_C_prim_hSeek :: C_Handle -> C_SeekMode -> CP.C_Int
                         -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_hSeek handle  mode i _ = fromHaskellIO3 (\h -> hSeek (inputHandle h)) handle mode i
+external_d_C_prim_hSeek handle mode i _ = toCurry (hSeek . inputHandle) handle mode i
 
 
 external_d_C_prim_hWaitForInput :: C_Handle -> CP.C_Int -> ConstStore -> CP.C_IO CP.C_Bool
 external_d_C_prim_hWaitForInput handle i _=
-  fromHaskellIO2 (\h -> myhWaitForInput (inputHandle h)) handle i
+  toCurry (myhWaitForInput . inputHandle) handle i
+  where
 
 myhWaitForInput :: Handle -> Int -> IO Bool
 myhWaitForInput h i =
@@ -69,7 +70,7 @@ myhWaitForInput h i =
 
 external_d_C_prim_hWaitForInputs :: CP.OP_List C_Handle -> CP.C_Int
                                  -> ConstStore -> CP.C_IO CP.C_Int
-external_d_C_prim_hWaitForInputs hs i _ = fromHaskellIO2 selectHandle hs i
+external_d_C_prim_hWaitForInputs hs i _ = toCurry selectHandle hs i
 
 selectHandle :: [CurryHandle] -> Int -> IO Int
 selectHandle handles t = do
@@ -91,21 +92,19 @@ waitOnHandle h v t mvar = do
    	    ready <- myhWaitForInput h t
   	    putMVar mvar (if ready then Just v else Nothing)
 
-
 external_d_C_prim_hWaitForInputsOrMsg ::
  CP.Curry a => CP.OP_List C_Handle -> CP.OP_List a
             -> ConstStore -> CP.C_IO (CP.C_Either CP.C_Int (CP.OP_List a))
 external_d_C_prim_hWaitForInputsOrMsg = error "hWaitForInputsOrMsg undefined"
 
 external_d_C_prim_hGetChar :: C_Handle -> ConstStore -> CP.C_IO CP.C_Char
-external_d_C_prim_hGetChar h _ = fromHaskellIO1 (hGetChar . inputHandle) h
+external_d_C_prim_hGetChar h _ = toCurry (hGetChar . inputHandle) h
 
 external_d_C_prim_hPutChar :: C_Handle -> CP.C_Char -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_hPutChar h c _ = fromHaskellIO2 (hPutChar . outputHandle) h c
+external_d_C_prim_hPutChar h c _ = toCurry (hPutChar . outputHandle) h c
 
 external_d_C_prim_hIsReadable :: C_Handle -> ConstStore -> CP.C_IO CP.C_Bool
-external_d_C_prim_hIsReadable h _ = fromHaskellIO1 (hIsReadable . inputHandle) h
+external_d_C_prim_hIsReadable h _ = toCurry (hIsReadable . inputHandle) h
 
 external_d_C_prim_hIsWritable :: C_Handle -> ConstStore -> CP.C_IO CP.C_Bool
-external_d_C_prim_hIsWritable h _ = fromHaskellIO1 (hIsWritable . outputHandle) h
-
+external_d_C_prim_hIsWritable h _ = toCurry (hIsWritable . outputHandle) h

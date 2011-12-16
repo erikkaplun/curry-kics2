@@ -720,23 +720,23 @@ external_d_C_return :: a -> ConstStore -> C_IO a
 external_d_C_return a _ = fromIO (return a)
 
 external_d_C_prim_putChar :: C_Char -> ConstStore -> C_IO OP_Unit
-external_d_C_prim_putChar c _ = fromHaskellIO1 putChar c
+external_d_C_prim_putChar c _ = toCurry putChar c
 
 external_d_C_getChar :: ConstStore -> C_IO C_Char
-external_d_C_getChar _ = fromHaskellIO0 getChar
+external_d_C_getChar _ = toCurry getChar
 
 external_d_C_prim_readFile :: C_String -> ConstStore -> C_IO C_String
-external_d_C_prim_readFile s cs = fromHaskellIO1 readFile s
+external_d_C_prim_readFile s cs = toCurry readFile s
 
 -- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
 -- be non-deterministic
 external_d_C_prim_writeFile :: C_String -> C_String -> ConstStore -> C_IO OP_Unit
-external_d_C_prim_writeFile s1 s2 _ = fromHaskellIO2 writeFile s1 s2
+external_d_C_prim_writeFile s1 s2 _ = toCurry writeFile s1 s2
 
 -- TODO: Problem: s is not evaluated to enable lazy IO and therefore could
 -- be non-deterministic
 external_d_C_prim_appendFile :: C_String -> C_String -> ConstStore -> C_IO OP_Unit
-external_d_C_prim_appendFile s1 s2 _ = fromHaskellIO2 appendFile s1 s2
+external_d_C_prim_appendFile s1 s2 _ = toCurry appendFile s1 s2
 
 external_d_C_catchFail :: C_IO a -> C_IO a -> ConstStore -> C_IO a
 external_d_C_catchFail act err cs = fromIO $ C.catch (toIOWithFailCheck act) handle
@@ -800,16 +800,16 @@ external_nd_C_catch act cont s cs = fromIO $ C.catch (toIO act cs) handle where
 
 external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> ConstStore -> C_IO t1) -> ConstStore -> C_IO t1
 external_d_OP_gt_gt_eq m f cs = fromIO $ do
-  x <- toIO m cs 
-  cs1 <- lookupGlobalCs 
+  x <- toIO m cs
+  cs1 <- lookupGlobalCs
   let cs2 = combineCs cs cs1
   toIO  (f x cs2) cs2
 
 external_nd_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> ConstStore -> C_IO t1
 external_nd_OP_gt_gt_eq m f s cs = fromIO $ do
  x <- toIO m cs
- cs1 <- lookupGlobalCs 
- let cs2 = combineCs cs cs1 
+ cs1 <- lookupGlobalCs
+ let cs2 = combineCs cs cs1
  toIO (nd_apply f x s cs2) cs2
 
 -- Encapsulated search
@@ -820,10 +820,6 @@ external_d_C_try = error "external_dho_C_try"
 
 -- external_nd_C_try :: Func a Success -> [Func a Success]
 external_nd_C_try = error "external_ndho_C_try"
-
-
-
-
 
 -- Functions on Integer and Nat added from PrimTypes
 -- -------------------------------------------------

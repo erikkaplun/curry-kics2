@@ -3,8 +3,6 @@ module PrimTypes where
 
 import System.IO (Handle)
 
-import ConstStore
-import ID
 import Types
 
 -- BinInt
@@ -350,6 +348,11 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 -- END GENERATED FROM PrimTypes.curry
+
+instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
+  where -- needs FlexibleInstances
+  toCurry io  = C_IO (io >>= return . toCurry)
+  fromCurry _ = error "C_IO.fromCurry: Use top-level search instead."
 
 -- ---------------------------------------------------------------------------
 -- Primitive data that is built-in (e.g., Handle, IORefs,...)

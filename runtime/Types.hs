@@ -6,9 +6,13 @@
 {-# LANGUAGE MultiParamTypeClasses, Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fforce-recomp #-}
 
-module Types where
+module Types
+  ( module ConstStore
+  , module ID
+  , module Types
+  ) where
 
-import ConstStore (ConstStore, addCs, lookupCs, lookupWithGlobalCs)
+import ConstStore
 import ID
 
 -- ---------------------------------------------------------------------------
@@ -325,6 +329,11 @@ class ConvertCurryHaskell ctype htype where -- needs MultiParamTypeClasses
   fromCurry :: ctype -> htype
   toCurry   :: htype -> ctype
 
+instance (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb)
+  => ConvertCurryHaskell (ca -> cb) (ha -> hb) where
+  fromCurry f = fromCurry . f . toCurry
+  toCurry   f = toCurry   . f . fromCurry
+
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show and Read
 -- ---------------------------------------------------------------------------
@@ -446,6 +455,10 @@ instance Unifiable C_Success where
   constrain _ Fail_C_Success           = Fail_C_Success
   constrain i (Guard_C_Success cs e)   = constrainGuard i cs e
 -- END GENERATED FROM PrimTypes.curry
+
+-- ---------------------------------------------------------------------------
+-- Functions
+-- ---------------------------------------------------------------------------
 
 -- Higher Order functions
 instance Show (a -> b) where

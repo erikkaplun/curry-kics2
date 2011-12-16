@@ -3,7 +3,9 @@
 -- w.r.t. various search strategies
 -- ---------------------------------------------------------------------------
 module MonadList
-  ( MList, mnil, msingleton, mcons, abort, (|<), (+++), (++++), fromList
+  ( -- * Monadic list
+    MList, mnil, msingleton, mcons, abort, (|<), (+++), (++++), fromList
+    -- * list evaluation
   , IOList, MoreDefault (..), countVals, printOneValue, printAllValues
   , printValsOnDemand
   ) where

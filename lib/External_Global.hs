@@ -35,7 +35,7 @@ instance NonDet (C_Global a) where
   match _ _ freeF _ _ _   (Choices_C_Global i@(FreeID _ _) xs)     = freeF i xs
   match _ _ _ failV _ _   Fail_C_Global = failV
   match _ _ _ _ guardF _  (Guard_C_Global c e) = guardF c e
-  match _ _ _ _ _ valF    x                    = valF x 
+  match _ _ _ _ _ valF    x                    = valF x
 
 instance Generable (C_Global a) where
   generate _ = error "ERROR: no generator for Global"
@@ -96,7 +96,7 @@ external_d_C_global val (C_Persistent cname) _ =
                else writeFile name (show val++"\n")
 
 external_d_C_prim_readGlobal :: CP.Curry a => C_Global a -> ConstStore -> CP.C_IO a
-external_d_C_prim_readGlobal (C_Global_Temp ref) _ = fromIO (readIORef ref)
+external_d_C_prim_readGlobal (C_Global_Temp  ref) _ = fromIO (readIORef ref)
 external_d_C_prim_readGlobal (C_Global_Pers name) _ = fromIO $
   do h <- openFile name ReadMode
      s <- hGetLine h
@@ -106,6 +106,6 @@ external_d_C_prim_readGlobal (C_Global_Pers name) _ = fromIO $
 external_d_C_prim_writeGlobal :: CP.Curry a => C_Global a -> a
                                             -> ConstStore -> CP.C_IO CP.OP_Unit
 external_d_C_prim_writeGlobal (C_Global_Temp ref) val _ =
-  fromIO (writeIORef ref val >> return CP.OP_Unit)
+  toCurry (writeIORef ref val)
 external_d_C_prim_writeGlobal (C_Global_Pers name) val _ =
-  fromIO (writeFile name (show val++"\n") >> return CP.OP_Unit)
+  toCurry (writeFile name (show val ++ "\n"))

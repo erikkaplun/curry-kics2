@@ -7,15 +7,12 @@ import Control.Monad.State.Strict
 import Data.List (intercalate)
 import qualified Data.Map as Map
 
-import ConstStore
-import ID
-import IDSupply
-import MonadList
-import PrimTypes
-import Solver
-import Types
 import Debug
+import PrimTypes -- for C_IO
+import MonadList
+import Solver
 import Strategies
+import Types
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io

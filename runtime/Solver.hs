@@ -3,7 +3,6 @@
 -- ---------------------------------------------------------------------------
 module Solver (Solution, solve) where
 
-import ID
 import Types
 
 type Solution m a = m (Maybe (m (), a))

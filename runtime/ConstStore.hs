@@ -3,11 +3,12 @@
 
 module ConstStore where
 
-import ID
-import qualified Data.Map as Map
 import Data.IORef       (IORef, readIORef, modifyIORef, newIORef)
+import qualified Data.Map as Map
 import Unsafe.Coerce    (unsafeCoerce)
 import System.IO.Unsafe (unsafePerformIO)
+
+import ID
 
 -- ---------------------------------------------------------------------------
 -- Constraint Store

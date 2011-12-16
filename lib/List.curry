@@ -5,13 +5,17 @@
 --- @version April 2011
 ------------------------------------------------------------------------------
 
-module List(elemIndex,elemIndices,find,findIndex,findIndices,
-            nub,nubBy,delete,deleteBy,(\\),union,intersect,
-            intersperse,transpose,partition,
-            group,groupBy,inits,tails,replace,
-            isPrefixOf,isSuffixOf,isInfixOf,sortBy,insertBy,last)  where
+module List
+  ( elemIndex, elemIndices, find, findIndex, findIndices
+  , nub, nubBy, delete, deleteBy, (\\), union, intersect
+  , intersperse, transpose, partition
+  , group, groupBy, inits, tails, replace
+  , isPrefixOf, isSuffixOf, isInfixOf
+  , sortBy, insertBy
+  , last, init
+  ) where
 
-import Maybe(listToMaybe)
+import Maybe (listToMaybe)
 
 infix 5 \\
 
@@ -23,7 +27,7 @@ elemIndex x              = findIndex (x ==)
 --- Returns the list of indices of occurrences of an element in a list.
 elemIndices             :: a -> [a] -> [Int]
 elemIndices x            = findIndices (x ==)
-                        
+
 --- Returns the first element `e` of a list satisfying a predicate as `(Just e)`,
 --- otherwise `Nothing` is returned.
 find                    :: (a -> Bool) -> [a] -> Maybe a
@@ -155,18 +159,18 @@ isPrefixOf [] _ = True
 isPrefixOf (_:_) [] = False
 isPrefixOf (x:xs) (y:ys) = x==y && (isPrefixOf xs ys)
 
---- Checks whether a list is a suffix of another. 
---- @param xs - a list 
---- @param ys - a list 
+--- Checks whether a list is a suffix of another.
+--- @param xs - a list
+--- @param ys - a list
 --- @return `True` if `xs` is a suffix of `ys`
-isSuffixOf :: [a] -> [a] -> Bool 
+isSuffixOf :: [a] -> [a] -> Bool
 isSuffixOf xs ys = isPrefixOf (reverse xs) (reverse ys)
 
---- Checks whether a list is contained in another. 
---- @param xs - a list 
---- @param ys - a list 
---- @return True if xs is contained in ys 
-isInfixOf :: [a] -> [a] -> Bool 
+--- Checks whether a list is contained in another.
+--- @param xs - a list
+--- @param ys - a list
+--- @return True if xs is contained in ys
+isInfixOf :: [a] -> [a] -> Bool
 isInfixOf xs ys = any (isPrefixOf xs) (tails ys)
 
 --- Sorts a list w.r.t. an ordering relation by the insertion method.
@@ -180,11 +184,16 @@ sortBy le = foldr (insertBy le) []
 --- @return a list where the element has been inserted
 insertBy :: (a -> a -> Bool) -> a -> [a] -> [a]
 insertBy _ x []     = [x]
-insertBy le x (y:ys) = if le x y 
+insertBy le x (y:ys) = if le x y
                          then x : y : ys
                          else y : insertBy le x ys
 
 --- Returns the last element of a non-empty list.
 last :: [a] -> a
-last [x] = x
+last [x]      = x
 last (_:x:xs) = last (x:xs)
+
+--- Returns the input list with the last element removed.
+init :: [a] -> [a]
+init [x]      = []
+init (x:y:xs) = x : init (y:xs)

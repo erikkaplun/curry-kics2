@@ -71,14 +71,15 @@ module FilePath
   )
   where
 
-import Data.Char(toLower, toUpper)
-import Data.Maybe(isJust, fromJust)
-import Data.List(isPrefixOf)
-
+import Char   (toLower, toUpper)
+import List   (isPrefixOf, init, last)
+import Maybe  (isJust, fromJust)
 import System (getEnviron, isPosix, isWindows)
 
 infixr 7  <.>
 infixr 5  </>
+
+type FilePath = String
 
 ---------------------------------------------------------------------
 -- The basic functions
@@ -165,7 +166,7 @@ splitSearchPath = f
 
 -- | Get a list of filepaths in the $PATH.
 getSearchPath :: IO [FilePath]
-getSearchPath = fmap splitSearchPath (getEnv "PATH")
+getSearchPath = getEnviron "PATH" >>= return . splitSearchPath
 
 
 ---------------------------------------------------------------------
