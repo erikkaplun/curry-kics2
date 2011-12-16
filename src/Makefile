@@ -14,7 +14,7 @@ GHCINCLUDES=-i../runtime:../runtime/idsupplyghc:./.curry/kics2/:../lib/.curry/ki
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \
 	          AbstractHaskellPrinter.curry \
-	          FlatCurry2Types.curry \
+	          TransTypes.curry TransFunctions.curry \
 	          LiftCase.curry \
 	          Message.curry ModuleDeps.curry \
 	          SimpleMake.curry Splits.curry \
