@@ -383,7 +383,8 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
    (\ prog@(CurryProg _ _ _ [mfunc] _) -> do
     let (CFunc _ _ _ maintype _) = mfunc
         freevars = freeVarsInFuncRule mfunc
-    if null freevars || not (rst -> showBindings) || (rst->ndMode) `elem` [PrtChoices, PrtChoiceTree]
+    if null freevars || not (rst -> showBindings)
+       || (rst->ndMode) `elem` [PrtChoices, PrtChoiceTree]
        || isIOType maintype
        || length freevars > 10 -- due to limited size of tuples used
                                -- in PrintBindings
@@ -758,7 +759,7 @@ processSetOption rst option
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","choices","choicetree","ids","par","paths","supply",
+allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
               "cmp","ghc","rts","args",
               "v0","v1","v2","v3","v4"] ++
              concatMap (\f->['+':f,'-':f])
@@ -774,8 +775,7 @@ processThisOption rst option args
   | option=="bfs"        = return (Just { ndMode := BFS           | rst })
   | option=="dfs"        = return (Just { ndMode := DFS           | rst })
   | option=="prdfs"      = return (Just { ndMode := PrDFS         | rst })
-  | option=="choices"    = return (Just { ndMode := PrtChoices    | rst })
-  | option=="choicetree" = return (Just { ndMode := PrtChoiceTree | rst })
+  | option=="choices"    = return (Just { ndMode := PrtChoiceTree | rst })
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -792,7 +792,10 @@ processThisOption rst option args
                             then return (Just { ndMode := Par n | rst })
                             else writeErrorMsg "illegal number" >> return Nothing)
                 (readNat args)
-  | option=="supply"       = return (Just { idSupply := args | rst })
+  | option=="supply"
+   = if args `elem` ["integer","ghc","ioref","pureio"]
+     then return (Just { idSupply := args | rst })
+     else writeErrorMsg "unknown identifier supply" >> return Nothing
   | option=="v0"           = return (Just { verbose := 0 | rst })
   | option=="v1"           = return (Just { verbose := 1 | rst })
   | option=="v2"           = return (Just { verbose := 2 | rst })
@@ -826,8 +829,7 @@ printOptions rst = putStrLn $
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "choices        - set search mode to print the raw choice structure\n"++
-  "choiceTree     - set search mode to print the choice structure as a tree\n"++
+  "choices        - set search mode to print the choice structure as a tree\n"++
   "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
