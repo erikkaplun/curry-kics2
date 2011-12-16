@@ -18,8 +18,35 @@ import PrimTypes
 import Search
 import Types
 
-nonAsciiChr :: Int# -> Char#
-nonAsciiChr i = chr# i
+-- ---------------------------------------------------------------------------
+-- Auxiliaries for non-determinism and higher order
+-- ---------------------------------------------------------------------------
+
+-- |Make a deterministic function non-deterministic
+nd :: (a -> ConstStore -> b) -> a -> IDSupply -> ConstStore -> b
+nd f a _ cs = f a cs
+
+-- |Make higher order functions take a constraint store after each argument
+acceptCs ::  (b -> c)-> (a -> b) -> a -> ConstStore -> c
+acceptCs cont f x _ = cont (f x)
+
+wrapDX :: (c -> b) -> (a -> ConstStore -> c) -> Func a b
+wrapDX wrap f = wrapNX wrap (nd f)
+
+wrapNX :: (c -> b) -> (a -> IDSupply -> ConstStore -> c) -> Func a b
+wrapNX wrap f = Func (\a s cs -> wrap $ f a s cs)
+
+d_apply :: (a -> ConstStore -> b) -> a -> ConstStore -> b
+d_apply f a cs = f a cs
+
+nd_apply :: NonDet b => Func a b -> a -> IDSupply -> ConstStore -> b
+nd_apply fun a s cs = d_dollar_bang apply fun cs
+  where apply (Func f)  cs' = f a s cs'
+        apply _           _ = error "Basics.nd_apply.apply: no ground term"
+
+-- ---------------------------------------------------------------------------
+-- Auxilaries for normalforms
+-- ---------------------------------------------------------------------------
 
 -- Apply a function to the head normal form
 d_dollar_bang :: (NonDet a, NonDet b) => (a -> ConstStore -> b) -> a -> ConstStore -> b
@@ -44,6 +71,9 @@ nd_dollar_bang f x s cs = match hnfChoice hnfNarrowed hnfFree failCons hnfGuard 
 -- ---------------------------------------------------------------------------
 -- Pattern matching utilities for Literals
 -- ---------------------------------------------------------------------------
+
+nonAsciiChr :: Int# -> Char#
+nonAsciiChr i = chr# i
 
 matchChar :: NonDet a => [(Char,a)] -> BinInt -> ConstStore -> a
 matchChar rules cs = matchInteger (map (mapFst ord) rules) cs
@@ -105,46 +135,24 @@ maySwitch y x                        = error $ "maySwitch: " ++ show y ++ " " ++
 
  -- Use a Haskell IO action to implement a Curry IO action:
 fromHaskellIO0 :: ConvertCurryHaskell ca ha => IO ha -> C_IO ca
-fromHaskellIO0 hact = fromIO (hact >>= return . toCurry)
+fromHaskellIO0 = toCurry
+-- fromHaskellIO0 hact = fromIO (hact >>= return . toCurry)
 
 fromHaskellIO1 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb)
                => (ha -> IO hb) -> ca -> C_IO cb
-fromHaskellIO1 hact ca = fromIO (hact (fromCurry ca) >>= return . toCurry)
+fromHaskellIO1 = toCurry
+-- fromHaskellIO1 hact ca = fromIO (hact (fromCurry ca) >>= return . toCurry)
 
 fromHaskellIO2 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
                    ConvertCurryHaskell cc hc)
                => (ha -> hb -> IO hc) -> ca -> cb -> C_IO cc
-fromHaskellIO2 hact ca cb =
-  fromIO (hact (fromCurry ca) (fromCurry cb) >>= return . toCurry)
+fromHaskellIO2 = toCurry
+-- fromHaskellIO2 hact ca cb =
+--   fromIO (hact (fromCurry ca) (fromCurry cb) >>= return . toCurry)
 
 fromHaskellIO3 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
                    ConvertCurryHaskell cc hc, ConvertCurryHaskell cd hd)
                => (ha -> hb -> hc -> IO hd) -> ca -> cb -> cc -> C_IO cd
-fromHaskellIO3 hact ca cb cc =
- fromIO (hact (fromCurry ca) (fromCurry cb) (fromCurry cc) >>= return . toCurry)
-
--- ---------------------------------------------------------------------------
--- Auxiliaries for non-determinism and higher order
--- ---------------------------------------------------------------------------
-
--- |Make a deterministic function non-deterministic
-nd :: (a -> ConstStore -> b) -> a -> IDSupply -> ConstStore -> b
-nd f a _ cs = f a cs
-
--- |Make higher order functions take a constraint store after each argument
-acceptCs ::  (b -> c)-> (a -> b) -> a -> ConstStore -> c
-acceptCs cont f x _ = cont (f x)
-
-wrapDX :: (c -> b) -> (a -> ConstStore -> c) -> Func a b
-wrapDX wrap f = wrapNX wrap (nd f)
-
-wrapNX :: (c -> b) -> (a -> IDSupply -> ConstStore -> c) -> Func a b
-wrapNX wrap f = Func (\a s cs -> wrap $ f a s cs)
-
-d_apply :: (a -> ConstStore -> b) -> a -> ConstStore -> b
-d_apply f a cs = f a cs
-
-nd_apply :: NonDet b => Func a b -> a -> IDSupply -> ConstStore -> b
-nd_apply fun a s cs = d_dollar_bang apply fun cs
-  where apply (Func f)  cs' = f a s cs'
-        apply _           _ = error "Basics.nd_apply.apply: no ground term"
+fromHaskellIO3 = toCurry
+-- fromHaskellIO3 hact ca cb cc =
+--  fromIO (hact (fromCurry ca) (fromCurry cb) (fromCurry cc) >>= return . toCurry)
