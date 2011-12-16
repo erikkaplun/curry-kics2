@@ -2,8 +2,6 @@
 
 module Basics
   ( module Basics
-  , module ConstStore
-  , module ID
   , module PrimTypes
   , module Search
   , module Types
@@ -12,8 +10,6 @@ module Basics
 import Data.Char(ord)
 import GHC.Exts (Int#, Char#, chr#)
 
-import ConstStore
-import ID
 import PrimTypes
 import Search
 import Types
@@ -132,27 +128,3 @@ maySwitch y (Choices_C_Success i xs) = Choices_C_Success (narrowID i) (map (& y)
 maySwitch y (Guard_C_Success cs e)   = Guard_C_Success cs (e & y)
 maySwitch y x                        = error $ "maySwitch: " ++ show y ++ " " ++ show x
 -}
-
- -- Use a Haskell IO action to implement a Curry IO action:
-fromHaskellIO0 :: ConvertCurryHaskell ca ha => IO ha -> C_IO ca
-fromHaskellIO0 = toCurry
--- fromHaskellIO0 hact = fromIO (hact >>= return . toCurry)
-
-fromHaskellIO1 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb)
-               => (ha -> IO hb) -> ca -> C_IO cb
-fromHaskellIO1 = toCurry
--- fromHaskellIO1 hact ca = fromIO (hact (fromCurry ca) >>= return . toCurry)
-
-fromHaskellIO2 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
-                   ConvertCurryHaskell cc hc)
-               => (ha -> hb -> IO hc) -> ca -> cb -> C_IO cc
-fromHaskellIO2 = toCurry
--- fromHaskellIO2 hact ca cb =
---   fromIO (hact (fromCurry ca) (fromCurry cb) >>= return . toCurry)
-
-fromHaskellIO3 :: (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb,
-                   ConvertCurryHaskell cc hc, ConvertCurryHaskell cd hd)
-               => (ha -> hb -> hc -> IO hd) -> ca -> cb -> cc -> C_IO cd
-fromHaskellIO3 = toCurry
--- fromHaskellIO3 hact ca cb cc =
---  fromIO (hact (fromCurry ca) (fromCurry cb) (fromCurry cc) >>= return . toCurry)

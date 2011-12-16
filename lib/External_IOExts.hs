@@ -8,12 +8,12 @@ import qualified Curry_Prelude as CP
 
 external_d_C_prim_execCmd :: CP.C_String
  -> ConstStore -> CP.C_IO (CP.OP_Tuple3 Curry_IO.C_Handle Curry_IO.C_Handle Curry_IO.C_Handle)
-external_d_C_prim_execCmd str _ = fromHaskellIO1
+external_d_C_prim_execCmd str _ = toCurry
   (\s -> do (h1,h2,h3,_) <- runInteractiveCommand s
             return (OneHandle h1, OneHandle h2, OneHandle h3)) str
 
 external_d_C_prim_connectToCmd :: CP.C_String -> ConstStore -> CP.C_IO Curry_IO.C_Handle
-external_d_C_prim_connectToCmd str _ = fromHaskellIO1
+external_d_C_prim_connectToCmd str _ = toCurry
   (\s -> do (hin,hout,herr,_) <- runInteractiveCommand s
             forkIO (forwardError herr)
             return (InOutHandle hout hin)) str
@@ -35,12 +35,12 @@ assocs :: IORef Assocs
 assocs = unsafePerformIO (newIORef [])
 
 external_d_C_prim_setAssoc :: CP.C_String -> CP.C_String -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_setAssoc str1 str2 _ = fromHaskellIO2
+external_d_C_prim_setAssoc str1 str2 _ = toCurry
   (\key val -> do as <- readIORef assocs
                   writeIORef assocs ((key,val):as)) str1 str2
 
 external_d_C_prim_getAssoc :: CP.C_String -> ConstStore -> CP.C_IO (CP.C_Maybe (CP.C_String))
-external_d_C_prim_getAssoc str _ = fromHaskellIO1
+external_d_C_prim_getAssoc str _ = toCurry
   (\key -> do as <- readIORef assocs
               return (lookup key as)) str
 
@@ -48,11 +48,11 @@ external_d_C_prim_getAssoc str _ = fromHaskellIO1
 -- Implementation of IORefs in Curry. Note that we store Curry values
 -- (and not the corresponding Haskell values) in the Haskell IORefs
 data C_IORef a
-     = Choice_C_IORef ID (C_IORef a) (C_IORef a)
-     | Choices_C_IORef ID ([C_IORef a])
-     | Fail_C_IORef
-     | Guard_C_IORef Constraints (C_IORef a)
-     | C_IORef (IORef a)
+    = Choice_C_IORef ID (C_IORef a) (C_IORef a)
+    | Choices_C_IORef ID ([C_IORef a])
+    | Fail_C_IORef
+    | Guard_C_IORef Constraints (C_IORef a)
+    | C_IORef (IORef a)
 
 instance Show (C_IORef a) where
   show = error "ERROR: no show for IORef"
@@ -86,12 +86,12 @@ instance NormalForm (C_IORef a) where
   ($!!) cont ioref@(C_IORef _)          cs = cont ioref cs
   ($!!) cont (Choice_C_IORef i io1 io2) cs = nfChoice cont i io1 io2 cs
   ($!!) cont (Choices_C_IORef i ios)    cs = nfChoices cont i ios cs
-  ($!!) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $!! io) (addCs c cs)) 
+  ($!!) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $!! io) (addCs c cs))
   ($!!) _    Fail_C_IORef               cs = failCons
   ($##) cont io@(C_IORef _)             cs = cont io cs
   ($##) cont (Choice_C_IORef i io1 io2) cs = gnfChoice cont i io1 io2 cs
   ($##) cont (Choices_C_IORef i ios)    cs = gnfChoices cont i ios cs
-  ($##) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $## io) (addCs c cs)) 
+  ($##) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $## io) (addCs c cs))
   ($##) _    Fail_C_IORef               cs = failCons
   ($!<) cont (Choice_C_IORef i x y)     = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_IORef i xs)     = nfChoicesIO cont i xs
@@ -119,18 +119,14 @@ instance CP.Curry a => CP.Curry (C_IORef a) where
 instance ConvertCurryHaskell (C_IORef a) (IORef a) where
   fromCurry (C_IORef r) = r
   fromCurry _           = error "IORef with no ground term occurred"
-
   toCurry r = C_IORef r
 
 external_d_C_newIORef :: CP.Curry a => a -> ConstStore -> CP.C_IO (C_IORef a)
-external_d_C_newIORef cv _ = fromIO (newIORef cv >>= return . toCurry)
+external_d_C_newIORef cv _ = toCurry (newIORef cv)
 
 external_d_C_prim_readIORef :: CP.Curry a => C_IORef a -> ConstStore -> CP.C_IO a
-external_d_C_prim_readIORef ref _ = fromIO (readIORef (fromCurry ref))
+external_d_C_prim_readIORef ref _ = toCurry (readIORef ref)
 
 external_d_C_prim_writeIORef :: CP.Curry a => C_IORef a -> a
                                            -> ConstStore -> CP.C_IO CP.OP_Unit
-external_d_C_prim_writeIORef ref cv _ =
- fromIO (writeIORef (fromCurry ref) cv >>= return . toCurry)
-
------------------------------------------------------------------------
+external_d_C_prim_writeIORef ref cv _ = toCurry (writeIORef (fromCurry ref) cv)
