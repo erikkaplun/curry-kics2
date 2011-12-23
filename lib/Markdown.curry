@@ -7,14 +7,15 @@
 --- [documented in this page](http://www.informatik.uni-kiel.de/~pakcs/markdown_syntax.html).
 ---
 --- @author Michael Hanus
---- @version November 2011
+--- @version December 2011
 ------------------------------------------------------------------------------
 
 module Markdown(MarkdownDoc,MarkdownElem(..),fromMarkdownText,
                 removeEscapes,
                 markdownText2HTML,markdownText2CompleteHTML,
                 markdownText2LaTeX,markdownText2LaTeXWithFormat,
-                markdownText2CompleteLaTeX,formatMarkdownAsPDF)
+                markdownText2CompleteLaTeX,
+                formatMarkdownFileAsPDF,formatMarkdownInputAsPDF)
  where
 
 import List
@@ -22,6 +23,7 @@ import Char
 import HTML
 import HtmlParser
 import System
+import IO(getContents)
 
 -----------------------------------------------------------------------
 --- A markdown document is a list of markdown elements.
@@ -115,25 +117,30 @@ joinItems mdlcons isitem items (md:mds) =
 -- Basic reader for a markdown text.
 markdownText :: String -> [SourceMDElem]
 markdownText [] = []
-markdownText txt@(_:_) = markdownLine (break (=='\n') txt)
+markdownText txt@(_:_) = markdownLine fstline (dropFirst remtxt)
+ where (fstline,remtxt) = break (=='\n') txt
 
 -- Analyze the first line of a markdown text:
-markdownLine :: (String,String) -> [SourceMDElem]
-markdownLine (fstline,remtxt)
- | all isSpace fstline   = markdownText (dropFirst remtxt)
- | take 1 fstline == "#" = tryMDHeader fstline (dropFirst remtxt)
- | isHRule fstline       = SMDHRule : markdownText (dropFirst remtxt)
+markdownLine :: String -> String -> [SourceMDElem]
+markdownLine fstline remtxt
+ | all isSpace fstline   = markdownText remtxt
+ | isLevel1Line = SMDHeader 1 fstline : markdownText (dropFirst furtherlines)
+ | isLevel2Line = SMDHeader 2 fstline : markdownText (dropFirst furtherlines)
+ | take 1 fstline == "#" = tryMDHeader fstline remtxt
+ | isHRule fstline       = SMDHRule : markdownText remtxt
  | take 2 fstline == "> " -- start of a quoted text
-  = markdownQuote (drop 2 fstline) (dropFirst remtxt)
- | uitemlen > 0 -- start of an unordered item
-  = markdownItem SMDUItem uitemlen (drop uitemlen fstline) (dropFirst remtxt)
- | nitemlen > 0 -- start of a numbered item
-  = markdownItem SMDOItem nitemlen (drop nitemlen fstline) (dropFirst remtxt)
+  = markdownQuote (drop 2 fstline) remtxt
  | blanklen > 0 -- four space indent for code
-  = markdownCodeBlock blanklen (removeEscapes (drop blanklen fstline))
-                               (dropFirst remtxt)
- | otherwise = markdownPar fstline (dropFirst remtxt)
+  = markdownCodeBlock blanklen (removeEscapes (drop blanklen fstline)) remtxt
+ | uitemlen > 0 -- start of an unordered item
+  = markdownItem SMDUItem uitemlen (drop uitemlen fstline) remtxt
+ | nitemlen > 0 -- start of a numbered item
+  = markdownItem SMDOItem nitemlen (drop nitemlen fstline) remtxt
+ | otherwise = markdownPar fstline remtxt
  where
+  (sndline,furtherlines) = break (=='\n') remtxt
+  isLevel1Line = not (null sndline) && all (=='=') sndline
+  isLevel2Line = not (null sndline) && all (=='-') sndline
   nitemlen = isNumberedItemLine fstline
   uitemlen = isUnorderedItemLine fstline
   blanklen = isCodeLine fstline
@@ -184,10 +191,6 @@ isCodeLine s =
 -- as the first argument):
 markdownPar :: String -> String -> [SourceMDElem]
 markdownPar ptxt txt
- | isLevel1Line && onlyOnePreviousLine
-  = SMDHeader 1 ptxt : markdownText (dropFirst remtxt)
- | isLevel2Line && onlyOnePreviousLine
-  = SMDHeader 2 ptxt : markdownText (dropFirst remtxt)
  | null txt || head txt `elem` ['\n'] ||
    uitemlen>0 || nitemlen>0
   = SMDPar (groupMarkDownElems (outsideMarkdownElem "" ptxt)) : markdownText txt
@@ -196,22 +199,20 @@ markdownPar ptxt txt
  | otherwise = markdownPar (ptxt++'\n':fstline) (tail remtxt)
  where
   (fstline,remtxt) = break (=='\n') txt
-
-  onlyOnePreviousLine = '\n' `notElem` ptxt
-  isLevel1Line = not (null fstline) && all (=='=') fstline
-  isLevel2Line = not (null fstline) && all (=='-') fstline
-
   nitemlen = isNumberedItemLine fstline
   uitemlen = isUnorderedItemLine fstline
 
 -- parse a quoted section:
-markdownQuote qtxt txt =
-  if take 2 txt == "> "
-  then let (fstline,remtxt) = break (=='\n') (drop 2 txt)
-        in if null remtxt
-           then [SMDQuote (fromMarkdownText (qtxt++'\n':fstline))]
-           else markdownQuote (qtxt++'\n':fstline) (tail remtxt)
-  else SMDQuote (fromMarkdownText qtxt) : markdownText txt
+markdownQuote qtxt alltxt =
+  let txt = if take 2 alltxt == ">\n" -- allow empty quote lines
+            then "> " ++ drop 1 alltxt
+            else alltxt
+  in if take 2 txt == "> "
+     then let (fstline,remtxt) = break (=='\n') (drop 2 txt)
+           in if null remtxt
+              then [SMDQuote (fromMarkdownText (qtxt++'\n':fstline))]
+              else markdownQuote (qtxt++'\n':fstline) (tail remtxt)
+     else SMDQuote (fromMarkdownText qtxt) : markdownText txt
 
 -- parse a program block (where the indent and the initial code block is given):
 markdownCodeBlock :: Int -> String -> String -> [SourceMDElem]
@@ -429,12 +430,20 @@ latexHeader =
  "\\begin{document}\n"
 
 
+--- Format the standard input (containing markdown text) as PDF.
+formatMarkdownInputAsPDF :: IO ()
+formatMarkdownInputAsPDF = getContents >>= formatMarkdownAsPDF
+
+--- Format a file containing markdown text as PDF.
+formatMarkdownFileAsPDF :: String -> IO ()
+formatMarkdownFileAsPDF fname = readFile fname >>= formatMarkdownAsPDF
+
 --- Format a file containing markdown text as PDF.
 formatMarkdownAsPDF :: String -> IO ()
-formatMarkdownAsPDF fname = do
+formatMarkdownAsPDF mdstr = do
   pid <- getPID
   let tmp = "tmp_"++show pid
-  readFile fname >>= writeFile (tmp++".tex") . markdownText2CompleteLaTeX
+  writeFile (tmp++".tex") (markdownText2CompleteLaTeX mdstr)
   pdflatexFile tmp
 
 -- Format a file tmp.tex with pdflatex and show the result
