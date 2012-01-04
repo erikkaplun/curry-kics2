@@ -42,11 +42,7 @@ isUbuntu = do
 
 -- Execute shell command and return time of its execution:
 benchmarkCommand cmd = do
-  isubuntu <- isUbuntu
-  let timecmd = if isubuntu
-                then "time --format=\"BENCHMARKTIME=%U\" "++cmd
-                else -- for Debian-PCs:
-                     "export TIMEFORMAT=\"BENCHMARKTIME=%2U\" && time "++cmd
+  let timecmd = "time --format=\"BENCHMARKTIME=%U\" "++cmd
   (hin,hout,herr) <- execCmd timecmd
   outcnt <- hGetContents hout
   errcnt <- hGetContents herr
