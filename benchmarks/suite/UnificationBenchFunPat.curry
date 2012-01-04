@@ -21,9 +21,9 @@ goal_last_1L  = lastL  (take 100000 (repeat failed) ++ [1])
 goal_last_1S  = lastS  (take 100000 (repeat failed) ++ [1])
 goal_last_1Eq = lastEq (take 100000 (repeat failed) ++ [1])
 
-goal_last_2L  = lastL  (map (inc 0) [1..100000])
-goal_last_2S  = lastS  (map (inc 0) [1..100000])
-goal_last_2Eq = lastEq (map (inc 0) [1..100000])
+goal_last_2L  = lastL  (map (inc 0) [1..10000])
+goal_last_2S  = lastS  (map (inc 0) [1..10000])
+goal_last_2Eq = lastEq (map (inc 0) [1..10000])
 
 
 ---------------------------------------------------
@@ -157,17 +157,17 @@ varInExpEq :: Exp -> VarName
 varInExpEq exp = iff (replace x y (Var v) == exp) v where x, y, v free
 
 -- find a variable in an expression having 20003 nodes
-goal_expVar_L  = varInExpL  (genExpWithVar 100000)
-goal_expVar_S  = varInExpS  (genExpWithVar 100000)
-goal_expVar_Eq = varInExpEq (genExpWithVar 100000)
+goal_expVar_L  = varInExpL  (genExpWithVar 25000)
+goal_expVar_S  = varInExpS  (genExpWithVar 25000)
+goal_expVar_Eq = varInExpEq (genExpWithVar 25000)
 
 goal_expVar_L'  = varInExpL  (genExpWithVar' 1000)
 goal_expVar_S'  = varInExpS  (genExpWithVar' 1000)
 goal_expVar_Eq' = varInExpEq (genExpWithVar' 1000)
 
-goal_expVar_L''  = varInExpL  (genExpWithVar'' 17)
-goal_expVar_S''  = varInExpS  (genExpWithVar'' 17)
-goal_expVar_Eq'' = varInExpEq (genExpWithVar'' 17)
+goal_expVar_L''  = varInExpL  (genExpWithVar'' 16)
+goal_expVar_S''  = varInExpS  (genExpWithVar'' 16)
+goal_expVar_Eq'' = varInExpEq (genExpWithVar'' 16)
 
 
 ----------------------------------------------------------------
