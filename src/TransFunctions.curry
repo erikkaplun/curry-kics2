@@ -718,7 +718,8 @@ primTypes :: [(QName, QName)]
 primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
                              , renameQName (prelude, y))) $
   [ ("True", "Bool"), ("False", "Bool")
-  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")]
+  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
+  , ("Success","Success")]
 
 -- Return Nothing if type is no tuple and Just arity otherwise
 tupleArity :: String -> Maybe Int

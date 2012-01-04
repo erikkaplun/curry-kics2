@@ -104,6 +104,7 @@ analyseHOFunc p preRes =
 
 analyseHOCons :: Prog -> HOResult
 analyseHOCons p = listToFM (<)
+                $ ((("Curry_Prelude","C_Success"), FO) :)
                 $ map consOrder
                 $ concatMap typeConsDecls
                 $ filter (not . isTypeSyn)

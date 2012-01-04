@@ -23,6 +23,7 @@ import CompilerOpts
 import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase (liftCases)
+import EliminateCond (eliminateCond)
 import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
@@ -113,8 +114,12 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   let pLifted = liftCases True fcy'
   dump DumpLifted opts liftedName (show pLifted)
 
+  showDetail opts "Eliminate calls to cond"
+  let pElim = eliminateCond pLifted
+  dump DumpEliminated opts elimName (show pElim)
+
   showDetail opts "Renaming symbols"
-  let renamed@(Prog _ _ ts _ _)  = rename pLifted
+  let renamed@(Prog _ _ ts _ _)  = rename pElim
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
@@ -149,6 +154,7 @@ compileModule total state ((mid, (fn, fcy)), current) = do
     where
     fcyName        = fcyFile $ withBaseName (++ "Dump")      mid
     liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
+    elimName       = fcyFile $ withBaseName (++ "ElimCond")  mid
     renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid

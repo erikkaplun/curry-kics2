@@ -16,6 +16,7 @@ COMPILERSOURCES = Compile.curry \
 	          AbstractHaskellPrinter.curry \
 	          TransTypes.curry TransFunctions.curry \
 	          LiftCase.curry \
+                  State.curry EliminateCond.curry \
 	          Message.curry ModuleDeps.curry \
 	          SimpleMake.curry Splits.curry \
 	          Dependency2.curry GetOpt.curry \
