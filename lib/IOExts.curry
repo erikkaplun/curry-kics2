@@ -5,10 +5,16 @@
 --- @version June 2007
 ------------------------------------------------------------------------------
 
-module IOExts(execCmd,connectToCommand,
-              readCompleteFile,updateFile,
-              exclusiveIO,setAssoc,getAssoc,
-              IORef,newIORef,readIORef,writeIORef) where
+module IOExts
+  ( -- execution of shell commands
+    execCmd, evalCmd, connectToCommand
+    -- file access
+  , readCompleteFile,updateFile, exclusiveIO
+    -- associations
+  , setAssoc,getAssoc
+    -- IORef
+  , IORef, newIORef, readIORef, writeIORef, modifyIORef
+  ) where
 
 import System
 import IO(Handle)
@@ -20,11 +26,25 @@ import IO(Handle)
 --- closed automatically when the process terminates.
 --- @param cmd - the shell command to be executed
 --- @return the handles of the input/output/error streams of the new process
-execCmd :: String -> IO (Handle,Handle,Handle)
+execCmd :: String -> IO (Handle, Handle, Handle)
 execCmd cmd = prim_execCmd $## cmd
 
-prim_execCmd :: String -> IO (Handle,Handle,Handle)
+prim_execCmd :: String -> IO (Handle, Handle, Handle)
 prim_execCmd external
+
+--- Executes a command with the given arguments as a new default shell process
+--- and provides the input via the process' stdin input stream.
+--- The exit code of the process and the contents written to the standard
+--- I/O streams stdout and stderr are returned.
+--- @param cmd   - the shell command to be executed
+--- @param args  - the command's arguments
+--- @param input - the input to be written to the command's stdin
+--- @return the exit code and the contents written to stdout and stderr
+evalCmd :: String -> [String] -> String -> IO (Int, String, String)
+evalCmd cmd args input = ((prim_evalCmd $## cmd) $## args) $## input
+
+prim_evalCmd :: String -> [String] -> String -> IO (Int, String, String)
+prim_evalCmd external
 
 
 --- Executes a command with a new default shell process.
@@ -124,3 +144,6 @@ writeIORef ref val = (prim_writeIORef $# ref) val
 prim_writeIORef :: IORef a -> a -> IO ()
 prim_writeIORef external
 
+--- Modify the value of an IORef.
+modifyIORef :: IORef a -> (a -> a) -> IO ()
+modifyIORef ref f = readIORef ref >>= writeIORef ref . f

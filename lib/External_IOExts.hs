@@ -1,8 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 import Data.IORef
-import System.IO.Unsafe(unsafePerformIO) -- for global associations
-import System.Process(runInteractiveCommand)
-import Control.Concurrent(forkIO)
+import System.IO.Unsafe   (unsafePerformIO) -- for global associations
+import System.Process     (readProcessWithExitCode, runInteractiveCommand)
+import Control.Concurrent (forkIO)
 import System.IO
 import qualified Curry_Prelude as CP
 
@@ -11,6 +11,11 @@ external_d_C_prim_execCmd :: CP.C_String
 external_d_C_prim_execCmd str _ = toCurry
   (\s -> do (h1,h2,h3,_) <- runInteractiveCommand s
             return (OneHandle h1, OneHandle h2, OneHandle h3)) str
+
+external_d_C_prim_evalCmd :: CP.C_String -> CP.OP_List CP.C_String -> CP.C_String
+  -> ConstStore -> CP.C_IO (CP.OP_Tuple3 CP.C_Int CP.C_String CP.C_String)
+external_d_C_prim_evalCmd cmd args input _
+  = toCurry readProcessWithExitCode cmd args input
 
 external_d_C_prim_connectToCmd :: CP.C_String -> ConstStore -> CP.C_IO Curry_IO.C_Handle
 external_d_C_prim_connectToCmd str _ = toCurry
