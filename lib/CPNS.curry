@@ -4,7 +4,7 @@
 --- with ports.
 ---
 --- @author Michael Hanus
---- @version April 2007
+--- @version January 2012
 ------------------------------------------------------------------------------
 
 module CPNS(registerPort,getPortInfo,unregisterPort,
@@ -92,12 +92,13 @@ cpnsServer regs socket = do
   --putStrLn $ "Connection from "++chost
   serveRequest chost stream
  where
-   doIfLocalHost rhost action =
-     if rhost `elem` ["localhost","localhost.localdomain"]
+   doIfLocalHost rhost action = do
+     hostname <- getHostname
+     if rhost `elem` ["localhost","localhost.localdomain",hostname]
         || take 8 rhost == "127.0.0."
-     then action
-     else do putStrLn $ "Illegal request received from host: " ++ rhost
-             cpnsServer regs socket
+      then action
+      else do putStrLn $ "Illegal request received from host: " ++ rhost
+              cpnsServer regs socket
 
    serveRequest rhost h = do
      msg <- readMsgLine h
@@ -223,7 +224,8 @@ doIfAlive host action = do
   alive <- cpnsAlive cpnsTimeOut host
   if not alive
    then error $ "Curry port name server at host \""++host++
-                "\" is not reachable!"
+                "\" is not reachable (timeout after "++show cpnsTimeOut++
+                " ms)!"
    else action
 
 sendToLocalCPNS :: CPNSMessage -> IO ()

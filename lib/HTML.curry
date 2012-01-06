@@ -16,7 +16,7 @@
 --- is a shell script stored in *pakcshome*/bin).
 ---
 --- @author Michael Hanus (with extensions by Bernd Brassel and Marco Comini)
---- @version November 2011
+--- @version January 2012
 ------------------------------------------------------------------------------
 
 module HTML(HtmlExp(..),HtmlPage(..),PageParam(..),
@@ -1057,14 +1057,15 @@ serveCgiMessagesForForm servertimeout url cgikey portname
                               ": terminated due to timeout"
                    unregisterCgiServer portname
                    sClose socket )
-               (\ (rhost,hdl) ->
-                  if rhost == "localhost" || take 8 rhost == "127.0.0." ||
-                     rhost == "localhost.localdomain"
-                  then readCgiServerMsg hdl >>=
-                       maybe (hClose hdl >> serveCgiMessages state)
-                             (serveCgiMessage state hdl)
-                  else putErrLn ("Ignored message from: "++rhost) >>
-                       hClose hdl >> serveCgiMessages state )
+               (\ (rhost,hdl) -> do
+                  hostname <- getHostname
+                  if rhost `elem` ["localhost","localhost.localdomain",hostname]
+                     || take 8 rhost == "127.0.0."
+                   then readCgiServerMsg hdl >>=
+                        maybe (hClose hdl >> serveCgiMessages state)
+                              (serveCgiMessage state hdl)
+                   else putErrLn ("Ignored message from: "++rhost) >>
+                        hClose hdl >> serveCgiMessages state )
 
   -- Process the received CgiServerMsg:
   serveCgiMessage _ hdl StopCgiServer = do
