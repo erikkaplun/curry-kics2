@@ -244,20 +244,21 @@ chooseSupply = map toLower . drop 2 . show
 
 mainExpr :: Strategy -> Goal -> String
 mainExpr _ (Goal False _ goal) = "evalD d_C_" ++ goal
-mainExpr s (Goal True  _ goal) = showStrategy s ++ " nd_C_" ++ goal
+mainExpr s (Goal True  _ goal) = searchExpr s ++ " nd_C_" ++ goal
  where
-  showStrategy PrDFS    = "prdfs print"
-  showStrategy DFS      = "printDFS print"
-  showStrategy BFS      = "printBFS print"
-  showStrategy (IDS i)  = "printIDS " ++ show i
-  showStrategy BFS1     = "printBFS1 print"
-  showStrategy (IDS1 i) = "printIDS1 " ++ show i
+  searchExpr PrDFS    = "prdfs print"
+  searchExpr DFS      = "printDFS print"
+  searchExpr BFS      = "printBFS print"
+  searchExpr (IDS i)  = "printIDS " ++ show i ++ " print"
+  searchExpr BFS1     = "printBFS1 print"
+  searchExpr (IDS1 i) = "printIDS1 " ++ show i ++ " print"
 
 kics2 hoOpt ghcOpt supply strategy gl@(Goal _ mod goal)
   = idcBenchmark tag mod hoOpt ghcOpt (chooseSupply supply) (mainExpr strategy gl)
  where tag = concat [ "IDC"
                     , if ghcOpt then "+"  else ""
                     , if hoOpt  then "_D" else ""
+                    , '_' : show strategy
                     , '_' : showSupply supply
                     , if goal == "main" then "" else ':':goal
                     ]
@@ -540,7 +541,7 @@ allBenchmarks = concat
   , map (benchFLPDFS False  . nonDetGoal "main") ["Half"]
   , map (benchFLPSearch     . nonDetGoal "main") ["PermSort", "PermSortPeano", "Half"]
   , [benchFLPCompleteSearch $ nonDetGoal "main"  "NDNums"]
-  , [benchFPWithMain        $ nonDetGoal "goal1" "ShareNonDet"]
+  , [benchFPWithMain        $ detGoal    "goal1" "ShareNonDet"]
   , [benchFLPDFSWithMain    $ nonDetGoal "goal2" "ShareNonDet"]
   , [benchFLPDFSWithMain    $ nonDetGoal "goal3" "ShareNonDet"]
   , map (benchFLPDFSU       . nonDetGoal "main") ["Last", "RegExp"]
