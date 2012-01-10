@@ -80,17 +80,24 @@ trace s = when doTrace $ flushStrLn s
 
 type Command = (String, [String]) -- a shell command with arguments
 
+showCmd :: Command -> String
+showCmd (bin, args) = unwords $ bin : args
+
 --- Run the command and returns its output from stdout
 runCmd :: Command -> IO String
-runCmd (cmd, args) = do
-  h <- connectToCommand $ unwords $ cmd : args
+runCmd cmd = do
+  h <- connectToCommand $ showCmd cmd
   s <- hGetContents h
   hClose h
   return s
 
 --- Silently execute a command
 sysCmd :: Command -> IO ()
-sysCmd (cmd, args) = system (unwords (cmd : args)) >> done
+sysCmd cmd = system (showCmd cmd) >> done
+
+traceCmd :: Command -> IO ()
+traceCmd cmd = trace call >> system call >> done
+  where call = showCmd cmd
 
 isUbuntu :: IO Bool
 isUbuntu = isInfixOf "Ubuntu" `liftIO` runCmd ("lsb_release", ["-i"])
@@ -352,41 +359,41 @@ swiBenchmark mod = if onlyKiCS2 then [] else
 -- arg4: idsupply implementation (integer or pureio)
 -- arg5: main (Haskell!) call
 idcCompile mod hooptim ghcoptim idsupply mainexp = do
-  let idcCmd = kics2Home++"/bin/idc -q "
-                            ++(if hooptim then "" else "-O 0 ")
-                            ++"-i "++kics2Home++"/lib"++" "++mod
-  trace $ "Executing: " ++ idcCmd
-  system idcCmd
+  -- 1. Call the idc to create the Haskell module
+  let idcCmd = (kics2Home ++ "/bin/idc", [ "-q", if hooptim then "" else "-O0"
+                                         , "-i" ++ kics2Home ++ "/lib", mod])
+  traceCmd idcCmd
 
-  -- Create the Main.hs program containing the call to the initial expression:
-  writeFile "Main.hs" $ unlines
-    [ "module Main where"
-    , "import Basics"
-    , "import Curry_" ++ mod
-    , "main = " ++ mainexp
-    ]
-  trace $ "Main expression: " ++ mainexp
-  let imports = [ kics2Home ++ "/runtime"
-                , kics2Home ++ "/runtime/idsupply" ++ idsupply
-                ,".curry/kics2"
-                , kics2Home ++ "/lib/.curry/kics2"
-                ]
-      ghcCmd = unwords $ filter (not . null)
-                [ "ghc"
-                , if ghcoptim then "-O2" else ""
-                ,"--make"
-                , if doTrace then "" else "-v0"
-                , "-package ghc"
-                , "-cpp" -- use the C preprocessor
-                , "-DDISABLE_CS" -- disable constraint store
-                --,"-DSTRICT_VAL_BIND" -- strict value bindings
-                , "-XMultiParamTypeClasses","-XFlexibleInstances"
-                , "-fforce-recomp"
-                , "-i" ++ intercalate ":" imports
-                , "Main.hs"
-                ] -- also:  -funbox-strict-fields ?
-  trace $ "Executing: " ++ ghcCmd
-  system ghcCmd
+  -- 2. Create the Main.hs program containing the call to the initial expression
+  let mainFile = "Main.hs"
+  let mainCode = unlines  [ "module Main where"
+                          , "import Basics", "import Curry_" ++ mod
+                          , "main = " ++ mainexp
+                          ]
+  -- show to put parentheses around the source code
+  let mainCmd = ("echo", [show mainCode, ">", mainFile])
+  traceCmd mainCmd
+
+  -- 3. Call the GHC
+  let ghcImports = [ kics2Home ++ "/runtime"
+                   , kics2Home ++ "/runtime/idsupply" ++ idsupply
+                   ,".curry/kics2"
+                   , kics2Home ++ "/lib/.curry/kics2"
+                   ]
+      ghcCmd = ("ghc" , [ if ghcoptim then "-O2" else ""
+                        , "--make"
+                        , if doTrace then "" else "-v0"
+                        , "-package ghc"
+                        , "-cpp" -- use the C preprocessor
+                        , "-DDISABLE_CS" -- disable constraint store
+                        --,"-DSTRICT_VAL_BIND" -- strict value bindings
+                        , "-XMultiParamTypeClasses","-XFlexibleInstances"
+                        , "-fforce-recomp"
+                        , "-i" ++ intercalate ":" ghcImports
+                        , mainFile
+                        ]) -- also:  -funbox-strict-fields ?
+  traceCmd ghcCmd
+  return 0
 
 -- ---------------------------------------------------------------------------
 -- Compile target with Monadic Curry
