@@ -1,0 +1,101 @@
+\documentclass[english]{lni}
+
+%\IfFileExists{latin1.sty}{\usepackage{latin1}}{\usepackage{isolatin1}}
+
+\usepackage{graphicx}
+
+\author{
+Michael Hanus
+\quad
+Bj{\"o}rn Peem{\"o}ller
+\quad
+Fabian Reck \\
+\\
+Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
+\texttt{\{mh|bjp|fre\}@informatik.uni-kiel.de}
+}
+\title{Search Strategies for Functional Logic Programming}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+In this paper we discuss our practical experiences
+with the use of different search strategies
+in functional logic programs.
+In particular, we show that complete strategies,
+like breadth-first search or iterative deepening search,
+are a reasonable alternative to incomplete strategies, like depth-first
+search, that have been favored in the past for logic programming.
+\end{abstract}
+
+\section{Introduction}
+
+Functional logic languages combine the most important
+features of functional and logic programming in a single language
+(see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
+In particular, they provide higher-order functions and demand-driven
+evaluation from functional programming together with logic programming features
+like non-deterministic search and computing with partial information
+(logic variables).
+This combination
+led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
+and better abstractions for application programming,
+e.g., as shown for programming with databases
+\cite{BrasselHanusMueller08PADL,Fischer05},
+GUI programming \cite{Hanus00PADL},
+web programming \cite{Hanus01PADL,Hanus06PPDP,HanusKoschnicke10PADL},
+or string parsing \cite{CaballeroLopez99}.
+Moreover, it is also a good basis
+to teach the ideas of functional and logic programming,
+or declarative programming in general,
+with a single computation model and programming language
+\cite{Hanus97DPLE}.
+
+An important feature of logic programming languages
+is non-deterministic search.
+In Prolog, which is still the standard language for logic programming,
+non-deterministic search is implemented via backtracking,
+which corresponds to a depth-first search traversal
+through the SLD proof tree \cite{Lloyd87}.
+
+
+classical view: LP = lvars, unif + Backtracking
+
+-> FP view: add backtracking to obtain LP
+
+beginners: backtracking considered harmful
+
+better: complete strategies
+
+here: complete strategies reasonable, thus, should be the default
+
+\section{Curry}
+
+A short standard intro to Curry.
+
+Mention that search strategy is not fixed
+ (discuss top-level vs. encaps. search)
+
+\section{Search Strategies}
+
+Show enacpsulated search, i.e., introduce search tree
+and implementation of search strategies in search trees
+(maybe BFS and IDS in the appendix).
+
+\section{Benchmarks}
+
+Compare DFS, BFS, IDS (top-level and encapsulated, all solutions and first sol)
+
+Hopefully, they show what we want...
+
+\section{Conclusions}
+
+If efficiency important and DFS safe (e.g., finite search space): use DFS
+
+Future work: approximate safeness of DFS
+
+
+\bibliography{mh}
+%\bibliography{paper}
+
+\end{document}
