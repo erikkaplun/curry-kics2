@@ -39,7 +39,7 @@ showSearchTree = showST 0
    showST _ Fail       = "Fail\n"
    showST i (Or t1 t2) = "Or " ++ showST (i+3) t1 ++
                          tab (i+3) ++ showST (i+3) t2
-   
+
    tab i = take i (repeat ' ')
 
 --- Return the size (number of Value/Fail/Or nodes) of the search tree
@@ -50,7 +50,7 @@ searchTreeSize (Or t1 t2) = let (v1,f1,o1) = searchTreeSize t1
                                 (v2,f2,o2) = searchTreeSize t2
                              in (v1+v2,f1+f2,o1+o2+1)
 
---- Return all values in a search tree via depth-first search 
+--- Return all values in a search tree via depth-first search
 allValuesDFS :: SearchTree a -> [a]
 allValuesDFS Fail      = []
 allValuesDFS (Value x) = [x]
@@ -73,19 +73,19 @@ values (Value x:ts) = x : values ts
 values (Or _ _:ts)  = values ts
 
 allBFS :: [SearchTree a] -> [a]
-allBFS []     = [] 
+allBFS []     = []
 allBFS (t:ts) = values (t:ts) ++ allBFS (children (t:ts))
 
 
 --- Return all values in a search tree via iterative-deepening search.
 allValuesIDS :: SearchTree a -> [a]
-allValuesIDS = allValuesIDSwith 100 (2*)
+allValuesIDS t = allValuesIDSwith 100 (2*) t
 
 --- Return all values in a search tree via iterative-deepening search.
 --- The first argument is the initial depth bound and
 --- the second argument is a function to increase the depth in each
 --- iteration.
-allValuesIDSwith :: Int -> (Int->Int) -> SearchTree a -> [a]
+allValuesIDSwith :: Int -> (Int -> Int) -> SearchTree a -> [a]
 allValuesIDSwith initdepth incrdepth st =
   iterIDS initdepth (collectInBounds 0 initdepth st)
  where

@@ -1,4 +1,4 @@
-module Strategies (bfsSearch, dfsSearch, parSearch, idsSearch) where
+module Strategies (bfsSearch, dfsSearch, parSearch, idsSearch, idsDefaultDepth) where
 
 import Control.Monad.SearchTree
 import Control.Parallel.TreeSearch (parSearch)
@@ -25,8 +25,11 @@ dfsSearch (One      x) = [x]
 dfsSearch (Choice x y) = dfsSearch x ++ dfsSearch y
 
 -- |Iterative deepening
-idsSearch :: SearchTree a -> [a]
-idsSearch = startIDS 100 (2*)
+idsSearch :: Int -> SearchTree a -> [a]
+idsSearch initDepth = startIDS initDepth (2*)
+
+idsDefaultDepth :: Int
+idsDefaultDepth = 100
 
 -- |Return all values in a search tree via iterative-deepening search.
 -- The first argument is the initial depth bound and

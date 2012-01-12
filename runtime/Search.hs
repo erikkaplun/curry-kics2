@@ -14,6 +14,42 @@ import Solver
 import Strategies
 import Types
 
+-- ---------------------------------------------------------------------------
+-- Search combinators for top-level search in the IO monad
+-- ---------------------------------------------------------------------------
+
+printAll :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printAll search goal = getNormalForm goal >>= search >>= printAllValues print
+
+printOne :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printOne search goal = getNormalForm goal >>= search >>= printOneValue print
+
+printInteractive :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printInteractive search goal = getNormalForm goal >>= search >>= printOneValue print
+
+ioDFS :: NormalForm a => a -> IO (IOList a)
+ioDFS = searchDFS msingleton
+
+ioBFS :: NormalForm a => a -> IO (IOList a)
+ioBFS = searchBFS msingleton
+
+ioIDS :: NormalForm a => Int -> a -> IO (IOList a)
+ioIDS initDepth = searchIDS initDepth msingleton
+
+mplusDFS :: NormalForm a => a -> IO (IOList a)
+mplusDFS = fromList . dfsSearch . searchMPlus
+
+mplusBFS :: NormalForm a => a -> IO (IOList a)
+mplusBFS = fromList . bfsSearch . searchMPlus
+
+mplusIDS :: NormalForm a => Int -> a -> IO (IOList a)
+mplusIDS initDepth = fromList . idsSearch initDepth . searchMPlus
+
+mplusPar :: NormalForm a => a -> IO (IOList a)
+mplusPar = fromList . parSearch . searchMPlus
+
+-- ---------------------------------------------------------------------------
+
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io
 toIO Fail_C_IO           _     = error "toIO: failed"
@@ -167,7 +203,7 @@ showChoiceTree = ($[]) . showsTree [] "" . try
 -- which is internally expanded to apply the constructors encountered during
 -- search.
 prdfs :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
-prdfs cont goal = getNormalForm goal >>= printValsDFS False cont
+prdfs prt goal = getNormalForm goal >>= printValsDFS False prt
 
 -- The first argument backTrack indicates whether backtracking is needed
 printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
@@ -395,7 +431,7 @@ searchBFS act goal = do
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS :: Int -> Int
-incrDepth4IDFS n = n*2
+incrDepth4IDFS n = n * 2
 
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased
@@ -415,10 +451,12 @@ printIDSi ud initdepth prt goal = computeWithIDS initdepth goal >>= printValsOnD
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
 computeWithIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
-computeWithIDS initDepth goal = getNormalForm goal >>= iter 0 initDepth
-  where
-  iter oldDepth newDepth expr = startIDS oldDepth newDepth msingleton expr
-       ++++ iter newDepth (incrDepth4IDFS newDepth) expr
+computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth msingleton
+
+searchIDS :: NormalForm a => Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
+searchIDS initDepth cont goal = iter 0 initDepth
+  where iter oldDepth newDepth = startIDS oldDepth newDepth cont goal
+                            ++++ iter newDepth (incrDepth4IDFS newDepth)
 
 -- start iterative deepening for a given depth interval
 startIDS :: NormalForm a => Int -> Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
