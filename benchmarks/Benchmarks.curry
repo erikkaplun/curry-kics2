@@ -242,6 +242,7 @@ data NewStrategy
   | MPLUSDFS | MPLUSBFS Bool | MPLUSIDS Bool Int | MPLUSPar
 
 data OldStrategy = PrDFS | DFS | BFS | IDS Int | BFS1 | IDS1 Int | EncDFS | EncBFS | EncIDS
+
 data Goal     = Goal Bool String String
 
 detGoal :: String -> String -> Goal
@@ -476,8 +477,8 @@ swiCompile mod = system $ "echo \"compile("++mod++"), qsave_program('"++mod++".s
 -- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
 benchFPpl :: Bool -> Goal -> [Benchmark]
 benchFPpl withMon goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old DFS)
-  , kics2 True True  S_Integer (Old DFS)
+  [ kics2 True False S_Integer (Old PrDFS)
+  , kics2 True True  S_Integer (Old PrDFS)
   , pakcs
   , mcc
   , ghc
@@ -490,8 +491,8 @@ benchFPpl withMon goal = concatMap ($goal)
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP :: Bool -> Goal -> [Benchmark]
 benchHOFP withMon goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old DFS)
-  , kics2 True True  S_Integer (Old DFS)
+  [ kics2 True False S_Integer (Old PrDFS)
+  , kics2 True True  S_Integer (Old PrDFS)
   , pakcs
   , mcc
   , ghc
@@ -565,8 +566,26 @@ benchFLPDFSKiCS2WithMain prog name withPakcs withMcc = concatMap ($ nonDetGoal p
   , if withMcc   then mcc   else skip
   ]
 
+-- goal collections
+
+-- first-order functional programming
+fofpGoals = map (detGoal "main")
+  [ "ReverseUser", "Reverse", "Tak", "TakPeano" ]
+
+-- higher-order functional programming
+hofpGoals = map (detGoal "main")
+  [ "ReverseHO", "ReverseBuiltin", "Primes", "PrimesPeano", "PrimesBuiltin", "Queens", "QueensUser" ]
+
+-- functional programming
+fpGoals = fofpGoals ++ hofpGoals
+
+searchGoals = map (nonDetGoal "main")
+  [ "SearchCircuit", "SearchEmbed"  , "SearchGraph" , "SearchHorseman"
+  , "SearchKanMis" , "SearchLakritz", "SearchQueens", "SearchSMM"
+  , "SearchZebra"]
+
 allBenchmarks = concat
-  [ map (benchFPpl   True     . detGoal    "main") [ "ReverseUser", "Reverse", "Tak", "TakPeano"]
+  [ map (benchFPpl   True) fofpGoals
   , map (benchHOFP   False    . detGoal    "main") [ "ReverseBuiltin"]
   , map (benchHOFP   True     . detGoal    "main") [ "ReverseHO", "Primes", "PrimesPeano", "PrimesBuiltin", "Queens", "QueensUser" ]
   , map (benchFLPDFS True     . nonDetGoal "main") ["PermSort", "PermSortPeano" ]
@@ -627,9 +646,9 @@ unif =
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
      ]
 
-testEnc = map (benchFLPSearch . nonDetGoal "main") ["Last"]
+benchSearch = map benchFLPSearch searchGoals
 
-main = run 3 testEnc
+main = run 3 benchSearch
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
