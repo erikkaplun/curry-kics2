@@ -42,8 +42,8 @@ mplusDFS = fromList . dfsSearch . searchMPlus
 mplusBFS :: NormalForm a => a -> IO (IOList a)
 mplusBFS = fromList . bfsSearch . searchMPlus
 
-mplusIDS :: NormalForm a => a -> IO (IOList a)
-mplusIDS = fromList . idsSearch . searchMPlus
+mplusIDS :: NormalForm a => Int -> a -> IO (IOList a)
+mplusIDS initDepth = fromList . idsSearch initDepth . searchMPlus
 
 mplusPar :: NormalForm a => a -> IO (IOList a)
 mplusPar = fromList . parSearch . searchMPlus

@@ -262,12 +262,12 @@ mainExpr (New s) (Goal True  _ goal) = searchExpr s
  where
   searchExpr IODFS            = searchComb True  "ioDFS"
   searchExpr (IOBFS    all  ) = searchComb all   "ioBFS"
-  searchExpr (IOIDS    all i) = searchComb all $ "ioIDS " ++ show i
+  searchExpr (IOIDS    all i) = searchComb all $ "(ioIDS " ++ show i ++ ")"
   searchExpr MPLUSDFS         = searchComb True  "mplusDFS"
   searchExpr (MPLUSBFS all  ) = searchComb all   "mplusBFS"
-  searchExpr (MPLUSIDS all i) = searchComb all $ "mplusIDS " ++ show i
+  searchExpr (MPLUSIDS all i) = searchComb all $ "(mplusIDS " ++ show i ++ ")"
   searchExpr MPLUSPar         = searchComb True  "mplusPar"
-  searchComb all search       = "main = " ++ if all then "printAll" else "printOne"
+  searchComb all search       = "main = " ++ (if all then "printAll" else "printOne")
     ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
 mainExpr (Old s) (Goal True  _ goal) = searchExpr s
  where
@@ -546,7 +546,7 @@ benchIDSupply goal = concatMap (\su -> kics2 True True su (Old DFS) goal)
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st prog)
   (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
-   ++ map New [IODFS, IOBFS True, IOIDS True 100, MPLUSDFS, MPLUSBFS True, MPLUSIDS True 100, MPLUSPar])
+   ++ map New [IODFS, IOIDS True 100, MPLUSDFS, MPLUSBFS True, MPLUSIDS True 100, MPLUSPar]) -- , IOBFS True
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concatMap (\st -> kics2 True True S_IORef st prog)
@@ -629,7 +629,7 @@ unif =
 
 testEnc = map (benchFLPSearch . nonDetGoal "main") ["Last"]
 
-main = run 1 testEnc
+main = run 3 testEnc
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
