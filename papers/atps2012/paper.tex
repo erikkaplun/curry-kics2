@@ -3,6 +3,21 @@
 %\IfFileExists{latin1.sty}{\usepackage{latin1}}{\usepackage{isolatin1}}
 
 \usepackage{graphicx}
+\usepackage{url}
+\usepackage{listings}
+\lstset{aboveskip=0.8ex,
+        belowskip=0.8ex,
+        xleftmargin=2ex,
+        showstringspaces=false, % no special string space
+        mathescape=true,
+        flexiblecolumns=false,
+        basewidth=0.52em,
+        basicstyle=\small\ttfamily}
+\lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
+       }
+\lstnewenvironment{curry}{}{}
+\newcommand{\listline}{\vrule width0pt depth1.75ex}
+
 
 \author{
 Michael Hanus
@@ -57,17 +72,61 @@ In Prolog, which is still the standard language for logic programming,
 non-deterministic search is implemented via backtracking,
 which corresponds to a depth-first search traversal
 through the SLD proof tree \cite{Lloyd87}.
+Due to this feature of Prolog,
+logic programming is often considered as unification and backtracking
+as shown by approaches to add logic programming features
+to existing functional languages
+(e.g., \cite{ClaessenLjungloef00,Hinze01}).
+This limited ``backtracking'' view of logic programming
+is also harmful to beginners when newbies
+define their family relationships using a Prolog rule like
+\begin{lstlisting}
+sibling(X,Y) :- sibling(Y,X).
+\end{lstlisting}
+In such cases, one has to explain from the beginning
+the pitfalls of backtracking.
+From a declarative point of view,
+a logic program defines a set of rules
+and a logic programming system tries to find
+a solution to a query w.r.t.\ the set of rules.
+In order to abstract from operational details,
+the search strategy has to be complete.
+Due to these considerations,
+the functional logic language Curry \cite{Hanus06Curry}
+does not fix a particular search strategy
+so that different Curry implementations can support
+different (or also several) search strategies.
+Moreover, Curry implementations also
+support encapsulated search
+where non-deterministic computations are represented
+in a data structure so that different search strategies
+can be implemented as tree traversals
+\cite{BrasselHanusHuch04JFLP,HanusSteiner98PLILP,Lux99FLOPS}.
 
+In this paper, we present our practical results
+with different search strategies implemented
+in a new implementation of Curry, called
+KiCS2 \cite{BrasselHanusPeemoellerReck11}.
+KiCS2 compiles Curry programs into Haskell programs
+where non-deterministic computations are implemented
+as tree structures so that flexible search strategies
+are supported.
+Although the incomplete depth-first search strategy
+is the most efficient one (provided that it is able
+to find a result value),
+we show that complete strategies,
+like breadth-first search or iterative deepening search,
+are a reasonable alternative that does not force
+the programmer to consider the applied search strategy
+in his program.
 
-classical view: LP = lvars, unif + Backtracking
-
--> FP view: add backtracking to obtain LP
-
-beginners: backtracking considered harmful
-
-better: complete strategies
-
-here: complete strategies reasonable, thus, should be the default
+In the next section, we introduce the basics of Curry
+that are necessary to understand the remaining part of the paper.
+Different search strategies and their implementation
+are discussed in Section~\ref{sec:strategies}.
+These strategies are evaluated with a number of benchmarks
+in Section~\ref{sec:benchmarks}
+before we conclude in Section~\ref{sec:conclusions}
 
 \section{Curry}
 
@@ -77,18 +136,23 @@ Mention that search strategy is not fixed
  (discuss top-level vs. encaps. search)
 
 \section{Search Strategies}
+\label{sec:strategies}
 
 Show enacpsulated search, i.e., introduce search tree
 and implementation of search strategies in search trees
 (maybe BFS and IDS in the appendix).
 
 \section{Benchmarks}
+\label{sec:benchmarks}
 
 Compare DFS, BFS, IDS (top-level and encapsulated, all solutions and first sol)
 
 Hopefully, they show what we want...
 
 \section{Conclusions}
+\label{sec:conclusions}
+
+Complete strategies could be the default!
 
 If efficiency important and DFS safe (e.g., finite search space): use DFS
 
