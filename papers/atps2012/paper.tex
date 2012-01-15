@@ -17,7 +17,8 @@
        }
 \lstnewenvironment{curry}{}{}
 \newcommand{\listline}{\vrule width0pt depth1.75ex}
-
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\ccode}[1]{``\code{#1}''}
 
 \author{
 Michael Hanus
@@ -120,7 +121,8 @@ are a reasonable alternative that does not force
 the programmer to consider the applied search strategy
 in his program.
 
-In the next section, we introduce the basics of Curry
+In the next section, we briefly recall some principles
+of functional logic programming and the programming language Curry
 that are necessary to understand the remaining part of the paper.
 Different search strategies and their implementation
 are discussed in Section~\ref{sec:strategies}.
@@ -128,15 +130,168 @@ These strategies are evaluated with a number of benchmarks
 in Section~\ref{sec:benchmarks}
 before we conclude in Section~\ref{sec:conclusions}
 
-\section{Curry}
 
-A short standard intro to Curry.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Functional Logic Programming and Curry}
 
-Mention that search strategy is not fixed
- (discuss top-level vs. encaps. search)
+Integrated functional logic programming languages
+combine features 
+from functional programming (demand-driven evaluation, parametric
+polymorphism, higher-order functions) and logic programming
+(computing with partial information, unification, constraints).
+Recent surveys are available in \cite{AntoyHanus10CACM,Hanus07ICLP}.
+Curry \cite{Hanus06Curry} is a functional logic language
+which extends lazy functional programming as to be found in
+Haskell \cite{PeytonJones03Haskell} and supports these features.
 
+A Curry program consists of the definition of data types and
+operations on these types. 
+Since the syntax of Curry is close to Haskell,
+variables and function names usually
+start with lowercase letters and the names of type and data constructors
+start with an uppercase letter. The application of $f$
+to $e$ is denoted by juxtaposition (``$f~e$'').
+In addition, Curry allows free (logic) 
+variables in conditions and right-hand sides of defining rules.
+Note that in a functional logic language
+operations might yield more than one result on the same input due to 
+the logic programming features.
+For instance, Curry contains a \emph{choice} operation defined by:
+%
+\begin{curry}
+  x ? _ = x
+  _ ? y = y
+\end{curry}
+%
+Thus, the expression \ccode{0$~$?$~$1} has two values: \code{0} and \code{1}.
+If expressions have more than one value, one wants to select
+intended values according to some constraints,
+typically in conditions of program rules.
+A \emph{rule} has the form
+\begin{curry}
+$f~t_1\ldots{}t_n$ | $c$ = $e$
+\end{curry}
+where the (optional) condition $c$ is a \emph{constraint},
+i.e., an expression of the built-in type
+\code{Success}. For instance, the trivial constraint
+\code{success} is a value of type \code{Success} that
+denotes the always satisfiable constraint.
+Thus, we say that a constraint $c$ is \emph{satisfied} if it
+can be evaluated to \code{success}.
+An \emph{equational constraint} $e_1 \,\code{=:=}\, e_2$ is satisfiable
+if both sides $e_1$ and $e_2$ are reducible to unifiable values.
+%Furthermore, if $c_1$ and $c_2$ are constraints,
+%\code{$c_1\,$\&$\,\,c_2$} denotes their concurrent conjunction
+%(i.e., both argument constraints are concurrently evaluated).
+
+As a simple example, consider the following Curry program
+which defines a polymorphic 
+data type for lists and operations to compute the 
+concatenation of lists and the last element of a list:\footnote{Note
+that lists are a built-in data type with a more convenient syntax, 
+e.g., one can write \code{[x,y,z]} instead of \code{x:y:z:[]}
+and \code{[a]} instead of the list type \ccode{List a}.}
+%
+\begin{curry}
+  data List a = [] | a : List a    --[a] denotes "List a"
+
+  -- "++" is a right-associative infix operator
+  (++) :: [a] -> [a] -> [a]
+  []     ++ ys = ys
+  (x:xs) ++ ys = x : (xs ++ ys)
+
+  last :: [a] -> a
+  last xs | (ys ++ [z]) =:= xs
+          = z                    where ys,z free
+\end{curry}
+%
+Logic programming is supported by admitting function calls with free
+variables (e.g., \code{(ys++[z])} in the rule defining \code{last})
+and constraints in the condition of a defining rule. In contrast to
+Prolog, free variables need to be declared explicitly to make their
+scopes clear (e.g., \ccode{where ys,z free} in the example).
+A conditional rule is applicable if its condition  is satisfiable.
+Thus, the rule defining \code{last} states in its condition
+that \code{z} is the last element of a given list
+\code{xs} if there exists a list \code{ys}
+such that the concatenation of \code{ys} and the one-element list
+\code{[z]} is equal to the given list \code{xs}.
+
+Curry also offers standard features of
+functional languages, like modules or monadic I/O
+which is identical to Haskell's I/O concept \cite{Wadler97}.
+Thus, \ccode{IO $\alpha$} denotes the type of an I/O action that returns values
+of type $\alpha$.
+
+The operational semantics of Curry is based on an optimal evaluation strategy
+\cite{AntoyEchahedHanus00JACM} which is a conservative extension
+of lazy functional programming and (concurrent) logic programming.
+A big-step and a small-step operational semantics of Curry
+can be found in \cite{AlbertHanusHuchOliverVidal05}.
+Curry's semantics is sound in the sense of logic programming,
+i.e., each computed result is correct and for each
+correct result there is a more general computed one
+\cite{AntoyEchahedHanus00JACM}.
+In order to achieve completeness,
+one has to take all possible non-deterministic derivation paths
+into account. In contrast to Prolog, which fixes
+a (potentially incomplete) depth-first search strategy to find solutions,
+Curry does not fix a particular search strategy.
+Thus, different Curry implementations
+can support various search strategies.
+For instance, the Curry implementation PAKCS \cite{Hanus10PAKCS},
+which compiles Curry programs into Prolog programs,
+supports only a depth-first search strategy.
+MCC \cite{Lux99FLOPS} compiles Curry programs into C programs
+and uses also a depth-first search strategy to find all
+solutions of a given top-level goal.
+In addition, MCC offers the encapsulation of search
+(see below) so that other search strategies,
+like a complete breadth-first search strategy, can be used
+inside a Curry program.
+The Curry implementation KiCS \cite{BrasselHuch07,BrasselHuch09},
+which compiles Curry programs into Haskell programs,
+offers depth-first and breadth-first search strategies
+for top-level goals as well the encapsulation of search
+with user-definable strategies.
+In this paper we consider the Curry implementation
+KiCS2 \cite{BrasselHanusPeemoellerReck11},
+which is based on similar ideas than KiCS but uses
+a different compilation model avoiding side effects
+to enable better optimizations for target programs.
+KiCS2 also offers different search strategies for top-level goals
+and the encapsulation of search with user-definable strategies,
+which is described next.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Search Strategies}
 \label{sec:strategies}
+
+As mentioned above, Curry does not enforce a particular search
+strategy so that Curry implementation
+can provide different search strategies to find solutions
+or values for a given constraint or expression.
+The most advanced system in this respect is
+KiCS2 \cite{BrasselHanusPeemoellerReck11},
+which supports the evaluation of top-level expressions
+with depth-first search, breadth-first search,
+iterative deepening search, or parallel search strategies.
+This flexibility is possible since all operations with side effects
+are collected in monadic I/O operations \cite{Wadler97}.
+As a consequence of this computation model,
+all non-deterministic computations between I/O operations
+must be encapsulated since one cannot apply two alternative
+I/O operations to some world and proceed with two non-deterministic worlds
+(``one cannot duplicate the world'').
+Therefore, Curry offers the encapsulation of search
+by representing non-deterministic computations
+in a data structure so that the computation of solutions
+(one solution or all solutions) can conceptually be implemented
+as traversals on this data structure.
+
+Early: try \cite{HanusSteiner98PLILP,Lux99FLOPS}
+
+Later: \cite{BrasselHanusHuch04JFLP}
 
 Show enacpsulated search, i.e., introduce search tree
 and implementation of search strategies in search trees
