@@ -530,12 +530,12 @@ sicstusCompile mod = system $ "echo \"compile("++mod++"), save_program('"++mod++
 swiCompile mod = system $ "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
 -- ---------------------------------------------------------------------------
--- The various sets of benchmarks
+-- The various sets of systems
 -- ---------------------------------------------------------------------------
 
--- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
-benchFPpl :: Bool -> Goal -> [Benchmark]
-benchFPpl withMon goal = concatMap ($goal)
+-- Benchmarking functional programs with kics2/pakcs/mcc/ghc/sicstus/swi
+benchFOFP :: Bool -> Goal -> [Benchmark]
+benchFOFP withMon goal = concatMap ($goal)
   [ kics2 True False S_Integer (Old PrDFS) All
   , kics2 True True  S_Integer (Old PrDFS) All
   , pakcs
@@ -560,6 +560,7 @@ benchHOFP withMon goal = concatMap ($goal)
   ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
+benchFLPDFS :: Bool -> Goal -> [Benchmark]
 benchFLPDFS withMon goal = concatMap ($goal)
   [ kics2 True False S_Integer (Old PrDFS) All
   , kics2 True True  S_Integer (Old PrDFS) All
@@ -570,6 +571,7 @@ benchFLPDFS withMon goal = concatMap ($goal)
   ]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
+benchFLPDFSU :: Goal -> [Benchmark]
 benchFLPDFSU goal = concatMap ($goal)
   [ kics2 True True S_PureIO (Old PrDFS) All
   , kics2 True True S_PureIO (Old   DFS) All
@@ -578,19 +580,22 @@ benchFLPDFSU goal = concatMap ($goal)
   ]
 
 -- Benchmarking functional patterns with idc/pakcs
+benchFunPats :: Goal -> [Benchmark]
 benchFunPats goal = concatMap ($goal)
   [ kics2 True True S_PureIO (Old PrDFS) All
-  , kics2 True True S_PureIO (Old DFS) All
+  , kics2 True True S_PureIO (Old DFS)   All
   , pakcs
   ]
 
 -- Benchmarking functional programs with idc/pakcs/mcc
 -- with a given name for the main operation
+benchFPWithMain :: Goal -> [Benchmark]
 benchFPWithMain goal = concatMap ($goal)
   [ kics2 True True S_Integer (Old DFS) All, pakcs, mcc ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
+benchFLPDFSWithMain :: Goal -> [Benchmark]
 benchFLPDFSWithMain goal = concatMap ($goal)
   [ kics2 True False S_Integer (Old PrDFS) All
   , kics2 True True  S_Integer (Old PrDFS) All
@@ -600,58 +605,75 @@ benchFLPDFSWithMain goal = concatMap ($goal)
   ]
 
 -- Benchmarking functional logic programs with different id supply and DFS:
-benchIDSupply goal = concatMap (\su -> kics2 True True su (Old DFS) All goal)
+benchIDSupply :: Goal -> [Benchmark]
+benchIDSupply goal = concatMap
+  (\su -> kics2 True True su (Old DFS) All goal)
   [S_PureIO, S_IORef, S_GHC, S_Integer]
 
 -- Benchmarking functional logic programs with different search strategies
-benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
+benchFLPSearch :: Goal -> [Benchmark]
+benchFLPSearch goal = concatMap
+  (\st -> kics2 True True S_IORef st All goal)
   (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
    ++ map New [IODFS, IOIDS 100 "(+1)", MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(+1)", MPLUSPar]) -- , IOBFS True
 
 -- Benchmarking FL programs that require complete search strategy
-benchFLPCompleteSearch prog = concatMap (\st -> kics2 True True S_IORef st One prog)
+benchFLPCompleteSearch :: Goal -> [Benchmark]
+benchFLPCompleteSearch goal = concatMap
+  (\st -> kics2 True True S_IORef st One goal)
   (map Old [BFS, IDS 100])
 
 -- Benchmarking functional logic programs with different search strategies
 -- for "main" operations and goals for encapsulated search strategies
-benchFLPEncapsSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
+benchFLPEncapsSearch :: Goal -> [Benchmark]
+benchFLPEncapsSearch goal = concatMap (\st -> kics2 True True S_IORef st All goal)
   (map Old [DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS])
 
 -- Benchmarking =:<=, =:= and ==
-benchFLPDFSKiCS2WithMain prog name withPakcs withMcc = concatMap ($ nonDetGoal prog name)
+benchFLPDFSKiCS2WithMain :: Bool -> Bool -> Goal -> [Benchmark]
+benchFLPDFSKiCS2WithMain withPakcs withMcc goal = concatMap ($goal)
   [ kics2 True True S_PureIO (Old PrDFS) All
-  , kics2 True True S_PureIO (Old DFS) All
+  , kics2 True True S_PureIO (Old   DFS) All
   , if withPakcs then pakcs else skip
   , if withMcc   then mcc   else skip
   ]
 
 -- Benchmarking FL programs that require complete search strategy
+benchIDSSearch :: Goal -> [Benchmark]
 benchIDSSearch prog = concatMap (\st -> kics2 True True S_IORef st Count prog)
   (map Old [IDS 100] ++ map New [IOIDS 100 "(+1)", IOIDS2 100 "(+1)"] )
 
+-- ---------------------------------------------------------------------------
 -- goal collections
+-- ---------------------------------------------------------------------------
 
 -- first-order functional programming
+fofpGoals :: [Goal]
 fofpGoals = map (detGoal "main")
   [ "ReverseUser", "Reverse", "Tak", "TakPeano" ]
 
 -- higher-order functional programming
+hofpGoals :: [Goal]
 hofpGoals = map (detGoal "main")
-  [ "ReverseHO", "ReverseBuiltin", "Primes", "PrimesPeano", "PrimesBuiltin", "Queens", "QueensUser" ]
+  [ "ReverseHO", "ReverseBuiltin", "Primes", "PrimesPeano"
+  , "PrimesBuiltin", "Queens", "QueensUser" ]
 
 -- functional programming
+fpGoals :: [Goal]
 fpGoals = fofpGoals ++ hofpGoals
 
+searchGoals :: [Goal]
 searchGoals = map (nonDetGoal "main")
   [ "SearchEmbed" , "SearchGraph" , "SearchHorseman"
   , "SearchMAC"   , "SearchQueens", "SearchSMM"
   ]
   -- "SearchCircuit" : needs CLPR
   -- "SearchLakritz" : needs CLPFD
-  -- "SearchZebra"   : needs CLPFD 
+  -- "SearchZebra"   : needs CLPFD
+
 
 allBenchmarks = concat
-  [ map (benchFPpl   True) fofpGoals
+  [ map (benchFOFP   True) fofpGoals
   , map (benchHOFP   False    . detGoal    "main") [ "ReverseBuiltin"]
   , map (benchHOFP   True     . detGoal    "main") [ "ReverseHO", "Primes", "PrimesPeano", "PrimesBuiltin", "Queens", "QueensUser" ]
   , map (benchFLPDFS True     . nonDetGoal "main") ["PermSort", "PermSortPeano" ]
@@ -672,10 +694,10 @@ unif =
        -- mcc does not support function pattern
 --       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
        -- mcc does not support function pattern
-       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_2L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2S" True True
+       benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_2L"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_last_2S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_last_2Eq"
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
        -- pakcs and mcc suspend on this goal
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
@@ -684,19 +706,19 @@ unif =
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S" True True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq" False False
+     , benchFLPDFSKiCS2WithMain True False  $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L"
+     , benchFLPDFSKiCS2WithMain True True   $ nonDetGoal "UnificationBench" "goal_expVar_S"
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L'" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S'" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L'"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_expVar_S'"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq'" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq'"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L''" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S''" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L''"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_expVar_S''"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq''" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq''"
        -- mcc does not support function pattern
 --     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
