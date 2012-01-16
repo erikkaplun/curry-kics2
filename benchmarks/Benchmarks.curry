@@ -290,16 +290,14 @@ outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/"
 
 data Supply   = S_PureIO | S_IORef | S_GHC | S_Integer
 
-data Strategy = New NewStrategy
-              | Old OldStrategy
-data NewStrategy
-  = IODFS | IOBFS | IOIDS Int String | IOIDS2 Int String
-  | MPLUSDFS | MPLUSBFS | MPLUSIDS Int String | MPLUSPar
+data Strategy
+  = PRDFS -- primitive
+  | IODFS    | IOBFS    | IOIDS Int String    | IOIDS2 Int String -- top-level
+  | MPLUSDFS | MPLUSBFS | MPLUSIDS Int String | MPLUSPar          -- MonadPlus
+  | EncDFS   | EncBFS   | EncIDS                                  -- encapsulated
 
-data OldStrategy = PrDFS | DFS | BFS | IDS Int | EncDFS | EncBFS | EncIDS
-
-data Goal     = Goal Bool String String
-data Output   = All | One | Interactive | Count
+data Goal   = Goal Bool String String -- non-det? / main-expr / module
+data Output = All | One | Interactive | Count
 
 detGoal :: String -> String -> Goal
 detGoal gl mod = Goal False mod gl
@@ -314,9 +312,10 @@ chooseSupply :: Supply -> String
 chooseSupply = map toLower . drop 2 . show
 
 mainExpr :: Strategy -> Output -> Goal -> String
-mainExpr _       _ (Goal False _ goal) = "evalD d_C_" ++ goal
-mainExpr (New s) o (Goal True  _ goal) = searchExpr s
+mainExpr _ _ (Goal False _ goal) = "evalD d_C_" ++ goal
+mainExpr s o (Goal True  _ goal) = searchExpr s
  where
+  searchExpr PRDFS            = "main = prdfs print nd_C_" ++ goal
   searchExpr IODFS            = searchComb "ioDFS"
   searchExpr IOBFS            = searchComb "ioBFS"
   searchExpr (IOIDS    i inc) = searchComb $ "(ioIDS " ++ show i ++ " " ++ inc ++ ")"
@@ -325,25 +324,18 @@ mainExpr (New s) o (Goal True  _ goal) = searchExpr s
   searchExpr MPLUSBFS         = searchComb "mplusBFS"
   searchExpr (MPLUSIDS i inc) = searchComb $ "(mplusIDS " ++ show i ++ " " ++ inc ++ ")"
   searchExpr MPLUSPar         = searchComb "mplusPar"
+  searchExpr EncDFS           = wrapEnc "DFS"
+  searchExpr EncBFS           = wrapEnc "BFS"
+  searchExpr EncIDS           = wrapEnc "IDS"
+  wrapEnc strat      = "import qualified Curry_SearchTree as ST\n"
+    ++ "main = prdfs print (\\i c -> ST.d_C_allValues" ++ strat
+    ++ " (ST.d_C_someSearchTree (nd_C_" ++ goal ++ " i c) c) c)"
   searchComb search  = "main = " ++ comb ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
   comb = case o of
     All         -> "printAll"
     One         -> "printOne"
     Interactive -> "printInteractive"
     Count       -> "countAll"
-mainExpr (Old s) _ (Goal True  _ goal) = searchExpr s
- where
-  ndGoal = "nd_C_" ++ goal
-  searchExpr PrDFS    = "main = prdfs print " ++ ndGoal
-  searchExpr DFS      = "main = printDFS print " ++ ndGoal
-  searchExpr BFS      = "main = printBFS print " ++ ndGoal
-  searchExpr (IDS i)  = "main = printIDS " ++ show i ++ " print " ++ ndGoal
-  searchExpr EncDFS   = wrapEnc "DFS"
-  searchExpr EncBFS   = wrapEnc "BFS"
-  searchExpr EncIDS   = wrapEnc "IDS"
-  wrapEnc strat       = "import qualified Curry_SearchTree as ST\n"
-    ++ "main = prdfs print (\\i c -> ST.d_C_allValues" ++ strat
-    ++ " (ST.d_C_someSearchTree (" ++ ndGoal ++ " i c) c) c)"
 
 kics2 hoOpt ghcOpt supply strategy output gl@(Goal _ mod goal)
   = idcBenchmark tag mod hoOpt ghcOpt (chooseSupply supply) (mainExpr strategy output gl)
@@ -536,8 +528,8 @@ swiCompile mod = system $ "echo \"compile("++mod++"), qsave_program('"++mod++".s
 -- Benchmarking functional programs with kics2/pakcs/mcc/ghc/sicstus/swi
 benchFOFP :: Bool -> Goal -> [Benchmark]
 benchFOFP withMon goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old PrDFS) All
-  , kics2 True True  S_Integer (Old PrDFS) All
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
   , pakcs
   , mcc
   , ghc
@@ -550,8 +542,8 @@ benchFOFP withMon goal = concatMap ($goal)
 -- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
 benchHOFP :: Bool -> Goal -> [Benchmark]
 benchHOFP withMon goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old PrDFS) All
-  , kics2 True True  S_Integer (Old PrDFS) All
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
   , pakcs
   , mcc
   , ghc
@@ -562,9 +554,9 @@ benchHOFP withMon goal = concatMap ($goal)
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 benchFLPDFS :: Bool -> Goal -> [Benchmark]
 benchFLPDFS withMon goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old PrDFS) All
-  , kics2 True True  S_Integer (Old PrDFS) All
-  , kics2 True True  S_PureIO  (Old PrDFS) All
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , kics2 True True  S_PureIO  PRDFS All
   , pakcs
   , mcc
   , if withMon then monc else skip
@@ -573,8 +565,8 @@ benchFLPDFS withMon goal = concatMap ($goal)
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
 benchFLPDFSU :: Goal -> [Benchmark]
 benchFLPDFSU goal = concatMap ($goal)
-  [ kics2 True True S_PureIO (Old PrDFS) All
-  , kics2 True True S_PureIO (Old   DFS) All
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
   , pakcs
   , mcc
   ]
@@ -582,8 +574,8 @@ benchFLPDFSU goal = concatMap ($goal)
 -- Benchmarking functional patterns with idc/pakcs
 benchFunPats :: Goal -> [Benchmark]
 benchFunPats goal = concatMap ($goal)
-  [ kics2 True True S_PureIO (Old PrDFS) All
-  , kics2 True True S_PureIO (Old DFS)   All
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
   , pakcs
   ]
 
@@ -591,15 +583,15 @@ benchFunPats goal = concatMap ($goal)
 -- with a given name for the main operation
 benchFPWithMain :: Goal -> [Benchmark]
 benchFPWithMain goal = concatMap ($goal)
-  [ kics2 True True S_Integer (Old DFS) All, pakcs, mcc ]
+  [ kics2 True True S_Integer IODFS All, pakcs, mcc ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain :: Goal -> [Benchmark]
 benchFLPDFSWithMain goal = concatMap ($goal)
-  [ kics2 True False S_Integer (Old PrDFS) All
-  , kics2 True True  S_Integer (Old PrDFS) All
-  , kics2 True True  S_PureIO  (Old PrDFS) All
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , kics2 True True  S_PureIO  PRDFS All
   , pakcs
   , mcc
   ]
@@ -607,41 +599,45 @@ benchFLPDFSWithMain goal = concatMap ($goal)
 -- Benchmarking functional logic programs with different id supply and DFS:
 benchIDSupply :: Goal -> [Benchmark]
 benchIDSupply goal = concatMap
-  (\su -> kics2 True True su (Old DFS) All goal)
+  (\su -> kics2 True True su IODFS All goal)
   [S_PureIO, S_IORef, S_GHC, S_Integer]
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch :: Goal -> [Benchmark]
 benchFLPSearch goal = concatMap
   (\st -> kics2 True True S_IORef st All goal)
-  (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
-   ++ map New [IODFS, IOIDS 100 "(*2)", MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(*2)", MPLUSPar]) -- , IOBFS True
+  [ PRDFS, IODFS, IOIDS 100 "(*2)" -- , IOBFS True
+  , MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(*2)", MPLUSPar
+  , EncDFS, EncBFS, EncIDS
+  ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch :: Goal -> [Benchmark]
 benchFLPCompleteSearch goal = concatMap
   (\st -> kics2 True True S_IORef st One goal)
-  (map Old [BFS, IDS 100])
+  [IOBFS, IOIDS 100 "(*2)"]
 
 -- Benchmarking functional logic programs with different search strategies
 -- for "main" operations and goals for encapsulated search strategies
 benchFLPEncapsSearch :: Goal -> [Benchmark]
-benchFLPEncapsSearch goal = concatMap (\st -> kics2 True True S_IORef st All goal)
-  (map Old [DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS])
+benchFLPEncapsSearch goal = concatMap
+  (\st -> kics2 True True S_IORef st All goal)
+  [IODFS, IOBFS, IOIDS 100 "(*2)", EncDFS, EncBFS, EncIDS]
 
 -- Benchmarking =:<=, =:= and ==
 benchFLPDFSKiCS2WithMain :: Bool -> Bool -> Goal -> [Benchmark]
 benchFLPDFSKiCS2WithMain withPakcs withMcc goal = concatMap ($goal)
-  [ kics2 True True S_PureIO (Old PrDFS) All
-  , kics2 True True S_PureIO (Old   DFS) All
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
   , if withPakcs then pakcs else skip
   , if withMcc   then mcc   else skip
   ]
 
 -- Benchmarking FL programs that require complete search strategy
 benchIDSSearch :: Goal -> [Benchmark]
-benchIDSSearch prog = concatMap (\st -> kics2 True True S_IORef st Count prog)
-  (map Old [IDS 100] ++ map New [IOIDS 100 "(+1)", IOIDS2 100 "(+1)"] )
+benchIDSSearch prog = concatMap 
+  (\st -> kics2 True True S_IORef st Count prog)
+  [IOIDS 100 "(*2)", IOIDS 100 "(+1)", IOIDS2 100 "(+1)"]
 
 -- ---------------------------------------------------------------------------
 -- goal collections
@@ -656,7 +652,8 @@ fofpGoals = map (detGoal "main")
 hofpGoals :: [Goal]
 hofpGoals = map (detGoal "main")
   [ "ReverseHO", "ReverseBuiltin", "Primes", "PrimesPeano"
-  , "PrimesBuiltin", "Queens", "QueensUser" ]
+  , "PrimesBuiltin", "Queens", "QueensUser"
+  ]
 
 -- functional programming
 fpGoals :: [Goal]
