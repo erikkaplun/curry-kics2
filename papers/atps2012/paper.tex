@@ -450,6 +450,38 @@ Complete strategies are often neglected due to performance reasons.
 Thus, we evaluate and compare in the next section the
 performance behavior of different search strategies in KiCS2.
 
+In principle, the operator to encapsulate search can be
+also used to implement an interactive top-level
+to print all values of an expression as requested by the user.
+For instance, the following operation prints all elements
+of a given list as requested by the user:
+\begin{curry}
+printResults :: [_] -> IO ()
+printResults [] = putStrLn "No more values"
+printResults (x:xs) =
+  do print x
+     putStr "More values? "
+     inp <- getLine
+     if inp=="yes" then printResults xs
+                   else done
+\end{curry}
+Hence, a Prolog-like top-level interactive environment
+to show all values of an expression $exp$ in depth-first order
+can be obtained by
+\begin{curry}
+getSearchTree $exp$ >>= printResults . allValuesDFS
+\end{curry}
+In addition, we can print the results in breadth-first order
+by using \code{allValuesBFS} instead of \code{allValuesDFS}.
+Based these ideas, KiCS2 provides an interactive top-level
+where the user can select various search strategies
+(depth-first, breadth-first, iterative deepening, parallel).
+However, the top-level search in KiCS2 is not implemented
+via the primitive encapsulation operator but in more direct
+monadic style (see also \cite{BrasselHanusPeemoellerReck11})
+in order to avoid the explicit construction
+of the \code{SearchTree} structure.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
