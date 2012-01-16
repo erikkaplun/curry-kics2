@@ -108,12 +108,61 @@ getHostName = runCmd ("uname", ["-n"])
 getSystemInfo :: IO String
 getSystemInfo = runCmd ("uname", ["-a"])
 
+type TimeInfo =
+  { tiCommand       :: String -- Command being timed
+  , tiUserTime      :: Float  -- User time (seconds)
+  , tiSystemTime    :: Float  -- System time (seconds)
+  , tiPercentCPU    :: Int    -- Percent of CPU this job got
+  , tiElapsedTime   :: Float  -- Elapsed (wall clock) time (h:mm:ss or m:ss)
+  , tiSharedMem     :: Int    -- Average shared text size (kbytes)
+  , tiUnsharedMem   :: Int    -- Average unshared data size (kbytes)
+  , tiAvgStack      :: Int    -- Average stack size (kbytes)
+  , tiAvgTotal      :: Int    -- Average total size (kbytes)
+  , tiMaxResident   :: Int    -- Maximum resident set size (kbytes)
+  , tiAvgResident   :: Int    -- Average resident set size (kbytes)
+  , tiMajorFaults   :: Int    -- Major (requiring I/O) page faults
+  , tiMinorFaults   :: Int    -- Minor (reclaiming a frame) page faults
+  , tiVolSwitch     :: Int    -- Voluntary context switches
+  , tiNonvolSwitch  :: Int    -- Involuntary context switches
+  , tiSwaps         :: Int    -- Swaps
+  , tiFSInputs      :: Int    -- File system inputs
+  , tiFSOutputs     :: Int    -- File system outputs
+  , tiSocketMsgSent :: Int    -- Socket messages sent
+  , tiSocketMsgRecv :: Int    -- Socket messages received
+  , tiSignalsDelivd :: Int    -- Signals delivered
+  , tiPageSize      :: Int    -- Page size (bytes)
+  , tiExitStatus    :: Int    -- Exit status
+  }
+
+toInfo :: [String] -> TimeInfo
+toInfo [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17,x18,x19,x20,x21,x22,x23]
+  = { tiCommand       = readQTerm   x1, tiUserTime      = readQTerm x2
+    , tiSystemTime    = readQTerm   x3, tiPercentCPU    = readQTerm $ init x4
+    , tiElapsedTime   = readElapsed x5, tiSharedMem     = readQTerm x6
+    , tiUnsharedMem   = readQTerm   x7, tiAvgStack      = readQTerm x8
+    , tiAvgTotal      = readQTerm   x9, tiMaxResident   = readQTerm x10
+    , tiAvgResident   = readQTerm  x11, tiMajorFaults   = readQTerm x12
+    , tiMinorFaults   = readQTerm  x13, tiVolSwitch     = readQTerm x14
+    , tiNonvolSwitch  = readQTerm  x15, tiSwaps         = readQTerm x16
+    , tiFSInputs      = readQTerm  x17, tiFSOutputs     = readQTerm x18
+    , tiSocketMsgSent = readQTerm  x19, tiSocketMsgRecv = readQTerm x20
+    , tiSignalsDelivd = readQTerm  x21, tiPageSize      = readQTerm x22
+    , tiExitStatus    = readQTerm  x23  }
+  where
+    readElapsed hms = hh *. 3600 +. mm *. 60 +. ss
+      where hh = if noHours then 0.0 else readQTerm p1
+            mm = readQTerm $ if noHours then p1 else p2
+            ss = readQTerm $ if noHours then p2 else (tail r2)
+            noHours = null r2
+            (p1,r1) = break (==':') hms
+            (p2,r2) = break (==':') (tail r1)
+
 --- Time the execution of a command and return
 ---   * the exit code
 ---   * the content written to stdout
 ---   * the content written to stderr
 ---   * the information gathered by the time command
-timeCmd :: Command -> IO (Int, String, String, [(String, String)])
+timeCmd :: Command -> IO (Int, String, String, TimeInfo)
 timeCmd (cmd, args) = do
   -- create timing process and execute it
   (exitCode, outCnts, errCnts) <- evalCmd timeCommand timeArgs []
@@ -121,7 +170,7 @@ timeCmd (cmd, args) = do
   timingInfo <- extractInfo `liftIO` readFile timeFile
   -- remove time file
   sysCmd ("rm", ["-rf", timeFile])
-  return (exitCode, outCnts, errCnts, timingInfo)
+  return (exitCode, outCnts, errCnts, toInfo $ map snd timingInfo)
  where
   timeFile    = ".time"
   timeCommand = "/usr/bin/time"
@@ -135,14 +184,12 @@ timeCmd (cmd, args) = do
     | otherwise        = let (k, v) = splitInfo (d:cs) in (c:k, v)
 
 --- Execute a shell command and return the time of its execution
-benchCmd :: Command -> IO (Bool, Float)
+benchCmd :: Command -> IO (Bool, Float, Int)
 benchCmd cmd = do
-  (exitcode, outcnt, errcnt, timeInfo) <- timeCmd cmd
+  (exitcode, outcnt, errcnt, ti) <- timeCmd cmd
   trace outcnt
   trace errcnt
-  return $ (exitcode == 0, extractTime timeInfo)
- where
-  extractTime = readQTerm . fromJust . lookup "User time (seconds)"
+  return $ (exitcode == 0, ti -> tiUserTime, ti -> tiMaxResident)
 
 -- ---------------------------------------------------------------------------
 -- Operations for running benchmarks.
@@ -159,38 +206,46 @@ type Benchmark =
   }
 
 -- Run a benchmark and return its timings
-runBenchmark :: Int -> Int -> (Int, Benchmark) -> IO (String, [Float])
+runBenchmark :: Int -> Int -> (Int, Benchmark) -> IO (String, [Float], [Int])
 runBenchmark rpts totalNum (currentNum, benchMark) = do
   flushStr $ "Running benchmark [" ++ show currentNum ++ " of "
              ++ show totalNum ++ "]: " ++ (benchMark -> bmName) ++ ": "
   benchMark -> bmPrepare
   infos <- sequenceIO $ replicate rpts $ benchCmd $ benchMark -> bmCommand
   sysCmd $ benchMark -> bmCleanup
-  let (successful, times) = unzip infos
+  let (successful, times, mems) = unzip3 infos
   flushStrLn $ if and successful then "PASSED" else "FAILED"
   trace $ "RUNTIMES: " ++ intercalate " | " (map show times)
-  return (benchMark -> bmName, times)
+  trace $ "MEMUSAGE: " ++ intercalate " | " (map show mems)
+  return (benchMark -> bmName, times, mems)
 
 -- Run a set of benchmarks and return the timings
 runBenchmarks :: Int -> Int -> (Int, [Benchmark]) -> IO String
 runBenchmarks rpts total (start, benchmarks) = do
   results <- mapIO (runBenchmark rpts total) (zip [start ..] benchmarks)
-  let maxnamelength = foldr1 max (map (length . fst) results)
+  let maxnamelength = foldr max 0 (map (length . fst3) results)
   return $ unlines $
     replicate 8 '-' :
-    map (\ (n,ts) -> n ++ take (maxnamelength - length n) (repeat ' ') ++
-                     "|" ++ intercalate "|" (map showFloat ts))
-        (if all (not . null) (map snd results)
+    map (\ (n,ts,ms) -> rpad maxnamelength n
+        ++ "|" ++ intercalate "|" (map showFloat ts)
+        ++ " || " ++ intercalate " | " (map show ms)
+        )
+        (if all (not . null) (map snd3 results)
          then processResults results
          else results)
  where
+  fst3 (x,_,_) = x
+  snd3 (_,x,_) = x
+  rpad n str = str ++ replicate (n - length str) ' '
+  lpad n str = replicate (n - length str) ' ' ++ str
+  showTimeMem (t, m) = lpad 5 (showFloat t) ++ '@' : lpad 10 (show m)
   showFloat x = let (x1,x2) = break (=='.') (show x)
                  in take (3-length x1) (repeat ' ') ++ x1 ++ x2 ++
                     take (3-length x2) (repeat '0') ++ " "
 
   processResults results =
-    let (names,times) = unzip results
-    in  zip names (processTimes times)
+    let (names,times,mems) = unzip3 results
+    in  zip3 names (processTimes times) mems
 
   processTimes timings =
     let means        = map mean timings
@@ -238,8 +293,8 @@ data Supply   = S_PureIO | S_IORef | S_GHC | S_Integer
 data Strategy = New NewStrategy
               | Old OldStrategy
 data NewStrategy
-  = IODFS | IOBFS | IOIDS Int | IOIDS2 Int
-  | MPLUSDFS | MPLUSBFS | MPLUSIDS Int | MPLUSPar
+  = IODFS | IOBFS | IOIDS Int String | IOIDS2 Int String
+  | MPLUSDFS | MPLUSBFS | MPLUSIDS Int String | MPLUSPar
 
 data OldStrategy = PrDFS | DFS | BFS | IDS Int | EncDFS | EncBFS | EncIDS
 
@@ -262,15 +317,15 @@ mainExpr :: Strategy -> Output -> Goal -> String
 mainExpr _       _ (Goal False _ goal) = "evalD d_C_" ++ goal
 mainExpr (New s) o (Goal True  _ goal) = searchExpr s
  where
-  searchExpr IODFS        = searchComb "ioDFS"
-  searchExpr IOBFS        = searchComb "ioBFS"
-  searchExpr (IOIDS    i) = searchComb $ "(ioIDS " ++ show i ++ ")"
-  searchExpr (IOIDS2   i) = searchComb $ "(ioIDS2 " ++ show i ++ ")"
-  searchExpr MPLUSDFS     = searchComb "mplusDFS"
-  searchExpr MPLUSBFS     = searchComb "mplusBFS"
-  searchExpr (MPLUSIDS i) = searchComb $ "(mplusIDS " ++ show i ++ ")"
-  searchExpr MPLUSPar     = searchComb "mplusPar"
-  searchComb search       = "main = " ++ comb ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
+  searchExpr IODFS            = searchComb "ioDFS"
+  searchExpr IOBFS            = searchComb "ioBFS"
+  searchExpr (IOIDS    i inc) = searchComb $ "(ioIDS " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr (IOIDS2   i inc) = searchComb $ "(ioIDS2 " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr MPLUSDFS         = searchComb "mplusDFS"
+  searchExpr MPLUSBFS         = searchComb "mplusBFS"
+  searchExpr (MPLUSIDS i inc) = searchComb $ "(mplusIDS " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr MPLUSPar         = searchComb "mplusPar"
+  searchComb search  = "main = " ++ comb ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
   comb = case o of
     All         -> "printAll"
     One         -> "printOne"
@@ -551,7 +606,7 @@ benchIDSupply goal = concatMap (\su -> kics2 True True su (Old DFS) All goal)
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
   (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
-   ++ map New [IODFS, IOIDS 100, MPLUSDFS, MPLUSBFS, MPLUSIDS 100, MPLUSPar]) -- , IOBFS True
+   ++ map New [IODFS, IOIDS 100 "(+1)", MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(+1)", MPLUSPar]) -- , IOBFS True
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concatMap (\st -> kics2 True True S_IORef st One prog)
@@ -572,7 +627,7 @@ benchFLPDFSKiCS2WithMain prog name withPakcs withMcc = concatMap ($ nonDetGoal p
 
 -- Benchmarking FL programs that require complete search strategy
 benchIDSSearch prog = concatMap (\st -> kics2 True True S_IORef st Count prog)
-  (map Old [IDS 100] ++ map New [IOIDS 100, IOIDS2 100] )
+  (map Old [IDS 100] ++ map New [IOIDS 100 "(+1)", IOIDS2 100 "(+1)"] )
 
 -- goal collections
 
@@ -656,9 +711,9 @@ unif =
 
 benchSearch = map benchFLPSearch searchGoals
 
-benchIDS = map (benchIDSSearch . nonDetGoal "main") ["PermSort", "PermSortPeano"]
+benchIDS = [kics2 True True S_IORef (New (IOIDS2 100 "(+1)")) Count $ nonDetGoal "main" "Last"]
 
-main = run 3 benchIDS
+main = run 2 benchIDS
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
