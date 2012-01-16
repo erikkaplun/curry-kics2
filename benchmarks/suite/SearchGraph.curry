@@ -19,4 +19,4 @@ path = path' [] where
   path' p g a b | a == b          = reverse (a:p)
                 | (a `notElem` p) = path' (a:p) g (g a) b
 
-main = print $ path succ 1 4
+main = path succ 1 4
