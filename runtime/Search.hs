@@ -437,7 +437,7 @@ searchBFS act goal = do
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS :: Int -> Int
-incrDepth4IDFS n = n + 1 -- * 2
+incrDepth4IDFS n = n + 1 -- * 2 
 
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased

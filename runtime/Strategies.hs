@@ -26,7 +26,7 @@ dfsSearch (Choice x y) = dfsSearch x ++ dfsSearch y
 
 -- |Iterative deepening
 idsSearch :: Int -> SearchTree a -> [a]
-idsSearch initDepth = startIDS initDepth (2*)
+idsSearch initDepth = startIDS initDepth  (+ 1) -- (2*)
 
 idsDefaultDepth :: Int
 idsDefaultDepth = 100

@@ -550,8 +550,20 @@ benchIDSupply goal = concatMap (\su -> kics2 True True su (Old DFS) All goal)
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
-  (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
-   ++ map New [IODFS, IOIDS 100, MPLUSDFS, MPLUSBFS, MPLUSIDS 100, MPLUSPar]) -- , IOBFS True
+  (   [] -- map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
+   ++ map New [IODFS, IOIDS 100, IOIDS2 100, MPLUSDFS, MPLUSBFS, MPLUSIDS 100, MPLUSPar]) -- , IOBFS True
+
+-- Benchmarking functional logic programs with different search strategies
+-- extracting only the first result
+benchFLPFirst prog = concatMap (\st -> kics2 True True S_IORef st One prog)
+  (   [] -- map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
+   ++ map New [--IODFS, 
+               IOIDS 10, IOIDS2 10,
+               --MPLUSDFS,
+               --MPLUSBFS, 
+               MPLUSIDS 10
+               --, MPLUSPar
+               ]) -- , IOBFS True
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concatMap (\st -> kics2 True True S_IORef st One prog)
@@ -655,10 +667,9 @@ unif =
      ]
 
 benchSearch = map benchFLPSearch searchGoals
+           ++ map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
 
-benchIDS = map (benchIDSSearch . nonDetGoal "main") ["PermSort", "PermSortPeano"]
-
-main = run 3 benchIDS
+main = run 1 benchSearch
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
