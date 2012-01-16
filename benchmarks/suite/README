@@ -1,74 +1,62 @@
+Benchmark Suite
+===============
+
 This directory contains a collection of benchmark programs
 for the KiCS2 compiler. All benchmarks can be executed
 by the script "showbench" from the parent directory.
 
-Short explanations of the programs:
+First-order functional programming
+----------------------------------
 
-ReverseUser: first-order functional programming
-naive reverse on user-defined lists
+  * ReverseUser: naive reverse on user-defined lists
+  * Reverse: naive reverse on built-in lists
+  * Tak: highly recursive function on natural numbers
+  * TakPeano: like Tak but with user-defined numbers in Peano representation
 
-Reverse: first-order functional programming
-naive reverse on built-in lists
+Higher-order functional programming
+-----------------------------------
 
-Tak: first-order functional programming
-highly recursive function on natural numbers
+  * ReverseHO: linear reverse with higher-order functions
+  * ReverseBuiltin: linear reverse from the Prelude
+  * Primes: compute prime numbers via sieve of Eratosthenes
+  * PrimesPeano: like Primes but with user-defined numbers in Peano representation
+    and user-defined lists
+  * PrimesBuiltin: like Primes but with built-in higher-order functions and lists
+  * Queens: compute number of safe positions of queens
+  * QueensUser: like Queens but with user-defined lists
 
-TakPeano: first-order functional programming
-like Tak but with user-defined numbers in Peano representation
+Non-deterministic programming
+-----------------------------
 
-ReverseHO: higher-order functional programming
-linear reverse with higher-order functions
+  * PermSort: sort a list by enumerating all permutations
+  * PermSortPeano: like PermSort but with Peano numbers
+  * NDNums: Complete search strategies: operation that nondeterministically
+    enumerates all natural numbers
+  * ShareNonDet: Sharing: permutation sort applied to big primes to
+    demonstrate sharing over nondeterminism
 
-ReverseBuiltin: higher-order functional programming
-linear reverse from the Prelude
+Logic variables
+---------------
 
-Primes: higher-order functional programming
-compute prime numbers via sieve of Eratosthenes
+  * Half: compute the half of a number in Peano representation by adding an
+    unknown number to itself
 
-PrimesPeano: higher-order functional programming
-like Primes but with user-defined numbers in Peano representation
-and user-defined lists
+Unification
+-----------
 
-PrimesBuiltin: higher-order functional programming
-like Primes but with built-in higher-order functions and lists
+  * Last: compute the last element of a list by solving a list equation
+  * RegExp: "grep" a pattern in a long string by a nondeterministic specification
+    of pattern matching
 
-Queens: higher-order functional programming
-compute number of safe positions of queens
+Functional patterns
+-------------------
 
-QueensUser: higher-order functional programming
-like Queens but with user-defined lists
+  * LastFunPats: definition of the last function
+  * PaliFunPats: definition of the palindrome property
+  * ExpVarFunPats: computing variables occurring in arithmetic expressions
+  * ExpSimpFunPats: simplifying arithmetic expressions
 
-PermSort: nondeterministic programming
-sort a list by enumerating all permutations
+Set functions
+-------------
 
-PermSortPeano: nondeterministic operations
-like PermSort but with Peano numbers
-
-Half: nondeterministic programming with logic variables
-compute the half of a number in Peano representation by adding an
-unknown number to itself
-
-NDNums: nondeterministic operations with complete search
-operation the nondeterministically enumerates all natural numbers
-
-ShareNonDet: nondeterministic operations
-permutation sort applied to big primes to demonstrate sharing over nondet.
-
-Last: nondeterministic programming with logic variables and unification
-compute the last element of a list by solving a list equation
-
-RegExp: nondeterministic programming with logic variables and unification
-"grep" a pattern in a long string by a nondeterministic specification
-of pattern matching
-
-LastFunPats: programming with functional patterns
-definition of the last function
-
-PaliFunPats: programming with functional patterns
-definition of the palindrome property
-
-ExpVarFunPats: programming with functional patterns
-computing variables occurring in arithmetic expressions
-
-ExpSimpFunPats: programming with functional patterns
-simplifying arithmetic expressions
+to be implemented

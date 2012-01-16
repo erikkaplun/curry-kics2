@@ -18,35 +18,41 @@ import Types
 -- Search combinators for top-level search in the IO monad
 -- ---------------------------------------------------------------------------
 
-printAll :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
-printAll search goal = getNormalForm goal >>= search >>= printAllValues print
+countAll :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+countAll search goal = search goal >>= countValues
 
-printOne :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
-printOne search goal = getNormalForm goal >>= search >>= printOneValue print
+printAll :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printAll search goal = search goal >>= printAllValues print
 
-printInteractive :: NormalForm a => (a -> IO (IOList a)) -> NonDetExpr a -> IO ()
-printInteractive search goal = getNormalForm goal >>= search >>= printOneValue print
+printOne :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printOne search goal = search goal >>= printOneValue print
 
-ioDFS :: NormalForm a => a -> IO (IOList a)
-ioDFS = searchDFS msingleton
+printInteractive :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printInteractive search goal = search goal >>= printOneValue print
 
-ioBFS :: NormalForm a => a -> IO (IOList a)
-ioBFS = searchBFS msingleton
+ioDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+ioDFS goal = getNormalForm goal >>= searchDFS msingleton
 
-ioIDS :: NormalForm a => Int -> a -> IO (IOList a)
-ioIDS initDepth = searchIDS initDepth msingleton
+ioBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+ioBFS goal = getNormalForm goal >>= searchBFS msingleton
 
-mplusDFS :: NormalForm a => a -> IO (IOList a)
-mplusDFS = fromList . dfsSearch . searchMPlus
+ioIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
+ioIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth msingleton
 
-mplusBFS :: NormalForm a => a -> IO (IOList a)
-mplusBFS = fromList . bfsSearch . searchMPlus
+ioIDS2 :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
+ioIDS2 initDepth goal = searchIDS2 initDepth msingleton goal
 
-mplusIDS :: NormalForm a => Int -> a -> IO (IOList a)
-mplusIDS initDepth = fromList . idsSearch initDepth . searchMPlus
+mplusDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMPlus
 
-mplusPar :: NormalForm a => a -> IO (IOList a)
-mplusPar = fromList . parSearch . searchMPlus
+mplusBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+mplusBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMPlus
+
+mplusIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
+mplusIDS initDepth goal = getNormalForm goal >>= fromList . idsSearch initDepth . searchMPlus
+
+mplusPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
+mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMPlus
 
 -- ---------------------------------------------------------------------------
 
@@ -431,7 +437,7 @@ searchBFS act goal = do
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS :: Int -> Int
-incrDepth4IDFS n = n * 2
+incrDepth4IDFS n = n + 1 -- * 2
 
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased
@@ -456,6 +462,12 @@ computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth msing
 searchIDS :: NormalForm a => Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchIDS initDepth cont goal = iter 0 initDepth
   where iter oldDepth newDepth = startIDS oldDepth newDepth cont goal
+                            ++++ iter newDepth (incrDepth4IDFS newDepth)
+
+searchIDS2 :: NormalForm a => Int -> (a -> IO (IOList b)) -> NonDetExpr a -> IO (IOList b)
+searchIDS2 initDepth cont goal = iter 0 initDepth
+  where
+  iter oldDepth newDepth = (getNormalForm goal >>= startIDS oldDepth newDepth cont)
                             ++++ iter newDepth (incrDepth4IDFS newDepth)
 
 -- start iterative deepening for a given depth interval
@@ -510,6 +522,8 @@ startIDS olddepth newdepth act goal = do
       reset <- setUnsetDecision i c
       ids (n - 1) cont y |< reset
 
+
+
 -- ---------------------------------------------------------------------------
 -- Parallel search by mapping search results into monadic structure
 -- ---------------------------------------------------------------------------
@@ -535,7 +549,7 @@ computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMPlus
 -- Encapsulated search
 -- ---------------------------------------------------------------------------
 
- -- |Collect results of a non-deterministic computation in a monadic structure
+-- |Collect results of a non-deterministic computation in a monadic structure
 encapsulatedSearch :: (MonadPlus m, NormalForm a) => a -> ConstStore -> m a
 encapsulatedSearch x store = searchMPlus $ const $!! x $ store
 

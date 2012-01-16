@@ -6,7 +6,7 @@ module MonadList
   ( -- * Monadic list
     MList, mnil, msingleton, mcons, abort, (|<), (+++), (++++), fromList
     -- * list evaluation
-  , IOList, MoreDefault (..), countVals, printOneValue, printAllValues
+  , IOList, MoreDefault (..), countValues, printOneValue, printAllValues
   , printValsOnDemand
   ) where
 
@@ -101,8 +101,8 @@ type IOList a = List IO a
 data MoreDefault = MoreYes | MoreNo | MoreAll deriving Eq
 
 -- |Count and print the number of elements of a IO monad list:
-countVals :: IOList a -> IO ()
-countVals x = putStr "Number of values: " >> count 0 x
+countValues :: IOList a -> IO ()
+countValues x = putStr "Number of values: " >> count 0 x
   where
   count :: Integer -> IOList a -> IO ()
   count i Nil            = print i
