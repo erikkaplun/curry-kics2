@@ -651,9 +651,12 @@ hofpGoals = map (detGoal "main")
 fpGoals = fofpGoals ++ hofpGoals
 
 searchGoals = map (nonDetGoal "main")
-  [ "SearchCircuit", "SearchEmbed"  , "SearchGraph" , "SearchHorseman"
-  , "SearchKanMis" , "SearchLakritz", "SearchQueens", "SearchSMM"
-  , "SearchZebra"]
+  [ "SearchEmbed" , "SearchGraph" , "SearchHorseman"
+  , "SearchMAC"   , "SearchQueens", "SearchSMM"
+  ]
+  -- "SearchCircuit" : needs CLPR
+  -- "SearchLakritz" : needs CLPFD
+  -- "SearchZebra"   : needs CLPFD 
 
 allBenchmarks = concat
   [ map (benchFPpl   True) fofpGoals
