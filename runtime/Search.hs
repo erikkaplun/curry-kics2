@@ -36,11 +36,11 @@ ioDFS goal = getNormalForm goal >>= searchDFS msingleton
 ioBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 ioBFS goal = getNormalForm goal >>= searchBFS msingleton
 
-ioIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
-ioIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth msingleton
+ioIDS :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
+ioIDS initDepth incr goal = getNormalForm goal >>= searchIDS initDepth incr msingleton
 
-ioIDS2 :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
-ioIDS2 initDepth goal = searchIDS2 initDepth msingleton goal
+ioIDS2 :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
+ioIDS2 initDepth incr goal = searchIDS2 initDepth incr msingleton goal
 
 mplusDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMPlus
@@ -48,8 +48,8 @@ mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMPlus
 mplusBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 mplusBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMPlus
 
-mplusIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
-mplusIDS initDepth goal = getNormalForm goal >>= fromList . idsSearch initDepth . searchMPlus
+mplusIDS :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
+mplusIDS initDepth incr goal = getNormalForm goal >>= fromList . idsSearch initDepth incr . searchMPlus
 
 mplusPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
 mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMPlus
@@ -457,18 +457,18 @@ printIDSi ud initdepth prt goal = computeWithIDS initdepth goal >>= printValsOnD
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
 computeWithIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
-computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth msingleton
+computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth incrDepth4IDFS msingleton
 
-searchIDS :: NormalForm a => Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchIDS initDepth cont goal = iter 0 initDepth
+searchIDS :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> a -> IO (IOList b)
+searchIDS initDepth incr cont goal = iter 0 initDepth
   where iter oldDepth newDepth = startIDS oldDepth newDepth cont goal
-                            ++++ iter newDepth (incrDepth4IDFS newDepth)
+                            ++++ iter newDepth (incr newDepth)
 
-searchIDS2 :: NormalForm a => Int -> (a -> IO (IOList b)) -> NonDetExpr a -> IO (IOList b)
-searchIDS2 initDepth cont goal = iter 0 initDepth
+searchIDS2 :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> NonDetExpr a -> IO (IOList b)
+searchIDS2 initDepth incr cont goal = iter 0 initDepth
   where
   iter oldDepth newDepth = (getNormalForm goal >>= startIDS oldDepth newDepth cont)
-                            ++++ iter newDepth (incrDepth4IDFS newDepth)
+                            ++++ iter newDepth (incr newDepth)
 
 -- start iterative deepening for a given depth interval
 startIDS :: NormalForm a => Int -> Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
