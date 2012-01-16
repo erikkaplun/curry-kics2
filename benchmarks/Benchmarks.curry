@@ -606,7 +606,7 @@ benchIDSupply goal = concatMap (\su -> kics2 True True su (Old DFS) All goal)
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
   (   map Old [PrDFS, DFS, BFS, IDS 100, EncDFS, EncBFS, EncIDS]
-   ++ map New [IODFS, IOIDS 100 "(+1)", MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(+1)", MPLUSPar]) -- , IOBFS True
+   ++ map New [IODFS, IOIDS 100 "(*2)", MPLUSDFS, MPLUSBFS, MPLUSIDS 100 "(*2)", MPLUSPar]) -- , IOBFS True
 
 -- Benchmarking FL programs that require complete search strategy
 benchFLPCompleteSearch prog = concatMap (\st -> kics2 True True S_IORef st One prog)
@@ -644,7 +644,7 @@ fpGoals = fofpGoals ++ hofpGoals
 
 searchGoals = map (nonDetGoal "main")
   [ "SearchEmbed" , "SearchGraph" , "SearchHorseman"
-  , "SearchMAC"   , "SearchQueens", "SearchSMM"
+  , "SearchMAC"   , "SearchQueens" -- , "SearchSMM" -- too slow
   ]
   -- "SearchCircuit" : needs CLPR
   -- "SearchLakritz" : needs CLPFD
@@ -714,9 +714,7 @@ unif =
 
 benchSearch = map benchFLPSearch searchGoals
 
-benchIDS = [kics2 True True S_IORef (New (IOIDS2 100 "(+1)")) Count $ nonDetGoal "main" "Last"]
-
-main = run 2 benchIDS
+main = run 2 benchSearch
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
