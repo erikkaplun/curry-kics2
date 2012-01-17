@@ -42,7 +42,7 @@ with the use of different search strategies
 in functional logic programs.
 In particular, we show that complete strategies,
 like breadth-first search or iterative deepening search,
-are a reasonable alternative to incomplete strategies, like depth-first
+are a viable alternative to incomplete strategies, like depth-first
 search, that have been favored in the past for logic programming languages.
 \end{abstract}
 
@@ -137,6 +137,7 @@ before we conclude in Section~\ref{sec:conclusions}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Functional Logic Programming and Curry}
+\label{sec:curry}
 
 Integrated functional logic programming languages
 combine features from functional programming and logic programming.
@@ -510,7 +511,28 @@ allValuesIDS initdepth incrdepth st =
                      in iterIDS newdepth (collectInBounds n newdepth st)
 \end{curry}
 %
-All operators to encapsulate search can also
+Although this definition describes the strategy of
+iterative deepening search, it misses one important motivation.
+An advantage of depth-first search
+in comparison to breadth-first search is its memory behavior:
+whereas breadth-first search has to store all nodes
+in a level of the search tree in parallel, depth-first search
+need only to store the nodes in a branch from the root
+to the current node under investigation.
+Since iterative deepening uses depth-first search in each iteration,
+it should have a memory behavior similarly to depth-first search
+and, in case of wide search trees,
+better than breadth-first search.
+The price for this behavior is the recomputation of the initial
+goal in each iteration. Since we defined iteration deepening
+on a search tree, recomputation is not required. Instead, the
+already evaluated part of the search tree is kept in memory.
+Therefore, we also implemented the iterative deepening strategy
+for top-level goals without an explicit search tree
+but with a recomputation of the initial goal in each iteration
+(see Section~\ref{sec:benchmarks}).
+
+The various operators to encapsulate search can also
 be used to implement an interactive top-level
 to print all values of an expression as requested by the user.
 For instance, the following I/O operation prints all elements
@@ -533,10 +555,11 @@ getSearchTree $exp$ >>= printResults . allValuesDFS
 In addition, we can print the results in breadth-first order
 by using \code{allValuesBFS} instead of \code{allValuesDFS}.
 Based on these ideas, KiCS2 provides an interactive top-level
-where the user can select various search strategies
-(e.g., depth-first, breadth-first, iterative deepening, parallel).
+where the user can select various search strategies,
+e.g., depth-first, breadth-first, iterative deepening, or
+an experimental implementation of parallel search.
 However, the top-level search in KiCS2 is not implemented
-via the primitive encapsulation operator but in
+via the primitive encapsulation operators but in
 a monadic style (see also \cite{BrasselHanusPeemoellerReck11})
 in order to avoid the explicit construction
 of the \code{SearchTree} structure.
@@ -549,18 +572,147 @@ caused by abstracting and programming with search structures.
 \section{Benchmarks}
 \label{sec:benchmarks}
 
-Compare DFS, BFS, IDS (top-level and encapsulated, all solutions and first sol)
+In this section we evaluate the practical bevavior
+of the various search strategies discussed so far.
+Since they are only supported by the Curry implementation KiCS2,
+we use only this system for our evaluation.
+A general comparison of KiCS2 and other Curry implementations
+can be found in \cite{BrasselHanusPeemoellerReck11}.
+Since KiCS2 compiles Curry programs into Haskell programs,
+we used the Glasgow Haskell Compiler
+(GHC 7.0.4, option -O2) to compile and execute
+the generated target programs.
+All benchmarks were executed on a Linux machine
+running Ubuntu ???? with an Intel Core 2 Duo (???GHz) processor.
+The timings were performed with the time command measuring the
+execution time (in seconds) of a compiled executable for each benchmark.
+Due to the lack of precise measurements of the space behavior,
+we measured only the execution times where
+``oom'' denotes a memory overflow in a computation.
 
-Hopefully, they show what we want...
+\begin{figure}[ht]
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
+\hline
+Program &   DFS  & IDS(+1) & IDS(*2) & eDFS & eBFS & eIDS(+1) & eIDS(*2) \\\hline
+PermSort  &     \\
+Last      &     \\
+Half      &     \\
+\hline
+\end{tabular}
+\caption{Benchmarks: computing all values}
+\label{fig:bench-all-solutions}
+\end{figure}
 
+Figure~\ref{fig:bench-all-solutions} shows the benchmark results
+when all values of a given expression are computed.
+All benchmark programs are non-deterministic programs.
+``PermSort'' sorts a list containing 15 elements by enumerating
+all permutations and selecting the sorted ones,
+``Last'' compute the last element \code{x}
+of a list \code{xs} containing 100,000 elements
+by solving the equation \ccode{ys++[x] =:= xs}
+(see Section~\ref{sec:curry}),
+``Half'' computes the half \code{y} of a natural number \code{x}
+(in Peano representation) by solving the equation \code{y+y=:=x},
+``Embed'' searches for an embedding of a message
+which is ``hidden'' in another message
+(see \cite[Sect.~4.1]{Antoy10JSC}),
+\ldots
+
+The columns in Figure~\ref{fig:bench-all-solutions}
+are the various search strategies considered in this paper.
+``DFS'' denotes the top-level depth-first search strategy
+which is similar to \code{allValuesDFS} but implements
+this strategy in a monadic style without the explicit
+construction of a search tree.
+The encapsulated search strategies are prefixed by ``e'',
+i.e., ``eDFS'' and ``eBFS'' correspond to \code{allValuesDFS}
+and \code{allValuesBFS}, respectively.
+``eIDS(+1)'' corresponds to \code{allValuesIDS}
+with an initial depth bound of \code{10} and the depth increment
+operation \code{(+1)}, whereas ``eIDS(*2)'' uses the same initial depth bound
+but the depth increment operation \code{(*2)}, i.e., to depth bound
+is doubled in each iteration.
+Finally, ``IDS(+1)'' and ``IDS(*2)'' are iterative deepening
+strategies with similar parameters but recompute the initial
+expression in each iteration in order to trade space for run time,
+as discussed in Section~\ref{sec:strategies}.
+
+{\sc should we also show relative run times?}
+
+As one can see, depth-first search is the most efficient
+search strategy.
+However, complete search strategies are viable alternatives.
+Their overhead is acceptable taking into account the fact
+that one need not to reason about the details of exploring the
+search space. The behavior of iterative deepening is largely
+influenced by the parameters.
+A constant increment of the depth bound causes a big overhead
+compared to doubling the depth bound in each iteration.
+Breadth-first search seems also a good strategy
+taking into account the size of memory provided by modern computers.
+However, there are extreme cases when the search tree is wide
+where iterative deepening with recomputation is the single
+strategy which is able to compute a result.
+This is shown in Figure~\ref{fig:bench-first-solution}
+that contains benchmarks to compute only a first value
+of an expression.
+
+\begin{figure}[ht]
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
+\hline
+Program &   DFS  & IDS(+1) & IDS(*2) & eDFS & eBFS & eIDS(+1) & eIDS(*2) \\\hline
+PermSort  &     \\
+Last      &     \\
+Half      &     \\
+\hline
+\end{tabular}
+\caption{Benchmarks: computing a single value}
+\label{fig:bench-first-solution}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 \label{sec:conclusions}
 
-Complete strategies could be the default!
+We discussed the use of different search strategies
+in functional logic programs.
+In order to enable user-programmable search strategies,
+modern functional logic languages like Curry
+provide primitives to represent non-deterministic computations
+or values as data structures that can be traversed like
+any term structure.
+The Curry implementation KiCS2, considered in this paper,
+provides a primitive \code{getSearchTree}
+that returns a tree representation of a non-deterministic computation.
+This representation can be used to define various search strategies,
+like depth-first search, breadth-first search, or iterative deepening
+search.
 
-If efficiency important and DFS safe (e.g., finite search space): use DFS
-
-Future work: approximate safeness of DFS
+We have practically evaluated and compared
+the efficiency of these strategies.
+The benchmarks indicated that complete strategies
+are a viable alternative to incomplete strategies,
+that have been favored in the past due to limited memory requirements.
+Thus, it could be reasonable to make
+complete strategies the default in functional logic languages.
+This would have a good impact on teaching declarative programming
+to beginners.
+Moreover, decoupling non-deterministic programs
+from their search strategy could lead to a more declarative
+programming style (instead of the use of predicates with
+side effects as in Prolog) and enable more potential for
+optimization, e.g., parallel search strategies.
+Furthermore, if efficiency and memory limitations are important,
+one can still use an efficient strategy like depth-first search
+provided that it is able to find all solutions
+(e.g., in case of a finite search space).
+It is an interesting topic for future work
+to statically approximate situations where
+the use of incomplete strategies is sufficient.
 
 
 %\bibliography{mh}
