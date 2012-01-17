@@ -19,6 +19,8 @@
 \newcommand{\listline}{\vrule width0pt depth1.75ex}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\ccode}[1]{``\code{#1}''}
+\newcommand{\bs}{\char92} % backslash
+\newcommand{\us}{\char95} % underscore
 
 \author{
 Michael Hanus
@@ -143,6 +145,16 @@ Recent surveys are available in \cite{AntoyHanus10CACM,Hanus07ICLP}.
 Curry \cite{Hanus06Curry} is a functional logic language
 which extends lazy functional programming as to be found in
 Haskell \cite{PeytonJones03Haskell} and supports these features.
+Another functional logic language based on similar principles is
+${\cal TOY}$ \cite{Lopez-FraguasSanchez-Hernandez99}.
+However, ${\cal TOY}$ does not offer flexible search strategies
+by a concept of encapsulating search
+(although it provides a concept of nested computation spaces
+in order to deal with failures in functional logic
+programming \cite{LopezSanchez04,SanchezHernandez06}).
+Therefore, we use Curry throughout this paper, although
+the concepts presented here could be also integrated in
+other functional logic languages.
 
 A Curry program consists of the definition of data types and
 operations on these types. 
@@ -159,11 +171,17 @@ the logic programming features.
 For instance, Curry contains a \emph{choice} operation defined by:
 %
 \begin{curry}
-  x ? _ = x
-  _ ? y = y
+x ? _ = x
+_ ? y = y
 \end{curry}
 %
-Thus, the expression \ccode{0$~$?$~$1} has two values: \code{0} and \code{1}.
+The choice operation can be used to define other non-deterministic operations
+like
+%
+\begin{curry}
+coin = 0 ? 1  
+\end{curry}
+Thus, the expression \ccode{coin} has two values: \code{0} and \code{1}.
 If expressions have more than one value, one wants to select
 intended values according to some constraints,
 typically in conditions of program rules.
@@ -193,16 +211,16 @@ e.g., one can write \code{[x,y,z]} instead of \code{x:y:z:[]}
 and \code{[a]} instead of the list type \ccode{List a}.}
 %
 \begin{curry}
-  data List a = [] | a : List a    --[a] denotes "List a"
+data List a = [] | a : List a    --[a] denotes "List a"
 
-  -- "++" is a right-associative infix operator
-  (++) :: [a] -> [a] -> [a]
-  []     ++ ys = ys
-  (x:xs) ++ ys = x : (xs ++ ys)
+-- "++" is a right-associative infix operator
+(++) :: [a] -> [a] -> [a]
+[]     ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
 
-  last :: [a] -> a
-  last xs | (ys ++ [z]) =:= xs
-          = z                    where ys,z free
+last :: [a] -> a
+last xs | (ys ++ [z]) =:= xs
+        = z                    where ys,z free
 \end{curry}
 %
 Logic programming is supported by admitting function calls with free
@@ -268,7 +286,7 @@ which is described next.
 \label{sec:strategies}
 
 As mentioned above, Curry does not enforce a particular search
-strategy so that Curry implementation
+strategy. A Curry implementation
 can provide different search strategies to find solutions
 or values for a given constraint or expression.
 The most advanced system in this respect is
@@ -276,27 +294,196 @@ KiCS2 \cite{BrasselHanusPeemoellerReck11},
 which supports the evaluation of top-level expressions
 with depth-first search, breadth-first search,
 iterative deepening search, or parallel search strategies.
-This flexibility is possible since all operations with side effects
+Curry supports flexibility since all operations with side effects
 are collected in monadic I/O operations \cite{Wadler97}.
 As a consequence of this computation model,
 all non-deterministic computations between I/O operations
-must be encapsulated since one cannot apply two alternative
-I/O operations to some world and proceed with two non-deterministic worlds
-(``one cannot duplicate the world'').
+must be encapsulated since one can not apply two alternative
+I/O operations to an existing ``world''
+and non-deterministically proceed with two alternative worlds
+(``one can not duplicate the world'').
 Therefore, Curry offers the encapsulation of search
 by representing non-deterministic computations
-in a data structure so that the computation of solutions
+in a data structure so that the computation of different solutions
 (one solution or all solutions) can conceptually be implemented
 as traversals on this data structure.
 
-Early: try \cite{HanusSteiner98PLILP,Lux99FLOPS}
+An early approach to encapsulating search
+\cite{HanusSteiner98PLILP,Lux99FLOPS}
+is based on a primitive search operator
+\begin{curry}
+try :: (a->Success) -> [a->Success]
+\end{curry}
+that takes a constraint abstraction, e.g., \code{(\bs{}x->x\,=:=\,coin)},
+as input, evaluates it until the first non-deterministic step occurs,
+and returns the result: the empty list in case of failure, a list with a single
+element in case of success, or a list with at least two elements representing
+a nondeterministic choice. For instance,
+\code{try\,(\bs{}x->x\,=:=\,coin)} evaluates to
+\code{[\bs{}x->x\,=:=\,0,\,\bs{}x->x\,=:=\,1]}.
+Based on this primitive, one can define various search strategies
+to explore the search space and return its solutions.
+\cite{Lux99FLOPS} shows an implementation of this primitive.
 
-Later: \cite{BrasselHanusHuch04JFLP}
+Although typical search operators of Prolog,
+like \code{findall}, \code{once}, or negation-as-failure,
+can be implemented using the primitive \code{try},
+it became also clear that the combination with demand-driven evaluation
+and sharing causes further complications.
+For instance, in an expression like
+\begin{curry}
+let y=coin in try (\x->x=:=y)
+\end{curry}
+it is not obvious whether the evaluation of \code{coin} (introduced outside
+but demanded inside the search operator) should be encapsulated or not.
+Hence, the result of this expression might depend on the evaluation order.
+For instance,
+if \code{coin} is evaluated before the \code{try} expression,
+it results in two computations where \code{y} is bound to \code{0}
+in one computation and to \code{1} in the other computation.
+Hence, \code{try} does not encapsulate the nondeterminism of \code{coin}
+(this is the semantics of \code{try} implemented in \cite{Lux99FLOPS}).
+However, if \code{coin} is evaluated inside the capsule of \code{try}
+(because it is not demanded before), then the nondeterminism of
+\code{coin} is encapsulated.
+These and more peculiarities are discussed in \cite{BrasselHanusHuch04JFLP}.
+Furthermore, the order of the solutions might depend on the
+textual order of program rules or the evaluation time
+(e.g., in parallel implementations).
+Therefore, \cite{BrasselHanusHuch04JFLP} contains a proposal
+for another primitive search operator:
+\begin{curry}
+getSearchTree :: a -> IO (SearchTree a)
+\end{curry}
+Since \code{getSearchTree} is an I/O action, its result (in particular,
+the order of solutions) depends on the current environment, e.g.,
+time of evaluation.
+It takes an expression and delivers a search tree representing
+the search space when evaluating the input:
+\begin{curry}
+data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
+\end{curry}
+\code{(Value v)} and \code{Fail} represents a single value
+or a failure (i.e., no value), respectively,
+and \code{(Or t1 t2)} represents a choice (i.e., a non-deterministic value)
+between two search trees \code{t1} and \code{t2}.
+To avoid the complications w.r.t.\ shared variables,
+\code{getSearchTree} implements a \emph{strong encapsulation view},
+i.e., conceptually, the argument of \code{getSearchTree}
+is cloned before the evaluation starts in order to cut any sharing
+with the environment.
+Furthermore, the structure of the search tree is computed lazily
+so that an expression with infinitely many values does not cause
+the nontermination of the search operator if one is interested in only
+one solution.
 
-Show enacpsulated search, i.e., introduce search tree
-and implementation of search strategies in search trees
-(maybe BFS and IDS in the appendix).
+This primitive has been implemented for the first time
+in KiCS \cite{BrasselHuch07,BrasselHuch09}
+and it is also provided in KiCS2 \cite{BrasselHanusPeemoellerReck11}
+considered in this paper.
+With this primitive,
+the programmer can define its own search strategy as
+\code{SearchTree} traversals in order to
+collect all non-deterministic values into a list structure.
+For instance, a depth-first search strategy can be easily defined
+as follows:
+\begin{curry}
+allValuesDFS :: SearchTree a -> [a]
+allValuesDFS Fail      = []
+allValuesDFS (Value x) = [x]
+allValuesDFS (Or x y)  = allValuesDFS x ++ allValuesDFS y
+\end{curry}
+Note that the lazy evaluation of traversal operations like
+\code{allValuesDFS} has the advantage that the search strategy
+is decoupled from the control. For instance, a single value
+of a non-deterministic expression $exp$ can be printed by
+\begin{curry}
+getSearchTree $exp$ >>= print . head . allValuesBFS
+\end{curry}
+even if $exp$ has infinitely many values.
+This is in contrast to Prolog's constructs for controlling
+search where different operators are necessary to compute
+one or all solutions.
 
+As a further example, we show an implementation
+of a breadth-first search strategy:
+\begin{curry}
+allValuesBFS :: SearchTree a -> [a]
+allValuesBFS t = collect [t]
+
+collect []     = []
+collect (t:ts) = values (t:ts) ++ collect (children (t:ts))
+
+values []           = []
+values (Fail:ts)    = values ts
+values (Value x:ts) = x : values ts
+values (Or _ _:ts)  = values ts
+
+children []           = []
+children (Fail:ts)    = children ts
+children (Value _:ts) = children ts
+children (Or x y:ts)  = x:y:children ts
+\end{curry}
+The operation \code{values} extracts the values
+in each level of the tree and the operation \code{children}
+extracts all direct ancestors of a level in order to recursively
+collect their values.
+
+It is well known that depth-first search lacks completeness,
+i.e., it is not able to compute all existing values.
+For instance, consider the following operation
+that non-deterministically returns all increasing numbers from a given value:
+\begin{curry}
+f n = f (n+1) ? n
+\end{curry}
+Obviously, \code{0} is a value of \code{(f 0)}, which can be printed
+by the expression
+\begin{curry}
+getSearchTree (f 0) >>= print . head . allValuesBFS
+\end{curry}
+However, if we replace \code{allValuesBFS} by \code{allValuesDFS},
+we run into an infinite loop since \ccode{?} returns
+its values in the given left-to-right order.
+In order to abstract from the details of the evaluation order,
+it would be preferable to use complete search strategies.
+Complete strategies are often neglected due to performance reasons.
+Thus, we evaluate and compare in the next section the
+performance behavior of different search strategies in KiCS2.
+
+In principle, the operator to encapsulate search can be
+also used to implement an interactive top-level
+to print all values of an expression as requested by the user.
+For instance, the following operation prints all elements
+of a given list as requested by the user:
+\begin{curry}
+printResults :: [_] -> IO ()
+printResults [] = putStrLn "No more values"
+printResults (x:xs) =
+  do print x
+     putStr "More values? "
+     inp <- getLine
+     if inp=="yes" then printResults xs
+                   else done
+\end{curry}
+Hence, a Prolog-like top-level interactive environment
+to show all values of an expression $exp$ in depth-first order
+can be obtained by
+\begin{curry}
+getSearchTree $exp$ >>= printResults . allValuesDFS
+\end{curry}
+In addition, we can print the results in breadth-first order
+by using \code{allValuesBFS} instead of \code{allValuesDFS}.
+Based these ideas, KiCS2 provides an interactive top-level
+where the user can select various search strategies
+(depth-first, breadth-first, iterative deepening, parallel).
+However, the top-level search in KiCS2 is not implemented
+via the primitive encapsulation operator but in more direct
+monadic style (see also \cite{BrasselHanusPeemoellerReck11})
+in order to avoid the explicit construction
+of the \code{SearchTree} structure.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Benchmarks}
 \label{sec:benchmarks}
 

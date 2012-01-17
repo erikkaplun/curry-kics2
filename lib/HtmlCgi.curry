@@ -312,11 +312,11 @@ getFormVariables = do
 parseCgiEnv :: String -> [(String,String)]
 parseCgiEnv s | s == ""   = []
               | otherwise = map ufield2field
-                             (map (\(n,v)->(n,urlencoded2string v))
+                             (map (\(n,v)->(n,utf2latin (urlencoded2string v)))
                                   (map (splitChar '=') (split (=='&') s)))
  where
    ufield2field (n,v) = if take 7 n == "UFIELD_"
-                        then (tail n, urlencoded2string v)
+                        then (tail n, utf2latin (urlencoded2string v))
                         else (n,v)
 
    -- split a string at particular character:
@@ -337,6 +337,14 @@ urlencoded2string (c:cs)
   | c == '%'  = chr (maybe 0 fst (readHex (take 2 cs)))
                  : urlencoded2string (drop 2 cs)
   | otherwise = c : urlencoded2string cs
+
+--- Transforms a string with UTF-8 umlauts into a string with latin1 umlauts.
+utf2latin :: String -> String
+utf2latin [] = []
+utf2latin [c] = [c]
+utf2latin (c1:c2:cs)
+ | ord c1 == 195 = chr (ord c2 + 64) : utf2latin cs
+ | otherwise     = c1 : utf2latin (c2:cs)
 
 includeCoordinates :: [(String,String)] -> [(String,String)]
 includeCoordinates [] = []
