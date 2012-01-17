@@ -371,7 +371,7 @@ idcBenchmark tag mod hooptim ghcoptim idsupply mainexp =
   [ { bmName    = mod ++ "@" ++ tag
     , bmPrepare = idcCompile mod hooptim ghcoptim idsupply mainexp
     , bmCommand = ("./Main", [])
-    , bmCleanup = ("rm", ["-f", "Main*", ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
+    , bmCleanup = ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
     }
   ]
 monBenchmark tag mod optim mainexp = if monInstalled && not onlyKiCS2
@@ -465,7 +465,7 @@ idcCompile mod hooptim ghcoptim idsupply mainexp = do
                         , "-DDISABLE_CS" -- disable constraint store
                         --,"-DSTRICT_VAL_BIND" -- strict value bindings
                         , "-XMultiParamTypeClasses","-XFlexibleInstances"
-                        , "-fforce-recomp"
+--                         , "-fforce-recomp"
                         , "-i" ++ intercalate ":" ghcImports
                         , mainFile
                         ]) -- also:  -funbox-strict-fields ?
@@ -603,15 +603,17 @@ benchIDSupply goal = concatMap
   [S_PureIO, S_IORef, S_GHC, S_Integer]
 
 -- Benchmarking functional logic programs with different search strategies
+benchFLPSearch :: Goal -> [Benchmark]
 benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
-  (map New [IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" 
-           , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]) -- , IOBFS True too slow
+  [ PRDFS, IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" -- , IOBFS is too slow
+  , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]
 
 -- Benchmarking functional logic programs with different search strategies
 -- extracting only the first result
+benchFLPFirst :: Goal -> [Benchmark]
 benchFLPFirst prog = concatMap (\st -> kics2 True True S_IORef st One prog)
-  (map New [IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" 
-           , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]) -- , IOBFS True too slow
+  [ PRDFS, IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" -- , IOBFS is too slow
+  , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]
 
 
 -- Benchmarking FL programs that require complete search strategy
@@ -638,7 +640,7 @@ benchFLPDFSKiCS2WithMain withPakcs withMcc goal = concatMap ($goal)
 
 -- Benchmarking FL programs that require complete search strategy
 benchIDSSearch :: Goal -> [Benchmark]
-benchIDSSearch prog = concatMap 
+benchIDSSearch prog = concatMap
   (\st -> kics2 True True S_IORef st Count prog)
   [IOIDS 100 "(*2)", IOIDS 100 "(+1)", IOIDS2 100 "(+1)"]
 
@@ -736,9 +738,6 @@ unif =
 
 benchSearch = map benchFLPSearch searchGoals
            ++ map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
-
-
-benchIDS = [kics2 True True S_IORef (New (IOIDS2 100 "(+1)")) Count $ nonDetGoal "main" "Last"]
 
 main = run 2 benchSearch
 --main = run 1 allBenchmarks
