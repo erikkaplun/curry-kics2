@@ -34,6 +34,7 @@ Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 }
 \title{Search Strategies for Functional Logic Programming}
 \begin{document}
+\pagestyle{plain} % remove it in the camera-ready version
 \maketitle
 
 \begin{abstract}
@@ -606,8 +607,7 @@ running Ubuntu ???? with an Intel Core 2 Duo (???GHz) processor and 4 GiB RAM.
 The timings were performed with the time command measuring the
 execution time (in seconds) of a compiled executable for each benchmark.
 Due to the lack of precise measurements of the space behavior,
-we measured only the execution times where
-``oom'' denotes a memory overflow in a computation.
+we measured only the execution times.
 
 \begin{figure}[ht]
 \centering
@@ -691,7 +691,7 @@ but they are always slower than top-level search)
 is acceptable taking into account the fact
 that one need not to reason about the details of exploring the
 search space. The behavior of iterative deepening is largely
-influenced by the parameters.
+influenced by its parameterization.
 A constant increment of the depth bound causes a big overhead
 compared to doubling the depth bound in each iteration,
 in particular, when the search tree is slim as in ``Last''.
@@ -699,16 +699,7 @@ This is even worse for top-level iterative deepening
 which recomputes the initial expression in each iteration,
 see ``IDS(+1)''.
 
-Breadth-first search seems a good strategy
-taking into account the size of memory provided by modern computers.
-However, there are extreme cases when the search tree is wide
-where iterative deepening with recomputation is the single
-strategy which is able to compute a result.
-This is shown in Figure~\ref{fig:bench-first-solution}
-that contains benchmarks to compute only a first value
-of an expression.
-
-\begin{figure}[ht]
+\begin{figure}[t]
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
 \hline
@@ -727,6 +718,27 @@ NDNums   &   oom  &  47.89 &   0.14 &    oom &   oom  &    oom &   0.47 \\
 \caption{Benchmarks: computing a single value}
 \label{fig:bench-first-solution}
 \end{figure}
+
+The benchmarks indicate that breadth-first search seems to be a good strategy
+taking into account the size of memory provided by modern computers.
+However, if the search tree is wide (i.e., the nodes in each level
+increases with the depth of the tree),
+then iterative deepening is superior to breadth-first search.
+To examine such a case, we added a benchmark ``NDNums''
+which defines a non-deterministic operation
+with a high branching factor that returns all inreasing numbers
+\begin{curry}
+g n = g (n+1) ? n ? g (n+1)
+\end{curry}
+and solve the equation \ccode{g 0 =:= 29}.
+Obviously, the computation of all values will never terminate.
+Therefore, we executed the benchmarks to compute
+only a first value of an expression via different search strategies.
+Figure~\ref{fig:bench-first-solution} contains the
+corresponding results where
+``oom'' denotes a memory overflow in a computation.
+As one can see, iterative deepening is the only search strategy
+that is able to find a solution in all examples.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
