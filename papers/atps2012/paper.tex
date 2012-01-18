@@ -132,7 +132,7 @@ The encapsulation of search and the implementation of different
 search strategies are discussed in Section~\ref{sec:strategies}.
 These strategies are evaluated with a number of benchmarks
 in Section~\ref{sec:benchmarks}
-before we conclude in Section~\ref{sec:conclusions}
+before we conclude in Section~\ref{sec:conclusions}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -517,15 +517,16 @@ An advantage of depth-first search
 in comparison to breadth-first search is its memory behavior:
 whereas breadth-first search has to store all nodes
 in a level of the search tree in parallel, depth-first search
-need only to store the nodes in a branch from the root
+only needs to store the nodes in the branch from the root
 to the current node under investigation.
 Since iterative deepening uses depth-first search in each iteration,
 it should have a memory behavior similarly to depth-first search
 and, in case of wide search trees,
 better than breadth-first search.
 The price for this behavior is the recomputation of the initial
-goal in each iteration. Since we defined iteration deepening
-on a search tree, recomputation is not required. Instead, the
+goal in each iteration. 
+However, since we defined iterative deepening on a search tree,
+recomputation is not required. Instead, the
 already evaluated part of the search tree is kept in memory.
 Therefore, we also implemented the iterative deepening strategy
 for top-level goals without an explicit search tree
@@ -533,10 +534,10 @@ but with a recomputation of the initial goal in each iteration
 (see Section~\ref{sec:benchmarks}).
 
 The various operators to encapsulate search can also
-be used to implement an interactive top-level
+be used to implement an interactive top-level search
 to print all values of an expression as requested by the user.
-For instance, the following I/O operation prints all elements
-of a given list as requested by the user:
+For instance, the following I/O operation interactively 
+prints all elements of a given list:
 \begin{curry}
 printResults :: [a] -> IO ()
 printResults []     = putStrLn "No more values"
@@ -554,7 +555,7 @@ getSearchTree $exp$ >>= printResults . allValuesDFS
 \end{curry}
 In addition, we can print the results in breadth-first order
 by using \code{allValuesBFS} instead of \code{allValuesDFS}.
-Based on these ideas, KiCS2 provides an interactive top-level
+Based on these ideas, KiCS2 provides an interactive top-level search
 where the user can select various search strategies,
 e.g., depth-first, breadth-first, iterative deepening, or
 an experimental implementation of parallel search.
@@ -563,8 +564,8 @@ via the primitive encapsulation operators but in
 a monadic style (see also \cite{BrasselHanusPeemoellerReck11})
 in order to avoid the explicit construction
 of the \code{SearchTree} structure.
-Thus, we compare in the next section also top-level search
-with encapsulated search in order to evaluate the potential overhead
+Thus, in the next section we also compare the top-level search
+with the encapsulated search in order to evaluate the potential overhead
 caused by abstracting and programming with search structures.
 
 
@@ -572,7 +573,7 @@ caused by abstracting and programming with search structures.
 \section{Benchmarks}
 \label{sec:benchmarks}
 
-In this section we evaluate the practical bevavior
+In this section we evaluate the practical behavior
 of the various search strategies discussed so far.
 Since they are only supported by the Curry implementation KiCS2,
 we use only this system for our evaluation.
@@ -582,8 +583,8 @@ Since KiCS2 compiles Curry programs into Haskell programs,
 we used the Glasgow Haskell Compiler
 (GHC 7.0.4, option -O2) to compile and execute
 the generated target programs.
-All benchmarks were executed on a Linux machine
-running Ubuntu ???? with an Intel Core 2 Duo (???GHz) processor.
+All benchmarks were executed on a 32bit Linux machine
+running Ubuntu ???? with an Intel Core 2 Duo (???GHz) processor and 4 GiB RAM.
 The timings were performed with the time command measuring the
 execution time (in seconds) of a compiled executable for each benchmark.
 Due to the lack of precise measurements of the space behavior,
@@ -609,7 +610,7 @@ when all values of a given expression are computed.
 All benchmark programs are non-deterministic programs.
 ``PermSort'' sorts a list containing 15 elements by enumerating
 all permutations and selecting the sorted ones,
-``Last'' compute the last element \code{x}
+``Last'' computes the last element \code{x}
 of a list \code{xs} containing 100,000 elements
 by solving the equation \ccode{ys++[x] =:= xs}
 (see Section~\ref{sec:curry}),
