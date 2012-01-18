@@ -22,6 +22,8 @@ import Float
 -- Flags
 -- ---------------------------------------------------------------------------
 
+benchTimeout = 10 * 60 -- in seconds
+
 -- Show benchmarks commands, like compiler calls, runtime calls,...?
 doTrace = False
 
@@ -73,6 +75,12 @@ flushStrLn s = putStrLn s >> hFlush stdout
 
 trace :: String -> IO ()
 trace s = when doTrace $ flushStrLn s
+
+lpad :: Int -> String -> String
+lpad n s = replicate (n - length s) ' ' ++ s
+
+rpad :: Int -> String -> String
+rpad n str = str ++ replicate (n - length str) ' '
 
 -- ---------------------------------------------------------------------------
 -- Commands
@@ -183,13 +191,16 @@ timeCmd (cmd, args) = do
     | take 2 s == ": " = ([], cs)
     | otherwise        = let (k, v) = splitInfo (d:cs) in (c:k, v)
 
+timeout :: Int -> Command -> Command
+timeout maxRuntime (bin, args) = ("/usr/bin/timeout", show maxRuntime : bin : args)
+
 --- Execute a shell command and return the time of its execution
-benchCmd :: Command -> IO (Bool, Float, Int)
+benchCmd :: Command -> IO (Int, Float, Int)
 benchCmd cmd = do
   (exitcode, outcnt, errcnt, ti) <- timeCmd cmd
   trace outcnt
   trace errcnt
-  return $ (exitcode == 0, ti -> tiUserTime, ti -> tiMaxResident)
+  return $ (exitcode, ti -> tiUserTime, ti -> tiMaxResident)
 
 -- ---------------------------------------------------------------------------
 -- Operations for running benchmarks.
@@ -205,76 +216,79 @@ type Benchmark =
   , bmCleanup :: Command
   }
 
+type BenchResult = (String, [Float], [Int])
+
 -- Run a benchmark and return its timings
-runBenchmark :: Int -> Int -> (Int, Benchmark) -> IO (String, [Float], [Int])
+runBenchmark :: Int -> Int -> (Int, Benchmark) -> IO BenchResult
 runBenchmark rpts totalNum (currentNum, benchMark) = do
-  flushStr $ "Running benchmark [" ++ show currentNum ++ " of "
-             ++ show totalNum ++ "]: " ++ (benchMark -> bmName) ++ ": "
+  let totalStr = show totalNum
+      curntStr = show currentNum
+  flushStr $ "Running benchmark [" ++ lpad (length totalStr) curntStr ++ " of "
+             ++ totalStr ++ "]: " ++ (benchMark -> bmName) ++ ": "
   benchMark -> bmPrepare
-  infos <- sequenceIO $ replicate rpts $ benchCmd $ benchMark -> bmCommand
+  infos <- sequenceIO $ replicate rpts $ benchCmd
+                      $ timeout benchTimeout $ benchMark -> bmCommand
   sysCmd $ benchMark -> bmCleanup
-  let (successful, times, mems) = unzip3 infos
-  flushStrLn $ if and successful then "PASSED" else "FAILED"
+  let (codes, times, mems) = unzip3 infos
+  flushStrLn $ if all (==0) codes then "PASSED" else "FAILED"
   trace $ "RUNTIMES: " ++ intercalate " | " (map show times)
   trace $ "MEMUSAGE: " ++ intercalate " | " (map show mems)
   return (benchMark -> bmName, times, mems)
+
+showResult :: Int -> BenchResult -> String
+showResult maxName (n, ts, ms) = rpad maxName n
+  ++ " | "  ++ intercalate " | " (map (lpad 7 . showTime) ts)
+  ++ " || " ++ intercalate " | " (map (lpad 8 . show) ms)
+  where
+    showTime x = let (x1,x2) = break (=='.') (show x)
+                 in  x1 ++ x2 ++ take (3-length x2) (repeat '0')
+
+processTimes :: [[Float]] -> [[Float]]
+processTimes timings =
+  let means        = map mean timings
+      roundedmeans = map truncateFloat means
+      minNonZero   = max 0.0001 $ foldr1 min means
+      normalized   = map (truncateFloat . (/.minNonZero)) means
+  in  zipWith (:) normalized (if length (head timings) == 1
+                              then timings
+                              else zipWith (:) roundedmeans timings)
+  where
+  mean :: [Float] -> Float
+  mean []       = 0.0
+  mean xs@(_:_) = (foldr1 (+.) xs) /. (i2f (length xs))
+
+  truncateFloat x = i2f (round (x*.100)) /. 100
 
 -- Run a set of benchmarks and return the timings
 runBenchmarks :: Int -> Int -> (Int, [Benchmark]) -> IO String
 runBenchmarks rpts total (start, benchmarks) = do
   results <- mapIO (runBenchmark rpts total) (zip [start ..] benchmarks)
-  let maxnamelength = foldr max 0 (map (length . fst3) results)
-  return $ unlines $
-    replicate 8 '-' :
-    map (\ (n,ts,ms) -> rpad maxnamelength n
-        ++ "|" ++ intercalate "|" (map showFloat ts)
-        ++ " || " ++ intercalate " | " (map show ms)
-        )
-        (if all (not . null) (map snd3 results)
-         then processResults results
-         else results)
+  let (names, times, memus) = unzip3 results
+      maxName = foldr max 0 $ map length names
+      times' = processTimes times
+  return $ unlines $ map (showResult maxName) (zip3 names times' memus)
+
+runAllBenchmarks :: Int -> [[Benchmark]] -> IO String
+runAllBenchmarks rpts benchmarks = do
+  results <- mapIO (runBenchmarks rpts total) (zip startnums benchmarks)
+  return $ intercalate "--------\n" results
  where
-  fst3 (x,_,_) = x
-  snd3 (_,x,_) = x
-  rpad n str = str ++ replicate (n - length str) ' '
-  lpad n str = replicate (n - length str) ' ' ++ str
-  showTimeMem (t, m) = lpad 5 (showFloat t) ++ '@' : lpad 10 (show m)
-  showFloat x = let (x1,x2) = break (=='.') (show x)
-                 in take (3-length x1) (repeat ' ') ++ x1 ++ x2 ++
-                    take (3-length x2) (repeat '0') ++ " "
+  total    = length (concat benchmarks)
+  startnums = scanl (+) 1 $ map length benchmarks
 
-  processResults results =
-    let (names,times,mems) = unzip3 results
-    in  zip3 names (processTimes times) mems
 
-  processTimes timings =
-    let means        = map mean timings
-        roundedmeans = map truncateFloat means
-        mintime      = foldr1 min means
-        minNonZero   = if mintime == 0.0 then 0.0001 else mintime
-        normalized   = map (truncateFloat . (/.minNonZero)) means
-    in  zipWith (:) normalized (if length (head timings) == 1
-                                then timings
-                                else zipWith (:) roundedmeans timings)
-   where
-    mean :: [Float] -> Float
-    mean xs = (foldr1 (+.) xs) /. (i2f (length xs))
-
-    truncateFloat x = i2f (round (x*.100)) /. 100
 
 -- Run all benchmarks and show results
 run :: Int -> [[Benchmark]] -> IO ()
 run rpts benchmarks = do
-  args <- getArgs
-  let total = length (concat benchmarks)
-      startnums = scanl (+) 1 $ map length benchmarks
-  results <- mapIO (runBenchmarks rpts total) (zip startnums benchmarks)
-  ltime <- getLocalTime
-  info  <- getSystemInfo
-  mach  <- getHostName
+  args    <- getArgs
+  results <- runAllBenchmarks rpts benchmarks
+  ltime   <- getLocalTime
+  info    <- getSystemInfo
+  mach    <- getHostName
   let res = "Benchmarks on system " ++ info ++ "\n" ++
-            "Format of timings: normalized|mean|runtimes...\n\n" ++
-            concat results
+            "Format of timings: normalized | mean | runtimes ... || memory used ...\n\n" ++
+            results
   putStrLn res
   unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
 
@@ -304,6 +318,13 @@ detGoal gl mod = Goal False mod gl
 
 nonDetGoal :: String -> String -> Goal
 nonDetGoal gl mod = Goal True mod gl
+
+showStrategy :: Strategy -> String
+showStrategy s = case s of
+  IOIDS    i inc -> "IOIDS_"    ++ show i ++ '_' : inc
+  IOIDS2   i inc -> "IOIDS2_"   ++ show i ++ '_' : inc
+  MPLUSIDS i inc -> "MPLUSIDS_" ++ show i ++ '_' : inc
+  _              ->  show s
 
 showSupply :: Supply -> String
 showSupply = map toUpper . drop 2 . show
@@ -338,87 +359,81 @@ mainExpr s o (Goal True  _ goal) = searchExpr s
     Count       -> "countAll"
 
 kics2 hoOpt ghcOpt supply strategy output gl@(Goal _ mod goal)
-  = idcBenchmark tag mod hoOpt ghcOpt (chooseSupply supply) (mainExpr strategy output gl)
- where tag = concat [ "IDC"
+  = idcBenchmark tag hoOpt ghcOpt (chooseSupply supply) mod goal (mainExpr strategy output gl)
+ where tag = concat [ "KICS2"
                     , if ghcOpt then "+"  else ""
                     , if hoOpt  then "_D" else ""
-                    , '_' : show strategy
-                    , '_' : showSupply supply
-                    , if goal == "main" then "" else ':':goal
+                    , '_' : showStrategy strategy
+                    , '_' : showSupply   supply
                     ]
 
-monc (Goal _ mod goal) = monBenchmark "MON+" mod True goal
+monc    (Goal _     mod goal) = monBenchmark True mod goal
+pakcs   (Goal _     mod goal) = pakcsBenchmark    mod goal
+mcc     (Goal _     mod goal) = mccBenchmark      mod goal
+ghc     (Goal False mod _   ) = ghcBenchmark      mod
+ghc     (Goal True  _   _   ) = []
+ghcO    (Goal False mod _   ) = ghcOBenchmark     mod
+ghcO    (Goal True  _   _   ) = []
+sicstus (Goal _     mod _   ) = sicsBenchmark     mod
+swipl   (Goal _     mod _   ) = swiBenchmark      mod
+skip    _                     = []
 
-pakcs (Goal _ mod goal)
-  | goal == "main" = pakcsBenchmark "" mod
-  | otherwise      = pakcsBenchmark ("-m \"print " ++ goal ++ "\"") mod
+mkTag mod goal comp
+  | goal == "main" = mod ++ '@' : comp
+  | otherwise      = mod ++ ':' : goal ++ '@' : comp
 
-mcc (Goal _ mod goal)
-  | goal == "main" = mccBenchmark "" mod
-  | otherwise      = mccBenchmark  ("-e\"" ++ goal ++ "\"") mod
-
-ghc  (Goal False mod _) = ghcBenchmark mod
-ghc  (Goal True  _   _) = []
-ghcO (Goal False mod _) = ghcOBenchmark mod
-ghcO (Goal True  _   _) = []
-
-sicstus (Goal _ mod _) = sicsBenchmark mod
-swipl   (Goal _ mod _) = swiBenchmark mod
-
-skip _ = []
-
-idcBenchmark tag mod hooptim ghcoptim idsupply mainexp =
-  [ { bmName    = mod ++ "@" ++ tag
+idcBenchmark tag hooptim ghcoptim idsupply mod goal mainexp =
+  [ { bmName    = mkTag mod goal tag
     , bmPrepare = idcCompile mod hooptim ghcoptim idsupply mainexp
     , bmCommand = ("./Main", [])
     , bmCleanup = ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
     }
   ]
-monBenchmark tag mod optim mainexp = if monInstalled && not onlyKiCS2
-  then [ { bmName    = mod ++ "@" ++ tag
+monBenchmark optim mod mainexp = if monInstalled && not onlyKiCS2
+  then [ { bmName    = mkTag mod "main" "MON+"
          , bmPrepare = monCompile mod optim mainexp
          , bmCommand = ("./Main", [])
          , bmCleanup = ("rm", ["-f", "Main*", "Curry_*"])
          }
        ]
   else []
-pakcsBenchmark options mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@PAKCS "
-    , bmPrepare = pakcsCompile options mod
+pakcsBenchmark mod goal = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod goal "PAKCS"
+    , bmPrepare = pakcsCompile (if goal == "main" then "" else "-m \"print " ++ goal ++ "\"") mod
     , bmCommand = ("./" ++ mod ++ ".state", [])
     , bmCleanup = ("rm", ["-f", mod ++ ".state"])
     }
   ]
-mccBenchmark options mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@MCC   "
-    , bmPrepare = mccCompile options mod
+mccBenchmark mod goal = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "MCC"
+    , bmPrepare = mccCompile (if goal == "main" then "" else "-e\"" ++ goal ++ "\"") mod
     , bmCommand = ("./a.out +RTS -h512m -RTS", [])
     , bmCleanup = ("rm", ["-f", "a.out", mod ++ ".icurry"])
     }
   ]
 ghcBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@GHC   "
+  [ { bmName    = mkTag mod "main" "GHC"
     , bmPrepare = ghcCompile mod
     , bmCommand = ("./" ++ mod, [])
     , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
     }
   ]
 ghcOBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@GHC+  "
+  [ { bmName    = mkTag mod "main" "GHC+"
     , bmPrepare = ghcCompileO mod
     , bmCommand = ("./" ++ mod, [])
     , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
     }
   ]
 sicsBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@SICS  "
+  [ { bmName    = mkTag mod "main" "SICSTUS"
     , bmPrepare = sicstusCompile src
     , bmCommand = ("./" ++ src ++ ".state", [])
     , bmCleanup = ("rm", ["-f", src ++ ".state"])
     }
   ] where src = map toLower mod
 swiBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    = mod ++ "@SWI   "
+  [ { bmName    = mkTag mod "main" "SWI"
     , bmPrepare = swiCompile src
     , bmCommand = ("./" ++ src ++ ".state", [])
     , bmCleanup = ("rm", ["-f", src ++ ".state"])
@@ -525,7 +540,7 @@ swiCompile mod = system $ "echo \"compile("++mod++"), qsave_program('"++mod++".s
 -- The various sets of systems
 -- ---------------------------------------------------------------------------
 
--- Benchmarking functional programs with kics2/pakcs/mcc/ghc/sicstus/swi
+-- Benchmark first-order functional programs with kics2/pakcs/mcc/ghc/sicstus/swi
 benchFOFP :: Bool -> Goal -> [Benchmark]
 benchFOFP withMon goal = concatMap ($goal)
   [ kics2 True False S_Integer PRDFS All
@@ -539,7 +554,7 @@ benchFOFP withMon goal = concatMap ($goal)
   , if withMon then monc else skip
   ]
 
--- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
+-- Benchmark higher-order functional programs with kics2/pakcs/mcc/ghc/ghc+
 benchHOFP :: Bool -> Goal -> [Benchmark]
 benchHOFP withMon goal = concatMap ($goal)
   [ kics2 True False S_Integer PRDFS All
@@ -596,11 +611,13 @@ benchFLPDFSWithMain goal = concatMap ($goal)
   , mcc
   ]
 
--- Benchmarking functional logic programs with different id supply and DFS:
-benchIDSupply :: Goal -> [Benchmark]
-benchIDSupply goal = concatMap
-  (\su -> kics2 True True su IODFS All goal)
-  [S_PureIO, S_IORef, S_GHC, S_Integer]
+-- Benchmark different ID-Supplies with different DFS implementations
+benchIDSupplies :: Goal -> [Benchmark]
+benchIDSupplies goal = concat
+  [ kics2 True True su st All goal | st <- strats, su <- suppls ]
+  where
+    strats = [PRDFS, IODFS, MPLUSDFS]
+    suppls = [S_PureIO, S_IORef, S_GHC, S_Integer]
 
 -- Benchmarking functional logic programs with different search strategies
 benchFLPSearch :: Goal -> [Benchmark]
@@ -687,7 +704,7 @@ allBenchmarks = concat
   , [benchFLPDFSWithMain      $ nonDetGoal "goal2" "ShareNonDet"]
   , [benchFLPDFSWithMain      $ nonDetGoal "goal3" "ShareNonDet"]
   , map (benchFLPDFSU         . nonDetGoal "main") ["Last", "RegExp"]
-  , map (benchIDSupply        . nonDetGoal "main") ["PermSort", "Half", "Last", "RegExp"]
+  , map (benchIDSupplies      . nonDetGoal "main") ["PermSort", "Half", "Last", "RegExp"]
   , map (benchFunPats         . nonDetGoal "main") ["LastFunPats", "ExpVarFunPats", "ExpSimpFunPats", "PaliFunPats"]
   , map (benchFLPEncapsSearch . nonDetGoal "main") ["Half", "Last", "PermSort"]
   ]
@@ -741,6 +758,7 @@ benchSearch = map benchFLPSearch searchGoals
            ++ map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
 
 main = run 2 benchSearch
+-- main = run 2 benchSearch
 --main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
