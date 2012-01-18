@@ -22,7 +22,7 @@ import Float
 -- Flags
 -- ---------------------------------------------------------------------------
 
-benchTimeout = 10 * 60 -- in seconds
+benchTimeout = 1000 -- in seconds
 
 -- Show benchmarks commands, like compiler calls, runtime calls,...?
 doTrace = False
@@ -681,11 +681,13 @@ hofpGoals = map (detGoal "main")
 fpGoals :: [Goal]
 fpGoals = fofpGoals ++ hofpGoals
 
-searchGoals :: [Goal]
+searchGoals:: [Goal]
 searchGoals = map (nonDetGoal "main")
-  [ "SearchEmbed" , "SearchGraph" , "SearchHorseman"
+  [ -- "SearchEmbed"
+    "SearchGraph" , "SearchHorseman"
   , "SearchMAC"   , "SearchQueens" -- , "SearchSMM" -- too slow
-  , "PermSort"    , "Last"        , "Half"
+  , "PermSort"    
+  ,"Last" , "Half"
   ]
   -- "SearchCircuit" : needs CLPR
   -- "SearchLakritz" : needs CLPFD
@@ -754,8 +756,8 @@ unif =
 --     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
      ]
 
-benchSearch = map benchFLPSearch searchGoals
-           ++ map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
+benchSearch = -- map benchFLPSearch searchGoals
+              map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
 
 main = run 2 benchSearch
 -- main = run 2 benchSearch
