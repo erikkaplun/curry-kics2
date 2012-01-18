@@ -11,7 +11,7 @@
         showstringspaces=false, % no special string space
         mathescape=true,
         flexiblecolumns=false,
-        basewidth=0.52em,
+        basewidth=0.6em,
         basicstyle=\small\ttfamily}
 \lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
        }
@@ -276,7 +276,7 @@ inside a Curry program.
 The Curry implementation KiCS \cite{BrasselHuch07,BrasselHuch09},
 which compiles Curry programs into Haskell programs,
 offers depth-first and breadth-first search strategies
-for top-level goals as well the encapsulation of search
+for top-level goals as well as the encapsulation of search
 with user-definable strategies.
 In this paper we consider the Curry implementation
 KiCS2 \cite{BrasselHanusPeemoellerReck11},
@@ -368,7 +368,9 @@ getSearchTree :: a -> IO (SearchTree a)
 It takes an expression and delivers a search tree representing
 the search space when evaluating the input:
 \begin{curry}
-data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
+data SearchTree a = Value a
+                  | Fail
+                  | Or (SearchTree a) (SearchTree a)
 \end{curry}
 \code{(Value v)} and \code{Fail} represents a single value
 or a failure (i.e., no value), respectively,
@@ -409,7 +411,8 @@ is decoupled from the control. For instance, we can define
 the following operation to print a single value
 of a non-deterministic expression:
 \begin{curry}
-printFirstValueDFS x = getSearchTree x >>= print . head . allValuesDFS
+printFirstValueDFS x =
+  getSearchTree x >>= print . head . allValuesDFS
 \end{curry}
 Thus, \code{(printFirstValueDFS $exp$)} can print some value
 even if the non-deterministic expression $exp$ has infinitely many values.
@@ -505,11 +508,13 @@ collectInBounds :: Int -> Int -> SearchTree a -> AbortList a
 collectInBounds oldbound newbound st = collectLevel newbound st
  where
   collectLevel _ Fail      = Nil
-  collectLevel d (Value x) = if d<=newbound-oldbound then Cons x Nil
-                                                     else Nil
+  collectLevel d (Value x) = if d <= newbound - oldbound
+                             then Cons x Nil
+                             else Nil
   collectLevel d (Or x y)  =
-    if d>0 then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
-           else Abort
+    if d>0
+    then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
+    else Abort
 \end{curry}
 %
 Now, the entire search strategy consists of
@@ -525,8 +530,9 @@ allValuesIDS initdepth incrdepth st =
  where
   iterIDS _ Nil = []
   iterIDS n (Cons x xs) = x : iterIDS n xs
-  iterIDS n Abort = let newdepth = incrdepth n
-                     in iterIDS newdepth (collectInBounds n newdepth st)
+  iterIDS n Abort =
+    let newdepth = incrdepth n
+     in iterIDS newdepth (collectInBounds n newdepth st)
 \end{curry}
 %
 The key advantage of depth-first search

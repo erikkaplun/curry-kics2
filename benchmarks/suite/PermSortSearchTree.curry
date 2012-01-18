@@ -17,11 +17,11 @@ sortmain n = psort (2:[n,n-1 .. 3]++[1])
 
 --main = sortmain 15
 
-goal n = searchTree (sortmain n) >>= return . allValuesDFS
+goal n = getSearchTree (sortmain n) >>= return . allValuesDFS
 
 --main = goal 15
 
 -- print search tree for perm or permsort:
-prpermst n = searchTree (perm [1..n]) >>= putStrLn . showSearchTree 
-prsortst n = searchTree (psort [n,n-1 .. 1]) >>= putStrLn  . showSearchTree
+prpermst n = getSearchTree (perm [1..n]) >>= putStrLn . showSearchTree 
+prsortst n = getSearchTree (psort [n,n-1 .. 1]) >>= putStrLn  . showSearchTree
 
