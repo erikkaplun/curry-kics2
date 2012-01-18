@@ -427,6 +427,7 @@ explores the non-determinism of \ccode{?} in left-to-right order).
 This problem can be avoided with complete search strategies,
 like breadth-first search strategy,
 which can be defined on \code{SearchTree} structures as follows:
+%
 \begin{curry}
 allValuesBFS :: SearchTree a -> [a]
 allValuesBFS t = collect [t]
@@ -444,6 +445,7 @@ children (Fail:ts)    = children ts
 children (Value _:ts) = children ts
 children (Or x y:ts)  = x:y:children ts
 \end{curry}
+%
 The operation \code{values} extracts the values
 in each level of the tree and the operation \code{children}
 extracts all direct ancestors of a level in order to recursively
@@ -451,17 +453,21 @@ collect their values.
 
 Using \code{allValuesBFS}, we can print a value
 of the expression \code{(f 0)} by
+%
 \begin{curry}
 getSearchTree (f 0) >>= print . head . allValuesBFS
 \end{curry}
 %
 In order to abstract from the details of the evaluation order,
 it would be preferable to use complete search strategies.
-Complete strategies are often neglected due to performance reasons.
-Thus, we evaluate and compare in the next section the
-performance behavior of different search strategies in KiCS2.
+However, complete strategies are often neglected due to performance reasons.
+For example, the breadth-first search strategy stores all child nodes 
+of a tree level in a list to be explored later, which, as the search space
+potentially doubles on each level, may lead to an exponentially
+growing memory usage.
 
-Another complete search strategy is iterative-deepening search.
+Another complete search strategy with a superior memory behavior
+is iterative-deepening search.
 Basically, it is depth-first search strategy with a depth-bound
 which is incremented in each iteration.
 Thus, we compute in each iteration a list of values
@@ -469,10 +475,13 @@ together with some information whether we have aborted
 (due to the depth-bound) the computation of further possible values.
 For this purpose, we define list structures that can also end
 with an \code{Abort}:
+%
 \begin{curry}
 data AbortList a = Nil | Cons a (AbortList a) | Abort
 \end{curry}
+%
 and define the concatenation on such lists:
+%
 \begin{curry}
 concA :: AbortList a -> AbortList a -> AbortList a
 concA Abort       Abort       = Abort
@@ -481,9 +490,11 @@ concA Abort       (Cons x xs) = Cons x (concA Abort xs)
 concA Nil         ys          = ys
 concA (Cons x xs) ys          = Cons x (concA xs ys)
 \end{curry}
+%
 Now we define an operation to collect values in a search tree
 within some level bounds (to avoid the repeated collection
 of values found in each iteration):
+%
 \begin{curry}
 collectInBounds :: Int -> Int -> SearchTree a -> AbortList a
 collectInBounds oldbound newbound st = collectLevel newbound st
@@ -495,11 +506,13 @@ collectInBounds oldbound newbound st = collectLevel newbound st
     if d>0 then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
            else Abort
 \end{curry}
+%
 Now, the entire search strategy consists of
 repeated calls to \code{collectInBounds} as long as the result list
 is aborted. In order to experiment with different parameters,
 the initial depth bound and the method to increase the depth bound
 in each iteration are passed as parameters to the main operation:
+%
 \begin{curry}
 allValuesIDS :: Int -> (Int -> Int) -> SearchTree a -> [a]
 allValuesIDS initdepth incrdepth st =
@@ -511,9 +524,7 @@ allValuesIDS initdepth incrdepth st =
                      in iterIDS newdepth (collectInBounds n newdepth st)
 \end{curry}
 %
-Although this definition describes the strategy of
-iterative deepening search, it misses one important motivation.
-An advantage of depth-first search
+The key advantage of depth-first search
 in comparison to breadth-first search is its memory behavior:
 whereas breadth-first search has to store all nodes
 in a level of the search tree in parallel, depth-first search
@@ -538,6 +549,7 @@ be used to implement an interactive top-level search
 to print all values of an expression as requested by the user.
 For instance, the following I/O operation interactively 
 prints all elements of a given list:
+%
 \begin{curry}
 printResults :: [a] -> IO ()
 printResults []     = putStrLn "No more values"
@@ -547,6 +559,7 @@ printResults (x:xs) = do print x
                          if inp=="yes" then printResults xs
                                        else done
 \end{curry}
+%
 Hence, an interactive Prolog-like top-level behavior
 to show the values of an expression $exp$ in depth-first order
 can be obtained by
@@ -564,8 +577,9 @@ via the primitive encapsulation operators but in
 a monadic style (see also \cite{BrasselHanusPeemoellerReck11})
 in order to avoid the explicit construction
 of the \code{SearchTree} structure.
-Thus, in the next section we also compare the top-level search
-with the encapsulated search in order to evaluate the potential overhead
+Thus, in the next section we both compare the different search strategies
+introduced above as well as the top-level search
+with the encapsulated search, in order to evaluate the potential overhead
 caused by abstracting and programming with search structures.
 
 
@@ -595,14 +609,15 @@ we measured only the execution times where
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
 \hline
-Program     &   DFS  & IDS(+1) & IDS(*2) & eDFS  & eBFS  & eIDS(+1) & eIDS(*2) \\\hline
-PermSort    &  13.12 & 841.58  & 32.77   & 38.48 & 66.82 &    72.64 &    46.79 \\
-Last        &     \\
-Half        &     \\
-Graph       &   1.76 &   52.53 &    2.40 & 3.51  & 4.22  &     4.26 &     3.83 \\
-HorseMan    &   2.64 &  639.64 &    6.63 & 3.23  & 3.29  &     3.20 &     3.17 \\
-MAC         &   6.80 &  544.05 &    7.84 & 21.19 & 18.34 &    18.59 &    21.03 \\
-Queens      &  24.74 &  374.64 &   33.62 & 42.71 & 43.98 &    44.01 &    42.65
+Program  &   DFS  & IDS(+1)& IDS(*2)&  eDFS  &  eBFS  &eIDS(+1)&eIDS(*2)\\
+\hline
+PermSort &  13.12 & 841.58 &  32.77 &  38.48 &  66.82 &  72.64 &  46.79 \\
+Last     &        &        &        &        &        &        &        \\
+Half     &        &        &        &        &        &        &        \\
+Graph    &   1.76 &  52.53 &   2.40 &   3.51 &   4.22 &   4.26 &   3.83 \\
+HorseMan &   2.64 & 639.64 &   6.63 &   3.23 &   3.29 &   3.20 &   3.17 \\
+MAC      &   6.80 & 544.05 &   7.84 &  21.19 &  18.34 &  18.59 &  21.03 \\
+Queens   &  24.74 & 374.64 &  33.62 &  42.71 &  43.98 &  44.01 &  42.65 \\
 \hline
 \end{tabular}
 \caption{Benchmarks: computing all values}
@@ -668,10 +683,11 @@ of an expression.
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
 \hline
-Program &   DFS  & IDS(+1) & IDS(*2) & eDFS & eBFS & eIDS(+1) & eIDS(*2) \\\hline
-PermSort  &     \\
-Last      &     \\
-Half      &     \\
+Program  &   DFS  & IDS(+1)& IDS(*2)&  eDFS  &  eBFS  &eIDS(+1)&eIDS(*2)\\
+\hline
+PermSort &        &        &        &        &        &        &        \\
+Last     &        &        &        &        &        &        &        \\
+Half     &        &        &        &        &        &        &        \\
 \hline
 \end{tabular}
 \caption{Benchmarks: computing a single value}
