@@ -612,7 +612,7 @@ we measured only the execution times where
 Program  &   DFS  & IDS(+1)& IDS(*2)&  eDFS  &  eBFS  &eIDS(+1)&eIDS(*2)\\
 \hline
 PermSort &  13.12 & 841.58 &  32.77 &  38.48 &  66.82 &  72.64 &  46.79 \\
-Last     &   0.10 & >10min &   0.26 &   0.34 &   0.18 &   6.58 &   0.38 \\
+Last     &   0.10 & $>$10min &   0.26 &   0.34 &   0.18 &   6.58 &   0.38 \\
 Half     &   0.67 & 561.45 &   1.62 &   1.43 &   1.22 &   1.86 &   1.71 \\
 Graph    &   1.76 &  52.53 &   2.40 &   3.51 &   4.22 &   4.26 &   3.83 \\
 HorseMan &   2.64 & 639.64 &   6.63 &   3.23 &   3.29 &   3.20 &   3.17 \\
@@ -625,20 +625,30 @@ Queens   &  24.74 & 374.64 &  33.62 &  42.71 &  43.98 &  44.01 &  42.65 \\
 \end{figure}
 
 Figure~\ref{fig:bench-all-solutions} shows the benchmark results
-when all values of a given expression are computed.
+when all values of a given expression are computed
+with various search strategies.
 All benchmark programs are non-deterministic programs.
 ``PermSort'' sorts a list containing 15 elements by enumerating
 all permutations and selecting the sorted ones,
 ``Last'' computes the last element \code{x}
-of a list \code{xs} containing 100,000 elements
+of a list \code{xs} containing 10,000 elements
 by solving the equation \ccode{ys++[x] =:= xs}
 (see Section~\ref{sec:curry}),
 ``Half'' computes the half \code{y} of a natural number \code{x}
 (in Peano representation) by solving the equation \code{y+y=:=x},
-``Embed'' searches for an embedding of a message
-which is ``hidden'' in another message
-(see \cite[Sect.~4.1]{Antoy10JSC}),
-\ldots
+%``Embed'' searches for an embedding of a message
+%which is ``hidden'' in another message
+%(see \cite[Sect.~4.1]{Antoy10JSC}),
+``Graph'' computes some path in a graph where the edges
+are represented by a non-deterministic ``successor'' operation,
+``HorseMan'' computes the numbers of horses and men
+from given numbers of heads and feet by searching for
+appropriate numbers in Peano representation,
+``MAC'' solves the ``Missionaries and Cannibals'' puzzle
+(see \cite[Sect.~3.1]{AntoyHanus02FLOPS})
+for reasonable numbers of missionaries and cannibals
+to obtain measurable run times,
+and ``Queens'' computes safe placements of queens on a chess board.
 
 The columns in Figure~\ref{fig:bench-all-solutions}
 are the various search strategies considered in this paper.
@@ -659,18 +669,33 @@ strategies with similar parameters but recompute the initial
 expression in each iteration in order to trade space for run time,
 as discussed in Section~\ref{sec:strategies}.
 
-{\sc should we also show relative run times?}
-
-As one can see, depth-first search is the most efficient
+The table entries in Figure~\ref{fig:bench-all-solutions}
+contain the run times in seconds to compute all values of the initial
+expression.
+As one can see, the top-level depth-first search is the most efficient
 search strategy.
-However, complete search strategies are viable alternatives.
-Their overhead is acceptable taking into account the fact
+The encapsulated version of depth-first search (eDFS)
+with the explicit construction of the search tree
+causes some overhead, since the search strategy
+is encoded in the source program rather than in the run-time system
+as in the top-level search (DFS).
+The benchmarks also show that
+complete search strategies, like ``eBFS'' and ``eIDS(*2)''
+are viable alternatives to the incomplete depth-first search strategy.
+Their overhead (sometimes they are even faster than ``eDFS'',
+but they are always slower than top-level search)
+is acceptable taking into account the fact
 that one need not to reason about the details of exploring the
 search space. The behavior of iterative deepening is largely
 influenced by the parameters.
 A constant increment of the depth bound causes a big overhead
-compared to doubling the depth bound in each iteration.
-Breadth-first search seems also a good strategy
+compared to doubling the depth bound in each iteration,
+in particular, when the search tree is slim as in ``Last''.
+This is even worse for top-level iterative deepening
+which recomputes the initial expression in each iteration,
+see ``IDS(+1)''.
+
+Breadth-first search seems a good strategy
 taking into account the size of memory provided by modern computers.
 However, there are extreme cases when the search tree is wide
 where iterative deepening with recomputation is the single
