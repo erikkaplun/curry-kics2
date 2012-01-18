@@ -594,10 +594,14 @@ we measured only the execution times where
 \centering
 \begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
 \hline
-Program &   DFS  & IDS(+1) & IDS(*2) & eDFS & eBFS & eIDS(+1) & eIDS(*2) \\\hline
-PermSort  &     \\
-Last      &     \\
-Half      &     \\
+Program     &   DFS  & IDS(+1) & IDS(*2) & eDFS  & eBFS  & eIDS(+1) & eIDS(*2) \\\hline
+PermSort    &  13.12 & 841.58  & 32.77   & 38.48 & 66.82 &    72.64 &    46.79 \\
+Last        &     \\
+Half        &     \\
+Graph       &   1.76 &   52.53 &    2.40 & 3.51  & 4.22  &     4.26 &     3.83 \\
+HorseMan    &   2.64 &  639.64 &    6.63 & 3.23  & 3.29  &     3.20 &     3.17 \\
+MAC         &   6.80 &  544.05 &    7.84 & 21.19 & 18.34 &    18.59 &    21.03 \\
+Queens      &  24.74 &  374.64 &   33.62 & 42.71 & 43.98 &    44.01 &    42.65
 \hline
 \end{tabular}
 \caption{Benchmarks: computing all values}
