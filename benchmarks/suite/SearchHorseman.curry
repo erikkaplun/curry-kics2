@@ -22,4 +22,4 @@ horseman heads feet | int2nat heads =:= m `plus` h
                     = (nat2int m, nat2int h)
   where m, h free
 
-main = horseman 23 58
+main = horseman 460 1160

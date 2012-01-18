@@ -64,6 +64,6 @@ extend e (s:p) = if (s == e) then s:p
                  else extend e (makePath (move s) (s:p))
 
 -- solve the puzzle
-goal m c = extend (end m c) [start m c]
+goal m c = length (extend (end m c) [start m c])
 
-main = goal 3 3
+main = goal 11 10

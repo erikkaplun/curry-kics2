@@ -668,6 +668,7 @@ searchGoals :: [Goal]
 searchGoals = map (nonDetGoal "main")
   [ "SearchEmbed" , "SearchGraph" , "SearchHorseman"
   , "SearchMAC"   , "SearchQueens" -- , "SearchSMM" -- too slow
+  , "PermSort"    , "Last"        , "Half"
   ]
   -- "SearchCircuit" : needs CLPR
   -- "SearchLakritz" : needs CLPFD
