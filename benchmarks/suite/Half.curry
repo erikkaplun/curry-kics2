@@ -18,6 +18,6 @@ add (S p) q = S (add p q)
 half y | equal (add x x) y = x where x free
 
 goal1 = equal (toPeano 5000) (half (toPeano 10000))
-goal2 = equal (toPeano 1000) (half (toPeano 2000))
+goal2 = equal (toPeano 800) (half (toPeano 1600))
 
 main = goal2
