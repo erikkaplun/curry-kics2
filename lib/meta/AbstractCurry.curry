@@ -1,4 +1,4 @@
-------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 --- Library to support meta-programming in Curry.
 ---
 --- This library contains a definition for representing Curry programs
@@ -8,22 +8,24 @@
 --- Note this defines a slightly new format for AbstractCurry
 --- in comparison to the first proposal of 2003.
 ---
---- Assumption: an abstract Curry program is stored in file with extension .acy
+--- Assumption: an abstract Curry program is stored in file with
+--- extension .acy
 ---
---- @author Michael Hanus
---- @version June 2009
-------------------------------------------------------------------------------
+--- @author Michael Hanus, Bjoern Peemoeller
+--- @version January 2012
+-- ---------------------------------------------------------------------------
 
 module AbstractCurry where
 
-import Directory(doesFileExist)
+import Char         (isSpace)
+import Directory    (doesFileExist)
 import ReadShowTerm
 import Distribution
-import FileGoodies(stripSuffix)
+import FileGoodies  (stripSuffix)
 
-------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- Definition of data types for representing abstract Curry programs:
--- ==================================================================
+-- ---------------------------------------------------------------------------
 
 --- Data type for representing a Curry module in the intermediate form.
 --- A value of this data type has the form
@@ -33,7 +35,6 @@ import FileGoodies(stripSuffix)
 --- where modname: name of this module,
 ---       imports: list of modules names that are imported,
 ---       typedecls, opdecls, functions: see below
-
 data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
 
 
@@ -44,8 +45,7 @@ data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
 type QName = (String,String)
 
 
--- Data type to specify the visibility of various entities.
-
+--- Data type to specify the visibility of various entities.
 data CVisibility = Public    -- exported entity
                  | Private   -- private entity
 
@@ -75,15 +75,13 @@ type CTVarIName = (Int,String)
 ---
 --- Thus, a data type declaration consists of the name of the data type,
 --- a list of type parameters and a list of constructor declarations.
----
-
-data CTypeDecl = CType    QName CVisibility [CTVarIName] [CConsDecl]
-               | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
+data CTypeDecl
+  = CType    QName CVisibility [CTVarIName] [CConsDecl]
+  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
 
 
 --- A constructor declaration consists of the name and arity of the
 --- constructor and a list of the argument types of the constructor.
-
 data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
 
 
@@ -94,34 +92,39 @@ data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
 --- Note: the names of the predefined type constructors are
 ---       "Int", "Float", "Bool", "Char", "IO", "Success",
 ---       "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
-
-data CTypeExpr =
-    CTVar CTVarIName               -- type variable
+data CTypeExpr
+  = CTVar CTVarIName               -- type variable
   | CFuncType CTypeExpr CTypeExpr  -- function type t1->t2
   | CTCons QName [CTypeExpr]       -- type constructor application
                                    -- (CTCons (module,name) arguments)
+  | CRecordType [CField CTypeExpr] (Maybe CTVarIName) -- Record type (extended Curry)
 
+--- Labeled record fields
+type CField a = (CLabel, a)
+
+--- Identifiers for record labels (extended syntax).
+type CLabel = String
 
 --- Data type for operator declarations.
 --- An operator declaration "fix p n" in Curry corresponds to the
 --- AbstractCurry term (COp n fix p).
-
 data COpDecl = COp QName CFixity Int
 
-data CFixity = CInfixOp   -- non-associative infix operator
-             | CInfixlOp  -- left-associative infix operator
-             | CInfixrOp  -- right-associative infix operator
+--- Data type for operator associativity
+data CFixity
+  = CInfixOp   -- non-associative infix operator
+  | CInfixlOp  -- left-associative infix operator
+  | CInfixrOp  -- right-associative infix operator
 
 
 --- Data types for representing object variables.
 --- Object variables occurring in expressions are represented by (Var i)
 --- where i is a variable index.
-
 type CVarIName = (Int,String)
 
 
 --- Data type for representing function declarations.
---- 
+---
 --- A function declaration in AbstractCurry is a term of the form
 ---
 --- <code>(CFunc name arity visibility type (CRules eval [CRule rule1,...,rulek]))</code>
@@ -143,22 +146,24 @@ type CVarIName = (Int,String)
 --- as an additional first argument. This comment could be used
 --- by pretty printers that generate a readable Curry program
 --- containing documentation comments.
-
-data CFuncDecl = CFunc QName Int CVisibility CTypeExpr CRules
-               | CmtFunc String QName Int CVisibility CTypeExpr CRules
+data CFuncDecl
+  = CFunc QName Int CVisibility CTypeExpr CRules
+  | CmtFunc String QName Int CVisibility CTypeExpr CRules
 
 
 --- A rule is either a list of formal parameters together with an expression
 --- (i.e., a rule in flat form), a list of general program rules with
 --- an evaluation annotation, or it is externally defined
-
-data CRules = CRules CEvalAnnot [CRule]
-            | CExternal String
+data CRules
+  = CRules CEvalAnnot [CRule]
+  | CExternal String
 
 --- Data type for classifying evaluation annotations for functions.
 --- They can be either flexible (default), rigid, or choice.
-
-data CEvalAnnot = CFlex | CRigid | CChoice
+data CEvalAnnot
+  = CFlex
+  | CRigid
+  | CChoice
 
 --- The most general form of a rule. It consists of a list of patterns
 --- (left-hand side), a list of guards ("success" if not present in the
@@ -167,15 +172,14 @@ data CEvalAnnot = CFlex | CRigid | CChoice
 data CRule = CRule [CPattern] [(CExpr,CExpr)] [CLocalDecl]
 
 --- Data type for representing local (let/where) declarations
-data CLocalDecl =
-     CLocalFunc CFuncDecl                   -- local function declaration
-   | CLocalPat  CPattern CExpr [CLocalDecl] -- local pattern declaration
-   | CLocalVar  CVarIName                   -- local free variable declaration
+data CLocalDecl
+  = CLocalFunc CFuncDecl                   -- local function declaration
+  | CLocalPat  CPattern CExpr [CLocalDecl] -- local pattern declaration
+  | CLocalVar  CVarIName                   -- local free variable declaration
 
 --- Data type for representing Curry expressions.
-
-data CExpr =
-   CVar      CVarIName              -- variable (unique index / name)
+data CExpr
+ = CVar      CVarIName              -- variable (unique index / name)
  | CLit      CLiteral               -- literal (Integer/Float/Char constant)
  | CSymbol   QName                  -- a defined symbol with module and name
  | CApply    CExpr CExpr            -- application (e1 e2)
@@ -184,42 +188,45 @@ data CExpr =
  | CDoExpr   [CStatement]           -- do expression
  | CListComp CExpr [CStatement]     -- list comprehension
  | CCase     CExpr [CBranchExpr]    -- case expression
+ | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
+ | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
+ | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
-
-data CStatement = CSExpr CExpr         -- an expression (I/O action or boolean)
-                | CSPat CPattern CExpr -- a pattern definition
-                | CSLet [CLocalDecl]   -- a local let declaration
+data CStatement
+  = CSExpr CExpr         -- an expression (I/O action or boolean)
+  | CSPat CPattern CExpr -- a pattern definition
+  | CSLet [CLocalDecl]   -- a local let declaration
 
 --- Data type for representing pattern expressions.
-
-data CPattern =
-   CPVar CVarIName               -- pattern variable (unique index / name)
- | CPLit CLiteral                -- literal (Integer/Float/Char constant)
- | CPComb QName [CPattern]       -- application (m.c e1 ... en) of n-ary
-                                 -- constructor m.c (CPComb (m,c) [e1,...,en])
- | CPAs       CVarIName CPattern -- as-pattern (extended Curry)
- | CPFuncComb QName [CPattern]   -- function pattern (extended Curry)
+data CPattern
+  = CPVar CVarIName               -- pattern variable (unique index / name)
+  | CPLit CLiteral                -- literal (Integer/Float/Char constant)
+  | CPComb QName [CPattern]       -- application (m.c e1 ... en) of n-ary
+                                  -- constructor m.c (CPComb (m,c) [e1,...,en])
+  | CPAs       CVarIName CPattern -- as-pattern (extended Curry)
+  | CPFuncComb QName [CPattern]   -- function pattern (extended Curry)
+  | CPLazy CPattern               -- lazy pattern (extended Curry)
+  | CPRecord [CField CPattern] (Maybe CPattern) -- record pattern (extended curry)
 
 --- Data type for representing branches in case expressions.
-
 data CBranchExpr = CBranch CPattern CExpr
 
 --- Data type for representing literals occurring in an expression.
 --- It is either an integer, a float, or a character constant.
+data CLiteral
+  = CIntc   Int
+  | CFloatc Float
+  | CCharc  Char
 
-data CLiteral = CIntc   Int
-              | CFloatc Float
-              | CCharc  Char
+-- ---------------------------------------------------------------------------
 
-------------------------------------------------------------------------------
 --- I/O action which parses a Curry program and returns the corresponding
 --- typed Abstract Curry program.
 --- Thus, the argument is the file name without suffix ".curry"
 --- or ".lcurry") and the result is a Curry term representing this
 --- program.
-
 readCurry :: String -> IO CurryProg
 readCurry prog = readCurryWithParseOptions prog (setQuiet True defaultParams)
 
@@ -228,7 +235,6 @@ readCurry prog = readCurryWithParseOptions prog (setQuiet True defaultParams)
 --- Thus, the argument is the file name without suffix ".curry"
 --- or ".lcurry") and the result is a Curry term representing this
 --- program.
-
 readUntypedCurry :: String -> IO CurryProg
 readUntypedCurry prog =
   readUntypedCurryWithParseOptions prog (setQuiet True defaultParams)
@@ -242,12 +248,12 @@ readUntypedCurry prog =
 
 readCurryWithParseOptions :: String -> FrontendParams -> IO CurryProg
 readCurryWithParseOptions progname options = do
-  existsCurry <- doesFileExist (progname++".curry")
-  existsLCurry <- doesFileExist (progname++".lcurry")
+  existsCurry  <- doesFileExist $ progname ++ ".curry"
+  existsLCurry <- doesFileExist $ progname ++ ".lcurry"
   if existsCurry || existsLCurry
    then callFrontendWithParams ACY options progname
    else done
-  filename <- findFileInLoadPath (progname++".acy")
+  filename <- findFileInLoadPath $ progname ++ ".acy"
   readAbstractCurryFile filename
 
 --- I/O action which reads an untyped Curry program from a file (with extension
@@ -281,7 +287,6 @@ untypedAbstractCurryFileName prog = inCurrySubdir (stripSuffix prog ++ ".uacy")
 --- file (with suffix ".acy") containing an AbstractCurry program in ".acy"
 --- format and the result is a Curry term representing this program.
 --- It is currently predefined only in Curry2Prolog.
-
 readAbstractCurryFile :: String -> IO CurryProg
 readAbstractCurryFile filename = do
   exacy <- doesFileExist filename
@@ -298,6 +303,31 @@ readAbstractCurryFile filename = do
      filecontents <- readFile fname
      return (readUnqualifiedTerm ["AbstractCurry","Prelude"] filecontents)
 
+--- Tries to read an AbstractCurry file and returns
+---
+---  * Left err  , where err specifies the error occurred
+---  * Right prog, where prog is the AbstractCurry program
+tryReadACYFile :: String -> IO (Maybe CurryProg)
+tryReadACYFile fn = do
+  exists <- doesFileExist fn
+  if exists
+    then tryRead fn
+    else do
+      let fn' = inCurrySubdir fn
+      exists' <- doesFileExist fn'
+      if exists'
+        then tryRead fn'
+        else cancel
+ where
+  tryRead file = do
+    src <- readFile file
+    case readsUnqualifiedTerm ["AbstractCurry","Prelude"] src of
+      []       -> cancel
+      [(p,tl)] -> if all isSpace tl
+                    then return $ Just p
+                    else cancel
+      _        -> cancel
+  cancel = return Nothing
 
 --- Writes an AbstractCurry program into a file in ".acy" format.
 --- The first argument must be the name of the target file
