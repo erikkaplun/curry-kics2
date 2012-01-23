@@ -1,7 +1,7 @@
 --- --------------------------------------------------------------------------
 --- Benchmarking tool
 ---
---- This program defines the execution of all benchmarks and summarizes
+--- This program defines the execution of benchmarks and summarizes
 --- their results.
 ---
 --- @author  Michael Hanus, Björn Peemöller, Fabian Reck
@@ -22,7 +22,9 @@ import Float
 -- Flags
 -- ---------------------------------------------------------------------------
 
-benchTimeout = 1000 -- in seconds
+-- The time after which programs are terminated, in seconds
+benchTimeout :: Int
+benchTimeout = 1000
 
 -- Show benchmarks commands, like compiler calls, runtime calls,...?
 doTrace = False
@@ -55,9 +57,17 @@ scanl f q ls =  q : (case ls of
   []   -> []
   x:xs -> scanl f (f q x) xs)
 
+-- lift a pure function into the IO monad
 liftIO :: (a -> b) -> IO a -> IO b
 liftIO f act = act >>= return . f
 
+-- Like `mapIO`, but with flipped arguments.
+--
+-- This can be useful if the definition of the function is longer
+-- than those of the list, like in
+--
+-- forIO [1..10] $ \n -> do
+--   ...
 forIO :: [a] -> (a -> IO b) -> IO [b]
 forIO xs f = mapIO f xs
 
@@ -83,11 +93,13 @@ rpad :: Int -> String -> String
 rpad n str = str ++ replicate (n - length str) ' '
 
 -- ---------------------------------------------------------------------------
--- Commands
+-- Executing commands
 -- ---------------------------------------------------------------------------
 
-type Command = (String, [String]) -- a shell command with arguments
+--- A shell command with the binary name and arguments separated
+type Command = (String, [String])
 
+--- Show a command like it is invoked in a shell
 showCmd :: Command -> String
 showCmd (bin, args) = unwords $ bin : args
 
@@ -100,21 +112,34 @@ runCmd cmd = do
   return s
 
 --- Silently execute a command
-sysCmd :: Command -> IO ()
-sysCmd cmd = system (showCmd cmd) >> done
+silentCmd :: Command -> IO ()
+silentCmd cmd = system (showCmd cmd) >> done
 
+--- Trace the call string of a command and execute it silently
 traceCmd :: Command -> IO ()
 traceCmd cmd = trace call >> system call >> done
   where call = showCmd cmd
 
-isUbuntu :: IO Bool
-isUbuntu = isInfixOf "Ubuntu" `liftIO` runCmd ("lsb_release", ["-i"])
+--- Limit a command with a maximum runtime
+timeout :: Int -> Command -> Command
+timeout maxTime (bin, args) = ("/usr/bin/timeout", show maxTime : bin : args)
 
+--- Retrieve the host name
 getHostName :: IO String
-getHostName = runCmd ("uname", ["-n"])
+getHostName = runCmd ("hostname", [])
 
+--- Retrieve the unix system information
 getSystemInfo :: IO String
 getSystemInfo = runCmd ("uname", ["-a"])
+
+--- Retrieve the operating system description
+getSystemDescription :: IO String
+getSystemDescription = runCmd ("lsb-release", ["-s", "-d"])
+
+--- Retrieve the total memory
+getTotalMemory :: IO String
+getTotalMemory = dropWhile (not . isDigit)
+                `liftIO` runCmd ("grep", ["MemTotal", "/proc/meminfo"])
 
 type TimeInfo =
   { tiCommand       :: String -- Command being timed
@@ -177,7 +202,7 @@ timeCmd (cmd, args) = do
   -- extract timing information
   timingInfo <- extractInfo `liftIO` readFile timeFile
   -- remove time file
-  sysCmd ("rm", ["-rf", timeFile])
+  silentCmd ("rm", ["-rf", timeFile])
   return (exitCode, outCnts, errCnts, toInfo $ map snd timingInfo)
  where
   timeFile    = ".time"
@@ -190,9 +215,6 @@ timeCmd (cmd, args) = do
   splitInfo s@(c:d:cs)
     | take 2 s == ": " = ([], cs)
     | otherwise        = let (k, v) = splitInfo (d:cs) in (c:k, v)
-
-timeout :: Int -> Command -> Command
-timeout maxRuntime (bin, args) = ("/usr/bin/timeout", show maxRuntime : bin : args)
 
 --- Execute a shell command and return the time of its execution
 benchCmd :: Command -> IO (Int, Float, Int)
@@ -228,7 +250,7 @@ runBenchmark rpts totalNum (currentNum, benchMark) = do
   benchMark -> bmPrepare
   infos <- sequenceIO $ replicate rpts $ benchCmd
                       $ timeout benchTimeout $ benchMark -> bmCommand
-  sysCmd $ benchMark -> bmCleanup
+  silentCmd $ benchMark -> bmCleanup
   let (codes, times, mems) = unzip3 infos
   flushStrLn $ if all (==0) codes then "PASSED" else "FAILED"
   trace $ "RUNTIMES: " ++ intercalate " | " (map show times)
@@ -686,7 +708,7 @@ searchGoals = map (nonDetGoal "main")
   [ -- "SearchEmbed"
     "SearchGraph" , "SearchHorseman"
   , "SearchMAC"   , "SearchQueens" -- , "SearchSMM" -- too slow
-  , "PermSort"    
+  , "PermSort"
   ,"Last" , "Half"
   ]
   -- "SearchCircuit" : needs CLPR
