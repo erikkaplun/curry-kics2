@@ -3,6 +3,10 @@ module Strategies (bfsSearch, dfsSearch, parSearch, idsSearch) where
 import Control.Monad.SearchTree
 import Control.Parallel.TreeSearch (parSearch)
 
+import MonadSearch
+
+instance MonadSearch SearchTree where
+
 -- |Breadth-first search
 bfsSearch :: SearchTree a -> [a]
 bfsSearch t = bfs [t]

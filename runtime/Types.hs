@@ -39,14 +39,17 @@ data Try a
 
 -- |Convert a binary choice of type a into one of type 'Try' a
 tryChoice :: ID -> a -> a -> Try a
-tryChoice i@(ChoiceID _) = Choice i
+tryChoice i@(ChoiceID    _) = Choice i
+tryChoice i@(CovChoiceID _) = Choice i
 tryChoice _              = error "Basics.tryChoice: no ChoiceID"
 
 -- |Convert a n-ary choice of type a into one of type 'Try' a
 tryChoices :: ID -> [a] -> Try a
-tryChoices (ChoiceID       _) = error "Basics.tryChoices: ChoiceID"
-tryChoices i@(FreeID     _ _) = Free     i
-tryChoices i@(NarrowedID _ _) = Narrowed i
+tryChoices i@(FreeID     _ _)    = Free     i
+tryChoices i@(CovFreeID  _ _)    = Free     i
+tryChoices i@(NarrowedID _ _)    = Narrowed i
+tryChoices i@(CovNarrowedID _ _) = Narrowed i
+tryChoices i                     = error ("Basics.tryChoices: wrong ID " ++ show i)
 
 -- unused because of triviality:
 
@@ -104,16 +107,20 @@ class NonDet a where
 -- The name of this function is misleading because of historical reasons
 -- and should be renamed to sth. like "choice"
 narrow :: NonDet a => ID -> a -> a -> a
-narrow i@(ChoiceID _) = choiceCons i
+narrow i@(ChoiceID    _) = choiceCons i
+narrow i@(CovChoiceID _) = choiceCons i
 narrow _              = error "Basics.narrow: no ChoiceID"
 
 -- |Convert an n-ary choice of a free variable into one with a narrowed variable
 -- |If the varible is bound in either the local or the global constraint store
 -- |the value found in the store is used
 narrows :: NonDet b => ConstStore -> ID -> (a -> b) -> [a] -> b
-narrows cs i@(FreeID     p s) f xs = lookupWithGlobalCs cs i f
+narrows cs i@(FreeID        p s) f xs = lookupWithGlobalCs cs i f
                                    $ choicesCons (NarrowedID p s) (map f xs)
-narrows _  i@(NarrowedID _ _) f xs = choicesCons i (map f xs)
+narrows cs i@(CovFreeID     p s) f xs = lookupWithGlobalCs cs i f
+                                   $ choicesCons (CovNarrowedID p s) (map f xs)
+narrows _  i@(NarrowedID    _ _) f xs = choicesCons i (map f xs)
+narrows _  i@(CovNarrowedID _ _) f xs = choicesCons i (map f xs)
 narrows _ (ChoiceID _) _ _ = error "Types.narrows: ChoiceID"
 
 -- ---------------------------------------------------------------------------
@@ -141,22 +148,27 @@ class (NonDet a, Show a) => NormalForm a where
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- two alternatives of a binary choice.
 nfChoice :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> a -> a -> ConstStore -> b
-nfChoice cont i@(ChoiceID _) x1 x2 cs = choiceCons i ((cont $!! x1) cs) ((cont $!! x2) cs)
-nfChoice _ _ _ _ _ = error "Basics.nfChoice: no ChoiceID"
--- nfChoice cont i@(FreeID _) x1 x2 = cont (choiceCons i x1 x2)
+nfChoice cont i x1 x2 cs = case i of
+  ChoiceID _    -> newChoice
+  CovChoiceID _ -> newChoice
+  _             -> error "Basics.nfChoice: no ChoiceID"
+ where newChoice = choiceCons i ((cont $!! x1) cs) ((cont $!! x2) cs)
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- n alternatives of a n-ary choice.
 nfChoices :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> [a] -> ConstStore -> b
-nfChoices _      (ChoiceID _)     _  _  = error "Basics.nfChoices: ChoiceID"
-nfChoices cont i@(FreeID _ _)     xs cs = cont (choicesCons i xs) cs
-nfChoices cont i@(NarrowedID _ _) xs cs = choicesCons i (map (\x -> (cont $!! x) cs) xs)
+nfChoices cont i xs cs = matchIdIgnoreCov err freeV narrV i
+  where
+   err = error "Basics.nfChoices: ChoiceID"
+   freeV = cont (choicesCons i xs) cs
+   narrV = choicesCons i (map (\x -> (cont $!! x) cs) xs)
 
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the two alternatives of a binary choice.
 gnfChoice :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> a -> a -> ConstStore -> b
-gnfChoice cont i@(ChoiceID _) x1 x2 cs = choiceCons i ((cont $## x1) cs) ((cont $## x2) cs)
-gnfChoice _ _ _ _ _ = error "Basics.gnfChoice: no ChoiceID"
+gnfChoice cont i x1 x2 cs = matchIdIgnoreCov chV err err i
+  where chV = choiceCons i ((cont $## x1) cs) ((cont $## x2) cs)
+        err = error "Basics.gnfChoice: no ChoiceID"
 
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the n alternatives of a n-ary choice.
@@ -164,8 +176,9 @@ gnfChoices :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> [a] ->
 gnfChoices cont i xs cs = narrows cs  i (\x -> (cont $## x) cs) xs
 
 nfChoiceIO :: (NormalForm a) => (a -> IO b) -> ID -> a -> a -> IO b
-nfChoiceIO cont i@(ChoiceID _) x1 x2 = cont $ choiceCons i x1 x2
-nfChoiceIO _ _ _ _ = error "Basics.nfChoiceIO: no ChoiceID"
+nfChoiceIO cont i x1 x2 = matchIdIgnoreCov chV err err i
+ where chV = cont $ choiceCons i x1 x2
+       err = error "Basics.nfChoiceIO: no ChoiceID"
 -- nfChoiceIO cont i@(ID _) x1 x2 = do
 --   x1' <- return $!< x1
 --   x2' <- return $!< x2
@@ -182,6 +195,7 @@ nfChoicesIO cont i@(FreeID _ _) xs = lookupDecisionID i >>= follow
   follow (NoDecision,  _) = cont (choicesCons i xs) -- TODO replace i with j?
   follow c                = error $ "Basics.nfChoicesIO.follow: " ++ show c
 nfChoicesIO cont i@(NarrowedID  _ _) xs = cont (choicesCons i xs)
+nfChoicesIO _ _ _ = error "Types: nfChoicesIO: Covered ID found"
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs
 --   cont (choicesCons i xs)
@@ -219,9 +233,10 @@ constrainChoice :: Unifiable a => ID -> ID -> a -> a -> C_Success
 constrainChoice i j l r = Choice_C_Success j (constrain i l) (constrain i r)
 
 constrainChoices :: Unifiable a => ID -> ID -> [a] -> C_Success
-constrainChoices i j@(FreeID     _ _) xs = Guard_C_Success (ValConstr i xs [i :=: BindTo j]) C_Success
-constrainChoices i j@(NarrowedID _ _) xs = Choices_C_Success j (map (constrain i) xs)
-constrainChoices _ j@(ChoiceID     _) _  = error $ "constrainChoices: " ++ show j
+constrainChoices i j xs = matchIdIgnoreCov err frV naV j
+  where err = error $ "constrainChoices: " ++ show j
+        frV = Guard_C_Success (ValConstr i xs [i :=: BindTo j]) C_Success
+        naV = Choices_C_Success j (map (constrain i) xs)
 
 constrainGuard :: Unifiable a => ID -> Constraints -> a -> C_Success
 constrainGuard i cs e = Guard_C_Success cs (constrain i e)

@@ -10,6 +10,7 @@ module ID
     -- * IDs
   , ID (..), leftID, rightID, narrowID, getKey, mkInteger
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
+  , coverID, uncoverID, matchIdIgnoreCov
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
@@ -115,22 +116,36 @@ data ID
   | FreeID [Int] IDSupply
     -- |Identifier for a choice for a narrowed variable (free before)
   | NarrowedID [Int] IDSupply
+    -- |Covered versions of the ID-constructors
+  | CovChoiceID Unique
+  | CovFreeID [Int] IDSupply
+  | CovNarrowedID [Int] IDSupply
     deriving Eq
 
 instance Show ID where
-  show (ChoiceID     i) = "?" ++ showUnique i
-  show (FreeID     _ i) = "_x" ++ show i
-  show (NarrowedID _ i) = "Narrowed" ++ show i
+  show (ChoiceID        i) = "?" ++ showUnique i
+  show (FreeID        _ i) = "_x" ++ show i
+  show (NarrowedID    _ i) = "Narrowed" ++ show i
+  show (CovChoiceID     i) = "cov_?" ++ showUnique i
+  show (CovFreeID     _ i) = "_cov_x" ++ show i
+  show (CovNarrowedID _ i) = "CovNarrowed" ++ show i
 
 -- |Retrieve the 'IDSupply' from an 'ID'
 supply :: ID -> IDSupply
-supply (ChoiceID     _) = error "ID.supply: ChoiceID"
-supply (FreeID     _ s) = s
-supply (NarrowedID _ s) = s
+supply (ChoiceID        _) = error "ID.supply: ChoiceID"
+supply (CovChoiceID     _) = error "ID.supply: CovChoiceID"
+supply (FreeID        _ s) = s
+supply (CovFreeID     _ s) = s
+supply (NarrowedID    _ s) = s
+supply (CovNarrowedID _ s) = s
 
 -- |Construct an 'ID' for a free variable from an 'IDSupply'
 freeID :: [Int] -> IDSupply -> ID
 freeID = FreeID
+
+-- |Construct an 'ID' for a covered free variable from an 'IDSupply'
+covFreeID :: [Int] -> IDSupply -> ID
+covFreeID = CovFreeID
 
 -- |Construct an 'ID' for a binary choice from an 'IDSupply'
 thisID :: IDSupply -> ID
@@ -138,28 +153,54 @@ thisID = ChoiceID . unique
 
 -- |Convert a free or narrowed 'ID' into a narrowed one
 narrowID :: ID -> ID
-narrowID (ChoiceID _) = error "ID.narrowID: ID"
-narrowID (FreeID p s) = NarrowedID p s
-narrowID narrowedID   = narrowedID
+narrowID (ChoiceID    _) = error "ID.narrowID: ChoiceID"
+narrowID (CovChoiceID _) = error "ID.narrowID: CovChoiceID"
+narrowID (FreeID    p s) = NarrowedID p s
+narrowID (CovFreeID p s) = CovNarrowedID p s
+narrowID narrowedID      = narrowedID
 
 -- |Retrieve the left child 'ID' from a free 'ID'
 leftID :: ID -> ID
-leftID  (FreeID _ s) = freeID [] (leftSupply s)
-leftID  _            = error "ID.leftID: no FreeID"
+leftID  (FreeID    _ s) = freeID    [] (leftSupply s)
+leftID  (CovFreeID _ s) = covFreeID [] (leftSupply s) 
+leftID  _               = error "ID.leftID: no FreeID"
 
 -- |Retrieve the right child 'ID' from a free 'ID'
 rightID :: ID -> ID
-rightID (FreeID _ s) = freeID [] (rightSupply s)
-rightID  _           = error "ID.rightID: no FreeID"
+rightID (FreeID    _ s) = freeID [] (rightSupply s)
+rightID (CovFreeID _ s) = covFreeID [] (rightSupply s)
+rightID  _              = error "ID.rightID: no FreeID"
 
 getKey :: ID -> Integer
 getKey = mkInteger . getUnique
 
 getUnique :: ID -> Unique
-getUnique (ChoiceID     u) = u
-getUnique (FreeID     _ s) = unique s
-getUnique (NarrowedID _ s) = unique s
+getUnique (ChoiceID        u) = u
+getUnique (FreeID        _ s) = unique s
+getUnique (NarrowedID    _ s) = unique s
+getUnique (CovChoiceID     u) = u
+getUnique (CovFreeID     _ s) = unique s
+getUnique (CovNarrowedID _ s) = unique s
 
+coverID :: ID -> ID
+coverID (ChoiceID u)       = CovChoiceID u
+coverID (FreeID pns s)     = CovFreeID pns s
+coverID (NarrowedID pns s) = CovNarrowedID pns s
+coverID _                  = error "cover: called with already covered ID"
+
+uncoverID :: ID -> ID
+uncoverID (CovChoiceID u)       = ChoiceID u
+uncoverID (CovFreeID pns s)     = FreeID pns s
+uncoverID (CovNarrowedID pns s) = NarrowedID pns s
+uncoverID i                     = i  
+
+matchIdIgnoreCov :: a -> a -> a -> ID -> a
+matchIdIgnoreCov chV _   _   i@(ChoiceID        _) = chV
+matchIdIgnoreCov chV _   _   i@(CovChoiceID     _) = chV
+matchIdIgnoreCov _   frV _   i@(FreeID        _ _) = frV
+matchIdIgnoreCov _   frV _   i@(CovFreeID     _ _) = frV
+matchIdIgnoreCov _   _   naV i@(NarrowedID    _ _) = naV
+matchIdIgnoreCov _   _   naV i@(CovNarrowedID _ _) = naV
 -- ---------------------------------------------------------------------------
 -- Tracing
 -- ---------------------------------------------------------------------------

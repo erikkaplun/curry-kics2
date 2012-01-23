@@ -13,6 +13,7 @@ import MonadList
 import Solver
 import Strategies
 import Types
+import MonadSearch
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io
@@ -330,7 +331,7 @@ printBFSi ud prt goal = computeWithBFS goal >>= printValsOnDemand ud prt
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 -- computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
-computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMPlus
+computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch
 
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchBFS act goal = do
@@ -491,15 +492,15 @@ printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
-computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMPlus
+computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
 
 -- ---------------------------------------------------------------------------
 -- Encapsulated search
 -- ---------------------------------------------------------------------------
 
  -- |Collect results of a non-deterministic computation in a monadic structure
-encapsulatedSearch :: (MonadPlus m, NormalForm a) => a -> ConstStore -> m a
-encapsulatedSearch x store = searchMPlus $ const $!! x $ store
+encapsulatedSearch :: (MonadSearch m, NormalForm a) => a -> ConstStore -> m a
+encapsulatedSearch x store = searchMSearch $ const $!! x $ store
 
 -- ---------------------------------------------------------------------------
 -- Generic search using MonadPlus instances for the result
@@ -515,43 +516,48 @@ instance Monad m => Store (StateT DecisionMap m) where
     | otherwise           = modify $ Map.insert (mkInteger u) c
   unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
 
-searchMPlus :: (MonadPlus m, NormalForm a) => a -> m a
-searchMPlus x = evalStateT (searchMPlus' return x) (Map.empty :: DecisionMap)
+searchMSearch :: (MonadSearch m, NormalForm a) => a -> m a
+searchMSearch x = evalStateT (searchMSearch' return x) (Map.empty :: DecisionMap)
 
-searchMPlus' :: (NormalForm a, MonadPlus m, Store m) => (a -> m b) -> a -> m b
-searchMPlus' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
+searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => (a -> m b) -> a -> m b
+searchMSearch' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
   where
   smpFail         = mzero
-  smpVal v        = searchNF searchMPlus' cont v
+  smpVal v        = searchNF searchMSearch' cont v
 
   smpChoice i x y = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = searchMPlus' cont x
-    follow ChooseRight = searchMPlus' cont y
-    follow NoDecision  = decide i ChooseLeft x `mplus` decide i ChooseRight y
-    follow c           = error $ "Search.smpChoice: Bad choice " ++ show c
+    follow ChooseLeft  = searchMSearch' cont x
+    follow ChooseRight = searchMSearch' cont y
+    follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
+    follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
+    plus = case i of
+     ChoiceID _ -> mplus
+     CovChoiceID u -> splus (ChoiceID u)  
 
   smpNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
-    follow (LazyBind cs) = processLB i cs xs
-    follow (ChooseN c _) = searchMPlus' cont (xs !! c)
-    follow NoDecision    = msum $
+    follow (LazyBind cs)  = processLB i cs xs
+    follow (ChooseN c _)  = searchMSearch' cont (xs !! c)
+    follow NoDecision     = sumF $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
-    follow c             = error $ "Search.smpNarrowed: Bad choice " ++ show c
-  smpNarrowed i _ = error $ "Search.smpNarrowed: Bad narrowed ID " ++ show i
+    follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
+    (pns,sumF)            = case i of
+      NarrowedID    pns _ -> (pns,msum)
+      CovNarrowedID pns s -> (pns, ssum (NarrowedID pns s)) 
 
   smpFree i xs = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB i cs xs
-    follow (ChooseN c _, _) = searchMPlus' cont (xs !! c)
-    follow (NoDecision , j) = cont $ choicesCons j xs
-    follow c                = error $ "Search.smpFree: Bad choice " ++ show c
+    follow (ChooseN c _, _) = searchMSearch' cont (xs !! c)
+    follow (NoDecision , j) = cont $ choicesCons (uncoverID j) xs
+    follow c                = error $ "Search.smpFree: Bad decision " ++ show c
 
   smpGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero
-    Just (_, e') -> searchMPlus' cont e'
+    Just (_, e') -> searchMSearch' cont e'
 
   processLB i cs xs = decide i NoDecision
                     $ guardCons (StructConstr cs) (choicesCons i xs)
 
-  decide i c y = setDecision i c >> searchMPlus' cont y
+  decide i c y = setDecision i c >> searchMSearch' cont y
