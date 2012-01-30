@@ -89,11 +89,13 @@ aBool s = Choice (thisID s) True False
 \end{itemize}
 \pause
 
-\begin{haskell} [Choice Identifier]
+\begin{haskell} [Choice Identifiers using Integer]
 type ID = Integer
 type IDSupply = Integer
 
 left, right :: IDSupply -> IDSupply
+left  n = 2 * n
+right n = 2 * n + 1
 
 thisID :: IDSupply -> ID
 thisID n = n
@@ -104,7 +106,7 @@ thisID n = n
 \frametitle{Representing Failure}
 \begin{itemize}
  \item Computing with failure is a common programming pattern in FLP
- \item Failures do not abort the computation, but are ignored
+ \item Failures do not abort the computation
 \end{itemize}
 
 \begin{curry}
@@ -182,10 +184,9 @@ data Decision = NoDecision
               | ChooseLeft
               | ChooseRight
 
-class Monad m => Store m where ...
-
-lookupDecision :: Store m => ID -> m Decision
-setDecision    :: Store m => ID -> Decision -> m ()
+class Monad m => Store m where
+  lookupDecision :: ID -> m Decision
+  setDecision    :: ID -> Decision -> m ()
 \end{haskell}
 \end{frame}
 
@@ -194,7 +195,7 @@ setDecision    :: Store m => ID -> Decision -> m ()
 
 \begin{itemize}
   \item Implemented in the \code{IO} monad
-  \item Explicit tracking of decisions
+  \item Global decision store
   \item One implementation per strategy, fastest for dfs
 \end{itemize}
 
@@ -219,7 +220,7 @@ dfs (Choice i l r) = lookupDecision i >>= follow
 
 \begin{itemize}
   \item Implemented using a \code{State} monad
-  \item Implicit tracking of decicions
+  \item Local decision store
   \item Independent of search strategy
 \end{itemize}
 
@@ -296,14 +297,14 @@ Program: permutation sort
 \todo{Interpretation}
 \end{frame}
 
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Benchmark: Unification}
-Program: Compute the last element of a list by unification
-\begin{center}
-\includegraphics[width=11cm]{gfx/last}
-\end{center}
-\todo{Interpretation}
-\end{frame}
+% \begin{frame}[fragile]%-------------------------------------------------------
+% \frametitle{Benchmark: Unification}
+% Program: Compute the last element of a list by unification
+% \begin{center}
+% \includegraphics[width=11cm]{gfx/last}
+% \end{center}
+% \todo{Interpretation}
+% \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: Halve a Peano Number}
