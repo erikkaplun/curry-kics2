@@ -1,41 +1,41 @@
-\documentclass[%handout
+\documentclass[
 ,hyperref={pdfpagelabels=false}
-,utf8
 ]{beamer}
 % Die Hyperref Option hyperref={pdfpagelabels=false} verhindert die Warnung:
 % Package hyperref Warning: Option `pdfpagelabels' is turned off
 % (hyperref)                because \thepage is undefined.
 % Hyperref stopped early
 
-\usepackage[ngerman]{babel}
 \usepackage{agstyle}
 \usepackage{currycode}
-\usepackage{graphicx}
-\usepackage{color}
+\usepackage{tikz}
 
-\newcommand{\todo}[1]{\fbox{\sc To do: #1}}
 \newcommand{\ergo}{$\Rightarrow$}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{document}
-
-\title[Handling Non-Determinism in KiCS2]
-{Handling Non-Determinism in KiCS2: \\ More than just searching?}
+\title[Handling Non-Determinism in KiCS2]{%
+Handling Non-Determinism in KiCS2: \\ More than just searching?
+}
 
 \date{February 01, 2012}
 
-\author[B. Braßel, M. Hanus, \underline{B. Peemöller}, F. Reck]
- {Bernd Braßel \and Michael Hanus \\
+\author[Braßel, Hanus, \underline{Peemöller}, Reck]{%
+\texorpdfstring
+  {Bernd Braßel \and Michael Hanus \\
    \underline{Björn Peemöller} \and Fabian Reck}
+  {Bernd Braßel \and Michael Hanus \and Björn Peemöller \and Fabian Reck}
+}
 
 \institute{Kiel University}
+
+\begin{document}
 
 \begin{frame}%---------------
 \titlepage
 \end{frame}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%$$
 
 \section{Introduction}
 
@@ -61,7 +61,6 @@
   \item Explicit representation of non-determinism in data types
   \item Choices are uniquely identified
 \end{itemize}
-\pause
 
 \begin{curry}
 data Bool = True | False
@@ -87,7 +86,6 @@ aBool s = Choice (thisID s) True False
  \item Functions that may introduce non-determinism
        are provided with an \code{IDSupply}
 \end{itemize}
-\pause
 
 \begin{haskell} [Choice Identifiers using Integer]
 type ID = Integer
@@ -155,40 +153,76 @@ ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1)
 \begin{itemize}
 %   \item Non-determinism in arguments is propagated by pattern-matching
   \item Constructors may be applied to non-deterministic arguments
-  \item Therefore, \emph{normalform computation} traverses constructor
-        term to propagate non-determinism
+  \item \code{normalform} traverses a constructor term
+        to propagate non-determinism
   \item After normalform computation of an expression $e$
   \begin{itemize}
-    \item $nf(e)$ is either a deterministic value
-    \item or a tree, where all inner nodes are \code{Choice} or
+    \item \code{normalform e} is either a deterministic value
+    \item or a tree, where the inner nodes correspond to \code{Choice} or
           \code{Choices} and all leafs are either \code{Fail} or
           deterministic values
   \end{itemize}
 \end{itemize}
+
+\pause
+
+\begin{example}[Normalform Computation of \code{(\textbackslash x -> (x,x)) (0 ? 1)}]
+\begin{center}
+\begin{minipage}{.2\textwidth}
+\begin{tikzpicture}
+\node (t) at (0  ,0) {\code{T}};
+\node (f) at (1  ,0) {\code{F}};
+\node (q) at (0.5,1) {$\code{?}_{1}$};
+\node (l) at (0.5,2) {\code{( , )}};
+\draw (l) .. controls (0.25,1.5) .. (q);
+\draw (l) .. controls (0.75,1.5) .. (q);
+\draw (q) -- (t);
+\draw (q) -- (f);
+\end{tikzpicture}
+\end{minipage}
+$\Rightarrow$
+\begin{minipage}{.2\textwidth}
+\begin{tikzpicture}
+\node (t ) at (0  ,0) {\code{T}};
+\node (f ) at (1  ,0) {\code{F}};
+\node (q1) at (0.5,1) {$\code{?}_{1}$};
+\node (v1) at (0  ,2) {\code{(T, )}};
+\node (v2) at (1  ,2) {\code{(F, )}};
+\node (q2) at (0.5,3) {$\code{?}_{1}$};
+\draw (q2) -- (v1);
+\draw (q2) -- (v2);
+\draw (v1) -- (q1);
+\draw (v2) -- (q1);
+\draw (q1) -- (t);
+\draw (q1) -- (f);
+\end{tikzpicture}
+\end{minipage}
+$\Rightarrow$
+\begin{minipage}{.36\textwidth}
+\begin{tikzpicture}
+\node (tt) at (0  ,0) {\code{(T,T)}};
+\node (tf) at (1  ,0) {\code{(T,F)}};
+\node (ft) at (2  ,0) {\code{(F,T)}};
+\node (ff) at (3  ,0) {\code{(F,F)}};
+\node (q1) at (0.5,1) {$\code{?}_{1}$};
+\node (q2) at (2.5,1) {$\code{?}_{1}$};
+\node (q3) at (1.5,2) {$\code{?}_{1}$};
+\draw (q3) -- (q1);
+\draw (q3) -- (q2);
+\draw (q1) -- (tt);
+\draw[style=dashed] (q1) -- (tf);
+\draw[style=dashed] (q2) -- (ft);
+\draw (q2) -- (ff);
+\end{tikzpicture}
+\end{minipage}
+\end{center}
+\end{example}
 \end{frame}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Search}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Managing Decisions}
-\begin{itemize}
-\item During search, consistent decisions have to be made
-\item Management of decisions is abstracted by a type class
-\end{itemize}
-
-\begin{haskell}[Search decisions]
-data Decision = NoDecision
-              | ChooseLeft
-              | ChooseRight
-
-class Monad m => Store m where
-  lookupDecision :: ID -> m Decision
-  setDecision    :: ID -> Decision -> m ()
-\end{haskell}
-\end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Top-Level Search}
@@ -212,6 +246,24 @@ dfs (Choice i l r) = lookupDecision i >>= follow
 
   decide i c x = do setDecision i c >> dfs (try x)
                     setDecision i NoDecision
+\end{haskell}
+\end{frame}
+
+\begin{frame}[fragile]%-------------------------------------------------------
+\frametitle{Managing Decisions}
+\begin{itemize}
+\item During search, consistent decisions have to be made
+\item Management of decisions is abstracted by a type class
+\end{itemize}
+
+\begin{haskell}[Search decisions]
+data Decision = NoDecision
+              | ChooseLeft
+              | ChooseRight
+
+class Monad m => Store m where
+  lookupDecision :: ID -> m Decision
+  setDecision    :: ID -> Decision -> m ()
 \end{haskell}
 \end{frame}
 
@@ -261,16 +313,56 @@ dfsSearch (Choice x y) = dfsSearch x ++ dfsSearch y
 \end{haskell}
 \end{frame}
 
+\begin{frame}%----------------------------------------------------------------
+\frametitle{Benchmark: Non-Deterministic Permutation Sort}
+Program: permutation sort of a list with 15 values
+\begin{center}
+\includegraphics[width=11cm]{gfx/permsort}
+\end{center}
+\begin{itemize}
+\item DFS is fastest
+\item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
+\item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
+\end{itemize}
+\end{frame}
+
+% \begin{frame}[fragile]%-------------------------------------------------------
+% \frametitle{Benchmark: Unification}
+% Program: Compute the last element of a list by unification
+% \begin{center}
+% \includegraphics[width=11cm]{gfx/last}
+% \end{center}
+% \todo{Interpretation}
+% \end{frame}
+
+\begin{frame}[fragile]%-------------------------------------------------------
+\frametitle{Benchmark: Halve a Peano Number}
+Program: halve the Peano number $1600$ by inverting addition
+\begin{center}
+\includegraphics[width=11cm]{gfx/half}
+\end{center}
+\begin{itemize}
+\item Again, DFS is fastest and $\text{IDS}_{10}^{+1}$ is very slow
+\item Both encapsulated search as well as complete strategies are
+      competitive
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Encapsulated search}
 
 \begin{itemize}
-\item Top-Level search is not always sufficient
+\item Top-Level search is not always sufficient (e.\,g., when trying to
+      find the best solution)
 \item \emph{Encapsulated search} allows to search for all values
       inside Curry
-\item Easily implemented by providing a \code{MonadPlus} instance for
-      an appropriate Curry type
+\item Implemented by providing a \code{MonadPlus} instance for the runtime
+      representation of a search tree in Curry
 \end{itemize}
+
+\pause
 
 \begin{curry}[Encapsulated dfs search]
 allValuesDFS x = dfsSearch (someSearchTree x)
@@ -288,74 +380,65 @@ bool = True ? False
 
 \end{frame}
 
-\begin{frame}%----------------------------------------------------------------
-\frametitle{Benchmark: Non-Deterministic Permutation Sort}
-Program: permutation sort
-\begin{center}
-\includegraphics[width=11cm]{gfx/permsort}
-\end{center}
-\todo{Interpretation}
-\end{frame}
-
-% \begin{frame}[fragile]%-------------------------------------------------------
-% \frametitle{Benchmark: Unification}
-% Program: Compute the last element of a list by unification
-% \begin{center}
-% \includegraphics[width=11cm]{gfx/last}
-% \end{center}
-% \todo{Interpretation}
-% \end{frame}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Benchmark: Halve a Peano Number}
-Program: halve a Peano number by inverting addition
-\begin{center}
-\includegraphics[width=11cm]{gfx/half}
-\end{center}
-\todo{Interpretation}
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Set Functions}
 
 \begin{itemize}
-  \item Encapsulated search allows for searching non-determinism
-        in an expression
-  \item \emph{Set functions} allow to preserve non-determinism of the
-        arguments, but searches for that introduced by the function
+\item Encapsulated search is not independent of the evaluation order
+
+\begin{program}
+let x = 0 ? 1 in allValues (x ? -x)
+\end{program}
+
+\pause
+
+\item Sharing of non-determinism is problematic w.r.t. encapsulated
+      search
+
+\begin{program}
+queens xs | null (allValues (attack ys)) = ys
+  where ys = permute xs
+\end{program}
+
+\pause
+
+  \item[\ergo] \emph{Set functions} preserve non-determinism of arguments,
+               but search for that introduced by the function itself
 \end{itemize}
 
 \begin{example}[Set Functions]
 \begin{program}
-> \textsl{set_1 f bool}
-[True,False]
-[False,True]
+f x = x ? -x
+> \textsl{set_1 f (0 ? 1)}
+\{0,0\}
+\{1,-1\}
 \end{program}
 \end{example}
 
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Implementation of Set Functions}
+\frametitle{Designated Implementation of Set Functions}
 
 \begin{itemize}
   \item \code{ID}s can be covered to preserve non-determinism
-  \item Target structure of search needs to distinguish covered and uncovered
-        non-determinism
-  \item[\ergo] \code{MonadPlus} is no longer sufficient
+  \item Search space representation needs to distinguish covered
+        and uncovered non-determinism
+  \item[\ergo] \code{MonadPlus} is extended to \code{MonadSearch}\footnote{%
+       Better naming appreciated}
 \end{itemize}
 
+\pause
+
 \begin{haskell}[Covered \code{ID}s]
-data ID = -- as before
-        | Covered ID
+data ID = ChoiceID  Int
+        | CoveredID Int
 \end{haskell}
 
 \begin{haskell}[\code{MonadSearch}]
 class MonadPlus m => MonadSearch m where
-  splus :: ID -> m a -> m a -> m a -- preserve binary Choice
-  ssum  :: ID -> [m a] -> m a      -- preserve n-ary  Choice
+  splus :: ID ->  m a  -> m a -> m a -- preserve binary Choice
+  ssum  :: ID -> [m a] -> m a        -- preserve n-ary  Choice
 \end{haskell}
 
 \end{frame}
@@ -368,14 +451,14 @@ class MonadPlus m => MonadSearch m where
 \frametitle{Conclusion}
 
 \begin{itemize}
-\item More flexibility
+\item More flexibility of search
       \begin{itemize}
         \item Multiple search strategies
         \item Multiple levels to search non-determinism
       \end{itemize}
-\item Applicability
+\item Applicability of search
       \begin{itemize}
-        \item More than \code{read-eval-print} loop
+        \item More than read-eval-print loop
         \item Non-determinism and I/O can be clearly separated
       \end{itemize}
 \end{itemize}
