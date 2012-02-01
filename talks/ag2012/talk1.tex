@@ -170,8 +170,8 @@ ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1)
 \begin{center}
 \begin{minipage}{.2\textwidth}
 \begin{tikzpicture}
-\node (t) at (0  ,0) {\code{T}};
-\node (f) at (1  ,0) {\code{F}};
+\node (t) at (0  ,0) {\code{0}};
+\node (f) at (1  ,0) {\code{1}};
 \node (q) at (0.5,1) {$\code{?}_{1}$};
 \node (l) at (0.5,2) {\code{( , )}};
 \draw (l) .. controls (0.25,1.5) .. (q);
@@ -183,11 +183,11 @@ ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1)
 $\Rightarrow$
 \begin{minipage}{.2\textwidth}
 \begin{tikzpicture}
-\node (t ) at (0  ,0) {\code{T}};
-\node (f ) at (1  ,0) {\code{F}};
+\node (t ) at (0  ,0) {\code{0}};
+\node (f ) at (1  ,0) {\code{1}};
 \node (q1) at (0.5,1) {$\code{?}_{1}$};
-\node (v1) at (0  ,2) {\code{(T, )}};
-\node (v2) at (1  ,2) {\code{(F, )}};
+\node (v1) at (0  ,2) {\code{(0, )}};
+\node (v2) at (1  ,2) {\code{(1, )}};
 \node (q2) at (0.5,3) {$\code{?}_{1}$};
 \draw (q2) -- (v1);
 \draw (q2) -- (v2);
@@ -200,10 +200,10 @@ $\Rightarrow$
 $\Rightarrow$
 \begin{minipage}{.36\textwidth}
 \begin{tikzpicture}
-\node (tt) at (0  ,0) {\code{(T,T)}};
-\node (tf) at (1  ,0) {\code{(T,F)}};
-\node (ft) at (2  ,0) {\code{(F,T)}};
-\node (ff) at (3  ,0) {\code{(F,F)}};
+\node (tt) at (0  ,0) {\code{(0,0)}};
+\node (tf) at (1  ,0) {\code{(0,1)}};
+\node (ft) at (2  ,0) {\code{(1,0)}};
+\node (ff) at (3  ,0) {\code{(1,1)}};
 \node (q1) at (0.5,1) {$\code{?}_{1}$};
 \node (q2) at (2.5,1) {$\code{?}_{1}$};
 \node (q3) at (1.5,2) {$\code{?}_{1}$};
@@ -277,7 +277,7 @@ class Monad m => Store m where
 \end{itemize}
 
 \begin{haskell}[General search]
-search :: MonadPlus m => Try a -> m a
+search :: (MonadPlus m, Store m) => Try a -> m a
 search (Val a)        = return a
 search Fail           = mzero
 search (Choice i l r) = lookupDecision i >>= follow
