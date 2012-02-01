@@ -151,32 +151,29 @@ prtChoices goal = getNormalForm goal >>= print
 
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
 -- and print the choice structure of all results as a tree.
-prtChoiceTree :: NormalForm a => NonDetExpr a -> IO ()
-prtChoiceTree goal = getNormalForm goal >>= putStrLn . showChoiceTree
+prtChoiceTree :: NormalForm a => Int -> NonDetExpr a -> IO ()
+prtChoiceTree d goal = getNormalForm goal >>= putStrLn . showChoiceTree d
 
-showChoiceTree :: (Show a, NonDet a) => a -> String
-showChoiceTree = ($[]) . showsTree [] "" . try
+showChoiceTree' :: (Show a, NonDet a) => a -> String
+showChoiceTree' = showChoiceTree 10
+
+showChoiceTree :: (Show a, NonDet a) => Int -> a -> String
+showChoiceTree n goal = showsTree n [] "" (try goal) []
   where
-  -- showsTree n l <tryVal>, where
-  --   * @l@ is a stack of flags whether we show the last alternative
-  --         of the respective level (for drawing aesthetical corners)
-  --   * @k@ is the key for the decision (L, R or the constructor index)
-  showsTree l k (Val v)
-    = indent l k . showString "Val " . shows v . nl
-  showsTree l k Fail
-    = indent l k . showChar '!' . nl
-  showsTree l k (Choice  i x y)
-    = indent l k . shows i . nl
-    . showsChildren l [("L", try x), ("R", try y)]
-  showsTree l k (Narrowed i xs)
-    = indent l k . shows i . nl
-    . showsChildren l (zip (map show [(0 :: Int) ..]) (map try xs))
-  showsTree l k (Free     i xs)
-    = indent l k . shows i . nl
-    . showsChildren l (zip (map show [(0 :: Int) ..]) (map try xs))
-  showsTree l k (Guard    cs e)
-    = indent l k . shows cs . nl
-    . showsChildren l [("", try e)]
+  -- showsTree d ctxt k <tryVal>, where
+  --   * @d@    is the remaining depth to print the tree
+  --   * @ctxt@ is a stack of flags whether we show the last alternative
+  --            of the respective level (for drawing aesthetical corners)
+  --   * @k@    is the key for the decision (L, R, constructor index)
+  showsTree d l k ndVal
+    | d <= 0    = indent l k . showChar '_' . nl
+    | otherwise = indent l k . case ndVal of
+      Val v         -> showString "Val " . shows v . nl
+      Fail          -> showChar '!' . nl
+      Choice  i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
+      Narrowed i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
+      Free     i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
+      Guard    cs e -> shows cs . nl . showsChildren d l [("", try e)]
 
   indent []      _ = id
   indent (hd:tl) k = showString (concatMap showLines $ reverse tl)
@@ -194,9 +191,9 @@ showChoiceTree = ($[]) . showsTree [] "" . try
   lmc  = '\x251c'     -- left middle corner
   nl   = showChar '\n'-- newline :)
 
-  showsChildren _ []          = id
-  showsChildren l [(k,v)]     = showsTree (True :l) k v
-  showsChildren l ((k,v):kvs) = showsTree (False:l) k v . showsChildren l kvs
+  showsChildren _ _ []          = id
+  showsChildren d l [(k,v)]     = showsTree (d-1) (True :l) k v
+  showsChildren d l ((k,v):kvs) = showsTree (d-1) (False:l) k v . showsChildren d l kvs
 
 -- ---------------------------------------------------------------------------
 -- Printing all results of a computation in a depth-first manner
@@ -306,7 +303,7 @@ computeWithDFS goal = getNormalForm goal >>= searchDFS msingleton
 
 searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchDFS act goal = do
-  trace $ "Corresponding search tree:\n" ++ showChoiceTree goal
+  trace $ "Corresponding search tree:\n" ++ showChoiceTree' goal
   dfs act goal
   where
   dfs cont x = do
@@ -376,7 +373,7 @@ computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMPlus
 
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchBFS act goal = do
-  trace $ "Corresponding search tree:\n" ++ showChoiceTree goal
+  trace $ "Corresponding search tree:\n" ++ showChoiceTree' goal
   bfs act [] [] (return ()) (return ()) goal
   where
   -- xs is the list of values to be processed in this level
@@ -437,7 +434,7 @@ searchBFS act goal = do
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS :: Int -> Int
-incrDepth4IDFS n = n + 1 -- * 2 
+incrDepth4IDFS n = n + 1 -- * 2
 
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased
@@ -473,7 +470,7 @@ searchIDS2 initDepth incr cont goal = iter 0 initDepth
 -- start iterative deepening for a given depth interval
 startIDS :: NormalForm a => Int -> Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
 startIDS olddepth newdepth act goal = do
-  trace $ "Corresponding search tree:\n" ++ showChoiceTree goal
+  trace $ "Corresponding search tree:\n" ++ showChoiceTree' goal
   ids newdepth act goal
   where
   ids n cont x = do

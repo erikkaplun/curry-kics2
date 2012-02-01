@@ -140,13 +140,13 @@ hPutStrLnGhci rst h s = do
 --------------------------------------------------------------------------
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices | PrtChoiceTree
+data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices Int
 
 -- Result of compiling main goal
-data MainGoalCompile =
-   GoalError                               -- error occurred
- | GoalWithoutBindings CurryProg           -- goal does not contain free vars
- | GoalWithBindings CurryProg Int String   -- number of vars / new goal
+data MainGoalCompile
+  = GoalError                               -- error occurred
+  | GoalWithoutBindings CurryProg           -- goal does not contain free vars
+  | GoalWithBindings CurryProg Int String   -- number of vars / new goal
 
 -- Result of compiling main program
 data MainCompile = MainError | MainDet | MainNonDet
@@ -388,7 +388,7 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
     let (CFunc _ _ _ maintype _) = mfunc
         freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings)
-       || (rst->ndMode) `elem` [PrtChoices, PrtChoiceTree]
+       || isPrtChoices (rst->ndMode)
        || isIOType maintype
        || length freevars > 10 -- due to limited size of tuples used
                                -- in PrintBindings
@@ -412,6 +412,9 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
                             mbprog)
    )
  where
+  isPrtChoices c = case c of
+    PrtChoices _ -> True
+    _            -> False
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
 
@@ -511,15 +514,14 @@ createHaskellMain rst goalstate isdet isio
     | isio && isdet                  = "evalDIO"
     | isio                           = "evalIO"
     | isdet                          = "evalD"
-    | rst -> ndMode == PrtChoices    = "prtChoices"
-    | rst -> ndMode == PrtChoiceTree = "prtChoiceTree"
-    | otherwise                      = searchOperation ++ ' ' : printOperation
-  searchOperation = case rst -> ndMode of
-    PrDFS -> "prdfs"
-    DFS   -> "printDFS" ++ searchSuffix
-    BFS   -> "printBFS" ++ searchSuffix
-    IDS d -> "printIDS" ++ searchSuffix ++ ' ' : show d
-    Par _ -> "printPar" ++ searchSuffix
+    | otherwise                      = case rst -> ndMode of
+      PrDFS        -> searchExpr $ "prdfs"
+      DFS          -> searchExpr $ "printDFS" ++ searchSuffix
+      BFS          -> searchExpr $ "printBFS" ++ searchSuffix
+      IDS        d -> searchExpr $ "printIDS" ++ searchSuffix ++ ' ' : show d
+      Par        _ -> searchExpr $ "printPar" ++ searchSuffix
+      PrtChoices d -> "prtChoiceTree" ++ ' ' : show d
+  searchExpr search = search ++ ' ' : printOperation
   searchSuffix
     | rst -> interactive = "i " ++ moreDefault
     | rst -> firstSol    = "1"
@@ -776,10 +778,17 @@ processThisOption rst option args
    = do ipath <- if null args then defaultImportPaths rst
                               else defaultImportPathsWith rst args
         return (Just { importPaths := ipath | rst })
-  | option=="bfs"        = return (Just { ndMode := BFS           | rst })
-  | option=="dfs"        = return (Just { ndMode := DFS           | rst })
-  | option=="prdfs"      = return (Just { ndMode := PrDFS         | rst })
-  | option=="choices"    = return (Just { ndMode := PrtChoiceTree | rst })
+  | option=="bfs"        = return (Just { ndMode := BFS        | rst })
+  | option=="dfs"        = return (Just { ndMode := DFS        | rst })
+  | option=="prdfs"      = return (Just { ndMode := PrDFS      | rst })
+  | option=="choices"
+   = if null args
+     then return (Just { ndMode := PrtChoices 10 | rst })
+     else maybe (writeErrorMsg "illegal number" >> return Nothing)
+                (\ (n,s) -> if null (strip s)
+                            then return (Just { ndMode := PrtChoices n | rst })
+                            else writeErrorMsg "illegal number" >> return Nothing)
+                (readNat args)
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -833,7 +842,7 @@ printOptions rst = putStrLn $
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "choices        - set search mode to print the choice structure as a tree\n"++
+  "choices [<n>]  - set search mode to print the choice structure as a tree up to level <n>\n"++
   "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
@@ -857,8 +866,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   "search mode       : " ++
       (case (rst->ndMode) of
          PrDFS         -> "primitive non-monadic depth-first search"
-         PrtChoices    -> "show choice structure"
-         PrtChoiceTree -> "show choice tree structure"
+         PrtChoices d  -> "show choice tree structure up to level " ++ show d
          DFS           -> "depth-first search"
          BFS           -> "breadth-first search"
          IDS d         -> "iterative deepening (initial depth: "++show d++")"
