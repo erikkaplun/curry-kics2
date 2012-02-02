@@ -4,7 +4,7 @@
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
   , Unique, mkInteger, showUnique
-  , Store (..)
+  , getDecisionRaw, setDecisionRaw, unsetDecisionRaw
   ) where
 
 import Control.Monad (liftM)
@@ -31,6 +31,13 @@ instance Show IDSupply where
 mkInteger :: Unique -> Integer
 mkInteger = toInteger . getKey
 
+showUnique :: Unique -> String
+showUnique = tail . show -- tail to avoid showing of leading 'a'
+
+-- |Initialize a new 'IDSupply'
+initSupply :: IO IDSupply
+initSupply = IDSupply `liftM` mkSplitUniqSupply 'a'
+
 leftSupply :: IDSupply -> IDSupply
 leftSupply = IDSupply . fst . splitUniqSupply . uniqSupply
 
@@ -40,31 +47,19 @@ rightSupply = IDSupply . snd . splitUniqSupply . uniqSupply
 unique :: IDSupply -> Unique
 unique = uniqFromSupply . uniqSupply
 
-showUnique :: Unique -> String
-showUnique = tail . show -- tail to avoid showing of leading 'a'
-
--- |Initialize a new 'IDSupply'
-initSupply :: IO IDSupply
-initSupply = IDSupply `liftM` mkSplitUniqSupply 'a'
-
--- |Type class for a Decision 'Store'
-class (Monad m) => Store m where
-  -- |Get the stored 'Decision', defaulting to 'defaultDecision'
-  getDecisionRaw    :: Unique -> m Decision
-  -- |Set the 'Decision'
-  setDecisionRaw    :: Unique -> Decision -> m ()
-  -- |Unset the 'Decision'
-  unsetDecisionRaw  :: Unique -> m ()
-
 -- |Internal store for 'Decision's
 store :: IORef (Map.Map Unique Decision)
 store = unsafePerformIO (newIORef Map.empty)
 {-# NOINLINE store #-}
 
-instance Store IO where
-  getDecisionRaw u        = Map.findWithDefault defaultDecision u
-                            `liftM` readIORef store
-  setDecisionRaw u c
-    | isDefaultDecision c = modifyIORef store $ Map.delete u
-    | otherwise           = modifyIORef store $ Map.insert u c
-  unsetDecisionRaw u      = modifyIORef store $ Map.delete u
+getDecisionRaw :: Unique -> IO Decision
+getDecisionRaw u = Map.findWithDefault defaultDecision u
+                   `liftM` readIORef store
+
+setDecisionRaw :: Unique -> Decision -> IO ()
+setDecisionRaw u c
+  | isDefaultDecision c = modifyIORef store $ Map.delete u -- collect garbage
+  | otherwise           = modifyIORef store $ Map.insert u c
+
+unsetDecisionRaw :: Unique -> IO ()
+unsetDecisionRaw = modifyIORef store . Map.delete

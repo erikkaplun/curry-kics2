@@ -4,7 +4,7 @@
 module IDSupply
   ( IDSupply, initSupply, leftSupply, rightSupply, unique
   , Unique, mkInteger, showUnique
-  , Store (..)
+  , getDecisionRaw, setDecisionRaw, unsetDecisionRaw
   ) where
 
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
@@ -14,9 +14,6 @@ import GHC.IO  (unsafeDupableInterleaveIO)
 import {-# SOURCE #-} ID (Decision, defaultDecision)
 
 newtype Unique = Unique { unqRef :: IORef Decision } deriving Eq
-
-instance Show Unique where
-  show _ = ""
 
 data IDSupply = IDSupply
   { unique      :: Unique   -- ^ Decision and unique identifier for this IDSupply
@@ -28,7 +25,7 @@ instance Eq IDSupply where
   s1 == s2 = unique s1 == unique s2
 
 instance Show IDSupply where
-  show = show . unique
+  show = showUnique . unique
 
 -- |Retrieve an 'Integer' representation of the unique identifier
 mkInteger :: Unique -> Integer
@@ -61,16 +58,11 @@ getPureSupply = do
   return (IDSupply (Unique r) s1 s2)
 {-# NOINLINE getPureSupply #-}
 
--- |Type class for a Decision 'Store'
-class (Monad m) => Store m where
-  -- |Get the stored 'Decision', defaulting to 'defaultDecision'
-  getDecisionRaw    :: Unique -> m Decision
-  -- |Set the 'Decision'
-  setDecisionRaw    :: Unique -> Decision -> m ()
-  -- |Unset the 'Decision'
-  unsetDecisionRaw  :: Unique -> m ()
+getDecisionRaw :: Unique -> IO Decision
+getDecisionRaw u = readIORef (unqRef u)
 
-instance Store IO where
-  getDecisionRaw    u   = readIORef  (unqRef u)
-  setDecisionRaw    u c = writeIORef (unqRef u) c
-  unsetDecisionRaw  u   = writeIORef (unqRef u) defaultDecision
+setDecisionRaw :: Unique -> Decision -> IO ()
+setDecisionRaw u c = writeIORef (unqRef u) c
+
+unsetDecisionRaw :: Unique -> IO ()
+unsetDecisionRaw u = writeIORef (unqRef u) defaultDecision

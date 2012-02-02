@@ -19,7 +19,8 @@ module ID
 import Control.Monad (liftM, when, zipWithM_)
 
 import Debug
-import IDSupply
+import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
+import qualified IDSupply
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -175,6 +176,24 @@ traceDecision set i c = do
   reset <- set i c
   trace $ "set " ++ show i ++ " -> " ++ show c
   return reset
+
+-- ---------------------------------------------------------------------------
+-- Store
+-- ---------------------------------------------------------------------------
+
+-- |Type class for a Decision 'Store'
+class (Monad m) => Store m where
+  -- |Get the stored 'Decision', defaulting to 'defaultDecision'
+  getDecisionRaw    :: Unique -> m Decision
+  -- |Set the 'Decision'
+  setDecisionRaw    :: Unique -> Decision -> m ()
+  -- |Unset the 'Decision'
+  unsetDecisionRaw  :: Unique -> m ()
+
+instance Store IO where
+  getDecisionRaw   = IDSupply.getDecisionRaw
+  setDecisionRaw   = IDSupply.setDecisionRaw
+  unsetDecisionRaw = IDSupply.unsetDecisionRaw
 
 -- ---------------------------------------------------------------------------
 -- Looking up decisions
