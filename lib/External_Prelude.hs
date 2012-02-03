@@ -20,12 +20,11 @@ import PrimTypes
 -- ---------------------------------------------------------------------------
 
 -- Class for Curry types
-class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a, Coverable a)
       => Curry a where
   -- implementation of strict equalit (==) for a data type
   (=?=) :: a -> a -> ConstStore -> C_Bool
   (=?=) = error "(==) is undefined"
-
   -- implementation of less-or-equal (<=) for a data type
   (<?=) :: a -> a -> ConstStore -> C_Bool
   (<?=) = error "(<=) is undefined"
@@ -33,6 +32,7 @@ class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
 instance Curry (PrimData a) where
   (=?=) = error "(==) is undefined for primitive data"
   (<?=) = error "(<=) is undefined for primitive data"
+
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 instance Curry_Prelude.Curry C_Success where
@@ -64,6 +64,7 @@ instance (Curry t0,Curry t1) => Curry (Func t0 t1) where
 instance Curry t0 => Curry (C_IO t0) where
   (=?=) = error "(==) is undefined for I/O actions"
   (<?=) = error "(<=) is undefined for I/O actions"
+
 
 instance NonDet b => Curry (a -> b) where
   (=?=) = error "(==) is undefined for functions"
@@ -195,6 +196,14 @@ instance Curry_Prelude.Curry C_Int where
   (<?=) (C_CurryInt x1) (C_CurryInt y1) cs = (x1 `d_C_lteqInteger` y1) cs
 -- END GENERATED FROM PrimTypes.curry
 
+instance Coverable C_Int where
+  cover x@(C_Int _)          = x
+  cover (C_CurryInt x)       = C_CurryInt (cover x)
+  cover (Choice_C_Int i x y) = Choice_C_Int (coverID i) (cover x) (cover y)
+  cover (Choices_C_Int i xs) = Choices_C_Int (coverID i) (map cover xs)
+  cover f@Fail_C_Int         = f
+  cover (Guard_C_Int cs x)   = Guard_C_Int (coverConstraints cs) (cover x)
+
 primint2curryint :: Int# -> BinInt
 primint2curryint n
   | n <#  0#  = Neg (primint2currynat (negateInt# n))
@@ -312,6 +321,13 @@ instance Curry C_Float where
   (<?=) y (Guard_C_Float c x) cs = guardCons c ((y <?= x) (addCs c cs))
   (<?=) _ Fail_C_Float _ = failCons
   (<?=) (C_Float x1) (C_Float y1) _ = toCurry (x1 `leFloat#` y1)
+
+instance Coverable C_Float where
+  cover f@(C_Float _)          = f
+  cover (Choice_C_Float i x y) = Choice_C_Float (coverID i) (cover x) (cover y)
+  cover (Choices_C_Float i xs) = Choices_C_Float (coverID i) (map cover xs)
+  cover f@Fail_C_Float         = f
+  cover (Guard_C_Float cs x)   = Guard_C_Float (coverConstraints cs) (cover x)
 
 -- ---------------------------------------------------------------------------
 -- Char
@@ -444,6 +460,14 @@ instance Curry C_Char where
   (<?=) (C_Char      x1) (CurryChar y1) cs = ((primChar2CurryChar x1) `d_C_lteqInteger` y1) cs
   (<?=) (CurryChar x1) (C_Char      y1) cs = (x1 `d_C_lteqInteger` (primChar2CurryChar y1)) cs
   (<?=) (CurryChar x1) (CurryChar y1) cs = (x1 `d_C_lteqInteger` y1) cs
+
+instance Coverable C_Char where
+  cover c@(C_Char _)          = c
+  cover (CurryChar x)         = CurryChar (cover x)
+  cover (Choice_C_Char i x y) = Choice_C_Char (coverID i) (cover x) (cover y)
+  cover (Choices_C_Char i xs) = Choices_C_Char (coverID i) (map cover xs)
+  cover f@Fail_C_Char         = f
+  cover (Guard_C_Char cs x)   = Guard_C_Char (coverConstraints cs) (cover x)
 
 
 primChar2CurryChar :: Char# -> BinInt
@@ -852,6 +876,7 @@ instance Curry_Prelude.Curry Nat where
   (<?=) (I x1) (I y1) cs = (x1 Curry_Prelude.<?= y1) cs
   (<?=) _ _ _ = Curry_Prelude.C_False
 
+
 instance Curry_Prelude.Curry BinInt where
   (=?=) (Choice_BinInt i x y) z cs = narrow i ((x Curry_Prelude.=?= z) cs) ((y Curry_Prelude.=?= z) cs)
   (=?=) (Choices_BinInt i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.=?= y) cs) xs
@@ -880,6 +905,7 @@ instance Curry_Prelude.Curry BinInt where
   (<?=) Zero (Pos _) _ = Curry_Prelude.C_True
   (<?=) (Pos x1) (Pos y1) cs = (x1 Curry_Prelude.<?= y1) cs
   (<?=) _ _ _ = Curry_Prelude.C_False
+
 
 
 

@@ -11,6 +11,10 @@ instance Monad C_SearchTree where
   C_Value x >>= f = f x
   C_Or x y  >>= f = C_Or (x >>= f) (y >>= f)
 
+  Choice_C_SearchTree i x y >>= f = Choice_C_SearchTree i (x >>= f) (y >>= f)
+  Choices_C_SearchTree i xs >>= f = Choices_C_SearchTree i (map (>>= f) xs)
+  
+
 instance MonadPlus C_SearchTree where
   mzero = C_Fail
   mplus = C_Or

@@ -116,6 +116,13 @@ instance CP.Curry a => CP.Curry (C_IORef a) where
   (=?=) = error "(==) is undefined for IORefs"
   (<?=) = error "(<=) is undefined for IORefs"
 
+instance Coverable (C_IORef a) where
+  cover (Choice_C_IORef i x y) = Choice_C_IORef (coverID i) (cover x) (cover y)
+  cover (Choices_C_IORef i xs) = Choices_C_IORef (coverID i) (map cover xs)
+  cover f@Fail_C_IORef         = f
+  cover (Guard_C_IORef cs x)   = Guard_C_IORef (coverConstraints cs) (cover x)
+  cover r@(C_IORef _)          = r
+
 instance ConvertCurryHaskell (C_IORef a) (IORef a) where
   fromCurry (C_IORef r) = r
   fromCurry _           = error "IORef with no ground term occurred"

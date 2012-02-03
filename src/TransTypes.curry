@@ -53,6 +53,7 @@ genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
                              , normalformInstance hoResult
                              , unifiableInstance  hoResult
                              , curryInstance      hoResult
+                             , coverableInstance
                              ]
     acvis     = (fcy2absVis vis)
     targs     = map fcy2absTVar tnums
@@ -763,6 +764,39 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
                     [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_")]
                     (constF $ curryPre "C_True"))
 
+
+------------------------------------------------------------------------------------------
+--  Generate instance of Coverable class
+------------------------------------------------------------------------------------------
+
+coverableInstance :: FC.TypeDecl -> TypeDecl
+coverableInstance (FC.Type qf _ tnums cdecls) =
+  mkInstance (basics "Coverable") [] ctype targs $ coverRules qf cdecls
+  where
+    targs = map fcy2absTVar tnums
+    ctype = TCons qf (map TVar targs)
+
+coverRules :: QName -> [FC.ConsDecl] -> [(QName,Rule)]
+coverRules qn decls =
+  map (\ r -> (cover,r))
+   (map  mkCoverConsRule decls
+    ++ [ simpleRule [mkChoicePattern qn] (applyF (mkChoiceName qn) [ applyF coverID [i]
+                                                                   , applyF cover [x]
+                                                                   , applyF cover [y]])  
+       , simpleRule [mkChoicesPattern qn] (applyF (mkChoicesName qn) 
+                                                  [ applyF coverID [i]
+                                                  , applyF (pre "map") [constF cover, xs]])
+       , simpleRule [mkFailPattern qn] (constF (mkFailName qn))
+       , simpleRule [mkGuardPattern qn] (applyF (mkGuardName qn)
+                                                [applyF coverConstraints [c], applyF cover [e]])
+       ])
+                  
+ where
+  mkCoverConsRule (FC.Cons conName carity _ _)
+    =  simpleRule [consPattern conName "x" carity] 
+                  (applyF conName (map (\n -> applyF cover [Var (n,"x" ++ show n)]) [1..carity]))
+  [i,x,y,xs,c,e] = map Var $ newVars ["i","x","y","xs","c","e"]  
+
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions
 -- ---------------------------------------------------------------------------
@@ -878,3 +912,12 @@ narrow = basics "narrow"
 
 narrows :: QName
 narrows = basics "narrows"
+
+cover :: QName
+cover = basics "cover"
+
+coverID :: QName
+coverID = basics "coverID"
+
+coverConstraints :: QName
+coverConstraints = basics "coverConstraints"

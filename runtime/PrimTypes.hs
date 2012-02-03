@@ -108,6 +108,15 @@ instance Unifiable BinInt where
   lazyBind _ Fail_BinInt = [Unsolvable]
   lazyBind i (Guard_BinInt cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
+instance Coverable BinInt where
+  cover (Neg x)               = Neg (cover x)
+  cover z@Zero                = z
+  cover (Pos x)               = Pos (cover x)
+  cover (Choice_BinInt i x y) = Choice_BinInt (coverID i) (cover x) (cover y)
+  cover (Choices_BinInt i xs) = Choices_BinInt (coverID i) (map cover xs)
+  cover f@Fail_BinInt         = f
+  cover (Guard_BinInt cs x)   = Guard_BinInt (coverConstraints cs) (cover x)
+
 -- Nats
 
 data Nat
@@ -211,6 +220,14 @@ instance Unifiable Nat where
   lazyBind _ Fail_Nat = [Unsolvable]
   lazyBind i (Guard_Nat cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
+instance Coverable Nat where
+  cover n@IHi = n
+  cover (O x)              = O (cover x)
+  cover (I x)              = I (cover x)
+  cover (Choice_Nat i x y) = Choice_Nat (coverID i) (cover x) (cover y)
+  cover (Choices_Nat i xs) = Choices_Nat (coverID i) (map cover xs)
+  cover n@Fail_Nat         = n
+  cover (Guard_Nat c e)    = Guard_Nat (coverConstraints c) (cover e)
 -- Higher Order Funcs
 
 -- BEGIN GENERATED FROM PrimTypes.curry
@@ -279,6 +296,13 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   lazyBind _ (Choices_Func i@(ChoiceID _) _) = error ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_Func = [Unsolvable]
   lazyBind i (Guard_Func cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+
+instance Coverable (Func t0 t1) where
+  cover f@(Func _)          = f
+  cover (Choice_Func i x y) = Choice_Func (coverID i) (cover x) (cover y)
+  cover (Choices_Func i cs) = Choices_Func (coverID i) (map cover cs)
+  cover f@Fail_Func         = f
+  cover (Guard_Func cs f)   = Guard_Func (coverConstraints cs) (cover f)   
 -- END GENERATED FROM PrimTypes.curry
 
 -- BEGIN GENERATED FROM PrimTypes.curry
@@ -347,6 +371,13 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind _ (Choices_C_IO i@(ChoiceID _) _) = error ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_C_IO = [Unsolvable]
   lazyBind i (Guard_C_IO cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+
+instance Coverable (C_IO t0) where
+  cover io@(C_IO _)         = io
+  cover (Choice_C_IO i x y) = Choice_C_IO (coverID i) (cover x) (cover y)
+  cover (Choices_C_IO i cs) = Choices_C_IO (coverID i) (map cover cs)
+  cover fio@Fail_C_IO       = fio
+  cover (Guard_C_IO cs cio) = Guard_C_IO (coverConstraints cs) (cover cio)
 -- END GENERATED FROM PrimTypes.curry
 
 instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
@@ -425,6 +456,14 @@ instance Unifiable (PrimData t0) where
   lazyBind _ (Choices_PrimData i@(ChoiceID _) _) = error ("Prelude.PrimData.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ Fail_PrimData = [Unsolvable]
   lazyBind i (Guard_PrimData cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+
+instance Coverable (PrimData a) where
+  cover p@(PrimData _)           = p
+  cover (Choice_PrimData id l r) = Choice_PrimData (coverID id) (cover l) (cover r)
+  cover (Choices_PrimData id cs) = Choices_PrimData (coverID id) (map cover cs)
+  cover Fail_PrimData            = Fail_PrimData
+  cover (Guard_PrimData cs x)    = Guard_PrimData (coverConstraints cs) (cover x)
+
 -- END GENERATED FROM PrimTypes.curry
 
 instance ConvertCurryHaskell (PrimData a) a where -- needs FlexibleInstances

@@ -5,6 +5,7 @@
 module ID
   ( -- * Constraints
     Constraint (..), Constraints(..), getConstrList
+  , coverConstraints
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
@@ -14,7 +15,7 @@ module ID
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
-  , nextNIDs, Store (..)
+  , nextNIDs, Store (..), Coverable (..)
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
@@ -38,11 +39,18 @@ data Constraint
   | ConstraintChoices ID [[Constraint]]
  deriving (Show,Eq)
 
+coverConstraint :: Constraint -> Constraint
+coverConstraint (ConstraintChoice i cs1 cs2)
+  = ConstraintChoice (coverID i) (map coverConstraint cs1) (map coverConstraint cs2)
+coverConstraint (ConstraintChoices i css) 
+ = ConstraintChoices (coverID i) (map (map coverConstraint) css)
+coverConstraint c = c
+
 -- A Value Constraint is used to bind a Value to an id it also contains the
 -- structural constraint information that describes the choice to be taken
 -- for a given id, a Struct Constraint has only the structural information
 data Constraints
-  = forall a . ValConstr ID a [Constraint]
+  = forall a . Coverable a => ValConstr ID a [Constraint]
   | StructConstr [Constraint]
 
 -- a selector to get the strucural constraint information from a constraint
@@ -56,6 +64,12 @@ instance Show Constraints where
 
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
+
+-- Covers all IDs in the a constraint list for the setfunctions
+coverConstraints :: Constraints -> Constraints
+coverConstraints (StructConstr c) = StructConstr (map coverConstraint c)
+coverConstraints (ValConstr i a c)
+  = ValConstr (coverID i) (cover a) (map coverConstraint c) 
 
 -- ---------------------------------------------------------------------------
 -- Decision
@@ -201,6 +215,21 @@ matchIdIgnoreCov _   frV _   i@(FreeID        _ _) = frV
 matchIdIgnoreCov _   frV _   i@(CovFreeID     _ _) = frV
 matchIdIgnoreCov _   _   naV i@(NarrowedID    _ _) = naV
 matchIdIgnoreCov _   _   naV i@(CovNarrowedID _ _) = naV
+
+
+-- ---------------------------------------------------------------------------
+-- Covering Choices for SetFunctions
+--- --------------------------------------------------------------------------
+
+class Coverable a where
+  -- Transformes all identifier of Choices in the data-structures
+  -- to covered identifiers
+  cover :: a -> a
+  cover = error "cover is undefined"
+
+instance Coverable a => Coverable [a] where
+  cover = map cover
+
 -- ---------------------------------------------------------------------------
 -- Tracing
 -- ---------------------------------------------------------------------------

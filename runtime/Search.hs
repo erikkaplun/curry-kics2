@@ -520,7 +520,7 @@ searchMSearch :: (MonadSearch m, NormalForm a) => a -> m a
 searchMSearch x = evalStateT (searchMSearch' return x) (Map.empty :: DecisionMap)
 
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => (a -> m b) -> a -> m b
-searchMSearch' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal
+searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
   where
   smpFail         = mzero
   smpVal v        = searchNF searchMSearch' cont v
@@ -535,7 +535,7 @@ searchMSearch' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVa
      ChoiceID _ -> mplus
      CovChoiceID u -> splus (ChoiceID u)  
 
-  smpNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
+  smpChoices i xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs)  = processLB i cs xs
     follow (ChooseN c _)  = searchMSearch' cont (xs !! c)
@@ -544,14 +544,10 @@ searchMSearch' cont = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVa
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     (pns,sumF)            = case i of
       NarrowedID    pns _ -> (pns,msum)
-      CovNarrowedID pns s -> (pns, ssum (NarrowedID pns s)) 
+      CovNarrowedID pns s -> (pns, ssum (NarrowedID pns s))
+      FreeID pns _        -> (pns, msum)
+      CovFreeID  pns s    -> (pns, ssum (NarrowedID pns s))
 
-  smpFree i xs = lookupDecisionID i >>= follow
-    where
-    follow (LazyBind cs, _) = processLB i cs xs
-    follow (ChooseN c _, _) = searchMSearch' cont (xs !! c)
-    follow (NoDecision , j) = cont $ choicesCons (uncoverID j) xs
-    follow c                = error $ "Search.smpFree: Bad decision " ++ show c
 
   smpGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero

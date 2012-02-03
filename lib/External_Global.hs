@@ -83,6 +83,14 @@ instance CP.Curry a => CP.Curry (C_Global a) where
   (=?=) = error "(==) is undefined for Globals"
   (<?=) = error "(<=) is undefined for Globals"
 
+instance Coverable (C_Global a) where
+  cover (Choice_C_Global i x y) = Choice_C_Global (coverID i) (cover x) (cover y) 
+  cover (Choices_C_Global i xs) = Choices_C_Global (coverID i) (map cover xs)
+  cover f@Fail_C_Global         = f 
+  cover (Guard_C_Global cs x)   = Guard_C_Global (coverConstraints cs) (cover x)     
+  cover x@(C_Global_Temp _)     = x
+  cover x@(C_Global_Pers _)     = x
+
 
 external_d_C_global :: CP.Curry a => a -> C_GlobalSpec -> ConstStore -> C_Global a
 external_d_C_global val C_Temporary _ = ref `seq` (C_Global_Temp ref)

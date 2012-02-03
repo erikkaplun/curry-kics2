@@ -215,7 +215,7 @@ class NonDet a => Generable a where
 -- ---------------------------------------------------------------------------
 
 -- Class for data that supports unification
-class NormalForm a => Unifiable a where
+class (NormalForm a, Coverable a) => Unifiable a where
   -- |Unification on constructor-rooted terms
   (=.=)    :: a -> a -> ConstStore -> C_Success
   -- |Lazy unification on constructor-rooted terms,
@@ -349,6 +349,7 @@ instance (ConvertCurryHaskell ca ha, ConvertCurryHaskell cb hb)
   fromCurry f = fromCurry . f . toCurry
   toCurry   f = toCurry   . f . fromCurry
 
+
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for Show and Read
 -- ---------------------------------------------------------------------------
@@ -469,6 +470,13 @@ instance Unifiable C_Success where
   constrain i (Choices_C_Success j xs) = constrainChoices i j xs
   constrain _ Fail_C_Success           = Fail_C_Success
   constrain i (Guard_C_Success cs e)   = constrainGuard i cs e
+
+instance Coverable C_Success where
+  cover s@C_Success               = s
+  cover (Choice_C_Success i x y)  = Choice_C_Success (coverID i) (cover x) (cover y)
+  cover (Choices_C_Success i xs)  = Choices_C_Success (coverID i) (map cover xs)
+  cover f@Fail_C_Success            = f
+  cover (Guard_C_Success cs x)    = Guard_C_Success (coverConstraints cs) (cover x) 
 -- END GENERATED FROM PrimTypes.curry
 
 -- ---------------------------------------------------------------------------
@@ -504,3 +512,6 @@ instance NonDet b => Unifiable (a -> b) where
   (=.<=)   = error "(=.<=) for function is undefined"
   bind     = error "bind for function is undefined"
   lazyBind = error "lazyBind for function is undefined"
+
+instance Coverable (a -> b) where
+  cover f = f
