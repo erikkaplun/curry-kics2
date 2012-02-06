@@ -1,0 +1,459 @@
+Running benchmark [1 of 221]: SearchEmbed@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [2 of 221]: SearchEmbed@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [3 of 221]: SearchEmbed@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [4 of 221]: SearchEmbed@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [5 of 221]: SearchEmbed@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [6 of 221]: SearchEmbed@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [7 of 221]: SearchEmbed@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [8 of 221]: SearchEmbed@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [9 of 221]: SearchEmbed@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [10 of 221]: SearchEmbed@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [11 of 221]: SearchEmbed@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [12 of 221]: SearchEmbed@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [13 of 221]: SearchEmbed@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [14 of 221]: SearchEmbed@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [15 of 221]: SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [16 of 221]: SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [17 of 221]: SearchEmbed@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [18 of 221]: SearchGraph@IDC+_D_(Old PrDFS)_IOREF: FAILED
+Running benchmark [19 of 221]: SearchGraph@IDC+_D_(Old DFS)_IOREF: FAILED
+Running benchmark [20 of 221]: SearchGraph@IDC+_D_(Old BFS)_IOREF: FAILED
+Running benchmark [21 of 221]: SearchGraph@IDC+_D_(Old (IDS 10))_IOREF: FAILED
+Running benchmark [22 of 221]: SearchGraph@IDC+_D_(Old EncDFS)_IOREF: FAILED
+Running benchmark [23 of 221]: SearchGraph@IDC+_D_(Old EncBFS)_IOREF: FAILED
+Running benchmark [24 of 221]: SearchGraph@IDC+_D_(Old EncIDS)_IOREF: FAILED
+Running benchmark [25 of 221]: SearchGraph@IDC+_D_(New IODFS)_IOREF: FAILED
+Running benchmark [26 of 221]: SearchGraph@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [27 of 221]: SearchGraph@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [28 of 221]: SearchGraph@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: FAILED
+Running benchmark [29 of 221]: SearchGraph@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: FAILED
+Running benchmark [30 of 221]: SearchGraph@IDC+_D_(New MPLUSDFS)_IOREF: FAILED
+Running benchmark [31 of 221]: SearchGraph@IDC+_D_(New MPLUSBFS)_IOREF: FAILED
+Running benchmark [32 of 221]: SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [33 of 221]: SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [34 of 221]: SearchGraph@IDC+_D_(New MPLUSPar)_IOREF: FAILED
+Running benchmark [35 of 221]: SearchHorseman@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [36 of 221]: SearchHorseman@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [37 of 221]: SearchHorseman@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [38 of 221]: SearchHorseman@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [39 of 221]: SearchHorseman@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [40 of 221]: SearchHorseman@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [41 of 221]: SearchHorseman@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [42 of 221]: SearchHorseman@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [43 of 221]: SearchHorseman@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [44 of 221]: SearchHorseman@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [45 of 221]: SearchHorseman@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [46 of 221]: SearchHorseman@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [47 of 221]: SearchHorseman@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [48 of 221]: SearchHorseman@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [49 of 221]: SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [50 of 221]: SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [51 of 221]: SearchHorseman@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [52 of 221]: SearchMAC@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [53 of 221]: SearchMAC@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [54 of 221]: SearchMAC@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [55 of 221]: SearchMAC@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [56 of 221]: SearchMAC@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [57 of 221]: SearchMAC@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [58 of 221]: SearchMAC@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [59 of 221]: SearchMAC@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [60 of 221]: SearchMAC@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [61 of 221]: SearchMAC@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [62 of 221]: SearchMAC@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [63 of 221]: SearchMAC@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [64 of 221]: SearchMAC@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [65 of 221]: SearchMAC@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [66 of 221]: SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [67 of 221]: SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [68 of 221]: SearchMAC@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [69 of 221]: SearchQueens@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [70 of 221]: SearchQueens@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [71 of 221]: SearchQueens@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [72 of 221]: SearchQueens@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [73 of 221]: SearchQueens@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [74 of 221]: SearchQueens@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [75 of 221]: SearchQueens@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [76 of 221]: SearchQueens@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [77 of 221]: SearchQueens@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [78 of 221]: SearchQueens@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [79 of 221]: SearchQueens@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [80 of 221]: SearchQueens@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [81 of 221]: SearchQueens@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [82 of 221]: SearchQueens@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [83 of 221]: SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [84 of 221]: SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [85 of 221]: SearchQueens@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [86 of 221]: SearchSMM@IDC+_D_(Old PrDFS)_IOREF: FAILED
+Running benchmark [87 of 221]: SearchSMM@IDC+_D_(Old DFS)_IOREF: FAILED
+Running benchmark [88 of 221]: SearchSMM@IDC+_D_(Old BFS)_IOREF: FAILED
+Running benchmark [89 of 221]: SearchSMM@IDC+_D_(Old (IDS 10))_IOREF: FAILED
+Running benchmark [90 of 221]: SearchSMM@IDC+_D_(Old EncDFS)_IOREF: FAILED
+Running benchmark [91 of 221]: SearchSMM@IDC+_D_(Old EncBFS)_IOREF: FAILED
+Running benchmark [92 of 221]: SearchSMM@IDC+_D_(Old EncIDS)_IOREF: FAILED
+Running benchmark [93 of 221]: SearchSMM@IDC+_D_(New IODFS)_IOREF: FAILED
+Running benchmark [94 of 221]: SearchSMM@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [95 of 221]: SearchSMM@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [96 of 221]: SearchSMM@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: FAILED
+Running benchmark [97 of 221]: SearchSMM@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: FAILED
+Running benchmark [98 of 221]: SearchSMM@IDC+_D_(New MPLUSDFS)_IOREF: FAILED
+Running benchmark [99 of 221]: SearchSMM@IDC+_D_(New MPLUSBFS)_IOREF: FAILED
+Running benchmark [100 of 221]: SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [101 of 221]: SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [102 of 221]: SearchSMM@IDC+_D_(New MPLUSPar)_IOREF: FAILED
+Running benchmark [103 of 221]: SearchEmbed@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [104 of 221]: SearchEmbed@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [105 of 221]: SearchEmbed@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [106 of 221]: SearchEmbed@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [107 of 221]: SearchEmbed@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [108 of 221]: SearchEmbed@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [109 of 221]: SearchEmbed@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [110 of 221]: SearchEmbed@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [111 of 221]: SearchEmbed@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [112 of 221]: SearchEmbed@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [113 of 221]: SearchEmbed@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [114 of 221]: SearchEmbed@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [115 of 221]: SearchEmbed@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [116 of 221]: SearchEmbed@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [117 of 221]: SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [118 of 221]: SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [119 of 221]: SearchEmbed@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [120 of 221]: SearchGraph@IDC+_D_(Old PrDFS)_IOREF: FAILED
+Running benchmark [121 of 221]: SearchGraph@IDC+_D_(Old DFS)_IOREF: FAILED
+Running benchmark [122 of 221]: SearchGraph@IDC+_D_(Old BFS)_IOREF: FAILED
+Running benchmark [123 of 221]: SearchGraph@IDC+_D_(Old (IDS 10))_IOREF: FAILED
+Running benchmark [124 of 221]: SearchGraph@IDC+_D_(Old EncDFS)_IOREF: FAILED
+Running benchmark [125 of 221]: SearchGraph@IDC+_D_(Old EncBFS)_IOREF: FAILED
+Running benchmark [126 of 221]: SearchGraph@IDC+_D_(Old EncIDS)_IOREF: FAILED
+Running benchmark [127 of 221]: SearchGraph@IDC+_D_(New IODFS)_IOREF: FAILED
+Running benchmark [128 of 221]: SearchGraph@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [129 of 221]: SearchGraph@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [130 of 221]: SearchGraph@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: FAILED
+Running benchmark [131 of 221]: SearchGraph@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: FAILED
+Running benchmark [132 of 221]: SearchGraph@IDC+_D_(New MPLUSDFS)_IOREF: FAILED
+Running benchmark [133 of 221]: SearchGraph@IDC+_D_(New MPLUSBFS)_IOREF: FAILED
+Running benchmark [134 of 221]: SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [135 of 221]: SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [136 of 221]: SearchGraph@IDC+_D_(New MPLUSPar)_IOREF: FAILED
+Running benchmark [137 of 221]: SearchHorseman@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [138 of 221]: SearchHorseman@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [139 of 221]: SearchHorseman@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [140 of 221]: SearchHorseman@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [141 of 221]: SearchHorseman@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [142 of 221]: SearchHorseman@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [143 of 221]: SearchHorseman@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [144 of 221]: SearchHorseman@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [145 of 221]: SearchHorseman@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [146 of 221]: SearchHorseman@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [147 of 221]: SearchHorseman@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [148 of 221]: SearchHorseman@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [149 of 221]: SearchHorseman@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [150 of 221]: SearchHorseman@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [151 of 221]: SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [152 of 221]: SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [153 of 221]: SearchHorseman@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [154 of 221]: SearchMAC@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [155 of 221]: SearchMAC@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [156 of 221]: SearchMAC@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [157 of 221]: SearchMAC@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [158 of 221]: SearchMAC@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [159 of 221]: SearchMAC@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [160 of 221]: SearchMAC@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [161 of 221]: SearchMAC@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [162 of 221]: SearchMAC@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [163 of 221]: SearchMAC@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [164 of 221]: SearchMAC@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [165 of 221]: SearchMAC@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [166 of 221]: SearchMAC@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [167 of 221]: SearchMAC@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [168 of 221]: SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [169 of 221]: SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [170 of 221]: SearchMAC@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [171 of 221]: SearchQueens@IDC+_D_(Old PrDFS)_IOREF: PASSED
+Running benchmark [172 of 221]: SearchQueens@IDC+_D_(Old DFS)_IOREF: PASSED
+Running benchmark [173 of 221]: SearchQueens@IDC+_D_(Old BFS)_IOREF: PASSED
+Running benchmark [174 of 221]: SearchQueens@IDC+_D_(Old (IDS 10))_IOREF: PASSED
+Running benchmark [175 of 221]: SearchQueens@IDC+_D_(Old EncDFS)_IOREF: PASSED
+Running benchmark [176 of 221]: SearchQueens@IDC+_D_(Old EncBFS)_IOREF: PASSED
+Running benchmark [177 of 221]: SearchQueens@IDC+_D_(Old EncIDS)_IOREF: PASSED
+Running benchmark [178 of 221]: SearchQueens@IDC+_D_(New IODFS)_IOREF: PASSED
+Running benchmark [179 of 221]: SearchQueens@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [180 of 221]: SearchQueens@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [181 of 221]: SearchQueens@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: PASSED
+Running benchmark [182 of 221]: SearchQueens@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: PASSED
+Running benchmark [183 of 221]: SearchQueens@IDC+_D_(New MPLUSDFS)_IOREF: PASSED
+Running benchmark [184 of 221]: SearchQueens@IDC+_D_(New MPLUSBFS)_IOREF: PASSED
+Running benchmark [185 of 221]: SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: PASSED
+Running benchmark [186 of 221]: SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: PASSED
+Running benchmark [187 of 221]: SearchQueens@IDC+_D_(New MPLUSPar)_IOREF: PASSED
+Running benchmark [188 of 221]: SearchSMM@IDC+_D_(Old PrDFS)_IOREF: FAILED
+Running benchmark [189 of 221]: SearchSMM@IDC+_D_(Old DFS)_IOREF: FAILED
+Running benchmark [190 of 221]: SearchSMM@IDC+_D_(Old BFS)_IOREF: FAILED
+Running benchmark [191 of 221]: SearchSMM@IDC+_D_(Old (IDS 10))_IOREF: FAILED
+Running benchmark [192 of 221]: SearchSMM@IDC+_D_(Old EncDFS)_IOREF: FAILED
+Running benchmark [193 of 221]: SearchSMM@IDC+_D_(Old EncBFS)_IOREF: FAILED
+Running benchmark [194 of 221]: SearchSMM@IDC+_D_(Old EncIDS)_IOREF: FAILED
+Running benchmark [195 of 221]: SearchSMM@IDC+_D_(New IODFS)_IOREF: FAILED
+Running benchmark [196 of 221]: SearchSMM@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [197 of 221]: SearchSMM@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [198 of 221]: SearchSMM@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF: FAILED
+Running benchmark [199 of 221]: SearchSMM@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF: FAILED
+Running benchmark [200 of 221]: SearchSMM@IDC+_D_(New MPLUSDFS)_IOREF: FAILED
+Running benchmark [201 of 221]: SearchSMM@IDC+_D_(New MPLUSBFS)_IOREF: FAILED
+Running benchmark [202 of 221]: SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF: FAILED
+Running benchmark [203 of 221]: SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF: FAILED
+Running benchmark [204 of 221]: SearchSMM@IDC+_D_(New MPLUSPar)_IOREF: FAILED
+Running benchmark [205 of 221]: NDNums@IDC+_D_(Old PrDFS)_IOREF:main2: FAILED
+Running benchmark [206 of 221]: NDNums@IDC+_D_(Old DFS)_IOREF:main2: FAILED
+Running benchmark [207 of 221]: NDNums@IDC+_D_(Old BFS)_IOREF:main2: FAILED
+Running benchmark [208 of 221]: NDNums@IDC+_D_(Old (IDS 10))_IOREF:main2: FAILED
+Running benchmark [209 of 221]: NDNums@IDC+_D_(Old EncDFS)_IOREF:main2: FAILED
+Running benchmark [210 of 221]: NDNums@IDC+_D_(Old EncBFS)_IOREF:main2: FAILED
+Running benchmark [211 of 221]: NDNums@IDC+_D_(Old EncIDS)_IOREF:main2: FAILED
+Running benchmark [212 of 221]: NDNums@IDC+_D_(New IODFS)_IOREF:main2: FAILED
+Running benchmark [213 of 221]: NDNums@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF:main2: PASSED
+Running benchmark [214 of 221]: NDNums@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF:main2: PASSED
+Running benchmark [215 of 221]: NDNums@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF:main2: PASSED
+Running benchmark [216 of 221]: NDNums@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF:main2: PASSED
+Running benchmark [217 of 221]: NDNums@IDC+_D_(New MPLUSDFS)_IOREF:main2: FAILED
+Running benchmark [218 of 221]: NDNums@IDC+_D_(New MPLUSBFS)_IOREF:main2: FAILED
+Running benchmark [219 of 221]: NDNums@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF:main2: FAILED
+Running benchmark [220 of 221]: NDNums@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF:main2: PASSED
+Running benchmark [221 of 221]: NDNums@IDC+_D_(New MPLUSPar)_IOREF:main2: FAILED
+Benchmarks on system Linux adamo 3.0.0-14-generic-pae #23-Ubuntu SMP Mon Nov 21 22:07:10 UTC 2011 i686 i686 i386 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+SearchEmbed@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11824 | 11792
+SearchEmbed@IDC+_D_(Old DFS)_IOREF                 |100.00 |  1.0e-2 |  2.0e-2 |  0.00  || 11984 | 12016
+SearchEmbed@IDC+_D_(Old BFS)_IOREF                 |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13600 | 13600
+SearchEmbed@IDC+_D_(Old (IDS 10))_IOREF            |400.00 |  4.0e-2 |  4.0e-2 |  4.0e-2  || 13792 | 13792
+SearchEmbed@IDC+_D_(Old EncDFS)_IOREF              |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 12960 | 12976
+SearchEmbed@IDC+_D_(Old EncBFS)_IOREF              |300.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 13648 | 13632
+SearchEmbed@IDC+_D_(Old EncIDS)_IOREF              |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13040 | 13040
+SearchEmbed@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11888 | 11920
+SearchEmbed@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |400.00 |  4.0e-2 |  4.0e-2 |  4.0e-2  || 13664 | 13648
+SearchEmbed@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   | 50.00 |  0.00 |  0.00 |  1.0e-2  || 12128 | 12096
+SearchEmbed@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |500.00 |  5.0e-2 |  5.0e-2 |  5.0e-2  || 15424 | 15408
+SearchEmbed@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 13536 | 13536
+SearchEmbed@IDC+_D_(New MPLUSDFS)_IOREF            |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 12944 | 12928
+SearchEmbed@IDC+_D_(New MPLUSBFS)_IOREF            |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13600 | 13584
+SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13776 | 13776
+SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|300.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 13008 | 12976
+SearchEmbed@IDC+_D_(New MPLUSPar)_IOREF            |250.00 |  2.0e-2 |  2.0e-2 |  3.0e-2  || 12960 | 12928
+--------
+SearchGraph@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 6704 | 6672
+SearchGraph@IDC+_D_(Old DFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 6816 | 6816
+SearchGraph@IDC+_D_(Old BFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 6960 | 6944
+SearchGraph@IDC+_D_(Old (IDS 10))_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6816 | 6816
+SearchGraph@IDC+_D_(Old EncDFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 6912 | 6912
+SearchGraph@IDC+_D_(Old EncBFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 7008 | 7040
+SearchGraph@IDC+_D_(Old EncIDS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 7040 | 7056
+SearchGraph@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 6704 | 6736
+SearchGraph@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 6752 | 6752
+SearchGraph@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 6768 | 6720
+SearchGraph@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 6832 | 6848
+SearchGraph@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 6832 | 6816
+SearchGraph@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6928 | 6944
+SearchGraph@IDC+_D_(New MPLUSBFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6944 | 6928
+SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 6912 | 6928
+SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 6928 | 6928
+SearchGraph@IDC+_D_(New MPLUSPar)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6928 | 6912
+--------
+SearchHorseman@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11344 | 11376
+SearchHorseman@IDC+_D_(Old DFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 11472 | 11440
+SearchHorseman@IDC+_D_(Old BFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 11792 | 11824
+SearchHorseman@IDC+_D_(Old (IDS 10))_IOREF            |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 13584 | 13584
+SearchHorseman@IDC+_D_(Old EncDFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 11872 | 11904
+SearchHorseman@IDC+_D_(Old EncBFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 11872 | 11904
+SearchHorseman@IDC+_D_(Old EncIDS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 13408 | 13408
+SearchHorseman@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11408 | 11376
+SearchHorseman@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   | 50.00 |  0.00 |  0.00 |  1.0e-2  || 13504 | 13504
+SearchHorseman@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 13456 | 13456
+SearchHorseman@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |300.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 16368 | 16384
+SearchHorseman@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 13072 | 13040
+SearchHorseman@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11792 | 11824
+SearchHorseman@IDC+_D_(New MPLUSBFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11792 | 11760
+SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF| 50.00 |  0.00 |  1.0e-2 |  0.00  || 13184 | 13152
+SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 13168 | 13168
+SearchHorseman@IDC+_D_(New MPLUSPar)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11824 | 11840
+--------
+SearchMAC@IDC+_D_(Old PrDFS)_IOREF               |  1.00 |  0.00 |  0.00 |  1.0e-2  || 16768 | 16768
+SearchMAC@IDC+_D_(Old DFS)_IOREF                 |  1.00 |  0.00 |  1.0e-2 |  0.00  || 16720 | 16752
+SearchMAC@IDC+_D_(Old BFS)_IOREF                 |  4.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 17104 | 17104
+SearchMAC@IDC+_D_(Old (IDS 10))_IOREF            | 20.00 |  0.10 |  0.10 |  0.10  || 22448 | 22416
+SearchMAC@IDC+_D_(Old EncDFS)_IOREF              |  6.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 25440 | 25440
+SearchMAC@IDC+_D_(Old EncBFS)_IOREF              |  2.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 17312 | 17312
+SearchMAC@IDC+_D_(Old EncIDS)_IOREF              |  7.00 |  4.0e-2 |  4.0e-2 |  3.0e-2  || 24320 | 24320
+SearchMAC@IDC+_D_(New IODFS)_IOREF               |  3.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 16720 | 16752
+SearchMAC@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   | 19.00 |  0.10 |  9.0e-2 |  0.10  || 22400 | 22432
+SearchMAC@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  3.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 19808 | 19840
+SearchMAC@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  | 44.00 |  0.22 |  0.22 |  0.22  || 16832 | 16848
+SearchMAC@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  3.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 16864 | 16864
+SearchMAC@IDC+_D_(New MPLUSDFS)_IOREF            |  6.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 25232 | 25200
+SearchMAC@IDC+_D_(New MPLUSBFS)_IOREF            |  3.00 |  2.0e-2 |  1.0e-2 |  2.0e-2  || 17120 | 17088
+SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  4.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 17328 | 17296
+SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  6.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 20704 | 20704
+SearchMAC@IDC+_D_(New MPLUSPar)_IOREF            |  5.00 |  2.0e-2 |  3.0e-2 |  2.0e-2  || 25232 | 25232
+--------
+SearchQueens@IDC+_D_(Old PrDFS)_IOREF               |  1.01 | 25.08 | 25.16 | 25.00  || 797600 | 797568
+SearchQueens@IDC+_D_(Old DFS)_IOREF                 |  1.02 | 25.15 | 25.14 | 25.16  || 1265984 | 1265984
+SearchQueens@IDC+_D_(Old BFS)_IOREF                 |  1.76 | 43.60 | 43.77 | 43.43  || 3686400 | 3686400
+SearchQueens@IDC+_D_(Old (IDS 10))_IOREF            |  6.16 |152.41 |152.40 |152.43  || 8785920 | 8785920
+SearchQueens@IDC+_D_(Old EncDFS)_IOREF              |  1.72 | 42.52 | 42.50 | 42.55  || 1099616 | 1099616
+SearchQueens@IDC+_D_(Old EncBFS)_IOREF              |  1.80 | 44.62 | 44.64 | 44.59  || 3686400 | 3686400
+SearchQueens@IDC+_D_(Old EncIDS)_IOREF              |  1.74 | 43.06 | 43.01 | 43.10  || 952256 | 952272
+SearchQueens@IDC+_D_(New IODFS)_IOREF               |  1.00 | 24.74 | 24.80 | 24.69  || 1266448 | 1266416
+SearchQueens@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |  6.09 |150.62 |150.66 |150.57  || 8785920 | 8785920
+SearchQueens@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  1.29 | 31.88 | 31.83 | 31.93  || 10297344 | 10297344
+SearchQueens@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  | 15.15 |374.92 |374.15 |375.70  || 1166768 | 1166736
+SearchQueens@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  1.36 | 33.57 | 33.44 | 33.70  || 770800 | 770784
+SearchQueens@IDC+_D_(New MPLUSDFS)_IOREF            |  1.72 | 42.62 | 42.58 | 42.65  || 763088 | 763120
+SearchQueens@IDC+_D_(New MPLUSBFS)_IOREF            |  1.78 | 44.10 | 44.16 | 44.05  || 3686400 | 3686400
+SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  1.77 | 43.80 | 43.76 | 43.83  || 3747840 | 3747840
+SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  1.71 | 42.39 | 42.44 | 42.34  || 2785280 | 2785280
+SearchQueens@IDC+_D_(New MPLUSPar)_IOREF            |  1.73 | 42.70 | 42.74 | 42.67  || 763088 | 763120
+--------
+SearchSMM@IDC+_D_(Old PrDFS)_IOREF               |  1.50 | 42.96 | 42.82 | 43.09  || 12468224 | 12468224
+SearchSMM@IDC+_D_(Old DFS)_IOREF                 |  1.56 | 44.58 | 44.63 | 44.53  || 12451840 | 12468224
+SearchSMM@IDC+_D_(Old BFS)_IOREF                 |  2.21 | 63.08 | 62.96 | 63.21  || 12468224 | 12472320
+SearchSMM@IDC+_D_(Old (IDS 10))_IOREF            |  1.33 | 38.08 | 38.09 | 38.08  || 12464128 | 12468224
+SearchSMM@IDC+_D_(Old EncDFS)_IOREF              |  1.91 | 54.52 | 54.72 | 54.31  || 12468224 | 12472320
+SearchSMM@IDC+_D_(Old EncBFS)_IOREF              |  2.16 | 61.67 | 61.67 | 61.67  || 12468224 | 12464128
+SearchSMM@IDC+_D_(Old EncIDS)_IOREF              |  1.88 | 53.78 | 53.73 | 53.82  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New IODFS)_IOREF               |  1.57 | 44.89 | 44.83 | 44.95  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |  1.33 | 38.09 | 38.09 | 38.09  || 12464128 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  1.00 | 28.60 | 28.64 | 28.56  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |  3.75 |107.24 |107.10 |107.38  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  2.50 | 71.38 | 71.40 | 71.37  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New MPLUSDFS)_IOREF            |  1.90 | 54.46 | 54.44 | 54.47  || 12468224 | 12460032
+SearchSMM@IDC+_D_(New MPLUSBFS)_IOREF            |  2.18 | 62.28 | 62.49 | 62.06  || 12468224 | 12472320
+SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  1.98 | 56.54 | 56.48 | 56.60  || 12464128 | 12468224
+SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  1.88 | 53.74 | 54.02 | 53.45  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New MPLUSPar)_IOREF            |  1.90 | 54.33 | 54.37 | 54.29  || 12460032 | 12468224
+--------
+SearchEmbed@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11792 | 11824
+SearchEmbed@IDC+_D_(Old DFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 12016 | 12016
+SearchEmbed@IDC+_D_(Old BFS)_IOREF                 |350.00 |  4.0e-2 |  4.0e-2 |  3.0e-2  || 13600 | 13600
+SearchEmbed@IDC+_D_(Old (IDS 10))_IOREF            |400.00 |  4.0e-2 |  4.0e-2 |  4.0e-2  || 13776 | 13792
+SearchEmbed@IDC+_D_(Old EncDFS)_IOREF              |300.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 12976 | 12976
+SearchEmbed@IDC+_D_(Old EncBFS)_IOREF              |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13616 | 13648
+SearchEmbed@IDC+_D_(Old EncIDS)_IOREF              |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13040 | 13008
+SearchEmbed@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11328 | 11328
+SearchEmbed@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |400.00 |  4.0e-2 |  4.0e-2 |  4.0e-2  || 13664 | 13664
+SearchEmbed@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 12096 | 12128
+SearchEmbed@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |550.00 |  6.0e-2 |  6.0e-2 |  5.0e-2  || 15424 | 15440
+SearchEmbed@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |150.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 13504 | 13536
+SearchEmbed@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11840 | 11840
+SearchEmbed@IDC+_D_(New MPLUSBFS)_IOREF            |250.00 |  2.0e-2 |  3.0e-2 |  2.0e-2  || 12960 | 12928
+SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 13136 | 13136
+SearchEmbed@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF| 50.00 |  0.00 |  1.0e-2 |  0.00  || 12048 | 12016
+SearchEmbed@IDC+_D_(New MPLUSPar)_IOREF            | 50.00 |  0.00 |  1.0e-2 |  0.00  || 11872 | 11872
+--------
+SearchGraph@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 6720 | 6704
+SearchGraph@IDC+_D_(Old DFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 6800 | 6832
+SearchGraph@IDC+_D_(Old BFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 6912 | 6928
+SearchGraph@IDC+_D_(Old (IDS 10))_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6848 | 6800
+SearchGraph@IDC+_D_(Old EncDFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 6896 | 6880
+SearchGraph@IDC+_D_(Old EncBFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 7040 | 7040
+SearchGraph@IDC+_D_(Old EncIDS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 7056 | 7056
+SearchGraph@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 6720 | 6720
+SearchGraph@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 6768 | 6736
+SearchGraph@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 6768 | 6768
+SearchGraph@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 6800 | 6848
+SearchGraph@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 6816 | 6800
+SearchGraph@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6944 | 6928
+SearchGraph@IDC+_D_(New MPLUSBFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6912 | 6928
+SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 6944 | 6928
+SearchGraph@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 6928 | 6960
+SearchGraph@IDC+_D_(New MPLUSPar)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 6944 | 6928
+--------
+SearchHorseman@IDC+_D_(Old PrDFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11376 | 11376
+SearchHorseman@IDC+_D_(Old DFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 11472 | 11472
+SearchHorseman@IDC+_D_(Old BFS)_IOREF                 |  0.00 |  0.00 |  0.00 |  0.00  || 11824 | 11792
+SearchHorseman@IDC+_D_(Old (IDS 10))_IOREF            |150.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 13552 | 13584
+SearchHorseman@IDC+_D_(Old EncDFS)_IOREF              | 50.00 |  0.00 |  1.0e-2 |  0.00  || 11888 | 11904
+SearchHorseman@IDC+_D_(Old EncBFS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 11904 | 11872
+SearchHorseman@IDC+_D_(Old EncIDS)_IOREF              |  0.00 |  0.00 |  0.00 |  0.00  || 13424 | 13440
+SearchHorseman@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 11216 | 11184
+SearchHorseman@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 13472 | 13504
+SearchHorseman@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  0.00 |  0.00 |  0.00 |  0.00  || 13456 | 13456
+SearchHorseman@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |350.00 |  4.0e-2 |  4.0e-2 |  3.0e-2  || 16400 | 16368
+SearchHorseman@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  0.00 |  0.00 |  0.00 |  0.00  || 13072 | 13040
+SearchHorseman@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11600 | 11632
+SearchHorseman@IDC+_D_(New MPLUSBFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11584 | 11616
+SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 12448 | 12448
+SearchHorseman@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  0.00 |  0.00 |  0.00 |  0.00  || 12432 | 12448
+SearchHorseman@IDC+_D_(New MPLUSPar)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 11648 | 11648
+--------
+SearchMAC@IDC+_D_(Old PrDFS)_IOREF               |100.00 |  1.0e-2 |  2.0e-2 |  0.00  || 16768 | 16800
+SearchMAC@IDC+_D_(Old DFS)_IOREF                 |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 16736 | 16720
+SearchMAC@IDC+_D_(Old BFS)_IOREF                 |150.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 17088 | 17104
+SearchMAC@IDC+_D_(Old (IDS 10))_IOREF            |1000.00 |  0.10 |  0.10 |  0.10  || 22448 | 22448
+SearchMAC@IDC+_D_(Old EncDFS)_IOREF              |300.00 |  3.0e-2 |  3.0e-2 |  3.0e-2  || 25440 | 25424
+SearchMAC@IDC+_D_(Old EncBFS)_IOREF              |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 17280 | 17280
+SearchMAC@IDC+_D_(Old EncIDS)_IOREF              |250.00 |  2.0e-2 |  2.0e-2 |  3.0e-2  || 24288 | 24304
+SearchMAC@IDC+_D_(New IODFS)_IOREF               |  0.00 |  0.00 |  0.00 |  0.00  || 12352 | 12336
+SearchMAC@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |1050.00 |  0.10 |  0.11 |  0.10  || 22416 | 22448
+SearchMAC@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 19856 | 19856
+SearchMAC@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |2200.00 |  0.22 |  0.22 |  0.22  || 16832 | 16832
+SearchMAC@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |150.00 |  2.0e-2 |  2.0e-2 |  1.0e-2  || 16832 | 16832
+SearchMAC@IDC+_D_(New MPLUSDFS)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 15280 | 15280
+SearchMAC@IDC+_D_(New MPLUSBFS)_IOREF            |100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 15216 | 15184
+SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|200.00 |  2.0e-2 |  2.0e-2 |  2.0e-2  || 17136 | 17136
+SearchMAC@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|100.00 |  1.0e-2 |  1.0e-2 |  1.0e-2  || 17136 | 17136
+SearchMAC@IDC+_D_(New MPLUSPar)_IOREF            |  0.00 |  0.00 |  0.00 |  0.00  || 15248 | 15264
+--------
+SearchQueens@IDC+_D_(Old PrDFS)_IOREF               | 18.18 | 25.10 | 25.10 | 25.09  || 797568 | 797600
+SearchQueens@IDC+_D_(Old DFS)_IOREF                 | 18.15 | 25.05 | 25.05 | 25.05  || 1265984 | 1265984
+SearchQueens@IDC+_D_(Old BFS)_IOREF                 | 31.61 | 43.62 | 43.62 | 43.61  || 3686400 | 3686400
+SearchQueens@IDC+_D_(Old (IDS 10))_IOREF            |110.38 |152.32 |152.28 |152.36  || 8785920 | 8785920
+SearchQueens@IDC+_D_(Old EncDFS)_IOREF              | 30.79 | 42.49 | 42.53 | 42.45  || 1099616 | 1099632
+SearchQueens@IDC+_D_(Old EncBFS)_IOREF              | 32.25 | 44.50 | 44.63 | 44.37  || 3686400 | 3686400
+SearchQueens@IDC+_D_(Old EncIDS)_IOREF              | 31.16 | 43.00 | 43.04 | 42.96  || 952272 | 952240
+SearchQueens@IDC+_D_(New IODFS)_IOREF               |  1.00 |  1.38 |  1.39 |  1.37  || 78624 | 78624
+SearchQueens@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |109.00 |150.42 |150.61 |150.22  || 8785920 | 8785920
+SearchQueens@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   | 23.19 | 32.00 | 31.92 | 32.09  || 10297344 | 10297344
+SearchQueens@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |270.45 |373.22 |373.07 |373.38  || 1166752 | 1166752
+SearchQueens@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  | 24.36 | 33.62 | 33.65 | 33.58  || 770800 | 770784
+SearchQueens@IDC+_D_(New MPLUSDFS)_IOREF            |  1.75 |  2.42 |  2.43 |  2.41  || 94320 | 94352
+SearchQueens@IDC+_D_(New MPLUSBFS)_IOREF            |  6.42 |  8.86 |  8.88 |  8.84  || 1446032 | 1446032
+SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  6.44 |  8.88 |  8.86 |  8.91  || 1466496 | 1466480
+SearchQueens@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  2.14 |  2.95 |  2.94 |  2.96  || 249952 | 249984
+SearchQueens@IDC+_D_(New MPLUSPar)_IOREF            |  1.77 |  2.44 |  2.44 |  2.44  || 94320 | 94320
+--------
+SearchSMM@IDC+_D_(Old PrDFS)_IOREF               |  1.52 | 43.11 | 43.09 | 43.13  || 12464128 | 12472320
+SearchSMM@IDC+_D_(Old DFS)_IOREF                 |  1.57 | 44.53 | 44.44 | 44.62  || 12460032 | 12468224
+SearchSMM@IDC+_D_(Old BFS)_IOREF                 |  2.22 | 62.95 | 62.93 | 62.97  || 12468224 | 12464128
+SearchSMM@IDC+_D_(Old (IDS 10))_IOREF            |  1.34 | 37.90 | 37.86 | 37.94  || 12464128 | 12464128
+SearchSMM@IDC+_D_(Old EncDFS)_IOREF              |  1.90 | 54.06 | 54.06 | 54.06  || 12468224 | 12472320
+SearchSMM@IDC+_D_(Old EncBFS)_IOREF              |  2.16 | 61.21 | 61.15 | 61.27  || 12464128 | 12468224
+SearchSMM@IDC+_D_(Old EncIDS)_IOREF              |  1.88 | 53.43 | 53.37 | 53.49  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New IODFS)_IOREF               |  1.57 | 44.60 | 44.67 | 44.53  || 12468224 | 12472320
+SearchSMM@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF   |  1.34 | 38.00 | 38.11 | 37.89  || 12468224 | 12464128
+SearchSMM@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF   |  1.00 | 28.38 | 28.55 | 28.22  || 12464128 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF  |  3.77 |106.99 |106.99 |106.99  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF  |  2.57 | 72.90 | 74.03 | 71.76  || 12468224 | 12468224
+SearchSMM@IDC+_D_(New MPLUSDFS)_IOREF            |  1.91 | 54.10 | 54.11 | 54.08  || 12468224 | 12464128
+SearchSMM@IDC+_D_(New MPLUSBFS)_IOREF            |  2.19 | 62.21 | 62.25 | 62.17  || 12468224 | 12464128
+SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF|  1.98 | 56.32 | 56.22 | 56.41  || 12472320 | 12468224
+SearchSMM@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF|  1.89 | 53.61 | 53.49 | 53.73  || 12472320 | 12468224
+SearchSMM@IDC+_D_(New MPLUSPar)_IOREF            |  1.91 | 54.18 | 54.05 | 54.32  || 12468224 | 12468224
+--------
+NDNums@IDC+_D_(Old PrDFS)_IOREF:main2               | 40.07 |  5.61 |  5.60 |  5.62  || 429440 | 429408
+NDNums@IDC+_D_(Old DFS)_IOREF:main2                 |333.14 | 46.64 | 46.74 | 46.54  || 2596864 | 2596864
+NDNums@IDC+_D_(Old BFS)_IOREF:main2                 |504.68 | 70.66 | 70.26 | 71.05  || 12464128 | 12464128
+NDNums@IDC+_D_(Old (IDS 10))_IOREF:main2            |498.29 | 69.76 | 69.77 | 69.75  || 12464128 | 12464128
+NDNums@IDC+_D_(Old EncDFS)_IOREF:main2              |404.57 | 56.64 | 56.65 | 56.63  || 5632000 | 5632000
+NDNums@IDC+_D_(Old EncBFS)_IOREF:main2              |507.18 | 71.00 | 71.02 | 70.99  || 12464128 | 12464128
+NDNums@IDC+_D_(Old EncIDS)_IOREF:main2              |362.71 | 50.78 | 50.65 | 50.91  || 12464128 | 12464128
+NDNums@IDC+_D_(New IODFS)_IOREF:main2               |333.68 | 46.72 | 46.72 | 46.71  || 2596864 | 2596864
+NDNums@IDC+_D_(New (IOIDS 10 "(+1)"))_IOREF:main2   |390.93 | 54.73 | 54.76 | 54.70  || 12406784 | 12406784
+NDNums@IDC+_D_(New (IOIDS 10 "(*2)"))_IOREF:main2   |  1.82 |  0.26 |  0.25 |  0.26  || 105440 | 105440
+NDNums@IDC+_D_(New (IOIDS2 10 "(+1)"))_IOREF:main2  |339.86 | 47.58 | 47.55 | 47.61  || 15376 | 15376
+NDNums@IDC+_D_(New (IOIDS2 10 "(*2)"))_IOREF:main2  |  1.00 |  0.14 |  0.14 |  0.14  || 15408 | 15408
+NDNums@IDC+_D_(New MPLUSDFS)_IOREF:main2            |738.79 |103.43 |103.22 |103.64  || 11079680 | 11079680
+NDNums@IDC+_D_(New MPLUSBFS)_IOREF:main2            |505.82 | 70.82 | 70.79 | 70.84  || 12464128 | 12468224
+NDNums@IDC+_D_(New (MPLUSIDS 10 "(+1)"))_IOREF:main2|483.75 | 67.72 | 67.67 | 67.78  || 12464128 | 12464128
+NDNums@IDC+_D_(New (MPLUSIDS 10 "(*2)"))_IOREF:main2|  3.25 |  0.46 |  0.46 |  0.45  || 126272 | 126256
+NDNums@IDC+_D_(New MPLUSPar)_IOREF:main2            |736.39 |103.10 |103.24 |102.95  || 11079680 | 11079680

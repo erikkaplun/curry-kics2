@@ -1,0 +1,794 @@
+\documentclass[english]{lni}
+
+%\IfFileExists{latin1.sty}{\usepackage{latin1}}{\usepackage{isolatin1}}
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{listings}
+\lstset{aboveskip=1.2ex,
+        belowskip=1.2ex,
+        xleftmargin=2ex,
+        showstringspaces=false, % no special string space
+        mathescape=true,
+        flexiblecolumns=false,
+        basewidth=0.6em,
+        basicstyle=\small\ttfamily}
+\lstset{literate={->}{{$\rightarrow{}\!\!\!$}}3
+       }
+\lstnewenvironment{curry}{}{}
+\newcommand{\listline}{\vrule width0pt depth1.75ex}
+\newcommand{\code}[1]{\texttt{\small{}#1}}
+\newcommand{\ccode}[1]{``\code{#1}''}
+\newcommand{\bs}{\char92} % backslash
+\newcommand{\us}{\char95} % underscore
+
+\author{
+Michael Hanus
+\quad
+Bj{\"o}rn Peem{\"o}ller
+\quad
+Fabian Reck \\
+\\
+Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
+\texttt{\{mh|bjp|fre\}@informatik.uni-kiel.de}
+}
+\title{Search Strategies for Functional Logic Programming}
+\begin{document}
+\pagestyle{plain} % remove it in the camera-ready version
+\maketitle
+
+\begin{abstract}
+In this paper we discuss our practical experiences
+with the use of different search strategies
+in functional logic programs.
+In particular, we show that complete strategies,
+like breadth-first search or iterative deepening search,
+are a viable alternative to incomplete strategies, like depth-first
+search, that have been favored in the past for logic programming languages.
+\end{abstract}
+
+\section{Introduction}
+
+Functional logic languages combine the most important
+features of functional and logic programming in a single language
+(see \cite{AntoyHanus10CACM,Hanus07ICLP} for recent surveys).
+In particular, they provide higher-order functions and demand-driven
+evaluation from functional programming together with logic programming features
+like non-deterministic search and computing with partial information
+(logic variables).
+This combination
+led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
+and better abstractions for application programming,
+e.g., as shown for programming with databases
+\cite{BrasselHanusMueller08PADL,Fischer05},
+GUI programming \cite{Hanus00PADL},
+web programming \cite{Hanus01PADL,Hanus06PPDP,HanusKoschnicke10PADL},
+or string parsing \cite{CaballeroLopez99}.
+Moreover, it is also a good basis
+to teach the ideas of functional and logic programming,
+or declarative programming in general,
+with a single computation model and programming language
+\cite{Hanus97DPLE}.
+
+An important feature of logic programming languages
+is non-deterministic search.
+In Prolog, which is still the standard language for logic programming,
+non-deterministic search is implemented via backtracking,
+which corresponds to a depth-first search traversal
+through the SLD proof tree \cite{Lloyd87}.
+Due to this feature of Prolog,
+the idea of logic programming is often reduced to
+the combination of unification and backtracking,
+as shown by approaches to add logic programming features
+to existing functional languages
+(e.g., \cite{ClaessenLjungloef00,Hinze01}).
+This limited ``backtracking'' view of logic programming
+is also harmful to beginners, e.g., when newbies
+define their family relationships using a Prolog rule like
+\begin{lstlisting}
+sibling(X,Y) :- sibling(Y,X).
+\end{lstlisting}
+In such cases, one has to explain from the beginning
+the pitfalls of backtracking which harms the understanding
+of declarative programming.
+From a declarative point of view,
+a logic program defines a set of rules
+and a logic programming system tries to find
+a solution to a query w.r.t.\ the set of rules.
+In order to abstract from operational details,
+the search strategy has to be complete.
+Due to these considerations,
+the functional logic language Curry \cite{Hanus06Curry}
+does not fix a particular search strategy
+so that different Curry implementations can support
+different (or also several) search strategies.
+Moreover, Curry implementations also
+support encapsulated search
+where non-deterministic computations are represented
+in a data structure so that different search strategies
+can be implemented as tree traversals
+\cite{BrasselHanusHuch04JFLP,HanusSteiner98PLILP,Lux99FLOPS}.
+
+In this paper, we present our practical results
+with different search strategies implemented
+in a new Curry system called
+KiCS2 \cite{BrasselHanusPeemoellerReck11}.
+KiCS2 compiles Curry programs into Haskell programs
+where non-deterministic values or computations are represented
+as tree structures so that flexible search strategies
+can be supported.
+Although the incomplete depth-first search strategy
+is the most efficient one (provided that it is able
+to find a result value),
+we show that complete strategies,
+like breadth-first search or iterative deepening search,
+are a reasonable alternative that does not force
+the programmer to consider the applied search strategy
+in his program.
+
+In the next section, we briefly recall some principles
+of functional logic programming and the programming language Curry
+that are necessary to understand the remaining part of the paper.
+The encapsulation of search and the implementation of different
+search strategies are discussed in Section~\ref{sec:strategies}.
+These strategies are evaluated with a number of benchmarks
+in Section~\ref{sec:benchmarks}
+before we conclude in Section~\ref{sec:conclusions}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Functional Logic Programming and Curry}
+\label{sec:curry}
+
+Integrated functional logic programming languages
+combine features from functional programming and logic programming.
+Recent surveys are available in \cite{AntoyHanus10CACM,Hanus07ICLP}.
+Curry \cite{Hanus06Curry} is a functional logic language
+which extends lazy functional programming as to be found in
+Haskell \cite{PeytonJones03Haskell} and additionally supports
+logic programming features.
+Another functional logic language based on similar principles is
+${\cal TOY}$ \cite{Lopez-FraguasSanchez-Hernandez99}.
+However, ${\cal TOY}$ does not offer flexible search strategies
+by a concept of encapsulating search
+(although it provides a concept of nested computation spaces
+in order to deal with failures in functional logic
+programming \cite{LopezSanchez04,SanchezHernandez06}).
+Therefore, we use Curry throughout this paper, although
+the concepts presented here could be also integrated in
+other functional logic languages.
+
+A Curry program consists of the definition of data types and
+operations on these types. 
+Since the syntax of Curry is close to Haskell,
+variables and function names usually
+start with lowercase letters and the names of type and data constructors
+start with an uppercase letter. The application of $f$
+to $e$ is denoted by juxtaposition (``$f~e$'').
+In addition, Curry allows free (logic) 
+variables in conditions and right-hand sides of defining rules.
+Note that in a functional logic language
+operations might yield more than one result on the same input due to 
+the logic programming features.
+For instance, Curry contains a \emph{choice} operation defined by:
+%
+\begin{curry}
+x ? _ = x
+_ ? y = y
+\end{curry}
+%
+The choice operation can be used to define other non-deterministic operations
+like
+%
+\begin{curry}
+coin = 0 ? 1  
+\end{curry}
+Thus, the expression \ccode{coin} has two values: \code{0} and \code{1}.
+If expressions have more than one value, one wants to select
+intended values according to some constraints,
+typically in conditions of program rules.
+A \emph{rule} has the form
+\begin{curry}
+$f~t_1\ldots{}t_n$ | $c$ = $e$
+\end{curry}
+where the (optional) condition $c$ is a \emph{constraint},
+i.e., an expression of the built-in type
+\code{Success}. For instance, the trivial constraint
+\code{success} is a value of type \code{Success} that
+denotes the always satisfiable constraint.
+Thus, we say that a constraint $c$ is \emph{satisfied} if it
+can be evaluated to \code{success}.
+An \emph{equational constraint} $e_1 \,\code{=:=}\, e_2$ is satisfiable
+if both sides $e_1$ and $e_2$ are reducible to unifiable values.
+%Furthermore, if $c_1$ and $c_2$ are constraints,
+%\code{$c_1\,$\&$\,\,c_2$} denotes their concurrent conjunction
+%(i.e., both argument constraints are concurrently evaluated).
+
+As a simple example, consider the following Curry program
+which defines a polymorphic 
+data type for lists and operations to compute the 
+concatenation of lists and the last element of a list:\footnote{Note
+that lists are a built-in data type with a more convenient syntax, 
+e.g., one can write \code{[x,y,z]} instead of \code{x:y:z:[]}
+and \code{[a]} instead of the list type \ccode{List a}.}
+%
+\begin{curry}
+data List a = [] | a : List a    -- [a] denotes "List a"
+
+-- "++" is a right-associative infix operator
+(++) :: [a] -> [a] -> [a]
+[]     ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+last :: [a] -> a
+last xs | (ys ++ [z]) =:= xs
+        = z                    where ys,z free
+\end{curry}
+%
+Logic programming is supported by admitting function calls with free
+variables (e.g., \code{(ys++[z])} in the rule defining \code{last})
+and constraints in the condition of a defining rule. In contrast to
+Prolog, free variables need to be declared explicitly to make their
+scopes clear (e.g., \ccode{where ys,z free} in the example).
+A conditional rule is applicable if its condition  is satisfiable.
+Thus, the rule defining \code{last} states in its condition
+that \code{z} is the last element of a given list
+\code{xs} if there exists a list \code{ys}
+such that the concatenation of \code{ys} and the one-element list
+\code{[z]} is equal to the given list \code{xs}.
+
+Curry also offers standard features of
+functional languages, like modules or monadic I/O
+which is identical to Haskell's I/O concept \cite{Wadler97}.
+Thus, \ccode{IO $\alpha$} denotes the type of an I/O action that returns values
+of type $\alpha$.
+
+The operational semantics of Curry is based on an optimal evaluation strategy
+\cite{AntoyEchahedHanus00JACM} which is a conservative extension
+of lazy functional programming and (concurrent) logic programming.
+A big-step and a small-step operational semantics of Curry
+can be found in \cite{AlbertHanusHuchOliverVidal05}.
+Curry's semantics is sound in the sense of logic programming,
+i.e., each computed result is correct and for each
+correct result there is a more general computed one
+\cite{AntoyEchahedHanus00JACM}.
+In order to achieve completeness,
+one has to take \emph{all} possible non-deterministic derivation paths
+into account. In contrast to Prolog, which fixes
+a (potentially incomplete) depth-first search strategy to find solutions,
+Curry does not fix a particular search strategy.
+Actually, descriptions of the model-theoretic \cite{GonzalezEtAl99}
+or operational \cite{AlbertHanusHuchOliverVidal05}
+semantics of functional logic languages do not take
+a search strategy into account.
+Thus, different Curry implementations
+can support various search strategies.
+For instance, the Curry implementation PAKCS \cite{Hanus10PAKCS},
+which compiles Curry programs into Prolog programs,
+supports only a depth-first search strategy.
+MCC \cite{Lux99FLOPS} compiles Curry programs into C programs
+and uses also a depth-first search strategy to find the
+solutions of a given top-level goal.
+In addition, MCC offers the encapsulation of search
+(see below) so that other search strategies,
+like a complete breadth-first search strategy, can be used
+inside a Curry program.
+The Curry implementation KiCS \cite{BrasselHuch07,BrasselHuch09},
+which compiles Curry programs into Haskell programs,
+offers depth-first and breadth-first search strategies
+for top-level goals as well as the encapsulation of search
+with user-definable strategies.
+In this paper we consider the Curry implementation
+KiCS2 \cite{BrasselHanusPeemoellerReck11},
+which is based on similar ideas than KiCS but uses
+a different compilation model avoiding side effects
+to enable better optimizations for target programs.
+KiCS2 also offers different search strategies for top-level goals
+and the encapsulation of search with user-definable strategies,
+which is described next.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Search Strategies}
+\label{sec:strategies}
+
+As mentioned above, Curry does not enforce a particular search
+strategy. A Curry implementation
+can provide various search strategies to find solutions
+or values for a given constraint or expression.
+The most advanced system in this respect is
+KiCS2 \cite{BrasselHanusPeemoellerReck11},
+which supports the evaluation of top-level expressions
+with depth-first search, breadth-first search,
+iterative deepening search, or parallel search strategies.
+Curry supports this flexibility since all operations with side effects
+are collected in monadic I/O operations \cite{Wadler97}.
+As a consequence of this computation model,
+all non-deterministic computations between I/O operations
+must be encapsulated since one can not apply two alternative
+I/O operations to an existing ``world''
+and non-deterministically proceed with two alternative worlds
+(``one can not duplicate the world'').
+Therefore, Curry offers the encapsulation of search
+by representing non-deterministic computations
+in a data structure so that the computation of different solutions
+(one solution or all solutions) can conceptually be implemented
+as traversals on this data structure.
+
+An early approach
+\cite{HanusSteiner98PLILP,Lux99FLOPS}
+to encapsulating search in Curry
+is based on a primitive search operator
+\begin{curry}
+try :: (a->Success) -> [a->Success]
+\end{curry}
+that takes a constraint abstraction, e.g., \code{(\bs{}x->x\,=:=\,coin)},
+as input, evaluates it until the first non-deterministic step occurs,
+and returns the result: the empty list in case of failure, a list with a single
+element in case of success, or a list with at least two elements representing
+a nondeterministic choice. For instance,
+\code{try\,(\bs{}x->x\,=:=\,coin)} evaluates to
+\code{[\bs{}x->x\,=:=\,0,\,\bs{}x->x\,=:=\,1]}.
+Based on this primitive, one can define various search strategies
+to explore the search space and return its solutions.
+\cite{Lux99FLOPS} shows an implementation of this primitive.
+
+Although typical search operators of Prolog,
+like \code{findall}, \code{once}, or negation-as-failure,
+can be implemented using \code{try},
+it became also clear that the combination of
+encapsulated search and demand-driven evaluation
+and sharing causes further complications \cite{BrasselHanusHuch04JFLP}.
+For instance, in an expression like
+\begin{curry}
+let y=coin in try (\x->x=:=y)
+\end{curry}
+it is not obvious whether the non-determinism caused by the evaluation
+of \code{coin} (introduced outside
+but demanded inside the search operator) should be encapsulated or not.
+Hence, the result of this expression might depend on the evaluation order.
+For instance,
+if \code{coin} is evaluated before the \code{try} expression,
+it results in two computations where \code{y} is bound to \code{0}
+in one computation and to \code{1} in the other computation.
+Hence, \code{try} does not encapsulate the nondeterminism of \code{coin}
+(this is the semantics of \code{try} implemented in \cite{Lux99FLOPS}).
+However, if \code{coin} is evaluated inside the capsule of \code{try}
+(because it is not demanded before), then the nondeterminism of
+\code{coin} is encapsulated.
+These and more peculiarities are discussed in \cite{BrasselHanusHuch04JFLP}.
+Furthermore, the order of the solutions might depend on the
+textual order of program rules or the evaluation time
+(e.g., in parallel implementations).
+Therefore, \cite{BrasselHanusHuch04JFLP} contains a proposal
+for another primitive search operator:
+\begin{curry}
+getSearchTree :: a -> IO (SearchTree a)
+\end{curry}
+It takes an expression and delivers a search tree representing
+the search space when evaluating the input:
+\begin{curry}
+data SearchTree a = Value a
+                  | Fail
+                  | Or (SearchTree a) (SearchTree a)
+\end{curry}
+\code{(Value v)} and \code{Fail} represents a single value
+or a failure (i.e., no value), respectively,
+and \code{(Or t1 t2)} represents a choice (i.e., a non-deterministic value)
+between two search trees \code{t1} and \code{t2}.
+Since \code{getSearchTree} is an I/O action, its result (in particular,
+the order of solutions) depends on the current environment, e.g.,
+time of evaluation.
+To avoid the complications w.r.t.\ shared variables,
+\code{getSearchTree} implements a \emph{strong encapsulation view},
+i.e., conceptually, the argument of \code{getSearchTree}
+is cloned before the evaluation starts in order to cut any sharing
+with the environment.
+Furthermore, the structure of the search tree is computed lazily
+so that an expression with infinitely many values does not cause
+the nontermination of the search operator if one is interested in only
+one solution.
+
+This primitive has been implemented for the first time
+in KiCS \cite{BrasselHuch07,BrasselHuch09}
+and it is also provided in KiCS2 \cite{BrasselHanusPeemoellerReck11}
+considered in this paper.
+With this primitive,
+the programmer can define its own search strategy as
+\code{SearchTree} traversals in order to
+collect all non-deterministic values into a list structure.
+For instance, a depth-first search strategy can be easily defined
+as follows:
+\begin{curry}
+allValuesDFS :: SearchTree a -> [a]
+allValuesDFS Fail      = []
+allValuesDFS (Value x) = [x]
+allValuesDFS (Or x y)  = allValuesDFS x ++ allValuesDFS y
+\end{curry}
+Note that the lazy evaluation of traversal operations like
+\code{allValuesDFS} has the advantage that the search strategy
+is decoupled from the control. For instance, we can define
+the following operation to print a single value
+of a non-deterministic expression:
+\begin{curry}
+printFirstValueDFS x =
+  getSearchTree x >>= print . head . allValuesDFS
+\end{curry}
+Thus, \code{(printFirstValueDFS $exp$)} can print some value
+even if the non-deterministic expression $exp$ has infinitely many values.
+This is in contrast to Prolog's constructs for controlling
+search where different operators are necessary to compute
+one or all solutions.
+
+It is well known that depth-first search lacks completeness,
+i.e., it might not be able to compute all existing values.
+For instance, consider the following operation
+that non-deterministically returns all increasing numbers
+from a given number \code{n}:
+\begin{curry}
+f n = f (n+1) ? n
+\end{curry}
+Although \code{0} is a value of \code{(f 0)},
+the evaluation of \code{(printFirstValueDFS (f 0))} does not terminate
+(provided that the primitive \code{getSearchTree}
+explores the non-determinism of \ccode{?} in left-to-right order).
+This problem can be avoided with complete search strategies,
+like breadth-first search strategy,
+which can be defined on \code{SearchTree} structures as follows:
+%
+\begin{curry}
+allValuesBFS :: SearchTree a -> [a]
+allValuesBFS t = collect [t]
+
+collect []     = []
+collect (t:ts) = values (t:ts) ++ collect (children (t:ts))
+
+values []           = []
+values (Fail:ts)    = values ts
+values (Value x:ts) = x : values ts
+values (Or _ _:ts)  = values ts
+
+children []           = []
+children (Fail:ts)    = children ts
+children (Value _:ts) = children ts
+children (Or x y:ts)  = x:y:children ts
+\end{curry}
+%
+The operation \code{values} extracts the values
+in each level of the tree and the operation \code{children}
+extracts all direct ancestors of a level in order to recursively
+collect their values.
+
+Using \code{allValuesBFS}, we can print a value
+of the expression \code{(f 0)} by
+%
+\begin{curry}
+getSearchTree (f 0) >>= print . head . allValuesBFS
+\end{curry}
+%
+In order to abstract from the details of the evaluation order,
+it would be preferable to use complete search strategies.
+However, complete strategies are often neglected due to performance reasons.
+For example, the breadth-first search strategy stores all child nodes 
+of a tree level in a list to be explored later, which, as the search space
+potentially doubles on each level, may lead to an exponentially
+growing memory usage.
+
+Another complete search strategy with a superior memory behavior
+is iterative-deepening search.
+Basically, it is depth-first search strategy with a depth-bound
+which is incremented in each iteration.
+Thus, we compute in each iteration a list of values
+together with some information whether we have aborted
+(due to the depth-bound) the computation of further possible values.
+For this purpose, we define list structures that can also end
+with an \code{Abort}:
+%
+\begin{curry}
+data AbortList a = Nil | Cons a (AbortList a) | Abort
+\end{curry}
+%
+and define the concatenation on such lists:
+%
+\begin{curry}
+concA :: AbortList a -> AbortList a -> AbortList a
+concA Abort       Abort       = Abort
+concA Abort       Nil         = Abort
+concA Abort       (Cons x xs) = Cons x (concA Abort xs)
+concA Nil         ys          = ys
+concA (Cons x xs) ys          = Cons x (concA xs ys)
+\end{curry}
+%
+Now we define an operation to collect values in a search tree
+within some level bounds (to avoid the repeated collection
+of values found in each iteration):
+%
+\begin{curry}
+collectInBounds :: Int -> Int -> SearchTree a -> AbortList a
+collectInBounds oldbound newbound st = collectLevel newbound st
+ where
+  collectLevel _ Fail      = Nil
+  collectLevel d (Value x) = if d <= newbound - oldbound
+                             then Cons x Nil
+                             else Nil
+  collectLevel d (Or x y)  =
+    if d>0
+    then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
+    else Abort
+\end{curry}
+%
+Now, the entire search strategy consists of
+repeated calls to \code{collectInBounds} as long as the result list
+is aborted. In order to experiment with different parameters,
+the initial depth bound and the method to increase the depth bound
+in each iteration are passed as parameters to the main operation:
+%
+\begin{curry}
+allValuesIDS :: Int -> (Int -> Int) -> SearchTree a -> [a]
+allValuesIDS initdepth incrdepth st =
+  iterIDS initdepth (collectInBounds 0 initdepth st)
+ where
+  iterIDS _ Nil = []
+  iterIDS n (Cons x xs) = x : iterIDS n xs
+  iterIDS n Abort =
+    let newdepth = incrdepth n
+     in iterIDS newdepth (collectInBounds n newdepth st)
+\end{curry}
+%
+The key advantage of depth-first search
+in comparison to breadth-first search is its memory behavior:
+whereas breadth-first search has to store all nodes
+in a level of the search tree in parallel, depth-first search
+only needs to store the nodes in the branch from the root
+to the current node under investigation.
+Since iterative deepening uses depth-first search in each iteration,
+it should have a memory behavior similarly to depth-first search
+and, in case of wide search trees,
+better than breadth-first search.
+The price for this behavior is the recomputation of the initial
+goal in each iteration. 
+However, since we defined iterative deepening on a search tree,
+recomputation is not required. Instead, the
+already evaluated part of the search tree is kept in memory.
+Therefore, we also implemented the iterative deepening strategy
+for top-level goals without an explicit search tree
+but with a recomputation of the initial goal in each iteration
+(see Section~\ref{sec:benchmarks}).
+
+The various operators to encapsulate search can also
+be used to implement an interactive top-level search
+to print all values of an expression as requested by the user.
+For instance, the following I/O operation interactively 
+prints all elements of a given list:
+%
+\begin{curry}
+printResults :: [a] -> IO ()
+printResults []     = putStrLn "No more values"
+printResults (x:xs) = do print x
+                         putStr "More values? "
+                         inp <- getLine
+                         if inp=="yes" then printResults xs
+                                       else done
+\end{curry}
+%
+Hence, an interactive Prolog-like top-level behavior
+to show the values of an expression $exp$ in depth-first order
+can be obtained by
+\begin{curry}
+getSearchTree $exp$ >>= printResults . allValuesDFS
+\end{curry}
+In addition, we can print the results in breadth-first order
+by using \code{allValuesBFS} instead of \code{allValuesDFS}.
+Based on these ideas, KiCS2 provides an interactive top-level search
+where the user can select various search strategies,
+e.g., depth-first, breadth-first, iterative deepening, or
+an experimental implementation of parallel search.
+However, the top-level search in KiCS2 is not implemented
+via the primitive encapsulation operators but in
+a monadic style (see also \cite{BrasselHanusPeemoellerReck11})
+in order to avoid the explicit construction
+of the \code{SearchTree} structure.
+Thus, in the next section we both compare the different search strategies
+introduced above as well as the top-level search
+with the encapsulated search, in order to evaluate the potential overhead
+caused by abstracting and programming with search structures.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Benchmarks}
+\label{sec:benchmarks}
+
+In this section we evaluate the practical behavior
+of the various search strategies discussed so far.
+Since they are only supported by the Curry implementation KiCS2,
+we use only this system for our evaluation.
+A general comparison of KiCS2 and other Curry implementations
+can be found in \cite{BrasselHanusPeemoellerReck11}.
+Since KiCS2 compiles Curry programs into Haskell programs,
+we used the Glasgow Haskell Compiler
+(GHC 7.0.4, option -O2) to compile and execute
+the generated target programs.
+All benchmarks were executed on a 32bit Linux machine
+running Ubuntu 11.10 with an Intel Core 2 Duo (2.13~GHz) processor and 4~GiB RAM.
+The timings were performed with the time command measuring the
+execution time (in seconds) of a compiled executable for each benchmark.
+Due to the lack of precise measurements of the space behavior,
+we measured only the execution times.
+
+\begin{figure}[ht]
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
+\hline
+Program  &   DFS  & IDS(+1)& IDS(*2)&  eDFS  &  eBFS  &eIDS(+1)&eIDS(*2)\\
+\hline
+PermSort &  13.12 & 841.58 &  32.77 &  38.48 &  66.82 &  72.64 &  46.79 \\
+Last     &   0.10 & 660.08 &   0.26 &   0.34 &   0.19 &   6.59 &   0.39 \\
+Half     &   0.67 & 561.45 &   1.62 &   1.43 &   1.22 &   1.86 &   1.71 \\
+Graph    &   1.76 &  52.53 &   2.40 &   3.51 &   4.22 &   4.26 &   3.83 \\
+HorseMan &   2.64 & 639.64 &   6.63 &   3.23 &   3.29 &   3.20 &   3.17 \\
+MAC      &   6.80 & 544.05 &   7.84 &  21.19 &  18.34 &  18.59 &  21.03 \\
+Queens   &  24.74 & 374.64 &  33.62 &  42.71 &  43.98 &  44.01 &  42.65 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: computing all values}
+\label{fig:bench-all-solutions}
+\end{figure}
+
+Figure~\ref{fig:bench-all-solutions} shows the benchmark results
+when all values of a given expression are computed
+with various search strategies.
+All benchmark programs are non-deterministic programs.
+``PermSort'' sorts a list containing 15 elements by enumerating
+all permutations and selecting the sorted ones,
+``Last'' computes the last element \code{x}
+of a list \code{xs} containing 10,000 elements
+by solving the equation \ccode{ys++[x] =:= xs}
+(see Section~\ref{sec:curry}),
+``Half'' computes the half \code{y} of a natural number \code{x}
+(in Peano representation) by solving the equation \code{y+y=:=x},
+%``Embed'' searches for an embedding of a message
+%which is ``hidden'' in another message
+%(see \cite[Sect.~4.1]{Antoy10JSC}),
+``Graph'' computes some path in a graph where the edges
+are represented by a non-deterministic ``successor'' operation,
+``HorseMan'' computes the numbers of horses and men
+from given numbers of heads and feet by searching for
+appropriate numbers in Peano representation,
+``MAC'' solves the ``Missionaries and Cannibals'' puzzle
+(see \cite[Sect.~3.1]{AntoyHanus02FLOPS})
+for reasonable numbers of missionaries and cannibals
+to obtain measurable run times,
+and ``Queens'' computes safe placements of queens on a chess board.
+
+The columns in Figure~\ref{fig:bench-all-solutions}
+are the various search strategies considered in this paper.
+``DFS'' denotes the top-level depth-first search strategy
+which is similar to \code{allValuesDFS} but implements
+this strategy in a monadic style without the explicit
+construction of a search tree.
+The encapsulated search strategies are prefixed by ``e'',
+i.e., ``eDFS'' and ``eBFS'' correspond to \code{allValuesDFS}
+and \code{allValuesBFS}, respectively.
+``eIDS(+1)'' corresponds to \code{allValuesIDS}
+with an initial depth bound of \code{10} and the depth increment
+operation \code{(+1)}, whereas ``eIDS(*2)'' uses the same initial depth bound
+but the depth increment operation \code{(*2)}, i.e., to depth bound
+is doubled in each iteration.
+Finally, ``IDS(+1)'' and ``IDS(*2)'' are iterative deepening
+strategies with similar parameters but recompute the initial
+expression in each iteration in order to trade space for run time,
+as discussed in Section~\ref{sec:strategies}.
+
+The table entries in Figure~\ref{fig:bench-all-solutions}
+contain the run times in seconds to compute all values of the initial
+expression.
+As one can see, the top-level depth-first search is the most efficient
+search strategy.
+The encapsulated version of depth-first search (eDFS)
+with the explicit construction of the search tree
+causes some overhead, since the search strategy
+is encoded in the source program rather than in the run-time system
+as in the top-level search (DFS).
+The benchmarks also show that
+complete search strategies, like ``eBFS'' and ``eIDS(*2)''
+are viable alternatives to the incomplete depth-first search strategy.
+Their overhead (sometimes they are even faster than ``eDFS'',
+but they are always slower than top-level search)
+is acceptable taking into account the fact
+that one need not to reason about the details of exploring the
+search space. The behavior of iterative deepening is largely
+influenced by its parameterization.
+A constant increment of the depth bound causes a big overhead
+compared to doubling the depth bound in each iteration,
+in particular, when the search tree is slim as in ``Last''.
+This is even worse for top-level iterative deepening
+which recomputes the initial expression in each iteration,
+see ``IDS(+1)''.
+
+\begin{figure}[t]
+\centering
+\begin{tabular}{|@{~~}l@{~~}|*{7}{@{~~}r@{~~}|}}
+\hline
+Program  &   DFS  & IDS(+1)& IDS(*2)&  eDFS  &  eBFS  &eIDS(+1)&eIDS(*2)\\
+\hline
+PermSort &  12.57 & 804.82 &  32.09 &  34.75 &  67.02 &  70.47 &  46.66 \\
+Last     &   0.10 & 661.92 &   0.24 &   0.35 &   0.19 &   6.57 &   0.39 \\
+Half     &   0.34 &  72.64 &   0.58 &   0.69 &   0.59 &   0.78 &   0.78 \\
+Graph    &   0.00 &   0.10 &   0.04 &   0.00 &   0.04 &   0.04 &   0.03 \\
+HorseMan &   2.06 & 636.62 &   6.64 &   2.52 &   2.60 &   2.61 &   2.57 \\
+MAC      &   0.14 &  38.75 &   0.94 &   0.94 &   2.81 &   2.75 &   2.79 \\
+Queens   &   1.40 & 370.26 &  33.65 &   2.44 &   8.95 &   8.86 &   3.04 \\
+NDNums   &   oom  &  47.89 &   0.14 &    oom &   oom  &    oom &   0.47 \\
+\hline
+\end{tabular}
+\caption{Benchmarks: computing a single value}
+\label{fig:bench-first-solution}
+\end{figure}
+
+The benchmarks indicate that breadth-first search seems to be a good strategy
+taking into account the size of memory provided by modern computers.
+However, if the search tree is wide (i.e., the nodes in each level
+increases with the depth of the tree),
+then iterative deepening is superior to breadth-first search.
+To examine such a case, we added a benchmark ``NDNums''
+which defines a non-deterministic operation
+with a high branching factor that returns all inreasing numbers
+\begin{curry}
+g n = g (n+1) ? n ? g (n+1)
+\end{curry}
+and solve the equation \ccode{g 0 =:= 29}.
+Obviously, the computation of all values will never terminate.
+Therefore, we executed the benchmarks to compute
+only a first value of an expression via different search strategies.
+Figure~\ref{fig:bench-first-solution} contains the
+corresponding results where
+``oom'' denotes a memory overflow in a computation.
+As one can see, iterative deepening is the only search strategy
+that is able to find a solution in all examples.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions}
+\label{sec:conclusions}
+
+We discussed the use of different search strategies
+in functional logic programs.
+In order to enable user-programmable search strategies,
+modern functional logic languages like Curry
+provide primitives to represent non-deterministic computations
+or values as data structures that can be traversed like
+any term structure.
+The Curry implementation KiCS2, considered in this paper,
+provides a primitive \code{getSearchTree}
+that returns a tree representation of a non-deterministic computation.
+This representation can be used to define various search strategies,
+like depth-first search, breadth-first search, or iterative deepening
+search.
+
+We have practically evaluated and compared
+the efficiency of these strategies.
+The benchmarks indicated that complete strategies
+are a viable alternative to incomplete strategies,
+that have been favored in the past due to limited memory requirements.
+Thus, it could be reasonable to make
+complete strategies the default in functional logic languages.
+This would have a good impact on teaching declarative programming
+to beginners.
+Moreover, decoupling non-deterministic programs
+from their search strategy could lead to a more declarative
+programming style (instead of the use of predicates with
+side effects as in Prolog) and enable more potential for
+optimization, e.g., parallel search strategies.
+Furthermore, if efficiency and memory limitations are important,
+one can still use an efficient strategy like depth-first search
+provided that it is able to find all solutions
+(e.g., in case of a finite search space).
+It is an interesting topic for future work
+to statically approximate situations where
+the use of incomplete strategies is sufficient.
+
+
+%\bibliography{mh}
+\bibliography{paper}
+
+\end{document}

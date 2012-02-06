@@ -15,7 +15,9 @@ add :: Peano -> Peano -> Peano
 add O     p = p
 add (S p) q = S (add p q)
 
-half y | equal (add x x) y = x where x free 
+half y | equal (add x x) y = x where x free
 
+goal1 = equal (toPeano 5000) (half (toPeano 10000))
+goal2 = equal (toPeano 800) (half (toPeano 1600))
 
-main = equal (toPeano 5000) (half (toPeano 10000))
+main = goal2

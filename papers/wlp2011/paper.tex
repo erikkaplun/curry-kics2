@@ -1,6 +1,5 @@
 \documentclass{llncs}
 
-\usepackage{a4,a4wide}
 \usepackage{url}
 \def\UrlFont{\tt}
 \usepackage{latexsym}
@@ -9,8 +8,8 @@
 \usepackage{color}
 
 \usepackage{listings}
-\lstset{aboveskip=0.8ex,
-        belowskip=0.8ex,
+\lstset{aboveskip=1.0ex,
+        belowskip=1.0ex,
         showstringspaces=false, % no special string space
         mathescape=true,
         flexiblecolumns=false,
@@ -31,7 +30,7 @@
 
 
 \begin{document}
-%\pagestyle{plain}
+\pagestyle{plain} % remove for camera ready version
 \sloppy
 
 \title{Implementing Equational Constraints\\ in a Functional Language}
@@ -397,7 +396,8 @@ and an operation to extract the first element of a non-empty list:
 \end{curry}
 The type definition is then extended as follows:
 \begin{haskell}
-  data List a = Nil | Cons a (List a) | Choice ID (List a) (List a) | Fail
+  data List a = Nil | Cons a (List a)
+              | Choice ID (List a) (List a) | Fail
 \end{haskell}
 The operation \code{head} is extended by an identifier supply
 and further matching rules:
@@ -712,8 +712,8 @@ of the generator. In case of Boolean values,
 this can be implemented by the following additional rules
 for \ccode{=:=}:
 \begin{haskell}
-  Choice (FreeID i) _ _ =:= True   =  Guard [i :=: ChooseLeft ] Success
-  Choice (FreeID i) _ _ =:= False  =  Guard [i :=: ChooseRight] Success
+  Choice (FreeID i) _ _ =:= True  = Guard [i :=: ChooseLeft ] Success
+  Choice (FreeID i) _ _ =:= False = Guard [i :=: ChooseRight] Success
 \end{haskell}
 Hence, the binding of a variable to some known value
 is implemented as a binding constraint for the choice identifier

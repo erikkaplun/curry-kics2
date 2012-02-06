@@ -140,13 +140,13 @@ hPutStrLnGhci rst h s = do
 --------------------------------------------------------------------------
 
 -- Mode for non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices | PrtChoiceTree
+data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices Int
 
 -- Result of compiling main goal
-data MainGoalCompile =
-   GoalError                               -- error occurred
- | GoalWithoutBindings CurryProg           -- goal does not contain free vars
- | GoalWithBindings CurryProg Int String   -- number of vars / new goal
+data MainGoalCompile
+  = GoalError                               -- error occurred
+  | GoalWithoutBindings CurryProg           -- goal does not contain free vars
+  | GoalWithBindings CurryProg Int String   -- number of vars / new goal
 
 -- Result of compiling main program
 data MainCompile = MainError | MainDet | MainNonDet
@@ -245,13 +245,13 @@ cleanUpRepl rst = terminateSourceProgGUIs rst >> done
 
 processInput :: ReplState -> String -> IO ()
 processInput rst g
-  | null g = repl rst
+  | null g        = repl rst
   | head g == ':' = do mbrst <- processCommand rst (strip (tail g))
                        maybe (repl rst)
                              (\rst' -> if (rst'->quit) then cleanUpRepl rst'
                                                        else repl rst')
                              mbrst
-  | otherwise = evalExpression rst g >>= repl
+  | otherwise     = evalExpression rst g >>= repl
 
 -- Evaluate an expression w.r.t. currently loaded modules
 evalExpression :: ReplState -> String -> IO ReplState
@@ -263,21 +263,25 @@ evalExpression rst expr = do
   return rst'
 
 -- Generate, read, and delete .acy file of main goal file.
--- Return Nothing if some error occurred during parsin.
+-- Return Nothing if some error occurred during parsing.
 getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
 getAcyOfMainGoal rst = do
-  let mainGoalProg = stripSuffix mainGoalFile
+  let mainGoalProg    = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
-      frontendParams = setQuiet (if rst->verbose < 2 then True else False)
-                         (setFullPath ("." : rst->importPaths) defaultParams)
+      frontendParams  = setQuiet    (rst -> verbose < 2)
+                      $ setFullPath ("." : rst -> importPaths) defaultParams
   callFrontendWithParams ACY frontendParams mainGoalProg
-  acyexists <- doesFileExist acyMainGoalFile
-  if not acyexists then return Nothing else do
-    acysize <- fileSize acyMainGoalFile
-    if acysize==0 then return Nothing else do
-      prog <- readAbstractCurryFile acyMainGoalFile
-      removeFile acyMainGoalFile
-      return (Just prog)
+  acyExists <- doesFileExist acyMainGoalFile
+  if not acyExists
+    then return Nothing
+    else do
+      acySize <- fileSize acyMainGoalFile
+      if acySize == 0
+        then return Nothing
+        else do
+          prog <- tryReadACYFile acyMainGoalFile
+          removeFile acyMainGoalFile
+          return prog
 
 -- Show the type of goal w.r.t. main program:
 showTypeOfGoal :: ReplState -> String -> IO Bool
@@ -384,7 +388,7 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
     let (CFunc _ _ _ maintype _) = mfunc
         freevars = freeVarsInFuncRule mfunc
     if null freevars || not (rst -> showBindings)
-       || (rst->ndMode) `elem` [PrtChoices, PrtChoiceTree]
+       || isPrtChoices (rst->ndMode)
        || isIOType maintype
        || length freevars > 10 -- due to limited size of tuples used
                                -- in PrintBindings
@@ -408,6 +412,9 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
                             mbprog)
    )
  where
+  isPrtChoices c = case c of
+    PrtChoices _ -> True
+    _            -> False
   freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
     concatMap lvarName ldecls
 
@@ -507,15 +514,14 @@ createHaskellMain rst goalstate isdet isio
     | isio && isdet                  = "evalDIO"
     | isio                           = "evalIO"
     | isdet                          = "evalD"
-    | rst -> ndMode == PrtChoices    = "prtChoices"
-    | rst -> ndMode == PrtChoiceTree = "prtChoiceTree"
-    | otherwise                      = searchOperation ++ ' ' : printOperation
-  searchOperation = case rst -> ndMode of
-    PrDFS -> "prdfs"
-    DFS   -> "printDFS" ++ searchSuffix
-    BFS   -> "printBFS" ++ searchSuffix
-    IDS d -> "printIDS" ++ searchSuffix ++ ' ' : show d
-    Par _ -> "printPar" ++ searchSuffix
+    | otherwise                      = case rst -> ndMode of
+      PrDFS        -> searchExpr $ "prdfs"
+      DFS          -> searchExpr $ "printDFS" ++ searchSuffix
+      BFS          -> searchExpr $ "printBFS" ++ searchSuffix
+      IDS        d -> searchExpr $ "printIDS" ++ searchSuffix ++ ' ' : show d
+      Par        _ -> searchExpr $ "printPar" ++ searchSuffix
+      PrtChoices d -> "prtChoiceTree" ++ ' ' : show d
+  searchExpr search = search ++ ' ' : printOperation
   searchSuffix
     | rst -> interactive = "i " ++ moreDefault
     | rst -> firstSol    = "1"
@@ -772,10 +778,17 @@ processThisOption rst option args
    = do ipath <- if null args then defaultImportPaths rst
                               else defaultImportPathsWith rst args
         return (Just { importPaths := ipath | rst })
-  | option=="bfs"        = return (Just { ndMode := BFS           | rst })
-  | option=="dfs"        = return (Just { ndMode := DFS           | rst })
-  | option=="prdfs"      = return (Just { ndMode := PrDFS         | rst })
-  | option=="choices"    = return (Just { ndMode := PrtChoiceTree | rst })
+  | option=="bfs"        = return (Just { ndMode := BFS        | rst })
+  | option=="dfs"        = return (Just { ndMode := DFS        | rst })
+  | option=="prdfs"      = return (Just { ndMode := PrDFS      | rst })
+  | option=="choices"
+   = if null args
+     then return (Just { ndMode := PrtChoices 10 | rst })
+     else maybe (writeErrorMsg "illegal number" >> return Nothing)
+                (\ (n,s) -> if null (strip s)
+                            then return (Just { ndMode := PrtChoices n | rst })
+                            else writeErrorMsg "illegal number" >> return Nothing)
+                (readNat args)
   | option=="ids"
    = if null args
      then return (Just { ndMode := IDS 100 | rst })
@@ -829,7 +842,7 @@ printOptions rst = putStrLn $
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "choices        - set search mode to print the choice structure as a tree\n"++
+  "choices [<n>]  - set search mode to print the choice structure as a tree up to level <n>\n"++
   "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
@@ -853,8 +866,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   "search mode       : " ++
       (case (rst->ndMode) of
          PrDFS         -> "primitive non-monadic depth-first search"
-         PrtChoices    -> "show choice structure"
-         PrtChoiceTree -> "show choice tree structure"
+         PrtChoices d  -> "show choice tree structure up to level " ++ show d
          DFS           -> "depth-first search"
          BFS           -> "breadth-first search"
          IDS d         -> "iterative deepening (initial depth: "++show d++")"
@@ -1033,9 +1045,10 @@ execInteractive rst cmd =
 
 --- Returns true if the type expression contains type variables.
 isPolyType :: CTypeExpr -> Bool
-isPolyType (CTVar _) = True
+isPolyType (CTVar                _) = True
 isPolyType (CFuncType domain range) = isPolyType domain || isPolyType range
-isPolyType (CTCons _ typelist) = any isPolyType typelist
+isPolyType (CTCons      _ typelist) = any isPolyType typelist
+isPolyType (CRecordType fields   _) = any isPolyType (map snd fields)
 
 --- Returns true if the type expression is a functional type.
 isFunctionalType :: CTypeExpr -> Bool
@@ -1044,24 +1057,25 @@ isFunctionalType texp = case texp of CFuncType _ _ -> True
 
 --- Returns true if the type expression is (IO t).
 isIOType :: CTypeExpr -> Bool
-isIOType texp = case texp of CTCons tc _ -> tc==(prelude,"IO")
+isIOType texp = case texp of CTCons tc _ -> tc == (prelude, "IO")
                              _           -> False
 
 --- Returns true if the type expression is (IO t) with t/=() and
 --- t is not functional
 isIOReturnType :: CTypeExpr -> Bool
-isIOReturnType (CTVar _) = False
-isIOReturnType (CFuncType _ _) = False
+isIOReturnType (CTVar            _) = False
+isIOReturnType (CFuncType      _ _) = False
 isIOReturnType (CTCons tc typelist) =
   tc==(prelude,"IO") && head typelist /= CTCons (prelude,"()") []
   && not (isFunctionalType (head typelist))
+isIOReturnType (CRecordType    _ _) = False
 
 --- Returns all modules used in the given type.
 modsOfType :: CTypeExpr -> [String]
-modsOfType (CTVar _) = []
-modsOfType (CFuncType t1 t2) = union (modsOfType t1) (modsOfType t2)
-modsOfType (CTCons (mod,_) typelist) =
-  foldr union [mod] (map modsOfType typelist)
+modsOfType (CTVar            _) = []
+modsOfType (CFuncType    t1 t2) = union (modsOfType t1) (modsOfType t2)
+modsOfType (CTCons (mod,_) tys) = foldr union [mod] $ map modsOfType tys
+modsOfType (CRecordType flds _) = foldr union [] $ map (modsOfType . snd) flds
 
 --- Shows an AbstractCurry type expression in standard Curry syntax.
 --- If the first argument is True, all occurrences of type variables
@@ -1079,6 +1093,8 @@ showMonoTypeExpr mono nested (CTCons (mod,name) typelist)
    | mod==prelude && name == "untyped" = "-"
    | otherwise  = maybeShowBrackets (nested && not (null typelist))
                                     (showTypeCons mono mod name typelist)
+showMonoTypeExpr mono nested (CRecordType fields _) =
+  '{' : intercalate ", " (map (showField mono nested) fields) ++ "}"
 
 showTypeCons :: Bool -> String -> String -> [CTypeExpr] -> String
 showTypeCons _ _ name [] = name
@@ -1093,6 +1109,10 @@ showPreludeTypeCons mono name typelist
   | isTuple name = "(" ++
                    combineMap (showMonoTypeExpr mono False) typelist "," ++ ")"
   | otherwise    = name ++ (prefixMap (showMonoTypeExpr mono True) typelist " ")
+
+showField :: Bool -> Bool -> CField CTypeExpr -> String
+showField mono nested (lbl, ty)
+  = lbl ++ " :: " ++ showMonoTypeExpr mono nested ty
 
 -- Remove characters '<' and '>' from identifiers sind these characters
 -- are sometimes introduced in new identifiers generated by the front end (for sections)
@@ -1109,12 +1129,15 @@ prelude = "Prelude"
 maybeShowBrackets nested s =
    (if nested then "(" else "") ++ s ++ (if nested then ")" else "")
 
-prefixMap :: (a -> String) -> [a] ->  String -> String
-prefixMap f xs s = concatMap ((++)s) (map f xs)
+prefixMap :: (a -> [b]) -> [a] -> [b] -> [b]
+prefixMap f xs s = concatMap (s++) (map f xs)
 
-combineMap :: (a -> String) -> [a] ->  String -> String
-combineMap _ [] _ = ""
+combineMap :: (a -> [b]) -> [a] -> [b] -> [b]
+combineMap _ [] _     = []
 combineMap f (x:xs) s = (f x) ++ (prefixMap f xs s)
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate xs xss = concat (intersperse xs xss)
 
 isTuple :: String -> Bool
 isTuple [] = False

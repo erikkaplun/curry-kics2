@@ -1,0 +1,266 @@
+Running benchmark [1 of 187]: SearchEmbed@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [2 of 187]: SearchEmbed@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [3 of 187]: SearchEmbed@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [4 of 187]: SearchEmbed@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [5 of 187]: SearchEmbed@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [6 of 187]: SearchEmbed@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [7 of 187]: SearchEmbed@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [8 of 187]: SearchEmbed@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [9 of 187]: SearchEmbed@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [10 of 187]: SearchEmbed@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [11 of 187]: SearchEmbed@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [12 of 187]: SearchGraph@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [13 of 187]: SearchGraph@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [14 of 187]: SearchGraph@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [15 of 187]: SearchGraph@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [16 of 187]: SearchGraph@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [17 of 187]: SearchGraph@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [18 of 187]: SearchGraph@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [19 of 187]: SearchGraph@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [20 of 187]: SearchGraph@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [21 of 187]: SearchGraph@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [22 of 187]: SearchGraph@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [23 of 187]: SearchHorseman@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [24 of 187]: SearchHorseman@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [25 of 187]: SearchHorseman@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [26 of 187]: SearchHorseman@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [27 of 187]: SearchHorseman@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [28 of 187]: SearchHorseman@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [29 of 187]: SearchHorseman@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [30 of 187]: SearchHorseman@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [31 of 187]: SearchHorseman@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [32 of 187]: SearchHorseman@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [33 of 187]: SearchHorseman@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [34 of 187]: SearchMAC@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [35 of 187]: SearchMAC@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [36 of 187]: SearchMAC@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [37 of 187]: SearchMAC@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [38 of 187]: SearchMAC@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [39 of 187]: SearchMAC@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [40 of 187]: SearchMAC@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [41 of 187]: SearchMAC@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [42 of 187]: SearchMAC@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [43 of 187]: SearchMAC@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [44 of 187]: SearchMAC@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [45 of 187]: SearchQueens@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [46 of 187]: SearchQueens@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [47 of 187]: SearchQueens@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [48 of 187]: SearchQueens@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [49 of 187]: SearchQueens@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [50 of 187]: SearchQueens@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [51 of 187]: SearchQueens@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [52 of 187]: SearchQueens@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [53 of 187]: SearchQueens@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [54 of 187]: SearchQueens@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [55 of 187]: SearchQueens@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [56 of 187]: PermSort@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [57 of 187]: PermSort@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [58 of 187]: PermSort@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [59 of 187]: PermSort@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [60 of 187]: PermSort@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [61 of 187]: PermSort@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [62 of 187]: PermSort@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [63 of 187]: PermSort@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [64 of 187]: PermSort@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [65 of 187]: PermSort@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [66 of 187]: PermSort@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [67 of 187]: Last@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [68 of 187]: Last@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [69 of 187]: Last@IDC+_D_(IOIDS 10 "(+1)")_IOREF: FAILED
+Running benchmark [70 of 187]: Last@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [71 of 187]: Last@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: FAILED
+Running benchmark [72 of 187]: Last@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [73 of 187]: Last@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [74 of 187]: Last@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [75 of 187]: Last@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: FAILED
+Running benchmark [76 of 187]: Last@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [77 of 187]: Last@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [78 of 187]: Half@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [79 of 187]: Half@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [80 of 187]: Half@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [81 of 187]: Half@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [82 of 187]: Half@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [83 of 187]: Half@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [84 of 187]: Half@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [85 of 187]: Half@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [86 of 187]: Half@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [87 of 187]: Half@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [88 of 187]: Half@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [89 of 187]: SearchEmbed@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [90 of 187]: SearchEmbed@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [91 of 187]: SearchEmbed@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [92 of 187]: SearchEmbed@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [93 of 187]: SearchEmbed@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [94 of 187]: SearchEmbed@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [95 of 187]: SearchEmbed@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [96 of 187]: SearchEmbed@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [97 of 187]: SearchEmbed@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [98 of 187]: SearchEmbed@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [99 of 187]: SearchEmbed@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [100 of 187]: SearchGraph@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [101 of 187]: SearchGraph@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [102 of 187]: SearchGraph@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [103 of 187]: SearchGraph@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [104 of 187]: SearchGraph@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [105 of 187]: SearchGraph@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [106 of 187]: SearchGraph@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [107 of 187]: SearchGraph@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [108 of 187]: SearchGraph@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [109 of 187]: SearchGraph@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [110 of 187]: SearchGraph@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [111 of 187]: SearchHorseman@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [112 of 187]: SearchHorseman@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [113 of 187]: SearchHorseman@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [114 of 187]: SearchHorseman@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [115 of 187]: SearchHorseman@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [116 of 187]: SearchHorseman@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [117 of 187]: SearchHorseman@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [118 of 187]: SearchHorseman@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [119 of 187]: SearchHorseman@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [120 of 187]: SearchHorseman@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [121 of 187]: SearchHorseman@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [122 of 187]: SearchMAC@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [123 of 187]: SearchMAC@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [124 of 187]: SearchMAC@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [125 of 187]: SearchMAC@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [126 of 187]: SearchMAC@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [127 of 187]: SearchMAC@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [128 of 187]: SearchMAC@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [129 of 187]: SearchMAC@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [130 of 187]: SearchMAC@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [131 of 187]: SearchMAC@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [132 of 187]: SearchMAC@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [133 of 187]: SearchQueens@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [134 of 187]: SearchQueens@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [135 of 187]: SearchQueens@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [136 of 187]: SearchQueens@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [137 of 187]: SearchQueens@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [138 of 187]: SearchQueens@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [139 of 187]: SearchQueens@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [140 of 187]: SearchQueens@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [141 of 187]: SearchQueens@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [142 of 187]: SearchQueens@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [143 of 187]: SearchQueens@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [144 of 187]: PermSort@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [145 of 187]: PermSort@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [146 of 187]: PermSort@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [147 of 187]: PermSort@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [148 of 187]: PermSort@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [149 of 187]: PermSort@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [150 of 187]: PermSort@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [151 of 187]: PermSort@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [152 of 187]: PermSort@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [153 of 187]: PermSort@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [154 of 187]: PermSort@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [155 of 187]: Last@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [156 of 187]: Last@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [157 of 187]: Last@IDC+_D_(IOIDS 10 "(+1)")_IOREF: FAILED
+Running benchmark [158 of 187]: Last@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [159 of 187]: Last@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: FAILED
+Running benchmark [160 of 187]: Last@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [161 of 187]: Last@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [162 of 187]: Last@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [163 of 187]: Last@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: FAILED
+Running benchmark [164 of 187]: Last@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [165 of 187]: Last@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [166 of 187]: Half@IDC+_D_PRDFS_IOREF: PASSED
+Running benchmark [167 of 187]: Half@IDC+_D_IODFS_IOREF: PASSED
+Running benchmark [168 of 187]: Half@IDC+_D_(IOIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [169 of 187]: Half@IDC+_D_(IOIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [170 of 187]: Half@IDC+_D_(IOIDS2 10 "(+1)")_IOREF: PASSED
+Running benchmark [171 of 187]: Half@IDC+_D_(IOIDS2 10 "(*2)")_IOREF: PASSED
+Running benchmark [172 of 187]: Half@IDC+_D_MPLUSDFS_IOREF: PASSED
+Running benchmark [173 of 187]: Half@IDC+_D_MPLUSBFS_IOREF: PASSED
+Running benchmark [174 of 187]: Half@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF: PASSED
+Running benchmark [175 of 187]: Half@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF: PASSED
+Running benchmark [176 of 187]: Half@IDC+_D_MPLUSPar_IOREF: PASSED
+Running benchmark [177 of 187]: NDNums@IDC+_D_PRDFS_IOREF:main2: FAILED
+Running benchmark [178 of 187]: NDNums@IDC+_D_IODFS_IOREF:main2: FAILED
+Running benchmark [179 of 187]: NDNums@IDC+_D_(IOIDS 10 "(+1)")_IOREF:main2: PASSED
+Running benchmark [180 of 187]: NDNums@IDC+_D_(IOIDS 10 "(*2)")_IOREF:main2: PASSED
+Running benchmark [181 of 187]: NDNums@IDC+_D_(IOIDS2 10 "(+1)")_IOREF:main2: PASSED
+Running benchmark [182 of 187]: NDNums@IDC+_D_(IOIDS2 10 "(*2)")_IOREF:main2: PASSED
+Running benchmark [183 of 187]: NDNums@IDC+_D_MPLUSDFS_IOREF:main2: FAILED
+Running benchmark [184 of 187]: NDNums@IDC+_D_MPLUSBFS_IOREF:main2: FAILED
+Running benchmark [185 of 187]: NDNums@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF:main2: FAILED
+Running benchmark [186 of 187]: NDNums@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF:main2: PASSED
+Running benchmark [187 of 187]: NDNums@IDC+_D_MPLUSPar_IOREF:main2: FAILED
+Benchmarks on system Linux adamo 3.0.0-14-generic-pae #23-Ubuntu SMP Mon Nov 21 22:07:10 UTC 2011 i686 i686 i386 GNU/Linux
+
+Format of timings: normalized|mean|runtimes...
+
+--------
+SearchEmbed@IDC+_D_PRDFS_IOREF               |  1.01 |  3.78 |  3.80 |  3.76  || 246464 | 246464
+SearchEmbed@IDC+_D_IODFS_IOREF               |  1.00 |  3.74 |  3.76 |  3.72  || 250160 | 250192
+SearchEmbed@IDC+_D_(IOIDS 10 "(+1)")_IOREF   | 61.56 |230.25 |230.75 |229.75  || 348592 | 348592
+SearchEmbed@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  1.52 |  5.69 |  5.70 |  5.68  || 278960 | 278928
+SearchEmbed@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  | 66.01 |246.87 |246.62 |247.12  || 251936 | 251904
+SearchEmbed@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  1.53 |  5.73 |  5.73 |  5.74  || 233776 | 233776
+SearchEmbed@IDC+_D_MPLUSDFS_IOREF            | 53.52 |200.16 |200.31 |200.00  || 303520 | 303552
+SearchEmbed@IDC+_D_MPLUSBFS_IOREF            | 53.87 |201.49 |201.46 |201.52  || 1696192 | 1696192
+SearchEmbed@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF| 52.45 |196.17 |196.18 |196.16  || 1868192 | 1868192
+SearchEmbed@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF| 52.01 |194.51 |194.42 |194.60  || 1548448 | 1548464
+SearchEmbed@IDC+_D_MPLUSPar_IOREF            | 53.47 |199.96 |200.50 |199.42  || 303552 | 303552
+--------
+SearchGraph@IDC+_D_PRDFS_IOREF               |  1.00 |  1.72 |  1.72 |  1.72  || 16816 | 16816
+SearchGraph@IDC+_D_IODFS_IOREF               |  1.02 |  1.76 |  1.76 |  1.76  || 16800 | 16832
+SearchGraph@IDC+_D_(IOIDS 10 "(+1)")_IOREF   | 12.18 | 20.95 | 20.99 | 20.91  || 2019808 | 2019808
+SearchGraph@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  2.60 |  4.48 |  4.48 |  4.48  || 1999360 | 1999360
+SearchGraph@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  | 30.62 | 52.66 | 52.79 | 52.53  || 16896 | 16896
+SearchGraph@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  1.39 |  2.39 |  2.38 |  2.40  || 16896 | 16896
+SearchGraph@IDC+_D_MPLUSDFS_IOREF            |  2.04 |  3.50 |  3.50 |  3.51  || 33456 | 33440
+SearchGraph@IDC+_D_MPLUSBFS_IOREF            |  2.47 |  4.24 |  4.26 |  4.22  || 119200 | 119216
+SearchGraph@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF|  2.48 |  4.27 |  4.28 |  4.26  || 123520 | 123504
+SearchGraph@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF|  2.22 |  3.82 |  3.82 |  3.83  || 119248 | 119232
+SearchGraph@IDC+_D_MPLUSPar_IOREF            |  2.04 |  3.52 |  3.52 |  3.51  || 33456 | 33472
+--------
+SearchHorseman@IDC+_D_PRDFS_IOREF               |  1.07 |  2.82 |  2.82 |  2.82  || 874768 | 874800
+SearchHorseman@IDC+_D_IODFS_IOREF               |  1.00 |  2.63 |  2.62 |  2.64  || 729072 | 729072
+SearchHorseman@IDC+_D_(IOIDS 10 "(+1)")_IOREF   | 44.40 |116.76 |116.78 |116.74  || 2613248 | 2613248
+SearchHorseman@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  1.39 |  3.66 |  3.67 |  3.66  || 1277872 | 1277872
+SearchHorseman@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  |243.33 |639.95 |640.26 |639.64  || 883216 | 883216
+SearchHorseman@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  2.53 |  6.65 |  6.67 |  6.63  || 872496 | 872496
+SearchHorseman@IDC+_D_MPLUSDFS_IOREF            |  1.21 |  3.20 |  3.16 |  3.23  || 794880 | 794848
+SearchHorseman@IDC+_D_MPLUSBFS_IOREF            |  1.21 |  3.19 |  3.19 |  3.19  || 790784 | 790784
+SearchHorseman@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF|  1.21 |  3.18 |  3.17 |  3.20  || 778512 | 778512
+SearchHorseman@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF|  1.19 |  3.14 |  3.11 |  3.17  || 790784 | 790800
+SearchHorseman@IDC+_D_MPLUSPar_IOREF            |  1.24 |  3.25 |  3.22 |  3.28  || 794864 | 794880
+--------
+SearchMAC@IDC+_D_PRDFS_IOREF               |  1.00 |  6.77 |  6.80 |  6.74  || 140128 | 140128
+SearchMAC@IDC+_D_IODFS_IOREF               |  1.00 |  6.78 |  6.76 |  6.80  || 134752 | 134784
+SearchMAC@IDC+_D_(IOIDS 10 "(+1)")_IOREF   | 23.10 |156.41 |156.20 |156.62  || 4730880 | 4730880
+SearchMAC@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  2.02 | 13.66 | 13.62 | 13.71  || 5394432 | 5394432
+SearchMAC@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  | 80.24 |543.24 |542.44 |544.05  || 176192 | 176208
+SearchMAC@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  1.16 |  7.86 |  7.89 |  7.84  || 163280 | 163248
+SearchMAC@IDC+_D_MPLUSDFS_IOREF            |  3.13 | 21.16 | 21.14 | 21.19  || 889584 | 889552
+SearchMAC@IDC+_D_MPLUSBFS_IOREF            |  2.71 | 18.32 | 18.30 | 18.34  || 257760 | 257744
+SearchMAC@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF|  2.75 | 18.65 | 18.71 | 18.59  || 266160 | 266144
+SearchMAC@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF|  3.10 | 21.00 | 20.96 | 21.03  || 717536 | 717536
+SearchMAC@IDC+_D_MPLUSPar_IOREF            |  3.13 | 21.21 | 21.32 | 21.10  || 889584 | 889552
+--------
+SearchQueens@IDC+_D_PRDFS_IOREF               |  1.01 | 25.06 | 25.05 | 25.07  || 797600 | 797600
+SearchQueens@IDC+_D_IODFS_IOREF               |  1.00 | 24.79 | 24.84 | 24.74  || 1266416 | 1266416
+SearchQueens@IDC+_D_(IOIDS 10 "(+1)")_IOREF   |  6.08 |150.66 |150.87 |150.44  || 8785920 | 8785920
+SearchQueens@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  1.29 | 32.03 | 31.88 | 32.18  || 10297344 | 10297344
+SearchQueens@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  | 15.09 |374.20 |373.76 |374.64  || 1166736 | 1166768
+SearchQueens@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  1.36 | 33.62 | 33.62 | 33.62  || 770784 | 770768
+SearchQueens@IDC+_D_MPLUSDFS_IOREF            |  1.73 | 42.82 | 42.94 | 42.71  || 763088 | 763088
+SearchQueens@IDC+_D_MPLUSBFS_IOREF            |  1.78 | 44.02 | 44.07 | 43.98  || 3686400 | 3686400
+SearchQueens@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF|  1.78 | 44.05 | 44.09 | 44.01  || 3747840 | 3747840
+SearchQueens@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF|  1.72 | 42.62 | 42.58 | 42.65  || 2785280 | 2785280
+SearchQueens@IDC+_D_MPLUSPar_IOREF            |  1.73 | 42.98 | 42.90 | 43.05  || 763120 | 763120
+--------
+PermSort@IDC+_D_PRDFS_IOREF               |  1.00 | 11.46 | 11.46 | 11.46  || 194384 | 194400
+PermSort@IDC+_D_IODFS_IOREF               |  1.15 | 13.12 | 13.13 | 13.12  || 202800 | 202800
+PermSort@IDC+_D_(IOIDS 10 "(+1)")_IOREF   | 52.57 |602.40 |597.33 |607.46  || 1310048 | 1310080
+PermSort@IDC+_D_(IOIDS 10 "(*2)")_IOREF   |  2.53 | 29.02 | 29.01 | 29.02  || 1154416 | 1154400
+PermSort@IDC+_D_(IOIDS2 10 "(+1)")_IOREF  | 73.34 |840.52 |839.45 |841.58  || 215648 | 215664
+PermSort@IDC+_D_(IOIDS2 10 "(*2)")_IOREF  |  2.86 | 32.82 | 32.86 | 32.77  || 211440 | 211408
+PermSort@IDC+_D_MPLUSDFS_IOREF            |  3.36 | 38.50 | 38.53 | 38.48  || 231664 | 231680
+PermSort@IDC+_D_MPLUSBFS_IOREF            |  5.84 | 66.93 | 67.04 | 66.82  || 1046992 | 1046992
+PermSort@IDC+_D_(MPLUSIDS 10 "(+1)")_IOREF|  6.33 | 72.58 | 72.53 | 72.64  || 1391264 | 1391264
+PermSort@IDC+_D_(MPLUSIDS 10 "(*2)")_IOREF|  4.08 | 46.80 | 46.82 | 46.79  || 1227568 | 1227584
+PermSort@IDC+_D_MPLUSPar_IOREF            |  3.37 | 38.64 | 38.63 | 38.66  || 231664 | 231696
+--------
+Last@IDC+_D_PRDFS_IOREF               |Benchmarks: toIO: failed
+

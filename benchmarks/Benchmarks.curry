@@ -1,17 +1,33 @@
--- This program defines the execution of all benchmarks and summarizes
--- their results.
+--- --------------------------------------------------------------------------
+--- Benchmarking tool
+---
+--- This program defines the execution of benchmarks and summarizes
+--- their results.
+---
+--- @author  Michael Hanus, Björn Peemöller, Fabian Reck
+--- @version January 2012
+--- --------------------------------------------------------------------------
 
-import List(isPrefixOf,isInfixOf,intersperse,last)
+import Char
 import IO
 import IOExts
+import List (isPrefixOf, isInfixOf, intersperse, last)
+import Maybe
 import System
 import Time
-import Char
 import ReadShowTerm
 import Float
 
+-- ---------------------------------------------------------------------------
+-- Flags
+-- ---------------------------------------------------------------------------
+
+-- The time after which programs are terminated, in seconds
+benchTimeout :: Int
+benchTimeout = 1000
+
 -- Show benchmarks commands, like compiler calls, runtime calls,...?
-showBenchCmds = False
+doTrace = False
 
 -- home directory of KiCS2:
 kics2Home = "../.."
@@ -20,117 +36,436 @@ kics2Home = "../.."
 onlyKiCS2 = True
 
 -- home directory of the monadic curry compiler
-monHome = "$HOME/.cabal/bin"
-monlib  = "$HOME/.cabal/share/curry2monad-0.1"
+monHome      = "$HOME/.cabal/bin"
+monlib       = "$HOME/.cabal/share/curry2monad-0.1"
 monInstalled = False -- is the monadic curry compiler installed?
+
+-- ---------------------------------------------------------------------------
+-- Helper
+-- ---------------------------------------------------------------------------
+
+init :: [a] -> [a]
+init []       = []
+init [_]      = []
+init (x:y:zs) = x : init (y : zs)
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate xs xss = concat (intersperse xs xss)
+
+scanl :: (a -> b -> a) -> a -> [b] -> [a]
+scanl f q ls =  q : (case ls of
+  []   -> []
+  x:xs -> scanl f (f q x) xs)
+
+-- lift a pure function into the IO monad
+liftIO :: (a -> b) -> IO a -> IO b
+liftIO f act = act >>= return . f
+
+-- Like `mapIO`, but with flipped arguments.
+--
+-- This can be useful if the definition of the function is longer
+-- than those of the list, like in
+--
+-- forIO [1..10] $ \n -> do
+--   ...
+forIO :: [a] -> (a -> IO b) -> IO [b]
+forIO xs f = mapIO f xs
 
 unless :: Bool -> IO () -> IO ()
 unless p act = if p then done else act
 
-printBenchCmd s = if showBenchCmds then putStrLn s else done
+when :: Bool -> IO () -> IO ()
+when p act = if p then act else done
 
-evalCmd :: String -> IO String
-evalCmd cmd =do h <- connectToCommand cmd 
-                s <- hGetContents h 
-                hClose h
-                return s
+flushStr :: String -> IO ()
+flushStr s = putStr s >> hFlush stdout
 
-isUbuntu :: IO Bool
-isUbuntu = do
-  bsid <- evalCmd "lsb_release -i"
-  return ("Ubuntu" `isInfixOf` bsid)
+flushStrLn :: String -> IO ()
+flushStrLn s = putStrLn s >> hFlush stdout
 
--- Execute shell command and return time of its execution:
-benchmarkCommand cmd = do
-  let timecmd = "time --format=\"BENCHMARKTIME=%U\" "++cmd
-  (hin,hout,herr) <- execCmd timecmd
-  outcnt <- hGetContents hout
-  errcnt <- hGetContents herr
-  hClose hin
-  putStr outcnt
-  putStr errcnt
-  hFlush stdout
-  return (extractTimeInOutput errcnt)
+trace :: String -> IO ()
+trace s = when doTrace $ flushStrLn s
 
--- extract benchmark time from timing output:
-extractTimeInOutput =
-  tail . snd . break (=='=') . head . filter ("BENCHMARKTIME" `isPrefixOf`)
-       . lines
+lpad :: Int -> String -> String
+lpad n s = replicate (n - length s) ' ' ++ s
 
--- Run a set of benchmarks and return the timings
-runBenchmarks rpts numbenchs (startnum,benchmarks) = do
-  results <- mapIO (runBenchmark rpts numbenchs)
-                   (zip [startnum ..] benchmarks)
-  let maxnamelength = foldr1 max (map (length . fst) results)
-  return $ unlines $
-    take 8 (repeat '-') :
-    map (\ (n,ts) -> n ++ take (maxnamelength - length n) (repeat ' ') ++
-                     "|" ++ concat (intersperse "|" (map showFloat ts)))
-        (if all (not . null) (map snd results)
-         then processResults results
-         else results)
+rpad :: Int -> String -> String
+rpad n str = str ++ replicate (n - length str) ' '
+
+-- ---------------------------------------------------------------------------
+-- Executing commands
+-- ---------------------------------------------------------------------------
+
+--- A shell command with the binary name and arguments separated
+type Command = (String, [String])
+
+--- Show a command like it is invoked in a shell
+showCmd :: Command -> String
+showCmd (bin, args) = unwords $ bin : args
+
+--- Run the command and returns its output from stdout
+runCmd :: Command -> IO String
+runCmd cmd = do
+  h <- connectToCommand $ showCmd cmd
+  s <- hGetContents h
+  hClose h
+  return s
+
+--- Silently execute a command
+silentCmd :: Command -> IO ()
+silentCmd cmd = system (showCmd cmd) >> done
+
+--- Trace the call string of a command and execute it silently
+traceCmd :: Command -> IO ()
+traceCmd cmd = trace call >> system call >> done
+  where call = showCmd cmd
+
+--- Limit a command with a maximum runtime
+timeout :: Int -> Command -> Command
+timeout maxTime (bin, args) = ("/usr/bin/timeout", show maxTime : bin : args)
+
+--- Retrieve the host name
+getHostName :: IO String
+getHostName = runCmd ("hostname", [])
+
+--- Retrieve the unix system information
+getSystemInfo :: IO String
+getSystemInfo = runCmd ("uname", ["-a"])
+
+--- Retrieve the operating system description
+getSystemDescription :: IO String
+getSystemDescription = runCmd ("lsb-release", ["-s", "-d"])
+
+--- Retrieve the total memory
+getTotalMemory :: IO String
+getTotalMemory = dropWhile (not . isDigit)
+                `liftIO` runCmd ("grep", ["MemTotal", "/proc/meminfo"])
+
+type TimeInfo =
+  { tiCommand       :: String -- Command being timed
+  , tiUserTime      :: Float  -- User time (seconds)
+  , tiSystemTime    :: Float  -- System time (seconds)
+  , tiPercentCPU    :: Int    -- Percent of CPU this job got
+  , tiElapsedTime   :: Float  -- Elapsed (wall clock) time (h:mm:ss or m:ss)
+  , tiSharedMem     :: Int    -- Average shared text size (kbytes)
+  , tiUnsharedMem   :: Int    -- Average unshared data size (kbytes)
+  , tiAvgStack      :: Int    -- Average stack size (kbytes)
+  , tiAvgTotal      :: Int    -- Average total size (kbytes)
+  , tiMaxResident   :: Int    -- Maximum resident set size (kbytes)
+  , tiAvgResident   :: Int    -- Average resident set size (kbytes)
+  , tiMajorFaults   :: Int    -- Major (requiring I/O) page faults
+  , tiMinorFaults   :: Int    -- Minor (reclaiming a frame) page faults
+  , tiVolSwitch     :: Int    -- Voluntary context switches
+  , tiNonvolSwitch  :: Int    -- Involuntary context switches
+  , tiSwaps         :: Int    -- Swaps
+  , tiFSInputs      :: Int    -- File system inputs
+  , tiFSOutputs     :: Int    -- File system outputs
+  , tiSocketMsgSent :: Int    -- Socket messages sent
+  , tiSocketMsgRecv :: Int    -- Socket messages received
+  , tiSignalsDelivd :: Int    -- Signals delivered
+  , tiPageSize      :: Int    -- Page size (bytes)
+  , tiExitStatus    :: Int    -- Exit status
+  }
+
+toInfo :: [String] -> TimeInfo
+toInfo [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17,x18,x19,x20,x21,x22,x23]
+  = { tiCommand       = readQTerm   x1, tiUserTime      = readQTerm x2
+    , tiSystemTime    = readQTerm   x3, tiPercentCPU    = readQTerm $ init x4
+    , tiElapsedTime   = readElapsed x5, tiSharedMem     = readQTerm x6
+    , tiUnsharedMem   = readQTerm   x7, tiAvgStack      = readQTerm x8
+    , tiAvgTotal      = readQTerm   x9, tiMaxResident   = readQTerm x10
+    , tiAvgResident   = readQTerm  x11, tiMajorFaults   = readQTerm x12
+    , tiMinorFaults   = readQTerm  x13, tiVolSwitch     = readQTerm x14
+    , tiNonvolSwitch  = readQTerm  x15, tiSwaps         = readQTerm x16
+    , tiFSInputs      = readQTerm  x17, tiFSOutputs     = readQTerm x18
+    , tiSocketMsgSent = readQTerm  x19, tiSocketMsgRecv = readQTerm x20
+    , tiSignalsDelivd = readQTerm  x21, tiPageSize      = readQTerm x22
+    , tiExitStatus    = readQTerm  x23  }
+  where
+    readElapsed hms = hh *. 3600 +. mm *. 60 +. ss
+      where hh = if noHours then 0.0 else readQTerm p1
+            mm = readQTerm $ if noHours then p1 else p2
+            ss = readQTerm $ if noHours then p2 else (tail r2)
+            noHours = null r2
+            (p1,r1) = break (==':') hms
+            (p2,r2) = break (==':') (tail r1)
+
+--- Time the execution of a command and return
+---   * the exit code
+---   * the content written to stdout
+---   * the content written to stderr
+---   * the information gathered by the time command
+timeCmd :: Command -> IO (Int, String, String, TimeInfo)
+timeCmd (cmd, args) = do
+  -- create timing process and execute it
+  (exitCode, outCnts, errCnts) <- evalCmd timeCommand timeArgs []
+  -- extract timing information
+  timingInfo <- extractInfo `liftIO` readFile timeFile
+  -- remove time file
+  silentCmd ("rm", ["-rf", timeFile])
+  return (exitCode, outCnts, errCnts, toInfo $ map snd timingInfo)
  where
-  showFloat x = let (x1,x2) = break (=='.') (show x)
-                 in take (3-length x1) (repeat ' ') ++ x1 ++ x2 ++
-                    take (3-length x2) (repeat '0') ++ " "
+  timeFile    = ".time"
+  timeCommand = "/usr/bin/time"
+  timeArgs    = [ "--quiet", "--verbose", "-o", timeFile ] ++ cmd : args
+  extractInfo = map (splitInfo . trim) . lines
+  trim        = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+  splitInfo s@[]       = ([], s)
+  splitInfo s@[_]      = ([], s)
+  splitInfo s@(c:d:cs)
+    | take 2 s == ": " = ([], cs)
+    | otherwise        = let (k, v) = splitInfo (d:cs) in (c:k, v)
 
-processResults results =
-  let (names,times) = unzip results
-   in zip names (processTimes times)
+--- Execute a shell command and return the time of its execution
+benchCmd :: Command -> IO (Int, Float, Int)
+benchCmd cmd = do
+  (exitcode, outcnt, errcnt, ti) <- timeCmd cmd
+  trace outcnt
+  trace errcnt
+  return $ (exitcode, ti -> tiUserTime, ti -> tiMaxResident)
 
-processTimes timings =
-  let means = map mean timings
-      roundedmeans = map truncateFloat means
-      mintime = foldr1 min means
-      minNonZero = if mintime==0.0 then 0.0001 else mintime
-      normalized = map (truncateFloat . (/.minNonZero)) means
-   in zipWith (:) normalized (if length (head timings) == 1
-                              then timings
-                              else zipWith (:) roundedmeans timings)
- where
-  mean :: [Float] -> Float
-  mean xs = (foldr1 (+.) xs) /. (i2f (length xs))
-
-  truncateFloat x = i2f (round (x*.100)) /. 100
-
--------------------------------------------------------------------------
--- Auxiliary operations for running benchmarks.
+-- ---------------------------------------------------------------------------
+-- Operations for running benchmarks.
+-- ---------------------------------------------------------------------------
 
 -- Each benchmark consists of a name, an action to prepare the benchmark
 -- (e.g., compile the program), a command to run the benchmark
 -- and a command to clean up all auxiliary files at the end of a benchmark
-type Benchmark = (String,IO Int,String,String)
+type Benchmark =
+  { bmName    :: String
+  , bmPrepare :: IO Int
+  , bmCommand :: Command
+  , bmCleanup :: Command
+  }
 
--- Run a benchmark and return the timings
-runBenchmark :: Int -> Int -> (Int,Benchmark) -> IO (String,[Float])
-runBenchmark rpts allnum (num,(name,preparecmd,benchcmd,cleancmd)) = do
-  let line = take 8 (repeat '-')
-  putStr (unlines
-           [line,
-            "Running benchmark ["++show num++" of "++show allnum++"]: "++name])
-  hFlush stdout
-  preparecmd
-  times <- mapIO (\_ -> benchmarkCommand benchcmd) [1..rpts]
-  system cleancmd
-  putStrLn ("RUNTIMES: " ++ concat (intersperse " | " times))
-  hFlush stdout
-  if all isFloatString times
-   then return (name,map readFloat times)
-   else return ("ERROR: "++name++": "++ concat (intersperse " | " times),[])
+type BenchResult = (String, [Float], [Int])
 
-----------------------------------------------------------------------
--- Does the string contains a float number?
-isFloatString :: String -> Bool
-isFloatString s = let p = dropWhile isDigit (dropWhile isSpace s) in
-  if null p || head p /= '.'
-  then False
-  else null (dropWhile isSpace (dropWhile isDigit (tail p)))
+-- Run a benchmark and return its timings
+runBenchmark :: Int -> Int -> (Int, Benchmark) -> IO BenchResult
+runBenchmark rpts totalNum (currentNum, benchMark) = do
+  let totalStr = show totalNum
+      curntStr = show currentNum
+  flushStr $ "Running benchmark [" ++ lpad (length totalStr) curntStr ++ " of "
+             ++ totalStr ++ "]: " ++ (benchMark -> bmName) ++ ": "
+  benchMark -> bmPrepare
+  infos <- sequenceIO $ replicate rpts $ benchCmd
+                      $ timeout benchTimeout $ benchMark -> bmCommand
+  silentCmd $ benchMark -> bmCleanup
+  let (codes, times, mems) = unzip3 infos
+  flushStrLn $ if all (==0) codes then "PASSED" else "FAILED"
+  trace $ "RUNTIMES: " ++ intercalate " | " (map show times)
+  trace $ "MEMUSAGE: " ++ intercalate " | " (map show mems)
+  return (benchMark -> bmName, times, mems)
 
-readFloat :: String -> Float
-readFloat s = if isFloatString s then readQTerm s
-                                 else error ("ERROR: readFloat: "++s)
+showResult :: Int -> BenchResult -> String
+showResult maxName (n, ts, ms) = rpad maxName n
+  ++ " | "  ++ intercalate " | " (map (lpad 7 . showTime) ts)
+  ++ " || " ++ intercalate " | " (map (lpad 8 . show) ms)
+  where
+    showTime x = let (x1,x2) = break (=='.') (show x)
+                 in  x1 ++ x2 ++ take (3-length x2) (repeat '0')
 
-----------------------------------------------------------------------
+processTimes :: [[Float]] -> [[Float]]
+processTimes timings =
+  let means        = map mean timings
+      roundedmeans = map truncateFloat means
+      minNonZero   = max 0.0001 $ foldr1 min means
+      normalized   = map (truncateFloat . (/.minNonZero)) means
+  in  zipWith (:) normalized (if length (head timings) == 1
+                              then timings
+                              else zipWith (:) roundedmeans timings)
+  where
+  mean :: [Float] -> Float
+  mean []       = 0.0
+  mean xs@(_:_) = (foldr1 (+.) xs) /. (i2f (length xs))
+
+  truncateFloat x = i2f (round (x*.100)) /. 100
+
+-- Run a set of benchmarks and return the timings
+runBenchmarks :: Int -> Int -> (Int, [Benchmark]) -> IO String
+runBenchmarks rpts total (start, benchmarks) = do
+  results <- mapIO (runBenchmark rpts total) (zip [start ..] benchmarks)
+  let (names, times, memus) = unzip3 results
+      maxName = foldr max 0 $ map length names
+      times' = processTimes times
+  return $ unlines $ map (showResult maxName) (zip3 names times' memus)
+
+runAllBenchmarks :: Int -> [[Benchmark]] -> IO String
+runAllBenchmarks rpts benchmarks = do
+  results <- mapIO (runBenchmarks rpts total) (zip startnums benchmarks)
+  return $ intercalate "--------\n" results
+ where
+  total    = length (concat benchmarks)
+  startnums = scanl (+) 1 $ map length benchmarks
+
+
+
+-- Run all benchmarks and show results
+run :: Int -> [[Benchmark]] -> IO ()
+run rpts benchmarks = do
+  args    <- getArgs
+  results <- runAllBenchmarks rpts benchmarks
+  ltime   <- getLocalTime
+  info    <- getSystemInfo
+  mach    <- getHostName
+  let res = "Benchmarks on system " ++ info ++ "\n" ++
+            "Format of timings: normalized | mean | runtimes ... || memory used ...\n\n" ++
+            results
+  putStrLn res
+  unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
+
+outputFile :: String -> String -> CalendarTime -> String
+outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/"
+  ++ name ++ '@' : mach
+  ++ intercalate "_" (map show [ye, mo, da, ho, mi, se])
+  ++ ".bench"
+
+-- ---------------------------------------------------------------------------
+-- Benchmarks for various systems
+-- ---------------------------------------------------------------------------
+
+data Supply   = S_PureIO | S_IORef | S_GHC | S_Integer
+
+data Strategy
+  = PRDFS -- primitive
+  | IODFS    | IOBFS    | IOIDS Int String    | IOIDS2 Int String -- top-level
+  | MPLUSDFS | MPLUSBFS | MPLUSIDS Int String | MPLUSPar          -- MonadPlus
+  | EncDFS   | EncBFS   | EncIDS                                  -- encapsulated
+
+data Goal   = Goal Bool String String -- non-det? / main-expr / module
+data Output = All | One | Interactive | Count
+
+detGoal :: String -> String -> Goal
+detGoal gl mod = Goal False mod gl
+
+nonDetGoal :: String -> String -> Goal
+nonDetGoal gl mod = Goal True mod gl
+
+showStrategy :: Strategy -> String
+showStrategy s = case s of
+  IOIDS    i inc -> "IOIDS_"    ++ show i ++ '_' : inc
+  IOIDS2   i inc -> "IOIDS2_"   ++ show i ++ '_' : inc
+  MPLUSIDS i inc -> "MPLUSIDS_" ++ show i ++ '_' : inc
+  _              ->  show s
+
+showSupply :: Supply -> String
+showSupply = map toUpper . drop 2 . show
+
+chooseSupply :: Supply -> String
+chooseSupply = map toLower . drop 2 . show
+
+mainExpr :: Strategy -> Output -> Goal -> String
+mainExpr _ _ (Goal False _ goal) = "evalD d_C_" ++ goal
+mainExpr s o (Goal True  _ goal) = searchExpr s
+ where
+  searchExpr PRDFS            = "main = prdfs print nd_C_" ++ goal
+  searchExpr IODFS            = searchComb "ioDFS"
+  searchExpr IOBFS            = searchComb "ioBFS"
+  searchExpr (IOIDS    i inc) = searchComb $ "(ioIDS " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr (IOIDS2   i inc) = searchComb $ "(ioIDS2 " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr MPLUSDFS         = searchComb "mplusDFS"
+  searchExpr MPLUSBFS         = searchComb "mplusBFS"
+  searchExpr (MPLUSIDS i inc) = searchComb $ "(mplusIDS " ++ show i ++ " " ++ inc ++ ")"
+  searchExpr MPLUSPar         = searchComb "mplusPar"
+  searchExpr EncDFS           = wrapEnc "DFS"
+  searchExpr EncBFS           = wrapEnc "BFS"
+  searchExpr EncIDS           = wrapEnc "IDS"
+  wrapEnc strat      = "import qualified Curry_SearchTree as ST\n"
+    ++ "main = prdfs print (\\i c -> ST.d_C_allValues" ++ strat
+    ++ " (ST.d_C_someSearchTree (nd_C_" ++ goal ++ " i c) c) c)"
+  searchComb search  = "main = " ++ comb ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
+  comb = case o of
+    All         -> "printAll"
+    One         -> "printOne"
+    Interactive -> "printInteractive"
+    Count       -> "countAll"
+
+kics2 hoOpt ghcOpt supply strategy output gl@(Goal _ mod goal)
+  = idcBenchmark tag hoOpt ghcOpt (chooseSupply supply) mod goal (mainExpr strategy output gl)
+ where tag = concat [ "KICS2"
+                    , if ghcOpt then "+"  else ""
+                    , if hoOpt  then "_D" else ""
+                    , '_' : showStrategy strategy
+                    , '_' : showSupply   supply
+                    ]
+
+monc    (Goal _     mod goal) = monBenchmark True mod goal
+pakcs   (Goal _     mod goal) = pakcsBenchmark    mod goal
+mcc     (Goal _     mod goal) = mccBenchmark      mod goal
+ghc     (Goal False mod _   ) = ghcBenchmark      mod
+ghc     (Goal True  _   _   ) = []
+ghcO    (Goal False mod _   ) = ghcOBenchmark     mod
+ghcO    (Goal True  _   _   ) = []
+sicstus (Goal _     mod _   ) = sicsBenchmark     mod
+swipl   (Goal _     mod _   ) = swiBenchmark      mod
+skip    _                     = []
+
+mkTag mod goal comp
+  | goal == "main" = mod ++ '@' : comp
+  | otherwise      = mod ++ ':' : goal ++ '@' : comp
+
+idcBenchmark tag hooptim ghcoptim idsupply mod goal mainexp =
+  [ { bmName    = mkTag mod goal tag
+    , bmPrepare = idcCompile mod hooptim ghcoptim idsupply mainexp
+    , bmCommand = ("./Main", [])
+    , bmCleanup = ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
+    }
+  ]
+monBenchmark optim mod mainexp = if monInstalled && not onlyKiCS2
+  then [ { bmName    = mkTag mod "main" "MON+"
+         , bmPrepare = monCompile mod optim mainexp
+         , bmCommand = ("./Main", [])
+         , bmCleanup = ("rm", ["-f", "Main*", "Curry_*"])
+         }
+       ]
+  else []
+pakcsBenchmark mod goal = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod goal "PAKCS"
+    , bmPrepare = pakcsCompile (if goal == "main" then "" else "-m \"print " ++ goal ++ "\"") mod
+    , bmCommand = ("./" ++ mod ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", mod ++ ".state"])
+    }
+  ]
+mccBenchmark mod goal = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "MCC"
+    , bmPrepare = mccCompile (if goal == "main" then "" else "-e\"" ++ goal ++ "\"") mod
+    , bmCommand = ("./a.out +RTS -h512m -RTS", [])
+    , bmCleanup = ("rm", ["-f", "a.out", mod ++ ".icurry"])
+    }
+  ]
+ghcBenchmark mod = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "GHC"
+    , bmPrepare = ghcCompile mod
+    , bmCommand = ("./" ++ mod, [])
+    , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
+    }
+  ]
+ghcOBenchmark mod = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "GHC+"
+    , bmPrepare = ghcCompileO mod
+    , bmCommand = ("./" ++ mod, [])
+    , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
+    }
+  ]
+sicsBenchmark mod = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "SICSTUS"
+    , bmPrepare = sicstusCompile src
+    , bmCommand = ("./" ++ src ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", src ++ ".state"])
+    }
+  ] where src = map toLower mod
+swiBenchmark mod = if onlyKiCS2 then [] else
+  [ { bmName    = mkTag mod "main" "SWI"
+    , bmPrepare = swiCompile src
+    , bmCommand = ("./" ++ src ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", src ++ ".state"])
+    }
+  ] where src = map toLower mod
+
+-- ---------------------------------------------------------------------------
+-- Compile target with KiCS2
+-- ---------------------------------------------------------------------------
+
 -- Command to compile a module and execute main with idcompiler:
 -- arg1: module name
 -- arg2: compile with higher-order optimization?
@@ -138,71 +473,74 @@ readFloat s = if isFloatString s then readQTerm s
 -- arg4: idsupply implementation (integer or pureio)
 -- arg5: main (Haskell!) call
 idcCompile mod hooptim ghcoptim idsupply mainexp = do
-  let compileCmd = kics2Home++"/bin/idc -q "
-                            ++(if hooptim then "" else "-O 0 ")
-                            ++"-i "++kics2Home++"/lib"++" "++mod
-  printBenchCmd $ "Executing: "++compileCmd
-  hFlush stdout
-  system compileCmd
-  createHaskellMainAndCompile mod ghcoptim idsupply mainexp
+  -- 1. Call the idc to create the Haskell module
+  let idcCmd = (kics2Home ++ "/bin/idc", [ "-q", if hooptim then "" else "-O0"
+                                         , "-i" ++ kics2Home ++ "/lib", mod])
+  traceCmd idcCmd
 
--- Create the Main.hs program containing the call to the initial expression:
-createHaskellMainAndCompile mod optim idsupply mainexp = do
-  writeFile "Main.hs" $
-       "module Main where\n"++
-       "import Basics\n"++
-       "import Curry_"++mod++"\n"++
-       "main = "++mainexp++"\n"
-  printBenchCmd $ "Main expression: " ++ mainexp
-  let imports = [kics2Home++"/runtime",kics2Home++"/runtime/idsupply"++idsupply,
-                 ".curry/kics2",kics2Home++"/lib/.curry/kics2"]
-      compileCmd = unwords ["ghc",if optim then "-O2" else ""
-                           ,"--make"
-                           ,if showBenchCmds then "" else "-v0"
-                           ,"-package ghc"
-                           ,"-cpp" -- use the C preprocessor
-                           ,"-DDISABLE_CS" -- disable constraint store
-                           --,"-DSTRICT_VAL_BIND" -- strict value bindings
-                           ,"-XMultiParamTypeClasses","-XFlexibleInstances"
-                           ,"-fforce-recomp"
-                           ,"-i"++concat (intersperse ":" imports),"Main.hs"]
-                     -- also:  -funbox-strict-fields ?
-  printBenchCmd $ "Executing: "++compileCmd
-  hFlush stdout
-  system compileCmd
+  -- 2. Create the Main.hs program containing the call to the initial expression
+  let mainFile = "Main.hs"
+  let mainCode = unlines  [ "module Main where"
+                          , "import Basics", "import Curry_" ++ mod
+                          , mainexp
+                          ]
+  -- show to put parentheses around the source code
+  let mainCmd = ("echo", [show mainCode, ">", mainFile])
+  traceCmd mainCmd
 
-----------------------------------------------------------------------
+  -- 3. Call the GHC
+  let ghcImports = [ kics2Home ++ "/runtime"
+                   , kics2Home ++ "/runtime/idsupply" ++ idsupply
+                   ,".curry/kics2"
+                   , kics2Home ++ "/lib/.curry/kics2"
+                   ]
+      ghcCmd = ("ghc" , [ if ghcoptim then "-O2" else ""
+                        , "--make"
+                        , if doTrace then "" else "-v0"
+                        , "-package ghc"
+                        , "-cpp" -- use the C preprocessor
+                        , "-DDISABLE_CS" -- disable constraint store
+                        --,"-DSTRICT_VAL_BIND" -- strict value bindings
+                        , "-XMultiParamTypeClasses","-XFlexibleInstances"
+--                         , "-fforce-recomp"
+                        , "-i" ++ intercalate ":" ghcImports
+                        , mainFile
+                        ]) -- also:  -funbox-strict-fields ?
+  traceCmd ghcCmd
+  return 0
+
+-- ---------------------------------------------------------------------------
+-- Compile target with Monadic Curry
+-- ---------------------------------------------------------------------------
+
 -- Command to compile a module and execute main with monadic curry:
 -- arg1: module name
 -- arg2: compile with optimization?
 -- arg3: main (Curry!) call
 monCompile mod optim mainexp = do
-  let compileCmd = monHome++"/curry2monad -m"++mainexp++" "++mod
-  putStrLn $ "Executing: "++compileCmd
-  system compileCmd
-  createMonHaskellMainAndCompile mod optim mainexp
+  let c2mCmd = monHome ++ "/curry2monad -m" ++ mainexp ++ " " ++ mod
+  putStrLn $ "Executing: " ++ c2mCmd
+  system c2mCmd
 
-createMonHaskellMainAndCompile mod optim mainexp = do
   let haskellMain = "cM_" ++ mainexp
-  writeFile "Main.hs" $
-       "module Main where\n" ++
-       "import Curry_"++mod++"\n"++
-       "main = print $ "++haskellMain++"\n"
+  writeFile "Main.hs" $ unlines
+    [ "module Main where"
+    , "import Curry_" ++ mod
+    , "main = print $ " ++ haskellMain
+    ]
   putStrLn $ "Main expression: " ++ haskellMain
-  let imports = [monlib]
+  let imports    = [monlib]
       compileCmd = unwords ["ghc",if optim then "-O2" else "","--make",
                             "-fforce-recomp",
-                            "-i"++concat (intersperse ":" imports),"Main.hs"]
+                            "-i"++intercalate ":" imports,"Main.hs"]
   putStrLn $ "Executing: "++ compileCmd
   system compileCmd
-----------------------------------------------------------------------
+
 -- Command to compile a module and execute main with MCC:
 --mccCompile mod = "/home/mcc/bin/cyc -e\"print main\" " ++ mod ++".curry"
-mccCompile options mod = system $
-  "/home/mcc/bin/cyc " ++
-  (if null options then "-e\"main\"" else options) ++
-  " " ++ mod ++".curry"
-
+mccCompile options mod = system $ "/home/mcc/bin/cyc " ++
+    (if null options then "-e\"main\"" else options) ++
+    " " ++ mod ++".curry"
 
 -- Command to compile a module and execute main with GHC:
 ghcCompile mod = system $ "ghc --make -fforce-recomp " ++ mod
@@ -211,293 +549,242 @@ ghcCompile mod = system $ "ghc --make -fforce-recomp " ++ mod
 ghcCompileO mod = system $ "ghc -O2 --make -fforce-recomp " ++ mod
 
 -- Command to compile a module and print main in PAKCS:
-pakcsCompile options mod = system $
-  "/home/pakcs/pakcs/bin/pakcs "++
-  (if null options then "-m \"print main\"" else options) ++" -s  " ++ mod
+pakcsCompile options mod = system $ "/home/pakcs/pakcs/bin/pakcs "++
+    (if null options then "-m \"print main\"" else options) ++" -s  " ++ mod
 
 -- Command to compile a Prolog program and run main in SICStus-Prolog:
-sicstusCompile mod = system $
-  "echo \"compile("++mod++"), save_program('"++mod++".state',main).\" | /home/sicstus/sicstus4/bin/sicstus && chmod +x "++mod++".state"
+sicstusCompile mod = system $ "echo \"compile("++mod++"), save_program('"++mod++".state',main).\" | /home/sicstus/sicstus4/bin/sicstus && chmod +x "++mod++".state"
 
 -- Command to compile a Prolog program and run main in SWI-Prolog:
-swiCompile mod = system $
-  "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
+swiCompile mod = system $ "echo \"compile("++mod++"), qsave_program('"++mod++".state',[toplevel(main)]).\" | /home/swiprolog/bin/swipl"
 
-----------------------------------------------------------------------
--- Benchmarks for various systems
+-- ---------------------------------------------------------------------------
+-- The various sets of systems
+-- ---------------------------------------------------------------------------
 
-idcBenchmark tag mod hooptim ghcoptim idsupply mainexp =
-  [(mod++"@"++tag, idcCompile mod hooptim ghcoptim idsupply mainexp,
-    "./Main", "rm Main* .curry/"++mod++".* .curry/kics2/Curry_*")]
-monBenchmark withmon tag mod optim mainexp =
-  if monInstalled && withmon
-  then [(mod++"@"++tag, monCompile mod optim mainexp,
-         "./Main", "rm Main* Curry_*")]
-  else []
-pakcsBenchmark options mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@PAKCS ",pakcsCompile options mod,
-    "./"++mod++".state","rm "++mod++".state")]
-mccBenchmark options mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@MCC   ",mccCompile options mod,"./a.out +RTS -h512m -RTS",
-    "rm a.out "++mod++".icurry")]
-ghcBenchmark mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@GHC   ",ghcCompile mod,"./"++mod,
-    "rm "++mod++" "++mod++".hi "++mod++".o")]
-ghcOBenchmark mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@GHC+  ",ghcCompileO mod,"./"++mod,
-    "rm "++mod++" "++mod++".hi "++mod++".o")]
-sicsBenchmark mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@SICS  ", sicstusCompile mod,
-    "./"++mod++".state", "rm "++mod++".state")]
-swiBenchmark  mod =
-  if onlyKiCS2 then [] else
-  [(mod++"@SWI   ", swiCompile mod, "./"++mod++".state", "rm "++mod++".state")]
+-- Benchmark first-order functional programs with kics2/pakcs/mcc/ghc/sicstus/swi
+benchFOFP :: Bool -> Goal -> [Benchmark]
+benchFOFP withMon goal = concatMap ($goal)
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , pakcs
+  , mcc
+  , ghc
+  , ghcO
+  , sicstus
+  , swipl
+  , if withMon then monc else skip
+  ]
 
-----------------------------------------------------------------------
--- The various kinds of benchmarks:
+-- Benchmark higher-order functional programs with kics2/pakcs/mcc/ghc/ghc+
+benchHOFP :: Bool -> Goal -> [Benchmark]
+benchHOFP withMon goal = concatMap ($goal)
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , pakcs
+  , mcc
+  , ghc
+  , ghcO
+  , if withMon then monc else skip
+  ]
 
--- Benchmarking functional programs with idc/pakcs/mcc/ghc/prolog
-benchFPpl prog withMon = concat
- [idcBenchmark "IDC_D_INTEGER"  prog True False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D_INTEGER" prog True True  "integer" "evalD d_C_main"
- ,pakcsBenchmark "" prog
- ,mccBenchmark ""   prog
- ,ghcBenchmark   prog
- ,ghcOBenchmark  prog
- ,sicsBenchmark  (map toLower prog)
- ,swiBenchmark   (map toLower prog)
- ,monBenchmark withMon "MON+" prog True "main"]
-
--- Benchmarking higher-order functional programs with idc/pakcs/mcc/ghc
-benchHOFP prog withMon = concat
- [idcBenchmark "IDC_D_INTEGER"  prog True  False "integer" "evalD d_C_main"
- ,idcBenchmark "IDC+_D_INTEGER" prog True  True  "integer" "evalD d_C_main"
- ,pakcsBenchmark "" prog
- ,mccBenchmark ""   prog
- ,ghcBenchmark   prog
- ,ghcOBenchmark  prog
- ,monBenchmark withMon "MON+" prog True "main"]
-  
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
-benchFLPDFS prog withMon = concat
- [idcBenchmark "IDC_PrDFS_INTEGER"  prog True False "integer"
-               "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_INTEGER" prog True True  "integer"
-               "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio"
-               "prdfs print nd_C_main"
- ,pakcsBenchmark "" prog
- ,mccBenchmark ""   prog
- ,monBenchmark withMon "MON+" prog True "main"]
+benchFLPDFS :: Bool -> Goal -> [Benchmark]
+benchFLPDFS withMon goal = concatMap ($goal)
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , kics2 True True  S_PureIO  PRDFS All
+  , pakcs
+  , mcc
+  , if withMon then monc else skip
+  ]
 
 -- Benchmarking functional logic programs with unification with idc/pakcs/mcc
-benchFLPDFSU prog = concat
- [idcBenchmark "IDC+_PrDFS_PUREIO" prog True True "pureio" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_PUREIO" prog True True "pureio" "printDFS print nd_C_main"
- ,pakcsBenchmark "" prog
- ,mccBenchmark ""   prog
- ]
+benchFLPDFSU :: Goal -> [Benchmark]
+benchFLPDFSU goal = concatMap ($goal)
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
+  , pakcs
+  , mcc
+  ]
 
 -- Benchmarking functional patterns with idc/pakcs
-benchFunPats prog = concat
- [idcBenchmark "IDC+_PrDFS_PUREIO" prog True True  "pureio" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+_DFS_PUREIO" prog True True "pureio" "printDFS print nd_C_main"
- ,pakcsBenchmark "" prog
- ]
+benchFunPats :: Goal -> [Benchmark]
+benchFunPats goal = concatMap ($goal)
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
+  , pakcs
+  ]
 
 -- Benchmarking functional programs with idc/pakcs/mcc
 -- with a given name for the main operation
-benchFPWithMain prog name = concat
- [idcBenchmark ("IDC+_D_INTEGER:"++name)
-               prog True True "integer" ("evalD d_C_"++name)
- ,pakcsBenchmark ("-m \"print "++name++"\"") prog
- ,mccBenchmark ("-e\""++name++"\"")   prog
- ]
+benchFPWithMain :: Goal -> [Benchmark]
+benchFPWithMain goal = concatMap ($goal)
+  [ kics2 True True S_Integer IODFS All, pakcs, mcc ]
 
 -- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
 -- with a given name for the main operation
-benchFLPDFSWithMain prog name = concat
- [idcBenchmark ("IDC_PrDFS_INTEGER:"++name)
-               prog True False "integer" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_PrDFS_INTEGER:"++name)
-               prog True True  "integer" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_PrDFS_PUREIO:"++name)
-               prog True True  "pureio" ("prdfs print nd_C_"++name)
- ,pakcsBenchmark ("-m \"print "++name++"\"") prog
- ,mccBenchmark ("-e\""++name++"\"")   prog
- ]
+benchFLPDFSWithMain :: Goal -> [Benchmark]
+benchFLPDFSWithMain goal = concatMap ($goal)
+  [ kics2 True False S_Integer PRDFS All
+  , kics2 True True  S_Integer PRDFS All
+  , kics2 True True  S_PureIO  PRDFS All
+  , pakcs
+  , mcc
+  ]
 
--- Benchmarking functional logic programs with different id supply and DFS:
-benchIDSupply prog = concat
- [idcBenchmark "IDC+DFS_PUREIO"
-               prog True True "pureio"  "printDFS print nd_C_main"
- ,idcBenchmark "IDC+DFS_IOREF"
-               prog True True "ioref"   "printDFS print nd_C_main"
- ,idcBenchmark "IDC+DFS_GHC"
-               prog True True "ghc"     "printDFS print nd_C_main"
- ,idcBenchmark "IDC+DFS_INTEGER"
-               prog True True "integer" "printDFS print nd_C_main"
- ]
+-- Benchmark different ID-Supplies with different DFS implementations
+benchIDSupplies :: Goal -> [Benchmark]
+benchIDSupplies goal = concat
+  [ kics2 True True su st All goal | st <- strats, su <- suppls ]
+  where
+    strats = [PRDFS, IODFS, MPLUSDFS]
+    suppls = [S_PureIO, S_IORef, S_GHC, S_Integer]
 
 -- Benchmarking functional logic programs with different search strategies
-benchFLPSearch prog = concat
- [idcBenchmark "IDC+PrDFS_IOREF"
-               prog True True "ioref" "prdfs print nd_C_main"
- ,idcBenchmark "IDC+DFS_IOREF"
-               prog True True "ioref" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_IOREF"
-               prog True True "ioref" "printBFS print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"
-               prog True True "ioref" "printIDS 100 print nd_C_main"
- ]
+benchFLPSearch :: Goal -> [Benchmark]
+benchFLPSearch prog = concatMap (\st -> kics2 True True S_IORef st All prog)
+  [ PRDFS, IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" -- , IOBFS is too slow
+  , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]
+
+-- Benchmarking functional logic programs with different search strategies
+-- extracting only the first result
+benchFLPFirst :: Goal -> [Benchmark]
+benchFLPFirst prog = concatMap (\st -> kics2 True True S_IORef st One prog)
+  [ PRDFS, IODFS, IOIDS 10 "(+1)", IOIDS 10 "(*2)", IOIDS2 10 "(+1)", IOIDS2 10 "(*2)" -- , IOBFS is too slow
+  , MPLUSDFS, MPLUSBFS, MPLUSIDS 10 "(+1)", MPLUSIDS 10 "(*2)", MPLUSPar]
+
 
 -- Benchmarking FL programs that require complete search strategy
-benchFLPCompleteSearch prog = concat
- [idcBenchmark "IDC+BFS_IOREF"
-               prog True True "ioref" "printBFS1 print nd_C_main"
- ,idcBenchmark "IDC+IDS_IOREF"
-               prog True True "ioref" "printIDS1 100 print nd_C_main"
- ]
+benchFLPCompleteSearch :: Goal -> [Benchmark]
+benchFLPCompleteSearch goal = concatMap
+  (\st -> kics2 True True S_IORef st One goal)
+  [IOBFS, IOIDS 100 "(*2)"]
 
 -- Benchmarking functional logic programs with different search strategies
 -- for "main" operations and goals for encapsulated search strategies
-benchFLPEncapsSearch prog maingoals = concat $
- [idcBenchmark "IDC+DFS_GHC"
-               prog True True "ghc" "printDFS print nd_C_main"
- ,idcBenchmark "IDC+BFS_GHC"
-               prog True True "ghc" "printBFS print nd_C_main"
- ,idcBenchmark "IDC+IDS_GHC"
-               prog True True "ghc" "printIDS 100 print nd_C_main"
- ] ++
- map (\name -> idcBenchmark ("IDC+PrDFS_GHC:"++name)
-                            prog True True "ghc" ("prdfs print nd_C_"++name))
-     maingoals
+benchFLPEncapsSearch :: Goal -> [Benchmark]
+benchFLPEncapsSearch goal = concatMap
+  (\st -> kics2 True True S_IORef st All goal)
+  [IODFS, IOBFS, IOIDS 100 "(*2)", EncDFS, EncBFS, EncIDS]
 
 -- Benchmarking =:<=, =:= and ==
-benchFLPDFSKiCS2WithMain prog name pakcs mcc = concat
- [idcBenchmark ("IDC+_PrDFS_IORef:"++name)
-               prog True True  "ioref" ("prdfs print nd_C_"++name)
- ,idcBenchmark ("IDC+_DFS_IORef:"++name)
-               prog True True  "ioref" ("printDFS print nd_C_"++name)
- ]
- ++ (if pakcs then pakcsBenchmark ("-m \"print "++name++"\"") prog else [])
- ++ (if mcc   then mccBenchmark ("-e\""++name++"\"") prog  else [])
-
-allBenchmarks =
-  [ benchFPpl "ReverseUser"     True
-  , benchFPpl "Reverse"         True
-  , benchFPpl "Tak"             True
-  , benchFPpl "TakPeano"        True
-  , benchHOFP "ReverseHO"       True
-  , benchHOFP "ReverseBuiltin"  False
-  , benchHOFP "Primes"          True
-  , benchHOFP "PrimesPeano"     True
-  , benchHOFP "PrimesBuiltin"   True
-  , benchHOFP "Queens"          True
-  , benchHOFP "QueensUser"      True
-  , benchFLPDFS "PermSort"      True
-  , benchFLPDFS "PermSortPeano" True
-  , benchFLPDFS "Half"          False
-  , benchFLPSearch "PermSort"
-  , benchFLPSearch "PermSortPeano"
-  , benchFLPSearch "Half"
-  , benchFLPCompleteSearch "NDNums"
-  , benchFPWithMain "ShareNonDet" "goal1"
-  , benchFLPDFSWithMain "ShareNonDet" "goal2"
-  , benchFLPDFSWithMain "ShareNonDet" "goal3"
-  , benchFLPDFSU "Last"
-  , benchFLPDFSU "RegExp"
-  , benchIDSupply "PermSort"
-  , benchIDSupply "Half"
-  , benchIDSupply "Last"
-  , benchIDSupply "RegExp"
-  , benchFunPats "LastFunPats"
-  , benchFunPats "ExpVarFunPats"
-  , benchFunPats "ExpSimpFunPats"
-  , benchFunPats "PaliFunPats"
-  , benchFLPEncapsSearch "PermSortSearchTree" ["encDFS","encBFS","encIDS"]
-  , benchFLPEncapsSearch "HalfSearchTree"     ["encDFS","encBFS","encIDS"]
-  , benchFLPEncapsSearch "LastSearchTree"     ["encDFS","encBFS","encIDS"]
+benchFLPDFSKiCS2WithMain :: Bool -> Bool -> Goal -> [Benchmark]
+benchFLPDFSKiCS2WithMain withPakcs withMcc goal = concatMap ($goal)
+  [ kics2 True True S_PureIO PRDFS All
+  , kics2 True True S_PureIO IODFS All
+  , if withPakcs then pakcs else skip
+  , if withMcc   then mcc   else skip
   ]
 
-unif = 
+-- Benchmarking FL programs that require complete search strategy
+benchIDSSearch :: Goal -> [Benchmark]
+benchIDSSearch prog = concatMap
+  (\st -> kics2 True True S_IORef st Count prog)
+  [IOIDS 100 "(*2)", IOIDS 100 "(+1)", IOIDS2 100 "(+1)"]
+
+-- ---------------------------------------------------------------------------
+-- goal collections
+-- ---------------------------------------------------------------------------
+
+-- first-order functional programming
+fofpGoals :: [Goal]
+fofpGoals = map (detGoal "main")
+  [ "ReverseUser", "Reverse", "Tak", "TakPeano" ]
+
+-- higher-order functional programming
+hofpGoals :: [Goal]
+hofpGoals = map (detGoal "main")
+  [ "ReverseHO", "ReverseBuiltin", "Primes", "PrimesPeano"
+  , "PrimesBuiltin", "Queens", "QueensUser"
+  ]
+
+-- functional programming
+fpGoals :: [Goal]
+fpGoals = fofpGoals ++ hofpGoals
+
+searchGoals:: [Goal]
+searchGoals = map (nonDetGoal "main")
+  [ -- "SearchEmbed"
+    "SearchGraph" , "SearchHorseman"
+  , "SearchMAC"   , "SearchQueens" -- , "SearchSMM" -- too slow
+  , "PermSort"
+  ,"Last" , "Half"
+  ]
+  -- "SearchCircuit" : needs CLPR
+  -- "SearchLakritz" : needs CLPFD
+  -- "SearchZebra"   : needs CLPFD
+
+
+allBenchmarks = concat
+  [ map (benchFOFP   True) fofpGoals
+  , map (benchHOFP   False    . detGoal    "main") [ "ReverseBuiltin"]
+  , map (benchHOFP   True     . detGoal    "main") [ "ReverseHO", "Primes", "PrimesPeano", "PrimesBuiltin", "Queens", "QueensUser" ]
+  , map (benchFLPDFS True     . nonDetGoal "main") ["PermSort", "PermSortPeano" ]
+  , map (benchFLPDFS False    . nonDetGoal "main") ["Half"]
+  , map (benchFLPSearch       . nonDetGoal "main") ["PermSort", "PermSortPeano", "Half"]
+  , [benchFLPCompleteSearch   $ nonDetGoal "main"  "NDNums"]
+  , [benchFPWithMain          $ detGoal    "goal1" "ShareNonDet"]
+  , [benchFLPDFSWithMain      $ nonDetGoal "goal2" "ShareNonDet"]
+  , [benchFLPDFSWithMain      $ nonDetGoal "goal3" "ShareNonDet"]
+  , map (benchFLPDFSU         . nonDetGoal "main") ["Last", "RegExp"]
+  , map (benchIDSupplies      . nonDetGoal "main") ["PermSort", "Half", "Last", "RegExp"]
+  , map (benchFunPats         . nonDetGoal "main") ["LastFunPats", "ExpVarFunPats", "ExpSimpFunPats", "PaliFunPats"]
+  , map (benchFLPEncapsSearch . nonDetGoal "main") ["Half", "Last", "PermSort"]
+  ]
+
+unif =
      [
        -- mcc does not support function pattern
-       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
+       benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_1L"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_2L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2S" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_2L"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_last_2S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_last_2Eq" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_last_2Eq"
+--     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_grep_S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_grep_Eq"
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_half_L" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBenchFunPat" "goal_half_L"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_half_S" 
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_half_Eq"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S" True True
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq" False False
+     , benchFLPDFSKiCS2WithMain True False  $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L"
+     , benchFLPDFSKiCS2WithMain True True   $ nonDetGoal "UnificationBench" "goal_expVar_S"
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L'" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S'" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L'"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_expVar_S'"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq'" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq'"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_expVar_L''" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_S''" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L''"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_expVar_S''"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_expVar_Eq''" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq''"
        -- mcc does not support function pattern
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_simplify_L"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_simplify_S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_simplify_Eq"
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
-     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_pali_L" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_S" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBenchFunPat" "goal_pali_L"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_pali_S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_Eq" False False
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_S" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_pali_Eq"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_horseMan_S"
        -- pakcs and mcc suspend on this goal
-     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_horseMan_Eq"
      ]
 
--- Run all benchmarks and show results
-run :: Int -> [[Benchmark]] -> IO ()
-run rpts benchmarks = do
-  args <- getArgs
-  let numbenchs = length (concat benchmarks)
-      startnums = map (\n -> 1+foldr (+) 0 (map length (take (n-1) benchmarks)))
-                      [1..(length benchmarks)]
-  results <- mapIO (runBenchmarks rpts numbenchs) (zip startnums benchmarks)
-  ltime <- getLocalTime
-  info <- evalCmd "uname -a"
-  mach <- evalCmd "uname -n"
-  let res = "Benchmarks at " ++ info ++ "\n" ++
-            "Format of timings: normalized|mean|runtimes...\n\n" ++
-            concat results
-  putStrLn res
-  unless (null args) $ writeFile (outputFile (head args) (init mach) ltime) res
-    where
-      init :: [a] -> [a]
-      init []  = []
-      init [_] = []
-      init (x:y:zs) = x : init (y : zs)
+benchSearch = -- map benchFLPSearch searchGoals
+              map benchFLPFirst (searchGoals ++ [nonDetGoal "main2" "NDNums"])
 
-outputFile :: String -> String -> CalendarTime -> String
-outputFile name mach (CalendarTime ye mo da ho mi se _) = "../results/" ++
-  name ++ '@' : mach ++ (concat $ intersperse "_" $  (map show [ye, mo, da, ho, mi, se])) ++ ".bench"
-
+main = run 2 benchSearch
+-- main = run 2 benchSearch
+--main = run 1 allBenchmarks
 --main = run 3 allBenchmarks
-main = run 1 allBenchmarks
 --main = run 1 [benchFLPCompleteSearch "NDNums"]
 --main = run 1 (benchFPWithMain "ShareNonDet" "goal1" : [])
 --           map (\g -> benchFLPDFSWithMain "ShareNonDet" g) ["goal2","goal3"])
@@ -510,23 +797,19 @@ main = run 1 allBenchmarks
 --  [benchFLPEncapsSearch "PermSortSearchTree" ["encDFS","encBFS","encIDS"]
 --  ,benchFLPEncapsSearch "HalfSearchTree" ["encDFS","encBFS","encIDS"]
 --  ,benchFLPEncapsSearch "LastSearchTree" ["encDFS","encBFS","encIDS"]]
-----main = run 1 [benchFLPDFSU "Last"]
+--main = run 1 [benchFLPDFSU "Last"]
 --main = run 1 [benchFLPDFSU "RegExp"]
 --main = run 1 (map benchFunPats ["ExpVarFunPats","ExpSimpFunPats","PaliFunPats"
 --main = run 3 unif
 --main = run 1 [benchIDSupply "Last", benchIDSupply "RegExp"]
 
-
-----------------------
 -- Evaluate log file of benchmark, i.e., compress it to show all results:
-
-showLogFile = do
-  logs <- readFile "bench.log"
-  putStrLn (unlines (splitBMTime (lines logs)))
- where
-  splitBMTime xs =
-    let (ys,zs) = break (\cs -> take 14 cs == "BENCHMARKTIME=") xs
-     in if null zs
-        then []
-        else drop (length ys - 2) ys ++ take 2 zs ++ ["------"] ++
-             splitBMTime (drop 2 zs)
+-- showLogFile :: IO ()
+-- showLogFile = readFile "bench.log" >>= putStrLn . unlines . splitBMTime . lines
+--  where
+--   splitBMTime xs =
+--     let (ys,zs) = break (\cs -> take 14 cs == "BENCHMARKTIME=") xs
+--      in if null zs
+--         then []
+--         else drop (length ys - 2) ys ++ take 2 zs ++ ["------"] ++
+--              splitBMTime (drop 2 zs)

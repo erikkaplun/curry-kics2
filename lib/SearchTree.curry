@@ -1,12 +1,16 @@
-------------------------------------------------------------------
+--- --------------------------------------------------------------------------
 --- This library defines a representation of a search space as
 --- a tree and various search strategies on this tree.
-------------------------------------------------------------------
+---
+--- @author  Michael Hanus, Bjoern Peemoeller
+--- @version January 2012
+--- --------------------------------------------------------------------------
 
-module SearchTree(SearchTree(..),someSearchTree, getSearchTree,
-                  isDefined, showSearchTree, searchTreeSize,
-                  allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith)
-  where
+module SearchTree
+  ( SearchTree (..), someSearchTree, getSearchTree
+  , isDefined, showSearchTree, searchTreeSize
+  , allValuesDFS, allValuesBFS, allValuesIDS, allValuesIDSwith
+  ) where
 
 --- A search tree is a value, a failure, or a choice between to search trees.
 data SearchTree a = Value a
@@ -33,24 +37,52 @@ isDefined x = hasValue (someSearchTree x)
 
 --- Shows the search tree as an intended line structure
 showSearchTree :: SearchTree _ -> String
-showSearchTree = showST 0
+showSearchTree st = showsST [] st ""
  where
-   showST _ (Value a)  = "Value: " ++ show a ++ "\n"
-   showST _ Fail       = "Fail\n"
-   showST i (Or t1 t2) = "Or " ++ showST (i+3) t1 ++
-                         tab (i+3) ++ showST (i+3) t2
-   
-   tab i = take i (repeat ' ')
+  -- `showsST ctxt <SearchTree>`, where `ctxt` is a stack of boolean flags
+  -- indicating whether we show the last alternative of the respective
+  -- level to enable drawing aesthetical corners
+  showsST ctxt (Value  a) = indent ctxt . shows a      . nl
+  showsST ctxt Fail       = indent ctxt . showChar '!' . nl
+  showsST ctxt (Or t1 t2) = indent ctxt . showChar '?' . nl
+                          . showsST (False : ctxt) t1
+                          . showsST (True  : ctxt) t2
+
+  indent []     = id
+  indent (i:is) = showString (concatMap showIndent $ reverse is)
+                . showChar   (if i then llc else lmc)
+                . showString (hbar : " ")
+    where showIndent isLast = (if isLast then ' ' else vbar) : "  "
+
+  vbar = '\x2502' -- vertical bar
+  hbar = '\x2500' -- horizontal bar
+  llc  = '\x2514' -- left lower corner
+  lmc  = '\x251c' -- left middle corner
+
+  nl           = showChar '\n'
+  shows x      = showString (show x)
+  showChar c   = (c:)
+  showString s = (s++)
+
+-- showSearchTree st = showST 0 st ""
+--  where
+--   showST _ (Value a)  = showString "Value: " . shows a . nl
+--   showST _ Fail       = showString "Fail"    . nl
+--   showST i (Or t1 t2) = showString "Or "
+--                       . showST i' t1 . tab i' . showST i' t2
+--     where i'    = i + 1
+--           tab j = showString $ replicate (3 * j) ' '
+
 
 --- Return the size (number of Value/Fail/Or nodes) of the search tree
-searchTreeSize :: SearchTree _ -> (Int,Int,Int)
-searchTreeSize (Value _)  = (1,0,0)
-searchTreeSize Fail       = (0,1,0)
-searchTreeSize (Or t1 t2) = let (v1,f1,o1) = searchTreeSize t1
-                                (v2,f2,o2) = searchTreeSize t2
-                             in (v1+v2,f1+f2,o1+o2+1)
+searchTreeSize :: SearchTree _ -> (Int, Int, Int)
+searchTreeSize (Value _)  = (1, 0, 0)
+searchTreeSize Fail       = (0, 1, 0)
+searchTreeSize (Or t1 t2) = let (v1, f1, o1) = searchTreeSize t1
+                                (v2, f2, o2) = searchTreeSize t2
+                             in (v1 + v2, f1 + f2, o1 + o2 + 1)
 
---- Return all values in a search tree via depth-first search 
+--- Return all values in a search tree via depth-first search
 allValuesDFS :: SearchTree a -> [a]
 allValuesDFS Fail      = []
 allValuesDFS (Value x) = [x]
@@ -73,19 +105,19 @@ values (Value x:ts) = x : values ts
 values (Or _ _:ts)  = values ts
 
 allBFS :: [SearchTree a] -> [a]
-allBFS []     = [] 
+allBFS []     = []
 allBFS (t:ts) = values (t:ts) ++ allBFS (children (t:ts))
 
 
 --- Return all values in a search tree via iterative-deepening search.
 allValuesIDS :: SearchTree a -> [a]
-allValuesIDS = allValuesIDSwith 100 (2*)
+allValuesIDS t = allValuesIDSwith 100 (2*) t
 
 --- Return all values in a search tree via iterative-deepening search.
 --- The first argument is the initial depth bound and
 --- the second argument is a function to increase the depth in each
 --- iteration.
-allValuesIDSwith :: Int -> (Int->Int) -> SearchTree a -> [a]
+allValuesIDSwith :: Int -> (Int -> Int) -> SearchTree a -> [a]
 allValuesIDSwith initdepth incrdepth st =
   iterIDS initdepth (collectInBounds 0 initdepth st)
  where
