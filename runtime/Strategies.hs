@@ -9,6 +9,7 @@ import Control.Parallel.TreeSearch (parSearch)
 import MonadSearch
 
 instance MonadSearch SearchTree where
+  constrainMSearch = flip const
 
 -- |Breadth-first search
 bfsSearch :: SearchTree a -> [a]

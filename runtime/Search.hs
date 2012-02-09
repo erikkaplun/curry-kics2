@@ -582,7 +582,8 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
     follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
     plus = case i of
      ChoiceID _ -> mplus
-     CovChoiceID u -> splus (ChoiceID u)  
+     CovChoiceID 1 u -> splus (ChoiceID u)
+     CovChoiceID n u -> splus (CovChoiceID (n - 1) u)  
 
   smpChoices i xs = lookupDecision i >>= follow
     where
@@ -592,15 +593,20 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     (pns,sumF)            = case i of
-      NarrowedID    pns _ -> (pns,msum)
-      CovNarrowedID pns s -> (pns, ssum (NarrowedID pns s))
-      FreeID pns _        -> (pns, msum)
-      CovFreeID  pns s    -> (pns, ssum (NarrowedID pns s))
+      NarrowedID      pns _ -> (pns,msum)
+      CovNarrowedID 1 pns s -> (pns, ssum (NarrowedID pns s))
+      CovNarrowedID n pns s -> (pns, ssum (CovNarrowedID (n - 1) pns s))
+      FreeID          pns _ -> (pns, msum)
+      CovFreeID     1 pns s -> (pns, ssum (NarrowedID pns s))
+      CovFreeID     n pns s -> (pns, ssum (CovNarrowedID ( n - 1) pns s))
 
 
   smpGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero
-    Just (_, e') -> searchMSearch' cont e'
+    Just (_, e') -> maybeconstrain (searchMSearch' cont e')
+   where
+   cs' = getCoveredConstraints cs
+   maybeconstrain = maybe id constrainMSearch cs'
 
   processLB i cs xs = decide i NoDecision
                     $ guardCons (StructConstr cs) (choicesCons i xs)

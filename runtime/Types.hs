@@ -39,17 +39,17 @@ data Try a
 
 -- |Convert a binary choice of type a into one of type 'Try' a
 tryChoice :: ID -> a -> a -> Try a
-tryChoice i@(ChoiceID    _) = Choice i
-tryChoice i@(CovChoiceID _) = Choice i
+tryChoice i@(ChoiceID      _) = Choice i
+tryChoice i@(CovChoiceID _ _) = Choice i
 tryChoice _              = error "Basics.tryChoice: no ChoiceID"
 
 -- |Convert a n-ary choice of type a into one of type 'Try' a
 tryChoices :: ID -> [a] -> Try a
-tryChoices i@(FreeID     _ _)    = Free     i
-tryChoices i@(CovFreeID  _ _)    = Free     i
-tryChoices i@(NarrowedID _ _)    = Narrowed i
-tryChoices i@(CovNarrowedID _ _) = Narrowed i
-tryChoices i                     = error ("Basics.tryChoices: wrong ID " ++ show i)
+tryChoices i@(FreeID          _ _) = Free     i
+tryChoices i@(CovFreeID     _ _ _) = Free     i
+tryChoices i@(NarrowedID      _ _) = Narrowed i
+tryChoices i@(CovNarrowedID _ _ _) = Narrowed i
+tryChoices i                       = error ("Basics.tryChoices: wrong ID " ++ show i)
 
 -- unused because of triviality:
 
@@ -107,9 +107,9 @@ class NonDet a where
 -- The name of this function is misleading because of historical reasons
 -- and should be renamed to sth. like "choice"
 narrow :: NonDet a => ID -> a -> a -> a
-narrow i@(ChoiceID    _) = choiceCons i
-narrow i@(CovChoiceID _) = choiceCons i
-narrow _              = error "Basics.narrow: no ChoiceID"
+narrow i@(ChoiceID      _) = choiceCons i
+narrow i@(CovChoiceID _ _) = choiceCons i
+narrow _                   = error "Basics.narrow: no ChoiceID"
 
 -- |Convert an n-ary choice of a free variable into one with a narrowed variable
 -- |If the varible is bound in either the local or the global constraint store
@@ -117,10 +117,10 @@ narrow _              = error "Basics.narrow: no ChoiceID"
 narrows :: NonDet b => ConstStore -> ID -> (a -> b) -> [a] -> b
 narrows cs i@(FreeID        p s) f xs = lookupWithGlobalCs cs i f
                                    $ choicesCons (NarrowedID p s) (map f xs)
-narrows cs i@(CovFreeID     p s) f xs = lookupWithGlobalCs cs i f
-                                   $ choicesCons (CovNarrowedID p s) (map f xs)
-narrows _  i@(NarrowedID    _ _) f xs = choicesCons i (map f xs)
-narrows _  i@(CovNarrowedID _ _) f xs = choicesCons i (map f xs)
+narrows cs i@(CovFreeID   d p s) f xs = lookupWithGlobalCs cs i f
+                                   $ choicesCons (CovNarrowedID d p s) (map f xs)
+narrows _  i@(NarrowedID      _ _) f xs = choicesCons i (map f xs)
+narrows _  i@(CovNarrowedID _ _ _) f xs = choicesCons i (map f xs)
 narrows _ (ChoiceID _) _ _ = error "Types.narrows: ChoiceID"
 
 -- ---------------------------------------------------------------------------
@@ -149,9 +149,9 @@ class (NonDet a, Show a) => NormalForm a where
 -- two alternatives of a binary choice.
 nfChoice :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> a -> a -> ConstStore -> b
 nfChoice cont i x1 x2 cs = case i of
-  ChoiceID _    -> newChoice
-  CovChoiceID _ -> newChoice
-  _             -> error "Basics.nfChoice: no ChoiceID"
+  ChoiceID      _ -> newChoice
+  CovChoiceID _ _ -> newChoice
+  _               -> error "Basics.nfChoice: no ChoiceID"
  where newChoice = choiceCons i ((cont $!! x1) cs) ((cont $!! x2) cs)
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
@@ -250,13 +250,18 @@ unifyMatch x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal
   where
   uniChoice i x1 x2 = checkFail (choiceCons i ((x1 =:= y) cs) ((x2 =:= y) cs)) y
   uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> (x' =:= y) cs) xs)) y
-  uniFree i _       = lookupCs cs i (\xval -> (xval =:= y) cs) (bindTo cs y) -- TODO: use global cs
+  uniFree i xs      = lookupCs cs i (\xval -> (xval =:= y) cs) 
+                                    (if isCoveredID i then (unifyMatch (narrows cs i id xs) y cs) else (bindTo cs y))
+                                      -- TODO: use global cs
     where
     bindTo cs' = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal
       where
       bindChoice j y1 y2 = choiceCons  j (bindTo cs' y1) (bindTo cs' y2)
       bindNarrowed j ys  = choicesCons j (map (bindTo cs') ys)
-      bindFree j _       = lookupCs cs j (bindTo cs') (guardCons (ValConstr i y [i :=: BindTo j]) C_Success)
+      bindFree j ys       = lookupCs cs j (bindTo cs') 
+                            (if (isCoveredID j)
+                             then (unifyMatch x (narrows cs j id ys) cs)
+                             else (guardCons (ValConstr i y [i :=: BindTo j]) C_Success))
       bindGuard c        = guardCons c . (bindTo $! c `addCs` cs')
       bindVal v          = bindToVal i v cs'
 

@@ -310,9 +310,9 @@ tryRules qf = map nameRule
 {-
 match f _ _ _ _ _ (Choice i x y) = f i x y
 match _ f _ _ _ _ (Choices i@(NarrowedID _ _) xs) = f i xs
-match _ f _ _ _ _ (Choices i@(CovNarrowedID _ _) xs) = f i xs
+match _ f _ _ _ _ (Choices i@(CovNarrowedID _ _ _) xs) = f i xs
 match _ _ f _ _ _ (Choices i@(FreeID _ _) xs) = f i xs
-match _ _ f _ _ _ (Choices i@(CovFreeID _ _) xs) = f i xs
+match _ _ f _ _ _ (Choices i@(CovFreeID _ _ _) xs) = f i xs
 match _ _ _ _ _ _ (Choices (ChoiceID _ _) _) = error " ..."
 match _ _ _ f _ _ Fail = f
 match _ _ _ _ f _ (Guard c e) = f c e
@@ -322,13 +322,13 @@ matchRules :: QName -> [(QName, Rule)]
 matchRules qf = map nameRule
   [ simpleRule (matchAt 0 ++ [mkChoicePattern  qf])
     $ applyV f [i, x, y]
-  , simpleRule (matchAt 1 ++ [mkNarrowedChoicesPattern qf])
+  , simpleRule (matchAt 1 ++ [mkNarrowedChoicesPattern qf "i"])
     $ applyV f [i, xs]
-  , simpleRule (matchAt 1 ++ [mkCovNarrowedChoicesPattern qf])
+  , simpleRule (matchAt 1 ++ [mkCovNarrowedChoicesPattern qf "i"])
     $ applyV f [i, xs]
-  , simpleRule (matchAt 2 ++ [mkFreeChoicesPattern qf])
+  , simpleRule (matchAt 2 ++ [mkFreeChoicesPattern qf "i"])
     $ applyV f [i, xs]
-  , simpleRule (matchAt 2 ++ [mkCovFreeChoicesPattern qf])
+  , simpleRule (matchAt 2 ++ [mkCovFreeChoicesPattern qf "i"])
     $ applyV f [i, xs]
   , simpleRule (PVar (0,"_") : underscores ++ [mkVarChoicesPattern qf])
     $ applyF (pre "error")
@@ -579,34 +579,30 @@ bindChoiceRule qf funcName = (funcName,
 bindFreeRule :: Bool -> QName -> QName -> (QName, Rule)
 bindFreeRule covered qf funcName = (funcName,
   simpleRule
-    [ PVar i
-    , PComb (mkChoicesName qf) [PAs j (PComb (basics idConstrName) [PVar p1, PVar p2])
-    , PVar p3]
-    ]
+    [ PVar i, choicesPat]
     ( list2ac [ applyF (basics ":=:")
                 [ Var (1,"i"), applyF (basics "BindTo") [Var j] ]
               ]
     ))
-    where [i,j,p1,p2,p3] = newVars  ["i","j","_","_","_"]
-          idConstrName = if covered then "CovFreeID" else "FreeID" 
+    where [i,j] = newVars  ["i","j"]
+          choicesPat = if covered then mkCovFreeChoicesPattern qf "j"
+                                  else mkFreeChoicesPattern qf "j"
 
 -- bind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (bind i) xs)]
 -- lazyBind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (lazyBind i) xs)]
 bindNarrowedRule :: Bool -> QName -> QName -> (QName, Rule)
 bindNarrowedRule covered qf funcName = (funcName,
   simpleRule
-    [ PVar i
-    , PComb (mkChoicesName qf) [PAs j (PComb (basics idConstrName) [PVar p1, PVar p2])
-    , PVar xs]
-    ]
+    [ PVar i, choicesPat]
     ( list2ac [ applyF (basics "ConstraintChoices")
                 [ Var j
                 , applyF (pre "map") [applyF funcName [Var i], Var xs]
                 ]
               ]
     ))
-    where [i,j,p1,p2,xs] = newVars ["i","j","_","_","xs"]
-          idConstrName = if covered then "CovNarrowedID" else "NarrowedID"
+    where [i,j,xs] = newVars ["i","j","xs"]
+          choicesPat = if covered then mkCovNarrowedChoicesPattern qf "j" 
+                                  else mkNarrowedChoicesPattern qf "j"
 
 -- bind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
 -- lazyBind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
@@ -805,18 +801,18 @@ mkChoicePattern  qn = PComb (mkChoiceName  qn) [PVar i, PVar x, PVar y]
   where [i,x,y] = newVars ["i","x","y"]
 mkChoicesPattern qn = PComb (mkChoicesName qn) [PVar i, PVar xs]
   where [i,xs] = newVars ["i","xs"]
-mkNarrowedChoicesPattern qn = PComb (mkChoicesName qn)
+mkNarrowedChoicesPattern qn asName = PComb (mkChoicesName qn)
  [PAs i (PComb (basics "NarrowedID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
-mkCovNarrowedChoicesPattern qn = PComb (mkChoicesName qn)
- [PAs i (PComb (basics "CovNarrowedID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
-mkFreeChoicesPattern qn = PComb (mkChoicesName qn)
+ where [i,u1,u2,xs] = newVars [asName,"_","_","xs"]
+mkCovNarrowedChoicesPattern qn asName = PComb (mkChoicesName qn)
+ [PAs i (PComb (basics "CovNarrowedID") [PVar u1, PVar u2, PVar u3]), PVar xs]
+ where [i,u1,u2,u3,xs] = newVars [asName,"_","_","_","xs"]
+mkFreeChoicesPattern qn asName = PComb (mkChoicesName qn)
  [PAs i (PComb (basics "FreeID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
-mkCovFreeChoicesPattern qn = PComb (mkChoicesName qn)
- [PAs i (PComb (basics "CovFreeID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
+ where [i,u1,u2,xs] = newVars [asName,"_","_","xs"]
+mkCovFreeChoicesPattern qn asName = PComb (mkChoicesName qn)
+ [PAs i (PComb (basics "CovFreeID") [PVar u1, PVar u2, PVar u3]), PVar xs]
+ where [i,u1,u2, u3, xs] = newVars [asName,"_","_", "_", "xs"]
 mkVarChoicesPattern qn = PComb (mkChoicesName qn)
  [PVar i, PVar xs]
  where [i,xs] = newVars ["i","_"]
