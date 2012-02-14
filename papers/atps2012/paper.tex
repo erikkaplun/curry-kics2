@@ -1,7 +1,5 @@
 \documentclass[english]{lni}
 
-%\IfFileExists{latin1.sty}{\usepackage{latin1}}{\usepackage{isolatin1}}
-
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage{listings}
@@ -34,7 +32,6 @@ Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 }
 \title{Search Strategies for Functional Logic Programming}
 \begin{document}
-\pagestyle{plain} % remove it in the camera-ready version
 \maketitle
 
 \begin{abstract}
@@ -64,11 +61,16 @@ e.g., as shown for programming with databases
 GUI programming \cite{Hanus00PADL},
 web programming \cite{Hanus01PADL,Hanus06PPDP,HanusKoschnicke10PADL},
 or string parsing \cite{CaballeroLopez99}.
-Moreover, it is also a good basis
+Moreover, it is a good basis
 to teach the ideas of functional and logic programming,
 or declarative programming in general,
 with a single computation model and programming language
 \cite{Hanus97DPLE}.
+The operational principles of functional logic languages
+have also been used for other computation tasks,
+like inverse computations \cite{AbramovGlueckKlimov06},
+partial evaluation \cite{AlpuenteFalaschiVidal98TOPLAS}, or
+generation of test cases \cite{FischerKuchen07,RuncimanNaylorLindblad08}.
 
 An important feature of logic programming languages
 is non-deterministic search.
@@ -114,7 +116,7 @@ with different search strategies implemented
 in a new Curry system called
 KiCS2 \cite{BrasselHanusPeemoellerReck11}.
 KiCS2 compiles Curry programs into Haskell programs
-where non-deterministic values or computations are represented
+where non-deterministic values and computations are represented
 as tree structures so that flexible search strategies
 can be supported.
 Although the incomplete depth-first search strategy
@@ -200,9 +202,6 @@ Thus, we say that a constraint $c$ is \emph{satisfied} if it
 can be evaluated to \code{success}.
 An \emph{equational constraint} $e_1 \,\code{=:=}\, e_2$ is satisfiable
 if both sides $e_1$ and $e_2$ are reducible to unifiable values.
-%Furthermore, if $c_1$ and $c_2$ are constraints,
-%\code{$c_1\,$\&$\,\,c_2$} denotes their concurrent conjunction
-%(i.e., both argument constraints are concurrently evaluated).
 
 As a simple example, consider the following Curry program
 which defines a polymorphic 
@@ -326,7 +325,7 @@ that takes a constraint abstraction, e.g., \code{(\bs{}x->x\,=:=\,coin)},
 as input, evaluates it until the first non-deterministic step occurs,
 and returns the result: the empty list in case of failure, a list with a single
 element in case of success, or a list with at least two elements representing
-a nondeterministic choice. For instance,
+a non-deterministic choice. For instance,
 \code{try\,(\bs{}x->x\,=:=\,coin)} evaluates to
 \code{[\bs{}x->x\,=:=\,0,\,\bs{}x->x\,=:=\,1]}.
 Based on this primitive, one can define various search strategies
@@ -351,16 +350,19 @@ For instance,
 if \code{coin} is evaluated before the \code{try} expression,
 it results in two computations where \code{y} is bound to \code{0}
 in one computation and to \code{1} in the other computation.
-Hence, \code{try} does not encapsulate the nondeterminism of \code{coin}
+Hence, \code{try} does not encapsulate the non-determinism of \code{coin}
 (this is the semantics of \code{try} implemented in \cite{Lux99FLOPS}).
 However, if \code{coin} is evaluated inside the capsule of \code{try}
-(because it is not demanded before), then the nondeterminism of
+(because it is not demanded before), then the non-determinism of
 \code{coin} is encapsulated.
 These and more peculiarities are discussed in \cite{BrasselHanusHuch04JFLP}.
 Furthermore, the order of the solutions might depend on the
 textual order of program rules or the evaluation time
 (e.g., in parallel implementations).
-Therefore, \cite{BrasselHanusHuch04JFLP} contains a proposal
+Hence, it is difficult to define a search operator as a pure function.
+
+Due to these considerations,
+\cite{BrasselHanusHuch04JFLP} contains a proposal
 for another primitive search operator:
 \begin{curry}
 getSearchTree :: a -> IO (SearchTree a)
@@ -372,12 +374,12 @@ data SearchTree a = Value a
                   | Fail
                   | Or (SearchTree a) (SearchTree a)
 \end{curry}
-\code{(Value v)} and \code{Fail} represents a single value
+\code{(Value v)} and \code{Fail} represent a single value
 or a failure (i.e., no value), respectively,
 and \code{(Or t1 t2)} represents a choice (i.e., a non-deterministic value)
 between two search trees \code{t1} and \code{t2}.
 Since \code{getSearchTree} is an I/O action, its result (in particular,
-the order of solutions) depends on the current environment, e.g.,
+the order of subtrees) depends on the current environment, e.g.,
 time of evaluation.
 To avoid the complications w.r.t.\ shared variables,
 \code{getSearchTree} implements a \emph{strong encapsulation view},
@@ -443,15 +445,15 @@ allValuesBFS t = collect [t]
 collect []     = []
 collect (t:ts) = values (t:ts) ++ collect (children (t:ts))
 
-values []           = []
-values (Fail:ts)    = values ts
-values (Value x:ts) = x : values ts
-values (Or _ _:ts)  = values ts
+values []             = []
+values (Fail    : ts) = values ts
+values (Value x : ts) = x : values ts
+values (Or _ _  : ts) = values ts
 
-children []           = []
-children (Fail:ts)    = children ts
-children (Value _:ts) = children ts
-children (Or x y:ts)  = x:y:children ts
+children []             = []
+children (Fail    : ts) = children ts
+children (Value _ : ts) = children ts
+children (Or x y  : ts) = x : y : children ts
 \end{curry}
 %
 The operation \code{values} extracts the values
@@ -476,7 +478,7 @@ growing memory usage.
 
 Another complete search strategy with a superior memory behavior
 is iterative-deepening search.
-Basically, it is depth-first search strategy with a depth-bound
+Basically, it is a depth-first search strategy with a depth-bound
 which is incremented in each iteration.
 Thus, we compute in each iteration a list of values
 together with some information whether we have aborted
@@ -601,7 +603,7 @@ caused by abstracting and programming with search structures.
 In this section we evaluate the practical behavior
 of the various search strategies discussed so far.
 Since they are only supported by the Curry implementation KiCS2,
-we use only this system for our evaluation.
+we use this system for our evaluation.
 A general comparison of KiCS2 and other Curry implementations
 can be found in \cite{BrasselHanusPeemoellerReck11}.
 Since KiCS2 compiles Curry programs into Haskell programs,
@@ -646,9 +648,6 @@ by solving the equation \ccode{ys++[x] =:= xs}
 (see Section~\ref{sec:curry}),
 ``Half'' computes the half \code{y} of a natural number \code{x}
 (in Peano representation) by solving the equation \code{y+y=:=x},
-%``Embed'' searches for an embedding of a message
-%which is ``hidden'' in another message
-%(see \cite[Sect.~4.1]{Antoy10JSC}),
 ``Graph'' computes some path in a graph where the edges
 are represented by a non-deterministic ``successor'' operation,
 ``HorseMan'' computes the numbers of horses and men
@@ -770,22 +769,27 @@ the efficiency of these strategies.
 The benchmarks indicated that complete strategies
 are a viable alternative to incomplete strategies,
 that have been favored in the past due to limited memory requirements.
-Thus, it could be reasonable to make
-complete strategies the default in functional logic languages.
-This would have a good impact on teaching declarative programming
-to beginners.
-Moreover, decoupling non-deterministic programs
+Decoupling non-deterministic programs
 from their search strategy could lead to a more declarative
 programming style (instead of the use of predicates with
 side effects as in Prolog) and enable more potential for
 optimization, e.g., parallel search strategies.
+The explicit definition of search strategies
+has also been advocated for combining logic programs
+with different constraint solvers
+\cite{FrankHofstedtPepperReckmann06,Schulte97CP}.
+
+Our results indicate that it could be reasonable to make
+complete strategies the default in functional logic languages.
+This would have a good impact on teaching declarative programming
+to beginners.
 Furthermore, if efficiency and memory limitations are important,
-one can still use an efficient strategy like depth-first search
+one can still use an efficient strategy, like depth-first search,
 provided that it is able to find all solutions
 (e.g., in case of a finite search space).
 It is an interesting topic for future work
 to statically approximate situations where
-the use of incomplete strategies is sufficient.
+the use of theoretically incomplete strategies is sufficient.
 
 
 %\bibliography{mh}
