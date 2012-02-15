@@ -96,7 +96,7 @@ of declarative programming.
 From a declarative point of view,
 a logic program defines a set of rules
 and a logic programming system tries to find
-a solution to a query w.r.t.\ the set of rules.
+a solution to a query w.r.t.\ this set of rules.
 In order to abstract from operational details,
 the search strategy has to be complete.
 Due to these considerations,
@@ -183,7 +183,7 @@ The choice operation can be used to define other non-deterministic operations
 like
 %
 \begin{curry}
-coin = 0 ? 1  
+coin = 0 ? 1
 \end{curry}
 Thus, the expression \ccode{coin} has two values: \code{0} and \code{1}.
 If expressions have more than one value, one wants to select
@@ -220,8 +220,8 @@ data List a = [] | a : List a    -- [a] denotes "List a"
 (x:xs) ++ ys = x : (xs ++ ys)
 
 last :: [a] -> a
-last xs | (ys ++ [z]) =:= xs
-        = z                    where ys,z free
+last xs | (ys ++ [z]) =:= xs = z
+  where ys, z free
 \end{curry}
 %
 Logic programming is supported by admitting function calls with free
@@ -340,7 +340,7 @@ encapsulated search and demand-driven evaluation
 and sharing causes further complications \cite{BrasselHanusHuch04JFLP}.
 For instance, in an expression like
 \begin{curry}
-let y=coin in try (\x->x=:=y)
+let y = coin in try (\x->x =:= y)
 \end{curry}
 it is not obvious whether the non-determinism caused by the evaluation
 of \code{coin} (introduced outside
@@ -405,7 +405,7 @@ as follows:
 allValuesDFS :: SearchTree a -> [a]
 allValuesDFS Fail      = []
 allValuesDFS (Value x) = [x]
-allValuesDFS (Or x y)  = allValuesDFS x ++ allValuesDFS y
+allValuesDFS (Or  x y) = allValuesDFS x ++ allValuesDFS y
 \end{curry}
 Note that the lazy evaluation of traversal operations like
 \code{allValuesDFS} has the advantage that the search strategy
@@ -448,17 +448,17 @@ collect (t:ts) = values (t:ts) ++ collect (children (t:ts))
 values []             = []
 values (Fail    : ts) = values ts
 values (Value x : ts) = x : values ts
-values (Or _ _  : ts) = values ts
+values (Or  _ _ : ts) = values ts
 
 children []             = []
 children (Fail    : ts) = children ts
 children (Value _ : ts) = children ts
-children (Or x y  : ts) = x : y : children ts
+children (Or  x y : ts) = x : y : children ts
 \end{curry}
 %
 The operation \code{values} extracts the values
 in each level of the tree and the operation \code{children}
-extracts all direct ancestors of a level in order to recursively
+extracts all direct successors of a level in order to recursively
 collect their values.
 
 Using \code{allValuesBFS}, we can print a value
@@ -513,8 +513,8 @@ collectInBounds oldbound newbound st = collectLevel newbound st
   collectLevel d (Value x) = if d <= newbound - oldbound
                              then Cons x Nil
                              else Nil
-  collectLevel d (Or x y)  =
-    if d>0
+  collectLevel d (Or  x y) =
+    if d > 0
     then concA (collectLevel (d-1) x) (collectLevel (d-1) y)
     else Abort
 \end{curry}
@@ -548,10 +548,11 @@ it should have a memory behavior similarly to depth-first search
 and, in case of wide search trees,
 better than breadth-first search.
 The price for this behavior is the recomputation of the initial
-goal in each iteration. 
+goal in each iteration.
 However, since we defined iterative deepening on a search tree,
 recomputation is not required. Instead, the
-already evaluated part of the search tree is kept in memory.
+already evaluated part of the search tree is kept in memory,
+sacrificing the better memory behaviour.
 Therefore, we also implemented the iterative deepening strategy
 for top-level goals without an explicit search tree
 but with a recomputation of the initial goal in each iteration
@@ -569,8 +570,8 @@ printResults []     = putStrLn "No more values"
 printResults (x:xs) = do print x
                          putStr "More values? "
                          inp <- getLine
-                         if inp=="yes" then printResults xs
-                                       else done
+                         if inp == "yes" then printResults xs
+                                         else done
 \end{curry}
 %
 Hence, an interactive Prolog-like top-level behavior
