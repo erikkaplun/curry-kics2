@@ -5,15 +5,17 @@
 module ID
   ( -- * Constraints
     Constraint (..), Constraints(..), getConstrList
+  , coverConstraints, getCoveredConstraints
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
   , ID (..), leftID, rightID, narrowID, getKey, mkInteger
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
+  , coverID, uncoverID, matchIdIgnoreCov, isCoveredID
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
-  , nextNIDs, Store (..)
+  , nextNIDs, Store (..), Coverable (..)
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
@@ -38,11 +40,28 @@ data Constraint
   | ConstraintChoices ID [[Constraint]]
  deriving (Show,Eq)
 
+coverConstraint :: Constraint -> Constraint
+coverConstraint (ConstraintChoice i cs1 cs2)
+  = ConstraintChoice (coverID i) (map coverConstraint cs1) (map coverConstraint cs2)
+coverConstraint (ConstraintChoices i css) 
+ = ConstraintChoices (coverID i) (map (map coverConstraint) css)
+coverConstraint (i :=: d) = coverID i :=: d 
+
+uncoverConstraint :: Constraint -> Constraint
+uncoverConstraint (ConstraintChoice i cs1 cs2) = ConstraintChoice (uncoverID i) (map uncoverConstraint cs1)
+                                                                                (map uncoverConstraint cs2)
+uncoverConstraint (ConstraintChoices i css) = ConstraintChoices (uncoverID i) (map (map uncoverConstraint) css)
+uncoverConstraint (i :=: d) = uncoverID i :=: d
+
+isCoveredConstraint (ConstraintChoice i _ _) = isCoveredID i
+isCoveredConstraint (ConstraintChoices i _)  = isCoveredID i
+isCoveredConstraint (i :=: _)                = isCoveredID i
+
 -- A Value Constraint is used to bind a Value to an id it also contains the
 -- structural constraint information that describes the choice to be taken
 -- for a given id, a Struct Constraint has only the structural information
 data Constraints
-  = forall a . ValConstr ID a [Constraint]
+  = forall a . Coverable a => ValConstr ID a [Constraint]
   | StructConstr [Constraint]
 
 -- a selector to get the strucural constraint information from a constraint
@@ -56,6 +75,20 @@ instance Show Constraints where
 
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
+
+-- Covers all IDs in the a constraint list for the setfunctions
+coverConstraints :: Constraints -> Constraints
+coverConstraints (StructConstr c) = StructConstr (map coverConstraint c)
+coverConstraints (ValConstr i a c)
+  = ValConstr (coverID i) (cover a) (map coverConstraint c)
+
+getCoveredConstraints :: Constraints -> Maybe Constraints
+getCoveredConstraints (ValConstr i a c) 
+  | isCoveredID i = Just $ValConstr (uncoverID i) (uncover a) (map uncoverConstraint c)
+  | otherwise     = Nothing 
+getCoveredConstraints (StructConstr c) = if null constrList then Nothing else (Just (StructConstr constrList))
+ where
+ constrList = map uncoverConstraint (filter isCoveredConstraint c)
 
 -- ---------------------------------------------------------------------------
 -- Decision
@@ -116,22 +149,46 @@ data ID
   | FreeID [Int] IDSupply
     -- |Identifier for a choice for a narrowed variable (free before)
   | NarrowedID [Int] IDSupply
+    -- |Covered versions of the ID-constructors, the first argument
+    -- |indicates the covering depth
+  | CovChoiceID Int Unique
+  | CovFreeID Int [Int] IDSupply
+  | CovNarrowedID Int [Int] IDSupply
     deriving Eq
 
 instance Show ID where
-  show (ChoiceID     i) = "?" ++ showUnique i
-  show (FreeID     _ i) = "_x" ++ show i
-  show (NarrowedID _ i) = "Narrowed" ++ show i
+  show (ChoiceID          i) = "?" ++ showUnique i
+  show (FreeID          _ i) = "_x" ++ show i
+  show (NarrowedID      _ i) = "Narrowed" ++ show i
+  show (CovChoiceID   _   i) = "cov_?" ++ showUnique i
+  show (CovFreeID     _ _ i) = "_cov_x" ++ show i
+  show (CovNarrowedID _ _ i) = "CovNarrowed" ++ show i
+
+-- |Check whether an ID is covered
+isCoveredID :: ID -> Bool
+isCoveredID (CovChoiceID _ _)     = True
+isCoveredID (CovFreeID _ _ _)     = True
+isCoveredID (CovNarrowedID _ _ _) = True
+isCoveredID (ChoiceID _)          = False
+isCoveredID (FreeID _ _)          = False
+isCoveredID (NarrowedID  _ _)     = False
 
 -- |Retrieve the 'IDSupply' from an 'ID'
 supply :: ID -> IDSupply
-supply (ChoiceID     _) = error "ID.supply: ChoiceID"
-supply (FreeID     _ s) = s
-supply (NarrowedID _ s) = s
+supply (ChoiceID          _) = error "ID.supply: ChoiceID"
+supply (CovChoiceID     _ _) = error "ID.supply: CovChoiceID"
+supply (FreeID        _   s) = s
+supply (CovFreeID     _ _ s) = s
+supply (NarrowedID    _   s) = s
+supply (CovNarrowedID _ _ s) = s
 
 -- |Construct an 'ID' for a free variable from an 'IDSupply'
 freeID :: [Int] -> IDSupply -> ID
 freeID = FreeID
+
+-- |Construct an 'ID' for a covered free variable from an 'IDSupply'
+covFreeID :: Int -> [Int] -> IDSupply -> ID
+covFreeID = CovFreeID
 
 -- |Construct an 'ID' for a binary choice from an 'IDSupply'
 thisID :: IDSupply -> ID
@@ -139,27 +196,75 @@ thisID = ChoiceID . unique
 
 -- |Convert a free or narrowed 'ID' into a narrowed one
 narrowID :: ID -> ID
-narrowID (ChoiceID _) = error "ID.narrowID: ID"
-narrowID (FreeID p s) = NarrowedID p s
-narrowID narrowedID   = narrowedID
+narrowID (ChoiceID      _) = error "ID.narrowID: ChoiceID"
+narrowID (CovChoiceID _ _) = error "ID.narrowID: CovChoiceID"
+narrowID (FreeID      p s) = NarrowedID p s
+narrowID (CovFreeID d p s) = CovNarrowedID d p s
+narrowID narrowedID      = narrowedID
 
 -- |Retrieve the left child 'ID' from a free 'ID'
 leftID :: ID -> ID
-leftID  (FreeID _ s) = freeID [] (leftSupply s)
-leftID  _            = error "ID.leftID: no FreeID"
+leftID  (FreeID      _ s) = freeID    [] (leftSupply s)
+leftID  (CovFreeID d _ s) = covFreeID d [] (leftSupply s) 
+leftID  _               = error "ID.leftID: no FreeID"
 
 -- |Retrieve the right child 'ID' from a free 'ID'
 rightID :: ID -> ID
-rightID (FreeID _ s) = freeID [] (rightSupply s)
-rightID  _           = error "ID.rightID: no FreeID"
+rightID (FreeID      _ s) = freeID [] (rightSupply s)
+rightID (CovFreeID d _ s) = covFreeID d [] (rightSupply s)
+rightID  _              = error "ID.rightID: no FreeID"
 
 getKey :: ID -> Integer
 getKey = mkInteger . getUnique
 
 getUnique :: ID -> Unique
-getUnique (ChoiceID     u) = u
-getUnique (FreeID     _ s) = unique s
-getUnique (NarrowedID _ s) = unique s
+getUnique (ChoiceID          u) = u
+getUnique (FreeID          _ s) = unique s
+getUnique (NarrowedID      _ s) = unique s
+getUnique (CovChoiceID   _   u) = u
+getUnique (CovFreeID     _ _ s) = unique s
+getUnique (CovNarrowedID _ _ s) = unique s
+
+coverID :: ID -> ID
+coverID (ChoiceID            u) = CovChoiceID 1 u
+coverID (FreeID          pns s) = CovFreeID 1 pns s
+coverID (NarrowedID      pns s) = CovNarrowedID 1 pns s
+coverID (CovChoiceID   d     s) = CovChoiceID (d + 1) s
+coverID (CovFreeID     d pns s) = CovFreeID   (d + 1) pns s
+coverID (CovNarrowedID d pns s) = CovNarrowedID (d + 1) pns s
+
+uncoverID :: ID -> ID
+uncoverID (CovChoiceID   1     u) = ChoiceID u
+uncoverID (CovFreeID     1 pns s) = FreeID pns s
+uncoverID (CovNarrowedID 1 pns s) = NarrowedID pns s
+uncoverID (CovChoiceID   d     u) = CovChoiceID (d - 1) u
+uncoverID (CovFreeID     d pns s) = CovFreeID (d - 1) pns s
+uncoverID (CovNarrowedID d pns s) = CovNarrowedID (d - 1) pns s
+uncoverID i                       = i  
+
+matchIdIgnoreCov :: a -> a -> a -> ID -> a
+matchIdIgnoreCov chV _   _   i@(ChoiceID          _) = chV
+matchIdIgnoreCov chV _   _   i@(CovChoiceID   _   _) = chV
+matchIdIgnoreCov _   frV _   i@(FreeID          _ _) = frV
+matchIdIgnoreCov _   frV _   i@(CovFreeID     _ _ _) = frV
+matchIdIgnoreCov _   _   naV i@(NarrowedID      _ _) = naV
+matchIdIgnoreCov _   _   naV i@(CovNarrowedID _ _ _) = naV
+
+
+-- ---------------------------------------------------------------------------
+-- Covering Choices for SetFunctions
+--- --------------------------------------------------------------------------
+
+class Coverable a where
+  -- Transformes all identifier of choices in the data-structures
+  -- to covered identifiers
+  cover :: a -> a
+  cover = error "cover is undefined"
+  -- Uncovers all identifier of choices in the data-structure
+  uncover :: a -> a
+  uncover = error "uncover is undefined"
+instance Coverable a => Coverable [a] where
+  cover = map cover
 
 -- ---------------------------------------------------------------------------
 -- Tracing

@@ -5,7 +5,7 @@
 --- program with instance declarations that can be easily pretty printed
 ---
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version October 2011
+--- @version January 2011
 -- ---------------------------------------------------------------------------
 module TransTypes (transTypes) where
 
@@ -53,6 +53,7 @@ genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
                              , normalformInstance hoResult
                              , unifiableInstance  hoResult
                              , curryInstance      hoResult
+                             , coverableInstance
                              ]
     acvis     = (fcy2absVis vis)
     targs     = map fcy2absTVar tnums
@@ -309,7 +310,9 @@ tryRules qf = map nameRule
 {-
 match f _ _ _ _ _ (Choice i x y) = f i x y
 match _ f _ _ _ _ (Choices i@(NarrowedID _ _) xs) = f i xs
+match _ f _ _ _ _ (Choices i@(CovNarrowedID _ _ _) xs) = f i xs
 match _ _ f _ _ _ (Choices i@(FreeID _ _) xs) = f i xs
+match _ _ f _ _ _ (Choices i@(CovFreeID _ _ _) xs) = f i xs
 match _ _ _ _ _ _ (Choices (ChoiceID _ _) _) = error " ..."
 match _ _ _ f _ _ Fail = f
 match _ _ _ _ f _ (Guard c e) = f c e
@@ -319,11 +322,15 @@ matchRules :: QName -> [(QName, Rule)]
 matchRules qf = map nameRule
   [ simpleRule (matchAt 0 ++ [mkChoicePattern  qf])
     $ applyV f [i, x, y]
-  , simpleRule (matchAt 1 ++ [mkNarrowedChoicesPattern qf])
+  , simpleRule (matchAt 1 ++ [mkNarrowedChoicesPattern qf "i"])
     $ applyV f [i, xs]
-  , simpleRule (matchAt 2 ++ [mkFreeChoicesPattern qf])
+  , simpleRule (matchAt 1 ++ [mkCovNarrowedChoicesPattern qf "i"])
     $ applyV f [i, xs]
-  , simpleRule (PVar (0,"_") : underscores ++ [mkChoiceChoicesPattern qf])
+  , simpleRule (matchAt 2 ++ [mkFreeChoicesPattern qf "i"])
+    $ applyV f [i, xs]
+  , simpleRule (matchAt 2 ++ [mkCovFreeChoicesPattern qf "i"])
+    $ applyV f [i, xs]
+  , simpleRule (PVar (0,"_") : underscores ++ [mkVarChoicesPattern qf])
     $ applyF (pre "error")
       [ applyF (pre "++")
         [ string2ac (showQName (unRenameQName qf) ++ ".match: Choices with ChoiceID ")
@@ -490,21 +497,25 @@ unifiableInstance hoResult (FC.Type qf _ tnums cdecls) =
   , catchAllCase (basics "=.<=") (basics "Fail_C_Success")
     -- bind
   , concatMap (bindConsRule hoResult (basics "bind") (\ident arg -> applyF (basics "bind") [ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
-  , [ bindChoiceRule   qf (basics "bind")
-    , bindFreeRule     qf (basics "bind")
-    , bindNarrowedRule qf (basics "bind")
-    , bindChoicesRule  qf (basics "bind")
-    , bindFailRule     qf (basics "bind")
-    , bindGuardRule    qf False
+  , [ bindChoiceRule         qf (basics "bind")
+    , bindFreeRule     False qf (basics "bind")
+    , bindFreeRule     True  qf (basics "bind")
+    , bindNarrowedRule False qf (basics "bind")
+    , bindNarrowedRule True  qf (basics "bind")
+    , bindChoicesRule        qf (basics "bind")
+    , bindFailRule           qf (basics "bind")
+    , bindGuardRule          qf False
     ]
     -- lazy bind (function patterns)
   , concatMap (bindConsRule hoResult (basics "lazyBind") (\ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [ident, arg]]]) head) (zip [0 ..] cdecls)
-  , [ bindChoiceRule   qf (basics "lazyBind")
-    , bindFreeRule     qf (basics "lazyBind")
-    , bindNarrowedRule qf (basics "lazyBind")
-    , bindChoicesRule  qf (basics "lazyBind")
-    , bindFailRule     qf (basics "lazyBind")
-    , bindGuardRule    qf True
+  , [ bindChoiceRule         qf (basics "lazyBind")
+    , bindFreeRule     False qf (basics "lazyBind")
+    , bindFreeRule     True  qf (basics "lazyBind")
+    , bindNarrowedRule False qf (basics "lazyBind")
+    , bindNarrowedRule True  qf (basics "lazyBind")
+    , bindChoicesRule        qf (basics "lazyBind")
+    , bindFailRule           qf (basics "lazyBind")
+    , bindGuardRule          qf True
     ]
   ]
   where targs = map fcy2absTVar tnums
@@ -565,42 +576,40 @@ bindChoiceRule qf funcName = (funcName,
 
 -- bind i (Choices_TYPENAME j@(FreeID _ _) xs) = [i :=: BindTo j]
 -- lazyBind i (Choices_TYPENAME j@(FreeID _ _) xs) = [i :=: BindTo j]
-bindFreeRule :: QName -> QName -> (QName, Rule)
-bindFreeRule qf funcName = (funcName,
+bindFreeRule :: Bool -> QName -> QName -> (QName, Rule)
+bindFreeRule covered qf funcName = (funcName,
   simpleRule
-    [ PVar i
-    , PComb (mkChoicesName qf) [PAs j (PComb (basics "FreeID") [PVar p1, PVar p2])
-    , PVar p3]
-    ]
+    [ PVar i, choicesPat]
     ( list2ac [ applyF (basics ":=:")
                 [ Var (1,"i"), applyF (basics "BindTo") [Var j] ]
               ]
     ))
-    where [i,j,p1,p2,p3] = newVars  ["i","j","_","_","_"]
+    where [i,j] = newVars  ["i","j"]
+          choicesPat = if covered then mkCovFreeChoicesPattern qf "j"
+                                  else mkFreeChoicesPattern qf "j"
 
 -- bind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (bind i) xs)]
 -- lazyBind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (lazyBind i) xs)]
-bindNarrowedRule :: QName -> QName -> (QName, Rule)
-bindNarrowedRule qf funcName = (funcName,
+bindNarrowedRule :: Bool -> QName -> QName -> (QName, Rule)
+bindNarrowedRule covered qf funcName = (funcName,
   simpleRule
-    [ PVar i
-    , PComb (mkChoicesName qf) [PAs j (PComb (basics "NarrowedID") [PVar p1, PVar p2])
-    , PVar xs]
-    ]
+    [ PVar i, choicesPat]
     ( list2ac [ applyF (basics "ConstraintChoices")
                 [ Var j
                 , applyF (pre "map") [applyF funcName [Var i], Var xs]
                 ]
               ]
     ))
-    where [i,j,p1,p2,xs] = newVars ["i","j","_","_","xs"]
+    where [i,j,xs] = newVars ["i","j","xs"]
+          choicesPat = if covered then mkCovNarrowedChoicesPattern qf "j" 
+                                  else mkNarrowedChoicesPattern qf "j"
 
 -- bind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
 -- lazyBind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
 bindChoicesRule :: QName -> QName -> (QName, Rule)
 bindChoicesRule qf funcName = (funcName,
   simpleRule
-    [ PVar us, mkChoiceChoicesPattern qf]
+    [ PVar us, mkVarChoicesPattern qf]
     ( applyF (pre "error")
       [ applyF (pre "++")
         [ string2ac (showQName (unRenameQName qf) ++ '.' : snd funcName
@@ -751,6 +760,39 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
                     [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_")]
                     (constF $ curryPre "C_True"))
 
+
+------------------------------------------------------------------------------------------
+--  Generate instance of Coverable class
+------------------------------------------------------------------------------------------
+
+coverableInstance :: FC.TypeDecl -> TypeDecl
+coverableInstance (FC.Type qf _ tnums cdecls) =
+  mkInstance (basics "Coverable") [] ctype targs $ coverRules qf cdecls
+  where
+    targs = map fcy2absTVar tnums
+    ctype = TCons qf (map TVar targs)
+
+coverRules :: QName -> [FC.ConsDecl] -> [(QName,Rule)]
+coverRules qn decls =
+  map (\ r -> (cover,r))
+   (map  mkCoverConsRule decls
+    ++ [ simpleRule [mkChoicePattern qn] (applyF (mkChoiceName qn) [ applyF coverID [i]
+                                                                   , applyF cover [x]
+                                                                   , applyF cover [y]])  
+       , simpleRule [mkChoicesPattern qn] (applyF (mkChoicesName qn) 
+                                                  [ applyF coverID [i]
+                                                  , applyF (pre "map") [constF cover, xs]])
+       , simpleRule [mkFailPattern qn] (constF (mkFailName qn))
+       , simpleRule [mkGuardPattern qn] (applyF (mkGuardName qn)
+                                                [applyF coverConstraints [c], applyF cover [e]])
+       ])
+                  
+ where
+  mkCoverConsRule (FC.Cons conName carity _ _)
+    =  simpleRule [consPattern conName "x" carity] 
+                  (applyF conName (map (\n -> applyF cover [Var (n,"x" ++ show n)]) [1..carity]))
+  [i,x,y,xs,c,e] = map Var $ newVars ["i","x","y","xs","c","e"]  
+
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions
 -- ---------------------------------------------------------------------------
@@ -759,15 +801,21 @@ mkChoicePattern  qn = PComb (mkChoiceName  qn) [PVar i, PVar x, PVar y]
   where [i,x,y] = newVars ["i","x","y"]
 mkChoicesPattern qn = PComb (mkChoicesName qn) [PVar i, PVar xs]
   where [i,xs] = newVars ["i","xs"]
-mkNarrowedChoicesPattern qn = PComb (mkChoicesName qn)
+mkNarrowedChoicesPattern qn asName = PComb (mkChoicesName qn)
  [PAs i (PComb (basics "NarrowedID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
-mkFreeChoicesPattern qn = PComb (mkChoicesName qn)
+ where [i,u1,u2,xs] = newVars [asName,"_","_","xs"]
+mkCovNarrowedChoicesPattern qn asName = PComb (mkChoicesName qn)
+ [PAs i (PComb (basics "CovNarrowedID") [PVar u1, PVar u2, PVar u3]), PVar xs]
+ where [i,u1,u2,u3,xs] = newVars [asName,"_","_","_","xs"]
+mkFreeChoicesPattern qn asName = PComb (mkChoicesName qn)
  [PAs i (PComb (basics "FreeID") [PVar u1, PVar u2]), PVar xs]
- where [i,u1,u2,xs] = newVars ["i","_","_","xs"]
-mkChoiceChoicesPattern qn = PComb (mkChoicesName qn)
- [PAs i (PComb (basics "ChoiceID") [PVar u]), PVar xs]
- where [i,u,xs] = newVars ["i","_","_"]
+ where [i,u1,u2,xs] = newVars [asName,"_","_","xs"]
+mkCovFreeChoicesPattern qn asName = PComb (mkChoicesName qn)
+ [PAs i (PComb (basics "CovFreeID") [PVar u1, PVar u2, PVar u3]), PVar xs]
+ where [i,u1,u2, u3, xs] = newVars [asName,"_","_", "_", "xs"]
+mkVarChoicesPattern qn = PComb (mkChoicesName qn)
+ [PVar i, PVar xs]
+ where [i,xs] = newVars ["i","_"]
 mkFailPattern    qn = PComb (mkFailName    qn) []
 mkGuardPattern   qn = PComb (mkGuardName   qn) [PVar c, PVar e]
   where [c,e] = newVars ["c","e"]
@@ -860,3 +908,12 @@ narrow = basics "narrow"
 
 narrows :: QName
 narrows = basics "narrows"
+
+cover :: QName
+cover = basics "cover"
+
+coverID :: QName
+coverID = basics "coverID"
+
+coverConstraints :: QName
+coverConstraints = basics "coverConstraints"

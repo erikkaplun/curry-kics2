@@ -736,19 +736,19 @@ allBenchmarks = concat
 unif =
      [
        -- mcc does not support function pattern
---       benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_last_1L" True False
+       benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_1L"
        -- mcc does not support function pattern
-       benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_2L"
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_last_2L"
      , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_last_2S"
        -- pakcs and mcc suspend on this goal
      , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_last_2Eq"
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_S" True True
+--     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_grep_S"
        -- pakcs and mcc suspend on this goal
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_grep_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_grep_Eq"
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_half_L" False False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_S" True True
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_half_Eq" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBenchFunPat" "goal_half_L"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_half_S" 
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_half_Eq"
        -- mcc does not support function pattern
      , benchFLPDFSKiCS2WithMain True False  $ nonDetGoal "UnificationBenchFunPat" "goal_expVar_L"
      , benchFLPDFSKiCS2WithMain True True   $ nonDetGoal "UnificationBench" "goal_expVar_S"
@@ -764,18 +764,18 @@ unif =
        -- pakcs and mcc suspend on this goal
      , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_expVar_Eq''"
        -- mcc does not support function pattern
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_simplify_L" True False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_S" True True
+     , benchFLPDFSKiCS2WithMain True False $ nonDetGoal "UnificationBenchFunPat" "goal_simplify_L"
+     , benchFLPDFSKiCS2WithMain True True  $ nonDetGoal "UnificationBench" "goal_simplify_S"
        -- pakcs and mcc suspend on this goal
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_simplify_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_simplify_Eq"
        -- mcc does not support function pattern, pakcs runs very long (\infty?)
---     , benchFLPDFSKiCS2WithMain "UnificationBenchFunPat" "goal_pali_L" False False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_S" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBenchFunPat" "goal_pali_L"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_pali_S"
        -- pakcs and mcc suspend on this goal
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_pali_Eq" False False
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_S" True True
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_pali_Eq"
+     , benchFLPDFSKiCS2WithMain True True $ nonDetGoal "UnificationBench" "goal_horseMan_S"
        -- pakcs and mcc suspend on this goal
---     , benchFLPDFSKiCS2WithMain "UnificationBench" "goal_horseMan_Eq" False False
+     , benchFLPDFSKiCS2WithMain False False $ nonDetGoal "UnificationBench" "goal_horseMan_Eq"
      ]
 
 benchSearch = -- map benchFLPSearch searchGoals
