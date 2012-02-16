@@ -250,25 +250,25 @@ unifyMatch x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal
   where
   uniChoice i x1 x2 = checkFail (choiceCons i ((x1 =:= y) cs) ((x2 =:= y) cs)) y
   uniNarrowed i xs  = checkFail (choicesCons i (map (\x' -> (x' =:= y) cs) xs)) y
-  uniFree i xs      = lookupCs cs i (\xval -> (xval =:= y) cs) 
+  uniFree i xs      = lookupCs cs i (\xval -> (xval =:= y) cs)
                                     (if isCoveredID i then (unifyMatch (narrows cs i id xs) y cs) else (bindTo cs y))
                                       -- TODO: use global cs
     where
-    bindTo cs' = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal
+    bindTo cs' y' = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal y'
       where
-      bindChoice j y1 y2 = choiceCons  j (bindTo cs' y1) (bindTo cs' y2)
-      bindNarrowed j ys  = choicesCons j (map (bindTo cs') ys)
-      bindFree j ys       = lookupCs cs j (bindTo cs') 
-                            (if (isCoveredID j)
-                             then (unifyMatch x (narrows cs j id ys) cs)
-                             else (guardCons (ValConstr i y [i :=: BindTo j]) C_Success))
+      bindChoice j y1 y2  = choiceCons  j (bindTo cs' y1) (bindTo cs' y2)
+      bindNarrowed j ys   = choicesCons j (map (bindTo cs') ys)
+      bindFree j ys       = lookupCs cs j (bindTo cs') $
+                              if isCoveredID j
+                                then unifyMatch x (narrows cs j id ys) cs
+                                else guardCons (ValConstr i y' [i :=: BindTo j]) C_Success
       bindGuard c        = guardCons c . (bindTo $! c `addCs` cs')
       bindVal v          = bindToVal i v cs'
 
   uniGuard c e      = checkFail (guardCons c ((e =:= y) $! c `addCs` cs)) y
   uniVal v          = uniWith cs y
     where
-    uniWith cs' = match univChoice univNarrowed univFree failCons univGuard univVal
+    uniWith cs' y' = match univChoice univNarrowed univFree failCons univGuard univVal y'
       where
       univChoice j y1 y2   = choiceCons  j (uniWith cs' y1) (uniWith cs' y2)
       univNarrowed j ys    = choicesCons j (map (uniWith cs') ys)
@@ -481,7 +481,7 @@ instance Coverable C_Success where
   cover (Choice_C_Success i x y)  = Choice_C_Success (coverID i) (cover x) (cover y)
   cover (Choices_C_Success i xs)  = Choices_C_Success (coverID i) (map cover xs)
   cover f@Fail_C_Success            = f
-  cover (Guard_C_Success cs x)    = Guard_C_Success (coverConstraints cs) (cover x) 
+  cover (Guard_C_Success cs x)    = Guard_C_Success (coverConstraints cs) (cover x)
 -- END GENERATED FROM PrimTypes.curry
 
 -- ---------------------------------------------------------------------------
