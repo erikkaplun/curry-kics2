@@ -1,5 +1,6 @@
 \documentclass{llncs}
 
+\usepackage[T1]{fontenc} % To suppress font warnings
 \usepackage{url}
 \def\UrlFont{\tt}
 \usepackage{latexsym}
@@ -28,12 +29,16 @@
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
 
-
-\begin{document}
 \pagestyle{plain} % remove for camera ready version
 \sloppy
 
-\title{Implementing Equational Constraints\\ in a Functional Language}
+% Metadata
+
+% texorpdfstring to avoid warning of hyperref package
+\title{\texorpdfstring
+  {Implementing Equational Constraints \\ in a Functional Language}
+  {Implementing Equational Constraints in a Functional Language}
+}
 
 \author{
 Bernd Bra{\ss}el
@@ -44,10 +49,13 @@ Bj{\"o}rn Peem{\"o}ller
 \and
 Fabian Reck
 }
+
 \institute{
 Institut f\"ur Informatik, CAU Kiel, D-24098 Kiel, Germany \\
 \email{\{bbr|mh|bjp|fre\}@informatik.uni-kiel.de}
 }
+
+\begin{document}
 
 \maketitle
 
@@ -237,7 +245,7 @@ Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
 the rewriting logic CRWL as a logical
 (execution- and strategy-independent) foundation for declarative
 programming with non-strict and non-deterministic operations.  This
-logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}
+logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}%
 \label{ctc-semantics},
 where values of the arguments of an operation are determined before the
 operation is evaluated. This can be enforced in a lazy strategy
@@ -407,6 +415,7 @@ and further matching rules:
   head (Choice i x1 x2) s = Choice i (head x1 s) (head x2 s)
   head _                s = Fail
 \end{haskell}
+%
 The second rule transforms a non-deterministic argument
 into a non-deterministic result and
 the final rule returns \code{Fail} in all other cases,
