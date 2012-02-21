@@ -1,0 +1,23 @@
+\mode<all>
+{
+\newenvironment<>{curryblock}[1]{%
+    \begin{actionenv}#2%
+      \def\insertblocktitle{#1}%
+      \par%
+      \setbeamercolor{block title}{fg=orange, bg=orange!30}%
+      \usebeamertemplate{block begin}}
+    {\par%
+      \usebeamertemplate{block end}%
+    \end{actionenv}}
+}
+
+\newenvironment{program}{\begin{semiverbatim}\footnotesize}{\end{semiverbatim}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\newenvironment{curry}[1][Curry]
+{\begin{curryblock}{#1}\begin{program}}
+{\end{program}\end{curryblock}}
+
+\newenvironment{haskell}[1][Haskell]
+{\begin{block}{#1}\begin{program}}
+{\end{program}\end{block}}
