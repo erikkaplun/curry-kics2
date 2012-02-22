@@ -21,6 +21,8 @@
 *.ilg
 *.ind
 *.tpt
+*.backup
+*~
 
 # intermediate files
 stage[1,2,3]
