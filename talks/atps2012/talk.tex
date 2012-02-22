@@ -11,13 +11,14 @@
 \usepackage{tikz}
 
 \newcommand{\ergo}{$\Rightarrow$}
+\newcommand{\todo}[1]{\fbox{\sc To do: #1}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title[Search Strategies for FLP]
 {Search Strategies for Functional Logic Programming}
 
-\date{February 27, 2012}
+\date[ATPS 2012]{ATPS 2012, February 27}
 
 \author[Hanus, Peemöller, \underline{Reck}]{%
 \texorpdfstring
@@ -37,233 +38,67 @@
 
 \section{Introduction}
 
-\begin{frame}[fragile]
-\frametitle{Previously on KiCS2}
+\begin{frame}[fragile]%-------------------------------------------------------
+\frametitle{Functional Logic Programming}
+\begin{itemize}
+\item Was ist FLP?
+\item Nichtdeterminismus => Suchen => Suchstrategien
+\item Curry-Folie
+\item KiCS2-Überblick
+\end{itemize}
+
 \begin{itemize}
 \item KiCS2 is a compiler from Curry to Haskell
 \item Non-determinism is explicitly represented in
       the data structures
-\item Unique identifiers are used to obtain
-      call-time choice semantics
-\item Optimizations for deterministic and higher order functions
 \end{itemize}
 \end{frame}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Runtime Representations}
-
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Runtime Representation of Choice}
+\frametitle{Curry}
 \begin{itemize}
-  \item Explicit representation of non-determinism in data types
-  \item Choices are uniquely identified
+\item Überlappende Regeln, Fragezeichen
+\item Freie Variablen
+\item Constraints
 \end{itemize}
-
-\begin{curry}
-data Bool = True | False
-
-aBool :: Bool
-aBool = True ? False
-\end{curry}
-
-\begin{haskell}
-data Bool = True | False | Choice ID Bool Bool
-
-aBool :: IDSupply -> Bool
-aBool s = Choice (thisID s) True False
-\end{haskell}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Identifying Choices}
+\frametitle{Curry-Implementierungen und Top-Level-Suchen}
 \begin{itemize}
- \item \code{ID}s are provided by an \code{IDSupply}
-       (infinite set of \code{ID}s)
- \item \code{IDSupply}s can be split into disjoint subsets
- \item Functions that may introduce non-determinism
-       are provided with an \code{IDSupply}
+\item PAKCS: DFS               ; Prolog
+\item MCC  : DFS               ; C
+\item KiCS : DFS, BFS          ; Unsafe Haskell
+\item KiCS2: DFS, BFS, IDS, PAR; Haskell, easily extensible
 \end{itemize}
-
-\begin{haskell} [Choice Identifiers using Integer]
-type ID = Integer
-type IDSupply = Integer
-
-left, right :: IDSupply -> IDSupply
-left  n = 2 * n
-right n = 2 * n + 1
-
-thisID :: IDSupply -> ID
-thisID n = n
-\end{haskell}
 \end{frame}
 
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Representing Failure}
-\begin{itemize}
- \item Computing with failure is a common programming pattern in FLP
- \item Failures do not abort the computation
-\end{itemize}
-
-\begin{curry}
-ensureTrue True = True
-\end{curry}
-
-\begin{haskell}
-data Bool = True | False | Choice ID Bool Bool \alert{| Fail}
-
-ensureTrue True             = True
-ensureTrue (Choice i x1 x2) = Choice i (ensureTrue x1)
-                                       (ensureTrue x2)
-\alert{ensureTrue _                = Fail}
-\end{haskell}
-\end{frame}
+\section{Search Strategies}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Normalform computation}
+\frametitle{Darstellung des Suchraums als Datenstruktur in KiCS2}
 \begin{itemize}
-%   \item Non-determinism in arguments is propagated by pattern-matching
-  \item Constructors may be applied to non-deterministic arguments
-  \item \code{normalform} traverses a constructor term
-        to propagate non-determinism
-  \item After normalform computation of an expression $e$
+\item Hinweis auf Laziness
+\item Grafik
   \begin{itemize}
-    \item \code{normalform e} is either a deterministic value
-    \item or a tree, where the inner nodes correspond to \code{Choice} or
-          \code{Choices} and all leafs are either \code{Fail} or
-          deterministic values
+  \item Curry-Ausdruck
+  \item Korrespondierer Suchraum
+  \item Evtl. noch Datenstruktur
   \end{itemize}
 \end{itemize}
-
-\pause
-
-\begin{example}[Normalform Computation of \code{(\textbackslash x -> (x,x)) (0 ? 1)}]
-\begin{center}
-\begin{minipage}{.2\textwidth}
-\begin{tikzpicture}
-\node (t) at (0  ,0) {\code{0}};
-\node (f) at (1  ,0) {\code{1}};
-\node (q) at (0.5,1) {$\code{?}_{1}$};
-\node (l) at (0.5,2) {\code{( , )}};
-\draw (l) .. controls (0.25,1.5) .. (q);
-\draw (l) .. controls (0.75,1.5) .. (q);
-\draw (q) -- (t);
-\draw (q) -- (f);
-\end{tikzpicture}
-\end{minipage}
-$\Rightarrow$
-\begin{minipage}{.2\textwidth}
-\begin{tikzpicture}
-\node (t ) at (0  ,0) {\code{0}};
-\node (f ) at (1  ,0) {\code{1}};
-\node (q1) at (0.5,1) {$\code{?}_{1}$};
-\node (v1) at (0  ,2) {\code{(0, )}};
-\node (v2) at (1  ,2) {\code{(1, )}};
-\node (q2) at (0.5,3) {$\code{?}_{1}$};
-\draw (q2) -- (v1);
-\draw (q2) -- (v2);
-\draw (v1) -- (q1);
-\draw (v2) -- (q1);
-\draw (q1) -- (t);
-\draw (q1) -- (f);
-\end{tikzpicture}
-\end{minipage}
-$\Rightarrow$
-\begin{minipage}{.36\textwidth}
-\begin{tikzpicture}
-\node (tt) at (0  ,0) {\code{(0,0)}};
-\node (tf) at (1  ,0) {\code{(0,1)}};
-\node (ft) at (2  ,0) {\code{(1,0)}};
-\node (ff) at (3  ,0) {\code{(1,1)}};
-\node (q1) at (0.5,1) {$\code{?}_{1}$};
-\node (q2) at (2.5,1) {$\code{?}_{1}$};
-\node (q3) at (1.5,2) {$\code{?}_{1}$};
-\draw (q3) -- (q1);
-\draw (q3) -- (q2);
-\draw (q1) -- (tt);
-\draw[style=dashed] (q1) -- (tf);
-\draw[style=dashed] (q2) -- (ft);
-\draw (q2) -- (ff);
-\end{tikzpicture}
-\end{minipage}
-\end{center}
-\end{example}
 \end{frame}
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Search}
-
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Top-Level Search}
-
+\frametitle{Berechnung des Suchraums}
 \begin{itemize}
-  \item Implemented in the \code{IO} monad
-  \item Global decision store
-  \item One implementation per strategy, fastest for dfs
+\item Normalformberechnung
+\item Call-time-choice durch IDs
 \end{itemize}
-
-\begin{haskell}[Depth-first-search]
-dfs :: Try a -> IO ()
-dfs (Val a)        = print a
-dfs Fail           = return ()
-dfs (Choice i l r) = lookupDecision i >>= follow
-  where
-  follow ChooseLeft  = dfs (try l)
-  follow ChooseRight = dfs (try r)
-  follow NoDecision  = do decide i ChooseLeft  l
-                          decide i ChooseRight r
-
-  decide i c x = do setDecision i c >> dfs (try x)
-                    setDecision i NoDecision
-\end{haskell}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Managing Decisions}
-\begin{itemize}
-\item During search, consistent decisions have to be made
-\item Management of decisions is abstracted by a type class
-\end{itemize}
+\frametitle{Suchstrategien}
 
-\begin{haskell}[Search decisions]
-data Decision = NoDecision
-              | ChooseLeft
-              | ChooseRight
-
-class Monad m => Store m where
-  lookupDecision :: ID -> m Decision
-  setDecision    :: ID -> Decision -> m ()
-\end{haskell}
-\end{frame}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Monadic Search}
-
-\begin{itemize}
-  \item Implemented using a \code{State} monad
-  \item Local decision store
-  \item Independent of search strategy
-\end{itemize}
-
-\begin{haskell}[General search]
-search :: (MonadPlus m, Store m) => Try a -> m a
-search (Val a)        = return a
-search Fail           = mzero
-search (Choice i l r) = lookupDecision i >>= follow
-  where
-  follow ChooseLeft  = search (try l)
-  follow ChooseRight = search (try r)
-  follow NoDecision  = decide i ChooseLeft  l
-               `mplus` decide i ChooseRight r
-
-  decide i c x = setDecision i c >> search (try x)
-\end{haskell}
-\end{frame}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Search strategies}
 \begin{itemize}
   \item Based on tree representation of search space
   \item Strategies only extract values
@@ -277,12 +112,23 @@ data SearchTree a = None
 \end{haskell}
 
 \begin{haskell}[Depth-first-search using SearchTree]
-dfsSearch :: SearchTree a -> [a]
-dfsSearch None         = []
-dfsSearch (One      x) = [x]
-dfsSearch (Choice x y) = dfsSearch x ++ dfsSearch y
+allValuesDFS :: SearchTree a -> [a]
+allValuesDFS None         = []
+allValuesDFS (One      x) = [x]
+allValuesDFS (Choice x y) = allValuesDFS x ++ allValuesDFS y
 \end{haskell}
+
 \end{frame}
+
+\begin{frame}[fragile]%-------------------------------------------------------
+\frametitle{Nutzung}
+\begin{itemize}
+\item printResults als Beispiel für Top-Level-Suche
+\item Als eingekapselte Suche, SearchTree als Curry-Struktur
+\end{itemize}
+\end{frame}
+
+\section{Benchmarks}
 
 \begin{frame}%----------------------------------------------------------------
 \frametitle{Benchmark: Non-Deterministic Permutation Sort}
@@ -291,69 +137,29 @@ Program: permutation sort of a list with 15 values
 \includegraphics[width=11cm]{gfx/permsort}
 \end{center}
 \begin{itemize}
-\item DFS is fastest
+\item DFS/eDFS: Overhead durch Suchbaum, Faktor 3
 \item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
 \item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
+\item IDS(+1)/IDS(*2): Overhead durch Gewährleistung von CTC
+\item IDS(*2)/eIDS(*2): Overhead durch Suchbaum, Faktor 1,5
+\item IDS(+1)/eIDS(+1). \todo{Aussage}
 \end{itemize}
 \end{frame}
 
-% \begin{frame}[fragile]%-------------------------------------------------------
-% \frametitle{Benchmark: Unification}
-% Program: Compute the last element of a list by unification
-% \begin{center}
-% \includegraphics[width=11cm]{gfx/last}
-% \end{center}
-% \todo{Interpretation}
-% \end{frame}
-
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Benchmark: Halve a Peano Number}
+\frametitle{Benchmark: Last}
 Program: halve the Peano number $1600$ by inverting addition
 \begin{center}
-\includegraphics[width=11cm]{gfx/half}
+\includegraphics[width=11cm]{gfx/last}
 \end{center}
-\begin{itemize}
-\item Again, DFS is fastest and $\text{IDS}_{10}^{+1}$ is very slow
-\item Both encapsulated search as well as complete strategies are
-      competitive
-\end{itemize}
+
+\todo{Laufzeit von BFS erklären}
 \end{frame}
-
-% TODO: NDNums
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Encapsulated search}
-
-\begin{itemize}
-\item Top-Level search is not always sufficient (e.\,g., when trying to
-      find the best solution)
-\item \emph{Encapsulated search} allows to search for all values
-      inside Curry
-\item Implemented by providing a \code{MonadPlus} instance for the runtime
-      representation of a search tree in Curry
-\end{itemize}
-
-\pause
-
-\begin{curry}[Encapsulated dfs search]
-allValuesDFS x = dfsSearch (someSearchTree x)
-\end{curry}
-
-\begin{example}[Encapsulated search]
-\begin{program}
-f x  = id x ? not x
-bool = True ? False
-
-> \textsl{allValuesDFS (f bool)}
-[True,False,False,True]
-\end{program}
-\end{example}
-
+\frametitle{Benchmark: NDNums}
+\todo{IDS ist voll gut!}
 \end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Conclusion}
 
@@ -361,17 +167,23 @@ bool = True ? False
 \frametitle{Conclusion}
 
 \begin{itemize}
-\item More flexibility of search
-      \begin{itemize}
-        \item Multiple search strategies
-        \item Multiple levels to search non-determinism
-      \end{itemize}
-\item Applicability of search
-      \begin{itemize}
-        \item More than read-eval-print loop
-        \item Non-determinism and I/O can be clearly separated
-      \end{itemize}
+\item Vermeidung von (Problemen bei Festlegung auf DFS)
+\item Vorstellung unseres Ansatzes
+\item Erste praktische Ergebnisse
+\item Vollständige Suchstrategien sind eine ernstzunehmende Alternative zu DFS
 \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]%-------------------------------------------------------
+\frametitle{Future Work}
+
+\begin{itemize}
+\item Untersuchung komplexerer Programme (vllt. sogar reale Programme?)
+\item Untersuchung des Speicherverhaltens
+\item Untersuchung weiterer Suchstrategien
+\end{itemize}
+
 \end{frame}
 
 \end{document}
