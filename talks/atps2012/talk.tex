@@ -42,15 +42,15 @@
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Functional Logic Programming}
 \begin{itemize}
-\item Combines features from functional and logic programming
+\item combines features from functional and logic programming
   \begin{itemize}
-   \item Higher-order functions
-   \item Demand-driven evaluation
+   \item higher-order functions
+   \item demand-driven evaluation
    \item non-determinism
    \item logic variables
   \end{itemize}
-\item Search for results
-\item Different strategies
+\item search for results
+\item different search strategies
 \end{itemize}
 \end{frame}
 
@@ -62,12 +62,12 @@
 \begin{itemize}
 \item functional logic programming language
 \item non-strict semantics
-\item Haskell-like Syntax
-\item Extended with:
+\item Haskell-like syntax
+\item extended with:
   \begin{itemize}
-  \item Non-determinism through overlapping rules
-  \item Free (logic) variables
-  \item Constraints and unification
+  \item non-determinism through overlapping rules
+  \item free (logic) variables
+  \item constraints and unification
   \end{itemize}
 \end{itemize}
 \end{column}
@@ -96,6 +96,8 @@ last xs | (ys ++ [z]) =:= xs = z
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Curry implementations} % and their search strategies}
+%Todo Tabelle , Zielsprache, Suchstrategien, extensible
+%     KiCS2 einblenden
 \begin{description}
 \item[PAKCS] translates to Prolog, uses backtracking (DFS)
 \item[MCC]   translates to C, DFS
@@ -110,8 +112,8 @@ last xs | (ys ++ [z]) =:= xs = z
 \frametitle{Search implementation in KiCS2}
 
 \begin{itemize}
-\item Based on an explicit representation of the search space
-\item Normal form computation lazily evaluates the search tree
+\item based on an explicit representation of the search space
+\item normal form computation lazily evaluates the search tree
       of an expression
 \end{itemize}
 
@@ -155,9 +157,9 @@ last [T,F]
 \frametitle{Search strategies}
 
 \begin{itemize}
-  \item Based on tree representation of search space
-  \item Strategies only extract values from this search tree
-  \item Available strategies : depth-first, breadth-first, iterative deepening
+  \item based on tree representation of search space
+  \item strategies only extract values from this search tree
+  \item available strategies : depth-first, breadth-first, iterative deepening
 \end{itemize}
 
 \begin{haskell}[SearchTree]
@@ -187,12 +189,16 @@ printResults (x:xs) = do print x
                          inp <- getLine
                          if inp == "yes" then printResults xs
                                          else return ()
+                                         
+getSearchTree exp >>= printResults . allValuesDFS %todo overlay BFS
 \end{haskell}
+
+%todo Folie für BFS
 
 \begin{curryblock}{Encapsulated Search}
 \begin{itemize}
-\item SearchTree available in Curry
-\item Allows user-defined strategies
+\item search tree available in Curry
+\item allows user-defined search strategies
 \end{itemize}
 \end{curryblock}
 \end{frame}
@@ -226,7 +232,7 @@ Program: find the last element of a 10,000 element list
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: NDNums}
-Program: Find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
+Program: find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
 \begin{center}
 \includegraphics[width=11cm]{gfx/ndnums}
 \end{center}
@@ -238,13 +244,17 @@ Program: Find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Conclusion}
 
+\begin{block}{KiCS2}
 \begin{itemize}
 % \item Presentation of our approach to search
-\item Explicit representation of search space
-\item First practical results
-\item Avoid problems arising from the use of a fixed strategy
-\item Complete strategies are realistic alternatives to DFS
+\item explicit representation of search space
+\item search strategy selected by user
+\item first practical results
+\item avoid problems arising from the use of a fixed strategy
+\item complete strategies are realistic alternatives to DFS
+\item complete strategies support declarative programming style
 \end{itemize}
+\end{block}
 
 \end{frame}
 
@@ -252,9 +262,10 @@ Program: Find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
 \frametitle{Future Work}
 
 \begin{itemize}
-\item Analysis of more complex programs
-\item Analysis of memory behaviour
-\item Analysis of additional (parallel) strategies
+\item analysis of more complex programs
+\item analysis of memory behaviour
+\item analysis of additional (parallel) strategies
+\item program analysis to choose appropriate search strategy
 \end{itemize}
 
 \end{frame}
