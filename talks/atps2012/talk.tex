@@ -41,63 +41,120 @@
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Functional Logic Programming}
 \begin{itemize}
-\item Was ist FLP?
-\item Nichtdeterminismus => Suchen => Suchstrategien
-\item Curry-Folie
-\item KiCS2-Überblick
+\item Combines features from functional and logic Programming
+  \begin{itemize}
+   \item Higher-order functions
+   \item Demand-driven evaluation
+   \item non-determinism
+   \item logic variables
+  \end{itemize}
+\item Search for results
+\item Different strategies
 \end{itemize}
+\end{frame}
 
+\begin{frame}[fragile]%------------------------------------------------------
+\frametitle{Curry}
+\begin{itemize}
+\item Haskell like Syntax
+\item Lazy evaluation
+\end{itemize}
+\begin{block}{KiCS2}
 \begin{itemize}
 \item KiCS2 is a compiler from Curry to Haskell
 \item Non-determinism is explicitly represented in
       the data structures
 \end{itemize}
+\end{block}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Curry}
+\begin{curry}%{Example}
+(?) :: a -> a -> a
+x ? _ = x
+_ ? y = y
+
+coin :: Int
+coin = 1 ? 2
+
+(++) :: [a] -> [a] -> [a]
+[] ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+last :: [a] -> a
+last xs | (ys ++ [z]) =:= xs = z
+  where ys, z free
+\end{curry}
 \begin{itemize}
-\item Überlappende Regeln, Fragezeichen
-\item Freie Variablen
+\item Overlapping rules
+\item Free variables
 \item Constraints
 \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Curry-Implementierungen und Top-Level-Suchen}
-\begin{itemize}
-\item PAKCS: DFS               ; Prolog
-\item MCC  : DFS               ; C
-\item KiCS : DFS, BFS          ; Unsafe Haskell
-\item KiCS2: DFS, BFS, IDS, PAR; Haskell, easily extensible
-\end{itemize}
+\frametitle{Curry implementation and their strategies}
+\begin{description}
+\item[PAKCS] Curry to Prolog, uses backtracking (DFS)
+\item[MCC] translates to C, DFS
+\item[KiCS] translates to unsafe Haskell, DFS and BFS
+\item[KiCS2]translates to Haskell, DFS, BFS, IDS, PAR, easily extensible
+\end{description}
 \end{frame}
 
 \section{Search Strategies}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Darstellung des Suchraums als Datenstruktur in KiCS2}
+\frametitle{Search space representation in KiCS2}
+\begin{columns}[t]
+\begin{column}{0.45\textwidth}
+\begin{curry}
+last [T,F] 
+=> ys ++ [z] =:= [T,F] &> z
+\end{curry}
+\begin{tikzpicture}
+\node (qys)   at (2,5) {$\code{?}^{\code{ys}}$};
+\node (f1)    at (1,4) {$\code{!}$}           ;
+\node (qx)    at (3,4) {$\code{?}^{\code{x}}$} ;
+\node (qxs)   at (2,3) {$\code{?}^{\code{xs}}$};
+\node (f2)    at (4,3) {$\code{!}$}           ;
+\node (qz1)   at (1,2) {$\code{?}^{\code{z}}$} ;
+\node (f3)    at (3,2) {$\code{!}$}           ;
+\node (f4)    at (0,1) {$\code{!}$}           ;
+\node (qz2)   at (2,1) {$\code{?}^{\code{z}}$} ;
+\node (true)  at (1,0) {$\code{T}$}           ;
+\node (false) at (3,0) {$\code{F}$}           ;
+\draw (qys) -- node[sloped,above]{\tiny{$\code{[]}$}}   (f1)   ;
+\draw (qys) -- node[sloped,above]{\tiny{$\code{x:xs}$}} (qx)   ;
+\draw (qx)  -- node[sloped,above]{\tiny{$\code{T}$}}    (qxs)  ;
+\draw (qx)  -- node[sloped,above]{\tiny{$\code{F}$}}    (f2)   ;
+\draw (qxs) -- node[sloped,above]{\tiny{$\code{[]}$}}   (qz1)  ;
+\draw (qxs) -- node[sloped,above]{\tiny{$\code{\_:\_}$}}(f3)   ;
+\draw (qz1) -- node[sloped,above]{\tiny{$\code{T}$}}    (f4)   ;
+\draw (qz1) -- node[sloped,above]{\tiny{$\code{F}$}}    (qz2)  ;
+\draw (qz2) -- node[sloped,above]{\tiny{$\code{T}$}}    (true) ;
+\draw (qz2) -- node[sloped,above]{\tiny{$\code{F}$}}    (false);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{haskell}[SearchTree]
+data SearchTree a 
+  = None
+  | One a
+  | Choice (SearchTree a)
+           (SearchTree a)
+\end{haskell}
 \begin{itemize}
-\item Hinweis auf Laziness
-\item Grafik
-  \begin{itemize}
-  \item Curry-Ausdruck
-  \item Korrespondierer Suchraum
-  \item Evtl. noch Datenstruktur
-  \end{itemize}
+\item Normal form computation to evaluate the search tree
+\item Evaluation is lazy
 \end{itemize}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Berechnung des Suchraums}
-\begin{itemize}
-\item Normalformberechnung
-\item Call-time-choice durch IDs
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Suchstrategien}
+\frametitle{Search strategies}
 
 \begin{itemize}
   \item Based on tree representation of search space
@@ -105,11 +162,6 @@
   \item Available: depth-first, breadth-first, iterative deepening
 \end{itemize}
 
-\begin{haskell}[SearchTree]
-data SearchTree a = None
-                  | One a
-                  | Choice (SearchTree a) (SearchTree a)
-\end{haskell}
 
 \begin{haskell}[Depth-first-search using SearchTree]
 allValuesDFS :: SearchTree a -> [a]
@@ -121,10 +173,20 @@ allValuesDFS (Choice x y) = allValuesDFS x ++ allValuesDFS y
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Nutzung}
+\frametitle{Interactive exploration of the results}
+\begin{haskell}
+printResults :: [a] -> IO ()
+printResults []     = putStrLn "No more values"
+printResults (x:xs) = do print x
+                         putStr "More values? "
+                         inp <- getLine
+                         if inp == "yes" then printResults xs
+                                         else done
+\end{haskell}
 \begin{itemize}
-\item printResults als Beispiel für Top-Level-Suche
-\item Als eingekapselte Suche, SearchTree als Curry-Struktur
+\item SearchTree available in Curry
+\item User defined Strategies
+\item Encapsulated search
 \end{itemize}
 \end{frame}
 
@@ -136,29 +198,29 @@ Program: permutation sort of a list with 15 values
 \begin{center}
 \includegraphics[width=11cm]{gfx/permsort}
 \end{center}
-\begin{itemize}
-\item DFS/eDFS: Overhead durch Suchbaum, Faktor 3
-\item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
-\item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
-\item IDS(+1)/IDS(*2): Overhead durch Gewährleistung von CTC
-\item IDS(*2)/eIDS(*2): Overhead durch Suchbaum, Faktor 1,5
-\item IDS(+1)/eIDS(+1). \todo{Aussage}
-\end{itemize}
+%\begin{itemize}
+%\item DFS/eDFS: Overhead durch Suchbaum, Faktor 3
+%\item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
+%\item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
+%\item IDS(+1)/IDS(*2): Overhead durch Gewährleistung von CTC
+%\item IDS(*2)/eIDS(*2): Overhead durch Suchbaum, Faktor 1,5
+%\item IDS(+1)/eIDS(+1). \todo{Aussage}
+%\end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: Last}
-Program: halve the Peano number $1600$ by inverting addition
+Program: find the last element of a 10,000 element list
 \begin{center}
 \includegraphics[width=11cm]{gfx/last}
 \end{center}
-
-\todo{Laufzeit von BFS erklären}
+% \todo{Laufzeit von BFS erklären}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: NDNums}
-\todo{IDS ist voll gut!}
+
+%\todo{IDS ist voll gut!}
 \end{frame}
 
 \section{Conclusion}
@@ -167,10 +229,10 @@ Program: halve the Peano number $1600$ by inverting addition
 \frametitle{Conclusion}
 
 \begin{itemize}
-\item Vermeidung von (Problemen bei Festlegung auf DFS)
-\item Vorstellung unseres Ansatzes
-\item Erste praktische Ergebnisse
-\item Vollständige Suchstrategien sind eine ernstzunehmende Alternative zu DFS
+\item Presentation of our approach to search
+\item First practical results
+\item Avoid problems arising from the use of a fixed strategie
+\item Complete strategies are realistic alternatives to DFS
 \end{itemize}
 
 \end{frame}
@@ -179,9 +241,9 @@ Program: halve the Peano number $1600$ by inverting addition
 \frametitle{Future Work}
 
 \begin{itemize}
-\item Untersuchung komplexerer Programme (vllt. sogar reale Programme?)
-\item Untersuchung des Speicherverhaltens
-\item Untersuchung weiterer Suchstrategien
+\item Analysis of more complex programs
+\item Analysis of memory behaviour
+\item Analysis of additional (parallel) strategies
 \end{itemize}
 
 \end{frame}
