@@ -42,7 +42,7 @@
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Functional Logic Programming}
 \begin{itemize}
-\item Combines features from functional and logic Programming
+\item Combines features from functional and logic programming
   \begin{itemize}
    \item Higher-order functions
    \item Demand-driven evaluation
@@ -56,21 +56,23 @@
 
 \begin{frame}[fragile]%------------------------------------------------------
 \frametitle{Curry}
-\begin{itemize}
-\item Haskell like Syntax
-\item Lazy evaluation
-\end{itemize}
-\begin{block}{KiCS2}
-\begin{itemize}
-\item KiCS2 is a compiler from Curry to Haskell
-\item Non-determinism is explicitly represented in
-      the data structures
-\end{itemize}
-\end{block}
-\end{frame}
+\begin{columns}[t]
 
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Curry}
+\begin{column}{.4\textwidth}
+\begin{itemize}
+\item functional logic programming language
+\item non-strict semantics
+\item Haskell-like Syntax
+\item Extended with:
+  \begin{itemize}
+  \item Non-determinism through overlapping rules
+  \item Free (logic) variables
+  \item Constraints and unification
+  \end{itemize}
+\end{itemize}
+\end{column}
+
+\begin{column}{.5\textwidth}
 \begin{curry}%{Example}
 (?) :: a -> a -> a
 x ? _ = x
@@ -87,69 +89,64 @@ last :: [a] -> a
 last xs | (ys ++ [z]) =:= xs = z
   where ys, z free
 \end{curry}
-\begin{itemize}
-\item Overlapping rules
-\item Free variables
-\item Constraints
-\end{itemize}
+\end{column}
+
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Curry implementation and their strategies}
+\frametitle{Curry implementations} % and their search strategies}
 \begin{description}
-\item[PAKCS] Curry to Prolog, uses backtracking (DFS)
-\item[MCC] translates to C, DFS
-\item[KiCS] translates to unsafe Haskell, DFS and BFS
-\item[KiCS2]translates to Haskell, DFS, BFS, IDS, PAR, easily extensible
+\item[PAKCS] translates to Prolog, uses backtracking (DFS)
+\item[MCC]   translates to C, DFS
+\item[KiCS]  translates to unsafe Haskell, DFS and BFS
+\item[KiCS2] translates to Haskell, DFS, BFS, IDS, PAR, easily extensible
 \end{description}
 \end{frame}
 
 \section{Search Strategies}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Search space representation in KiCS2}
+\frametitle{Search implementation in KiCS2}
+
+\begin{itemize}
+\item Based on an explicit representation of the search space
+\item Normal form computation lazily evaluates the search tree
+      of an expression
+\end{itemize}
+
+
 \begin{columns}[t]
 \begin{column}{0.45\textwidth}
-\begin{curry}
+\begin{curry}[Curry expression]
 last [T,F] 
-=> ys ++ [z] =:= [T,F] &> z
+=> ys ++ [z] =:= [T,F] &> z 
+   where ys, z free
 \end{curry}
+\end{column}
+
+\begin{column}{0.45\textwidth}
+\begin{block}{Corresponding search tree}
 \begin{tikzpicture}
-\node (qys)   at (2,5) {$\code{?}^{\code{ys}}$};
-\node (f1)    at (1,4) {$\code{!}$}           ;
-\node (qx)    at (3,4) {$\code{?}^{\code{x}}$} ;
-\node (qxs)   at (2,3) {$\code{?}^{\code{xs}}$};
-\node (f2)    at (4,3) {$\code{!}$}           ;
-\node (qz1)   at (1,2) {$\code{?}^{\code{z}}$} ;
-\node (f3)    at (3,2) {$\code{!}$}           ;
-\node (f4)    at (0,1) {$\code{!}$}           ;
-\node (qz2)   at (2,1) {$\code{?}^{\code{z}}$} ;
-\node (true)  at (1,0) {$\code{T}$}           ;
-\node (false) at (3,0) {$\code{F}$}           ;
+\node (qys)   at (2,4) {$\code{?}^{\code{ys}}$};
+\node (f1)    at (1,3) {$\code{!}$}           ;
+\node (qx)    at (3,3) {$\code{?}^{\code{x}}$} ;
+\node (qxs)   at (2,2) {$\code{?}^{\code{xs}}$};
+\node (f2)    at (4,2) {$\code{!}$}           ;
+\node (qz)    at (1,1) {$\code{?}^{\code{z}}$} ;
+\node (f3)    at (3,1) {$\code{!}$}           ;
+\node (f4)    at (0,0) {$\code{!}$}           ;
+\node (false) at (2,0) {$\code{F}$}           ;
 \draw (qys) -- node[sloped,above]{\tiny{$\code{[]}$}}   (f1)   ;
 \draw (qys) -- node[sloped,above]{\tiny{$\code{x:xs}$}} (qx)   ;
 \draw (qx)  -- node[sloped,above]{\tiny{$\code{T}$}}    (qxs)  ;
 \draw (qx)  -- node[sloped,above]{\tiny{$\code{F}$}}    (f2)   ;
-\draw (qxs) -- node[sloped,above]{\tiny{$\code{[]}$}}   (qz1)  ;
+\draw (qxs) -- node[sloped,above]{\tiny{$\code{[]}$}}   (qz)   ;
 \draw (qxs) -- node[sloped,above]{\tiny{$\code{\_:\_}$}}(f3)   ;
-\draw (qz1) -- node[sloped,above]{\tiny{$\code{T}$}}    (f4)   ;
-\draw (qz1) -- node[sloped,above]{\tiny{$\code{F}$}}    (qz2)  ;
-\draw (qz2) -- node[sloped,above]{\tiny{$\code{T}$}}    (true) ;
-\draw (qz2) -- node[sloped,above]{\tiny{$\code{F}$}}    (false);
+\draw (qz)  -- node[sloped,above]{\tiny{$\code{T}$}}    (f4)   ;
+\draw (qz)  -- node[sloped,above]{\tiny{$\code{F}$}}    (false);
 \end{tikzpicture}
-\end{column}
-\begin{column}{0.45\textwidth}
-\begin{haskell}[SearchTree]
-data SearchTree a 
-  = None
-  | One a
-  | Choice (SearchTree a)
-           (SearchTree a)
-\end{haskell}
-\begin{itemize}
-\item Normal form computation to evaluate the search tree
-\item Evaluation is lazy
-\end{itemize}
+\end{block}
 \end{column}
 \end{columns}
 \end{frame}
@@ -159,10 +156,17 @@ data SearchTree a
 
 \begin{itemize}
   \item Based on tree representation of search space
-  \item Strategies only extract values
-  \item Available: depth-first, breadth-first, iterative deepening
+  \item Strategies only extract values from this search tree
+  \item Available strategies : depth-first, breadth-first, iterative deepening
 \end{itemize}
 
+\begin{haskell}[SearchTree]
+data SearchTree a
+  = None
+  | One a
+  | Choice (SearchTree a)
+           (SearchTree a)
+\end{haskell}
 
 \begin{haskell}[Depth-first-search using SearchTree]
 allValuesDFS :: SearchTree a -> [a]
@@ -174,21 +178,23 @@ allValuesDFS (Choice x y) = allValuesDFS x ++ allValuesDFS y
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Interactive exploration of the results}
-\begin{haskell}
+\frametitle{Exploration of search results}
+\begin{haskell}[Interactive Top-Level Search]
 printResults :: [a] -> IO ()
 printResults []     = putStrLn "No more values"
 printResults (x:xs) = do print x
                          putStr "More values? "
                          inp <- getLine
                          if inp == "yes" then printResults xs
-                                         else done
+                                         else return ()
 \end{haskell}
+
+\begin{curryblock}{Encapsulated Search}
 \begin{itemize}
 \item SearchTree available in Curry
-\item User defined Strategies
-\item Encapsulated search
+\item Allows user-defined strategies
 \end{itemize}
+\end{curryblock}
 \end{frame}
 
 \section{Benchmarks}
@@ -220,7 +226,7 @@ Program: find the last element of a 10,000 element list
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: NDNums}
-Program: Find 29 in \lstinline{g 0} where \lstinline{g n = g (n+1) ? n ? g (n+1)}
+Program: Find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
 \begin{center}
 \includegraphics[width=11cm]{gfx/ndnums}
 \end{center}
@@ -233,9 +239,10 @@ Program: Find 29 in \lstinline{g 0} where \lstinline{g n = g (n+1) ? n ? g (n+1)
 \frametitle{Conclusion}
 
 \begin{itemize}
-\item Presentation of our approach to search
+% \item Presentation of our approach to search
+\item Explicit representation of search space
 \item First practical results
-\item Avoid problems arising from the use of a fixed strategie
+\item Avoid problems arising from the use of a fixed strategy
 \item Complete strategies are realistic alternatives to DFS
 \end{itemize}
 
