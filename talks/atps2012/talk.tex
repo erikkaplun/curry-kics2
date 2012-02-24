@@ -9,6 +9,7 @@
 \usepackage{agstyle}
 \usepackage{currycode}
 \usepackage{tikz}
+\usepackage{listings}
 
 \newcommand{\ergo}{$\Rightarrow$}
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
@@ -219,7 +220,10 @@ Program: find the last element of a 10,000 element list
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: NDNums}
-
+Program: Find 29 in \lstinline{g 0} where \lstinline{g n = g (n+1) ? n ? g (n+1)}
+\begin{center}
+\includegraphics[width=11cm]{gfx/ndnums}
+\end{center}
 %\todo{IDS ist voll gut!}
 \end{frame}
 
