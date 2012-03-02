@@ -111,8 +111,10 @@ instance NonDet C_Int where
   try x = Val x
   match f _ _ _ _ _ (Choice_C_Int i x y) = f i x y
   match _ f _ _ _ _ (Choices_C_Int i@(NarrowedID _ _) xs) = f i xs
+  match _ f _ _ _ _ (Choices_C_Int i@(CovNarrowedID _ _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Int i@(FreeID _ _) xs) = f i xs
-  match _ _ _ _ _ _ (Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.match: Choices with ChoiceID " ++ (show i))
+  match _ _ f _ _ _ (Choices_C_Int i@(CovFreeID _ _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Int i _) = error ("Prelude.Int.match: Choices with ChoiceID " ++ (show i))
   match _ _ _ f _ _ Fail_C_Int = f
   match _ _ _ _ f _ (Guard_C_Int cs e) = f cs e
   match _ _ _ _ _ f x = f x
@@ -156,7 +158,9 @@ instance Unifiable C_Int where
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Int j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choices_C_Int j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.bind: Choices with ChoiceID: " ++ (show c))
   bind _ Fail_C_Int = [Unsolvable]
   bind i (Guard_C_Int cs e) = getConstrList cs ++ (bind i e)
@@ -164,7 +168,9 @@ instance Unifiable C_Int where
   lazyBind i (C_CurryInt x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x2)]
   lazyBind i (Choice_C_Int j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Int j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Int j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choices_C_Int j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.lazyBind: Choices with ChoiceID: " ++ (show c))
   lazyBind _ Fail_C_Int = [Unsolvable]
   lazyBind i (Guard_C_Int cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
