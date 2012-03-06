@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- Constraint Solving
 -- ---------------------------------------------------------------------------
-module Solver (Solution, solve) where
+module Solver (Solution, solve,mkSolution) where
 
 import Types
 

@@ -5,7 +5,7 @@
 module ID
   ( -- * Constraints
     Constraint (..), Constraints(..), getConstrList
-  , coverConstraints, getCoveredConstraints
+  , coverConstraints, partitionConstraints
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
@@ -19,6 +19,7 @@ module ID
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
+import Data.List (partition)
 
 import Debug
 import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
@@ -82,13 +83,17 @@ coverConstraints (StructConstr c) = StructConstr (map coverConstraint c)
 coverConstraints (ValConstr i a c)
   = ValConstr (coverID i) (cover a) (map coverConstraint c)
 
-getCoveredConstraints :: Constraints -> Maybe Constraints
-getCoveredConstraints (ValConstr i a c) 
-  | isCoveredID i = Just $ValConstr (uncoverID i) (uncover a) (map uncoverConstraint c)
-  | otherwise     = Nothing 
-getCoveredConstraints (StructConstr c) = if null constrList then Nothing else (Just (StructConstr constrList))
+partitionConstraints :: Constraints -> (Maybe Constraints,Maybe Constraints)
+partitionConstraints constr@(ValConstr i a c) 
+  | isCoveredID i = (Just $ValConstr (uncoverID i) (uncover a) (map uncoverConstraint c)
+                    , Nothing)
+  | otherwise     = (Nothing, Just constr) 
+partitionConstraints (StructConstr c) = (mkMaybeConstr cov, mkMaybeConstr uncov)
  where
- constrList = map uncoverConstraint (filter isCoveredConstraint c)
+ (cov,uncov) = mapFst (map uncoverConstraint) (partition isCoveredConstraint c)
+ mapFst f (x,y) = (f x, y)
+ mkMaybeConstr [] = Nothing
+ mkMaybeConstr cs = Just (StructConstr cs)
 
 -- ---------------------------------------------------------------------------
 -- Decision
