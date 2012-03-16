@@ -39,20 +39,20 @@ instance Curry_Prelude.Curry C_Success where
   (=?=) (Choice_C_Success i x y) z cs = narrow i ((x Curry_Prelude.=?= z) cs) ((y Curry_Prelude.=?= z) cs)
   (=?=) (Choices_C_Success i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.=?= y) cs) xs
   (=?=) (Guard_C_Success c e) y cs = guardCons c ((e Curry_Prelude.=?= y) (addCs c cs))
-  (=?=) Fail_C_Success _ _ = failCons
+  (=?=) (Fail_C_Success cd info) _ _ = failCons cd info
   (=?=) z (Choice_C_Success i x y) cs = narrow i ((z Curry_Prelude.=?= x) cs) ((z Curry_Prelude.=?= y) cs)
   (=?=) y (Choices_C_Success i xs) cs = narrows cs i (\x -> (y Curry_Prelude.=?= x) cs) xs
   (=?=) y (Guard_C_Success c e) cs = guardCons c ((y Curry_Prelude.=?= e) (addCs c cs))
-  (=?=) _ Fail_C_Success _ = failCons
+  (=?=) _ (Fail_C_Success cd info) _ = failCons cd info
   (=?=) C_Success C_Success cs = Curry_Prelude.C_True
   (<?=) (Choice_C_Success i x y) z cs = narrow i ((x Curry_Prelude.<?= z) cs) ((y Curry_Prelude.<?= z) cs)
   (<?=) (Choices_C_Success i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.<?= y) cs) xs
   (<?=) (Guard_C_Success c e) y cs = guardCons c ((e Curry_Prelude.<?= y) (addCs c cs))
-  (<?=) Fail_C_Success _ _ = failCons
+  (<?=) (Fail_C_Success cd info) _ _ = failCons cd info
   (<?=) z (Choice_C_Success i x y) cs = narrow i ((z Curry_Prelude.<?= x) cs) ((z Curry_Prelude.<?= y) cs)
   (<?=) y (Choices_C_Success i xs) cs = narrows cs i (\x -> (y Curry_Prelude.<?= x) cs) xs
   (<?=) y (Guard_C_Success c e) cs = guardCons c ((y Curry_Prelude.<?= e) (addCs c cs))
-  (<?=) _ Fail_C_Success _ = failCons
+  (<?=) _ (Fail_C_Success cd info) _ = failCons cd info
   (<?=) C_Success C_Success cs = Curry_Prelude.C_True
 -- END GENERATED FROM PrimTypes.curry
 
@@ -80,19 +80,19 @@ data C_Int
      | C_CurryInt BinInt
      | Choice_C_Int ID C_Int C_Int
      | Choices_C_Int ID ([C_Int])
-     | Fail_C_Int
+     | Fail_C_Int Int FailInfo
      | Guard_C_Int (Constraints) C_Int
 
 instance Show C_Int where
   showsPrec d (Choice_C_Int i x y) = showsChoice d i x y
   showsPrec d (Choices_C_Int i xs) = showsChoices d i xs
   showsPrec d (Guard_C_Int c e) = showsGuard d c e
-  showsPrec _ Fail_C_Int = showChar '!'
+  showsPrec _ (Fail_C_Int _ _) = showChar '!'
   showsPrec d (C_Int x1) = shows (I# x1)
   showsPrec d (C_CurryInt x1) = case (const $## x1) emptyCs of
     Choice_BinInt _ _ _ -> shows x1
     Choices_BinInt _ _  -> shows x1
-    Fail_BinInt         -> shows x1
+    Fail_BinInt _ _     -> shows x1
     Guard_BinInt _ _    -> shows x1
     gnfBinInt           -> shows (I# (curryint2primint gnfBinInt))
 
@@ -106,7 +106,7 @@ instance NonDet C_Int where
   guardCons = Guard_C_Int
   try (Choice_C_Int i x y) = tryChoice i x y
   try (Choices_C_Int i xs) = tryChoices i xs
-  try Fail_C_Int = Fail
+  try (Fail_C_Int cd info) = Fail cd info
   try (Guard_C_Int c e) = Guard c e
   try x = Val x
   match f _ _ _ _ _ (Choice_C_Int i x y) = f i x y
@@ -115,7 +115,7 @@ instance NonDet C_Int where
   match _ _ f _ _ _ (Choices_C_Int i@(FreeID _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Int i@(CovFreeID _ _ _) xs) = f i xs
   match _ _ _ _ _ _ (Choices_C_Int i _) = error ("Prelude.Int.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ Fail_C_Int = f
+  match _ _ _ f _ _ (Fail_C_Int cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Int cs e) = f cs e
   match _ _ _ _ _ f x = f x
 
@@ -128,13 +128,13 @@ instance NormalForm C_Int where
   ($!!) cont (Choice_C_Int i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_C_Int i xs) cs = nfChoices cont i xs cs
   ($!!) cont (Guard_C_Int c x) cs = guardCons c ((cont $!! x) (addCs c cs))
-  ($!!) _ Fail_C_Int _ = failCons
+  ($!!) _ (Fail_C_Int cd info) _ = failCons cd info
   ($##) cont x@(C_Int _) cs = cont x cs
   ($##) cont (C_CurryInt x1) cs = ((\y1 -> cont (C_CurryInt y1)) $## x1) cs
   ($##) cont (Choice_C_Int i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_C_Int i xs) cs = gnfChoices cont i xs cs
   ($##) cont (Guard_C_Int c x) cs = guardCons c ((cont $## x) (addCs c cs))
-  ($##) _ Fail_C_Int _ = failCons
+  ($##) _ (Fail_C_Int cd info) _ = failCons cd info
   ($!<) cont (C_CurryInt x1) = (\y1 -> cont (C_CurryInt y1)) $!< x1
   ($!<) cont (Choice_C_Int i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Int i xs) = nfChoicesIO cont i xs
@@ -144,16 +144,16 @@ instance NormalForm C_Int where
   searchNF _ _ x = error ("Prelude.Int.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Int where
-  (=.=) (C_Int      x1) (C_Int      y1) _ = if (x1 ==# y1) then C_Success else Fail_C_Success
+  (=.=) (C_Int      x1) (C_Int      y1) _ = if (x1 ==# y1) then C_Success else Fail_C_Success 0 defFailInfo
   (=.=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) =:= y1) cs
   (=.=) (C_CurryInt x1) (C_Int      y1) cs = (x1 =:= (primint2curryint y1)) cs
   (=.=) (C_CurryInt x1) (C_CurryInt y1) cs = (x1 =:= y1) cs
-  (=.=) _ _ _ = Fail_C_Success
-  (=.<=) (C_Int      x1) (C_Int      y1) _ = if (x1 ==# y1) then C_Success else Fail_C_Success
+  (=.=) _ _ _ = Fail_C_Success 0 defFailInfo
+  (=.<=) (C_Int      x1) (C_Int      y1) _ = if (x1 ==# y1) then C_Success else Fail_C_Success 0 defFailInfo
   (=.<=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) =:<= y1) cs
   (=.<=) (C_CurryInt x1) (C_Int      y1) cs = (x1 =:<= (primint2curryint y1)) cs
   (=.<=) (C_CurryInt x1) (C_CurryInt y1) cs = (x1 =:<= y1) cs
-  (=.<=) _ _ _= Fail_C_Success
+  (=.<=) _ _ _= Fail_C_Success 0 defFailInfo
   bind i (C_Int      x2) = (i :=: ChooseN 0 1) : bind (leftID i) (primint2curryint x2)
   bind i (C_CurryInt x2) = (i :=: ChooseN 0 1) : bind (leftID i) x2
   bind i (Choice_C_Int j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
@@ -162,7 +162,7 @@ instance Unifiable C_Int where
   bind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind i (Choices_C_Int j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.bind: Choices with ChoiceID: " ++ (show c))
-  bind _ Fail_C_Int = [Unsolvable]
+  bind _ (Fail_C_Int cd info) = [Unsolvable cd info]
   bind i (Guard_C_Int cs e) = getConstrList cs ++ (bind i e)
   lazyBind i (C_Int      x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primint2curryint x2))]
   lazyBind i (C_CurryInt x2) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x2)]
@@ -172,18 +172,18 @@ instance Unifiable C_Int where
   lazyBind i (Choices_C_Int j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind i (Choices_C_Int j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ c@(Choices_C_Int i@(ChoiceID _) _) = error ("Prelude.Int.lazyBind: Choices with ChoiceID: " ++ (show c))
-  lazyBind _ Fail_C_Int = [Unsolvable]
+  lazyBind _ (Fail_C_Int cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_Int cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry_Prelude.Curry C_Int where
   (=?=) (Choice_C_Int i x y) z cs = narrow i ((x =?= z) cs) ((y =?= z) cs)
   (=?=) (Choices_C_Int i xs) y cs = narrows cs i (\x -> (x =?= y) cs) xs
   (=?=) (Guard_C_Int c x) y cs = guardCons c ((x =?= y) (addCs c cs))
-  (=?=) Fail_C_Int _ _ = failCons
+  (=?=) (Fail_C_Int cd info) _ _ = failCons cd info
   (=?=) z (Choice_C_Int i x y) cs = narrow i ((z =?= x) cs) ((z =?= y) cs)
   (=?=) y (Choices_C_Int i xs) cs = narrows cs i (\x -> (y =?= x) cs) xs
   (=?=) y (Guard_C_Int c x) cs = guardCons c ((y =?= x) (addCs c cs))
-  (=?=) _ Fail_C_Int _ = failCons
+  (=?=) _ (Fail_C_Int cd info) _ = failCons cd info
   (=?=) (C_Int      x1) (C_Int      y1) _ = toCurry (x1 ==# y1)
   (=?=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) =?= y1) cs
   (=?=) (C_CurryInt x1) (C_Int      y1) cs = (x1 =?= (primint2curryint y1)) cs
@@ -191,11 +191,11 @@ instance Curry_Prelude.Curry C_Int where
   (<?=) (Choice_C_Int i x y) z cs = narrow i ((x <?= z) cs) ((y <?= z) cs)
   (<?=) (Choices_C_Int i xs) y cs = narrows cs i (\x -> (x<?= y) cs) xs
   (<?=) (Guard_C_Int c x) y cs = guardCons c ((x <?= y) (addCs c cs))
-  (<?=) Fail_C_Int _ _ = failCons
+  (<?=) (Fail_C_Int cd info) _ _ = failCons cd info
   (<?=) z (Choice_C_Int i x y) cs = narrow i ((z <?= x) cs) ((z <?= y) cs)
   (<?=) y (Choices_C_Int i xs) cs = narrows cs i (\x -> (y <?= x) cs) xs
   (<?=) y (Guard_C_Int c x) cs = guardCons c ((y <?= x) (addCs c cs))
-  (<?=) _ Fail_C_Int _ = failCons
+  (<?=) _ (Fail_C_Int cd info) _ = failCons cd info
   (<?=) (C_Int      x1) (C_Int      y1) _ = toCurry (x1 <=# y1)
   (<?=) (C_Int      x1) (C_CurryInt y1) cs = ((primint2curryint x1) `d_C_lteqInteger` y1) cs
   (<?=) (C_CurryInt x1) (C_Int      y1) cs = (x1 `d_C_lteqInteger` (primint2curryint y1)) cs
@@ -207,7 +207,7 @@ instance Coverable C_Int where
   cover (C_CurryInt x)       = C_CurryInt (cover x)
   cover (Choice_C_Int i x y) = Choice_C_Int (coverID i) (cover x) (cover y)
   cover (Choices_C_Int i xs) = Choices_C_Int (coverID i) (map cover xs)
-  cover f@Fail_C_Int         = f
+  cover (Fail_C_Int cd info) = Fail_C_Int (cd + 1) info
   cover (Guard_C_Int cs x)   = Guard_C_Int (coverConstraints cs) (cover x)
 
 primint2curryint :: Int# -> BinInt
@@ -241,14 +241,14 @@ data C_Float
      = C_Float Float#
      | Choice_C_Float ID C_Float C_Float
      | Choices_C_Float ID ([C_Float])
-     | Fail_C_Float
+     | Fail_C_Float Int FailInfo
      | Guard_C_Float (Constraints) C_Float
 
 instance Show C_Float where
   showsPrec d (Choice_C_Float i x y) = showsChoice d i x y
   showsPrec d (Choices_C_Float i xs) = showsChoices d i xs
   showsPrec d (Guard_C_Float c e) = showsGuard d c e
-  showsPrec d Fail_C_Float = showChar '!'
+  showsPrec d (Fail_C_Float _ _) = showChar '!'
   showsPrec d (C_Float x1) = shows (F# x1)
 
 instance Read C_Float where
@@ -261,14 +261,16 @@ instance NonDet C_Float where
   guardCons = Guard_C_Float
   try (Choice_C_Float i x y) = tryChoice i x y
   try (Choices_C_Float i xs) = tryChoices i xs
-  try Fail_C_Float = Fail
+  try (Fail_C_Float cd info) = Fail cd info
   try (Guard_C_Float c e) = Guard c e
   try x = Val x
   match f _ _ _ _ _ (Choice_C_Float i x y) = f i x y
   match _ f _ _ _ _ (Choices_C_Float i@(NarrowedID _ _) xs) = f i xs
+  match _ f _ _ _ _ (Choices_C_Float i@(CovNarrowedID _ _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Float i@(FreeID _ _) xs) = f i xs
+  match _ _ f _ _ _ (Choices_C_Float i@(CovFreeID _ _ _) xs) = f i xs
   match _ _ _ _ _ _ (Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ Fail_C_Float = f
+  match _ _ _ f _ _ (Fail_C_Float cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Float cs e) = f cs e
   match _ _ _ _ _ f x = f x
 
@@ -280,12 +282,12 @@ instance NormalForm C_Float where
   ($!!) cont (Choice_C_Float i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_C_Float i xs) cs = nfChoices cont i xs cs
   ($!!) cont (Guard_C_Float c x) cs = guardCons c ((cont $!! x) (addCs c cs))
-  ($!!) _ Fail_C_Float _ = failCons
+  ($!!) _ (Fail_C_Float cd info) _ = failCons cd info
   ($##) cont x@(C_Float _) cs = cont x cs
   ($##) cont (Choice_C_Float i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_C_Float i xs) cs = gnfChoices cont i xs cs
   ($##) cont (Guard_C_Float c x) cs = guardCons c ((cont $## x) (addCs c cs))
-  ($##) _ Fail_C_Float _ = failCons
+  ($##) _ (Fail_C_Float cd info) _ = failCons cd info
   ($!<) cont (Choice_C_Float i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Float i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
@@ -293,46 +295,50 @@ instance NormalForm C_Float where
   searchNF _ _ x = error ("Prelude.Float.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Float where
-  (=.=) _ _ _  = Fail_C_Success
-  (=.<=) _ _ _ = Fail_C_Success
+  (=.=) _ _ _  = Fail_C_Success 0 defFailInfo
+  (=.<=) _ _ _ = Fail_C_Success 0 defFailInfo
   bind i (Choice_C_Float j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Float j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
-  bind _ c@(Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.bind: Choices with ChoiceID: " ++ (show c))
-  bind _ Fail_C_Float = [Unsolvable]
+  bind i (Choices_C_Float j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ c@(Choices_C_Float i _) = error ("Prelude.Float.bind: Choices with ChoiceID: " ++ (show c))
+  bind _ (Fail_C_Float cd info) = [Unsolvable cd info]
   bind i (Guard_C_Float cs e) = getConstrList cs ++ (bind i e)
   lazyBind i (Choice_C_Float j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Float j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Float j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Float j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
-  lazyBind _ c@(Choices_C_Float i@(ChoiceID _) _) = error ("Prelude.Float.lazyBind: Choices with ChoiceID: " ++ (show c))
-  lazyBind _ Fail_C_Float = [Unsolvable]
+  lazyBind i (Choices_C_Float j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ c@(Choices_C_Float i _) = error ("Prelude.Float.lazyBind: Choices with ChoiceID: " ++ (show c))
+  lazyBind _ (Fail_C_Float cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_Float cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Float where
   (=?=) (Choice_C_Float i x y) z cs = narrow i ((x =?= z) cs) ((y =?= z) cs)
   (=?=) (Choices_C_Float i xs) y cs = narrows cs i (\x -> (x =?= y) cs) xs
   (=?=) (Guard_C_Float c x) y cs = guardCons c ((x =?= y) (addCs c cs))
-  (=?=) Fail_C_Float _ _= failCons
+  (=?=) (Fail_C_Float cd info) _ _= failCons cd info
   (=?=) z (Choice_C_Float i x y) cs = narrow i ((z =?= x) cs) ((z =?= y) cs)
   (=?=) y (Choices_C_Float i xs) cs = narrows cs i (\x -> (y =?= x) cs) xs
   (=?=) y (Guard_C_Float c x) cs = guardCons c ((y =?= x) (addCs c cs))
-  (=?=) _ Fail_C_Float _ = failCons
+  (=?=) _ (Fail_C_Float cd info) _ = failCons cd info
   (=?=) (C_Float x1) (C_Float y1) _ = toCurry (x1 `eqFloat#` y1)
   (<?=) (Choice_C_Float i x y) z cs = narrow i ((x <?= z) cs) ((y <?= z) cs)
   (<?=) (Choices_C_Float i xs) y cs = narrows cs i (\x -> (x <?= y) cs) xs
   (<?=) (Guard_C_Float c x) y cs = guardCons c ((x <?= y) (addCs c cs))
-  (<?=) Fail_C_Float _ _ = failCons
+  (<?=) (Fail_C_Float cd info) _ _ = failCons cd info
   (<?=) z (Choice_C_Float i x y) cs = narrow i ((z <?= x) cs) ((z <?= y) cs)
   (<?=) y (Choices_C_Float i xs) cs = narrows cs i (\x -> (y <?= x) cs) xs
   (<?=) y (Guard_C_Float c x) cs = guardCons c ((y <?= x) (addCs c cs))
-  (<?=) _ Fail_C_Float _ = failCons
+  (<?=) _ (Fail_C_Float cd info) _ = failCons cd info
   (<?=) (C_Float x1) (C_Float y1) _ = toCurry (x1 `leFloat#` y1)
 
 instance Coverable C_Float where
   cover f@(C_Float _)          = f
   cover (Choice_C_Float i x y) = Choice_C_Float (coverID i) (cover x) (cover y)
   cover (Choices_C_Float i xs) = Choices_C_Float (coverID i) (map cover xs)
-  cover f@Fail_C_Float         = f
+  cover (Fail_C_Float cd info) = Fail_C_Float (cd + 1) info
   cover (Guard_C_Float cs x)   = Guard_C_Float (coverConstraints cs) (cover x)
 
 -- ---------------------------------------------------------------------------
@@ -343,19 +349,19 @@ data C_Char
      | CurryChar BinInt
      | Choice_C_Char ID C_Char C_Char
      | Choices_C_Char ID ([C_Char])
-     | Fail_C_Char
+     | Fail_C_Char Int FailInfo
      | Guard_C_Char (Constraints) C_Char
 
 instance Show C_Char where
   showsPrec d (Choice_C_Char i x y) = showsChoice d i x y
   showsPrec d (Choices_C_Char i xs) = showsChoices d i xs
   showsPrec d (Guard_C_Char c e) = showsGuard d c e
-  showsPrec d Fail_C_Char = showChar '!'
+  showsPrec d (Fail_C_Char _ _) = showChar '!'
   showsPrec d (C_Char x1) = showString (show (C# x1))
   showsPrec d (CurryChar x1) = case (const $## x1) emptyCs of
     Choice_BinInt _ _ _ -> showString "chr " . shows x1
     Choices_BinInt _ _  -> showString "chr " . shows x1
-    Fail_BinInt         -> shows x1
+    Fail_BinInt _ _     -> shows x1
     Guard_BinInt _ _    -> shows x1
     gnfBinInt           -> shows (C# (curryChar2primChar gnfBinInt))
 
@@ -376,14 +382,16 @@ instance NonDet C_Char where
   guardCons = Guard_C_Char
   try (Choice_C_Char i x y) = tryChoice i x y
   try (Choices_C_Char i xs) = tryChoices i xs
-  try Fail_C_Char = Fail
+  try (Fail_C_Char cd info) = Fail cd info
   try (Guard_C_Char c e) = Guard c e
   try x = Val x
   match f _ _ _ _ _ (Choice_C_Char i x y) = f i x y
   match _ f _ _ _ _ (Choices_C_Char i@(NarrowedID _ _) xs) = f i xs
+  match _ f _ _ _ _ (Choices_C_Char i@(CovNarrowedID _ _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Char i@(FreeID _ _) xs) = f i xs
-  match _ _ _ _ _ _ (Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ Fail_C_Char = f
+  match _ _ f _ _ _ (Choices_C_Char i@(CovFreeID _ _ _) xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_Char i _) = error ("Prelude.Char.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ f _ _ (Fail_C_Char cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Char cs e) = f cs e
   match _ _ _ _ _ f x = f x
 
@@ -396,13 +404,13 @@ instance NormalForm C_Char where
   ($!!) cont (Choice_C_Char i x y) cs = nfChoice cont i x y cs
   ($!!) cont (Choices_C_Char i xs) cs = nfChoices cont i xs cs
   ($!!) cont (Guard_C_Char c x) cs = guardCons c ((cont $!! x) (addCs c cs))
-  ($!!) _ Fail_C_Char _ = failCons
+  ($!!) _ (Fail_C_Char cd info) _ = failCons cd info
   ($##) cont x@(C_Char _) cs = cont x cs
   ($##) cont (CurryChar x) cs = ((cont . CurryChar) $## x) cs
   ($##) cont (Choice_C_Char i x y) cs = gnfChoice cont i x y cs
   ($##) cont (Choices_C_Char i xs) cs = gnfChoices cont i xs cs
   ($##) cont (Guard_C_Char c x) cs = guardCons c ((cont $## x) (addCs c cs))
-  ($##) _ Fail_C_Char _ = failCons
+  ($##) _ (Fail_C_Char cd info) _ = failCons cd info
   ($!<) cont (CurryChar x)         =( cont . CurryChar) $!< x
   ($!<) cont (Choice_C_Char i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Char i xs) = nfChoicesIO cont i xs
@@ -413,43 +421,47 @@ instance NormalForm C_Char where
 
 instance Unifiable C_Char where
   (=.=) (C_Char       x1) (C_Char      x2) _ | x1 `eqChar#` x2 = C_Success
-                                             | otherwise = Fail_C_Success
+                                             | otherwise = Fail_C_Success 0 defFailInfo
   (=.=) (C_Char       x1) (CurryChar x2)   cs = (primChar2CurryChar x1 =:= x2) cs
   (=.=) (CurryChar  x1) (C_Char      x2)   cs = (x1 =:= primChar2CurryChar x2) cs
   (=.=) (CurryChar x1)    (CurryChar   x2) cs = (x1 =:= x2) cs
-  (=.=) _                 _                _  = Fail_C_Success
+  (=.=) _                 _                _  = Fail_C_Success 0 defFailInfo
   (=.<=) (C_Char       x1) (C_Char      x2) _ | x1 `eqChar#` x2 = C_Success
-                                              | otherwise = Fail_C_Success
+                                              | otherwise = Fail_C_Success 0 defFailInfo
   (=.<=) (C_Char       x1) (CurryChar x2)   cs = (primChar2CurryChar x1 =:<= x2) cs
   (=.<=) (CurryChar  x1) (C_Char      x2)   cs = (x1 =:<= primChar2CurryChar x2) cs
   (=.<=) (CurryChar x1)    (CurryChar   x2) cs = (x1 =:<= x2) cs
-  (=.<=) _                 _                _  = Fail_C_Success
+  (=.<=) _                 _                _  = Fail_C_Success 0 defFailInfo
   bind i (C_Char    x) = (i :=: ChooseN 0 1) : bind (leftID i) (primChar2CurryChar x)
   bind i (CurryChar x) = (i :=: ChooseN 0 1) : bind (leftID i) x
   bind i (Choice_C_Char j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  bind i (Choices_C_Char j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
-  bind _ c@(Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.bind: Choices with ChoiceID: " ++ (show c))
-  bind _ Fail_C_Char = [Unsolvable]
+  bind i (Choices_C_Char j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind _ c@(Choices_C_Char i _) = error ("Prelude.Char.bind: Choices with ChoiceID: " ++ (show c))
+  bind _ (Fail_C_Char cd info) = [Unsolvable cd info]
   bind i (Guard_C_Char cs e) = getConstrList cs ++ (bind i e)
   lazyBind i (C_Char    x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) (primChar2CurryChar x))]
   lazyBind i (CurryChar x) = [i :=: ChooseN 0 1, leftID i :=: LazyBind (lazyBind (leftID i) x)]
   lazyBind i (Choice_C_Char j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Char j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
+  lazyBind i (Choices_C_Char j@(CovFreeID _ _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Char j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
-  lazyBind _ c@(Choices_C_Char i@(ChoiceID _) _) = error ("Prelude.Char.lazyBind: Choices with ChoiceID: " ++ (show c))
-  lazyBind _ Fail_C_Char = [Unsolvable]
+  lazyBind i (Choices_C_Char j@(CovNarrowedID _ _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind _ c@(Choices_C_Char i _) = error ("Prelude.Char.lazyBind: Choices with ChoiceID: " ++ (show c))
+  lazyBind _ (Fail_C_Char cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_Char cs e) = getConstrList cs ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance Curry C_Char where
   (=?=) (Choice_C_Char i x y) z cs = narrow i ((x =?= z) cs) ((y =?= z) cs)
   (=?=) (Choices_C_Char i xs) y cs = narrows cs i (\x -> (x =?= y) cs) xs
   (=?=) (Guard_C_Char c x) y cs = guardCons c ((x =?= y) (addCs c cs))
-  (=?=) Fail_C_Char _ _ = failCons
+  (=?=) (Fail_C_Char cd info) _ _ = failCons cd info
   (=?=) z (Choice_C_Char i x y) cs = narrow i ((z =?= x) cs) ((z =?= y) cs)
   (=?=) y (Choices_C_Char i xs) cs = narrows cs i (\x -> (y =?= x) cs) xs
   (=?=) y (Guard_C_Char c x) cs = guardCons c ((y =?= x) (addCs c cs))
-  (=?=) _ Fail_C_Char _ = failCons
+  (=?=) _ (Fail_C_Char cd info) _ = failCons cd info
   (=?=) (C_Char x1) (C_Char y1) _ = toCurry (x1 `eqChar#` y1)
   (=?=) (C_Char      x1) (CurryChar y1) cs = ((primChar2CurryChar x1) =?= y1) cs
   (=?=) (CurryChar x1) (C_Char      y1) cs = (x1 =?= (primChar2CurryChar y1)) cs
@@ -457,11 +469,11 @@ instance Curry C_Char where
   (<?=) (Choice_C_Char i x y) z cs = narrow i ((x <?= z) cs) ((y <?= z) cs)
   (<?=) (Choices_C_Char i xs) y cs = narrows cs i (\x -> (x <?= y) cs) xs
   (<?=) (Guard_C_Char c x) y cs = guardCons c ((x <?= y) (addCs c cs))
-  (<?=) Fail_C_Char _ _ = failCons
+  (<?=) (Fail_C_Char cd info) _ _ = failCons cd info
   (<?=) z (Choice_C_Char i x y) cs = narrow i ((z <?= x) cs) ((z <?= y) cs)
   (<?=) y (Choices_C_Char i xs) cs = narrows cs i (\x -> (y <?= x) cs) xs
   (<?=) y (Guard_C_Char c x) cs = guardCons c ((y <?= x) (addCs c cs))
-  (<?=) _ Fail_C_Char _ = failCons
+  (<?=) _ (Fail_C_Char cd info) _ = failCons cd info
   (<?=) (C_Char x1) (C_Char y1) _ = toCurry (x1 `leChar#` y1)
   (<?=) (C_Char      x1) (CurryChar y1) cs = ((primChar2CurryChar x1) `d_C_lteqInteger` y1) cs
   (<?=) (CurryChar x1) (C_Char      y1) cs = (x1 `d_C_lteqInteger` (primChar2CurryChar y1)) cs
@@ -472,7 +484,7 @@ instance Coverable C_Char where
   cover (CurryChar x)         = CurryChar (cover x)
   cover (Choice_C_Char i x y) = Choice_C_Char (coverID i) (cover x) (cover y)
   cover (Choices_C_Char i xs) = Choices_C_Char (coverID i) (map cover xs)
-  cover f@Fail_C_Char         = f
+  cover (Fail_C_Char cd info) = Fail_C_Char (cd + 1) info
   cover (Guard_C_Char cs x)   = Guard_C_Char (coverConstraints cs) (cover x)
 
 
@@ -587,7 +599,7 @@ showsPrec4CurryList d cl =
   showsPrecRaw d (Choice_OP_List i x y) = showsChoice d i x y
   showsPrecRaw d (Choices_OP_List i xs) = showsChoices d i xs
   showsPrecRaw d (Guard_OP_List c e) = showsGuard d c e
-  showsPrecRaw d Fail_OP_List = showChar '!'
+  showsPrecRaw d (Fail_OP_List _ _) = showChar '!'
   showsPrecRaw d OP_List = showString "[]"
   showsPrecRaw d (OP_Cons x xs) =
     showParen (d > 5) (showsPrec 6 x . showChar ':' . showsPrecRaw 5 xs)
@@ -614,7 +626,7 @@ external_d_C_prim_error :: C_String -> ConstStore -> a
 external_d_C_prim_error s _ = error (fromCurry s)
 
 external_d_C_failed :: NonDet a => ConstStore -> a
-external_d_C_failed _ = failCons
+external_d_C_failed _ = failCons 0 defFailInfo
 
 external_d_OP_eq_eq :: Curry a => a -> a -> ConstStore -> C_Bool
 external_d_OP_eq_eq  = (=?=)
@@ -654,7 +666,7 @@ external_d_OP_star x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_OP_star` b) 
 
 external_d_C_quot :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_C_quot (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_C_Int
+  | y ==# 0#  = Fail_C_Int 0 defFailInfo
   | otherwise = C_Int (x `quotInt#` y)
 external_d_C_quot (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_quotInteger` y) cs)
 external_d_C_quot (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_quotInteger` (primint2curryint y)) cs)
@@ -663,7 +675,7 @@ external_d_C_quot x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_C_quot` b) cs
 
 external_d_C_rem :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_C_rem (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_C_Int
+  | y ==# 0#  = Fail_C_Int 0 defFailInfo
   | otherwise = C_Int (x `remInt#` y)
 external_d_C_rem (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_remInteger` y) cs)
 external_d_C_rem (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_remInteger` (primint2curryint y)) cs)
@@ -672,7 +684,7 @@ external_d_C_rem x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_C_rem` b) cs2)
 
 external_d_C_quotRem :: C_Int -> C_Int -> ConstStore -> OP_Tuple2 C_Int C_Int
 external_d_C_quotRem (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_OP_Tuple2
+  | y ==# 0#  = Fail_OP_Tuple2 0 defFailInfo
   | otherwise = OP_Tuple2 (C_Int (x `quotInt#` y)) (C_Int (x `remInt#` y))
 external_d_C_quotRem (C_Int      x) (C_CurryInt y) cs = (mkIntTuple `d_dollar_bang` (((primint2curryint x) `d_C_quotRemInteger` y) cs)) cs
 external_d_C_quotRem (C_CurryInt x) (C_Int      y) cs = (mkIntTuple `d_dollar_bang` ((x `d_C_quotRemInteger` (primint2curryint y)) cs)) cs
@@ -703,7 +715,7 @@ x# `modInt#` y#
 
 external_d_C_div :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_C_div (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_C_Int
+  | y ==# 0#  = Fail_C_Int 0 defFailInfo
   | otherwise = C_Int (x `divInt#` y)
 external_d_C_div (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_divInteger` y) cs)
 external_d_C_div (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_divInteger` (primint2curryint y)) cs)
@@ -712,7 +724,7 @@ external_d_C_div x y cs = ((\a cs1-> ((\b cs2-> ((a `external_d_C_div` b) cs2)) 
 
 external_d_C_mod :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_C_mod (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_C_Int
+  | y ==# 0#  = Fail_C_Int 0 defFailInfo
   | otherwise = C_Int (x `modInt#` y)
 external_d_C_mod (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_modInteger` y) cs)
 external_d_C_mod (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_modInteger` (primint2curryint y)) cs)
@@ -722,7 +734,7 @@ external_d_C_mod x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_C_mod` b)) cs2
 -- TODO: $! instead of $#?
 external_d_C_divMod :: C_Int -> C_Int ->  ConstStore -> OP_Tuple2 C_Int C_Int
 external_d_C_divMod (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_OP_Tuple2
+  | y ==# 0#  = Fail_OP_Tuple2 0 defFailInfo
   | otherwise = OP_Tuple2 (C_Int (x `divInt#` y)) (C_Int (x `modInt#` y))
 external_d_C_divMod (C_Int      x) (C_CurryInt y) cs = (mkIntTuple `d_OP_dollar_hash` (((primint2curryint x) `d_C_divModInteger` y) cs)) cs
 external_d_C_divMod (C_CurryInt x) (C_Int      y) cs = (mkIntTuple `d_OP_dollar_hash` ((x `d_C_divModInteger` (primint2curryint y)) cs)) cs
@@ -771,8 +783,8 @@ external_d_C_catchFail :: C_IO a -> C_IO a -> ConstStore -> C_IO a
 external_d_C_catchFail act err cs = fromIO $ C.catch (toIOWithFailCheck act) handle
   where handle e = hPutStrLn stderr (show (e :: C.SomeException)) >> (toIO err cs)
         toIOWithFailCheck act =
-          case act of Fail_C_IO -> ioError (userError "I/O action failed")
-                      _         -> toIO act cs
+          case act of (Fail_C_IO _ _) -> ioError (userError "I/O action failed")
+                      _               -> toIO act cs
 
 external_d_C_prim_show :: Show a => a -> ConstStore -> C_String
 external_d_C_prim_show a _ = toCurry (show a)
@@ -857,11 +869,11 @@ instance Curry_Prelude.Curry Nat where
   (=?=) (Choice_Nat i x y) z cs = narrow i ((x Curry_Prelude.=?= z) cs) ((y Curry_Prelude.=?= z) cs)
   (=?=) (Choices_Nat i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.=?= y) cs) xs
   (=?=) (Guard_Nat c e) y cs = guardCons c ((e Curry_Prelude.=?= y) (addCs c cs))
-  (=?=) Fail_Nat _ _ = failCons
+  (=?=) (Fail_Nat cd info) _ _ = failCons cd info
   (=?=) z (Choice_Nat i x y) cs = narrow i ((z Curry_Prelude.=?= x) cs) ((z Curry_Prelude.=?= y) cs)
   (=?=) y (Choices_Nat i xs) cs = narrows cs i (\x -> (y Curry_Prelude.=?= x) cs) xs
   (=?=) y (Guard_Nat c e) cs = guardCons c ((y Curry_Prelude.=?= e) (addCs c cs))
-  (=?=) _ Fail_Nat _ = failCons
+  (=?=) _ (Fail_Nat cd info) _ = failCons cd info
   (=?=) IHi IHi cs = Curry_Prelude.C_True
   (=?=) (O x1) (O y1) cs = (x1 Curry_Prelude.=?= y1) cs
   (=?=) (I x1) (I y1) cs = (x1 Curry_Prelude.=?= y1) cs
@@ -869,11 +881,11 @@ instance Curry_Prelude.Curry Nat where
   (<?=) (Choice_Nat i x y) z cs = narrow i ((x Curry_Prelude.<?= z) cs) ((y Curry_Prelude.<?= z) cs)
   (<?=) (Choices_Nat i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.<?= y) cs) xs
   (<?=) (Guard_Nat c e) y cs = guardCons c ((e Curry_Prelude.<?= y) (addCs c cs))
-  (<?=) Fail_Nat _ _ = failCons
+  (<?=) (Fail_Nat cd info) _ _ = failCons cd info
   (<?=) z (Choice_Nat i x y) cs = narrow i ((z Curry_Prelude.<?= x) cs) ((z Curry_Prelude.<?= y) cs)
   (<?=) y (Choices_Nat i xs) cs = narrows cs i (\x -> (y Curry_Prelude.<?= x) cs) xs
   (<?=) y (Guard_Nat c e) cs = guardCons c ((y Curry_Prelude.<?= e) (addCs c cs))
-  (<?=) _ Fail_Nat _ = failCons
+  (<?=) _ (Fail_Nat cd info) _ = failCons cd info
   (<?=) IHi IHi cs = Curry_Prelude.C_True
   (<?=) IHi (O _) _ = Curry_Prelude.C_True
   (<?=) IHi (I _) _ = Curry_Prelude.C_True
@@ -887,11 +899,11 @@ instance Curry_Prelude.Curry BinInt where
   (=?=) (Choice_BinInt i x y) z cs = narrow i ((x Curry_Prelude.=?= z) cs) ((y Curry_Prelude.=?= z) cs)
   (=?=) (Choices_BinInt i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.=?= y) cs) xs
   (=?=) (Guard_BinInt c e) y cs = guardCons c ((e Curry_Prelude.=?= y) (addCs c cs))
-  (=?=) Fail_BinInt _ _ = failCons
+  (=?=) (Fail_BinInt cd info) _ _ = failCons cd info
   (=?=) z (Choice_BinInt i x y) cs = narrow i ((z Curry_Prelude.=?= x) cs) ((z Curry_Prelude.=?= y) cs)
   (=?=) y (Choices_BinInt i xs) cs = narrows cs i (\x -> (y Curry_Prelude.=?= x) cs) xs
   (=?=) y (Guard_BinInt c e) cs = guardCons c ((y Curry_Prelude.=?= e) (addCs c cs))
-  (=?=) _ Fail_BinInt _ = failCons
+  (=?=) _ (Fail_BinInt cd info) _ = failCons cd info
   (=?=) (Neg x1) (Neg y1) cs = (x1 Curry_Prelude.=?= y1) cs
   (=?=) Zero Zero cs = Curry_Prelude.C_True
   (=?=) (Pos x1) (Pos y1) cs = (x1 Curry_Prelude.=?= y1) cs
@@ -899,11 +911,11 @@ instance Curry_Prelude.Curry BinInt where
   (<?=) (Choice_BinInt i x y) z cs = narrow i ((x Curry_Prelude.<?= z) cs) ((y Curry_Prelude.<?= z) cs)
   (<?=) (Choices_BinInt i xs) y cs = narrows cs i (\x -> (x Curry_Prelude.<?= y) cs) xs
   (<?=) (Guard_BinInt c e) y cs = guardCons c ((e Curry_Prelude.<?= y) (addCs c cs))
-  (<?=) Fail_BinInt _ _ = failCons
+  (<?=) (Fail_BinInt cd info) _ _ = failCons cd info
   (<?=) z (Choice_BinInt i x y) cs = narrow i ((z Curry_Prelude.<?= x) cs) ((z Curry_Prelude.<?= y) cs)
   (<?=) y (Choices_BinInt i xs) cs = narrows cs i (\x -> (y Curry_Prelude.<?= x) cs) xs
   (<?=) y (Guard_BinInt c e) cs = guardCons c ((y Curry_Prelude.<?= e) (addCs c cs))
-  (<?=) _ Fail_BinInt _ = failCons
+  (<?=) _ (Fail_BinInt cd info) _ = failCons cd info
   (<?=) (Neg x1) (Neg y1) cs = (x1 Curry_Prelude.<?= y1) cs
   (<?=) (Neg _) Zero _ = Curry_Prelude.C_True
   (<?=) (Neg _) (Pos _) _ = Curry_Prelude.C_True
@@ -922,8 +934,9 @@ d_C_cmpNat x1 x2 x3500 = case x1 of
      (I x8) -> d_OP__casePT_30 x8 x2 x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_cmpNat x1001 x2 x3500) (d_C_cmpNat x1002 x2 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_cmpNat z x2 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_cmpNat x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_C_cmpNat x1001 x2) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_succ :: Nat -> ConstStore -> Nat
 d_C_succ x1 x3500 = case x1 of
@@ -932,8 +945,9 @@ d_C_succ x1 x3500 = case x1 of
      (I x3) -> O (d_C_succ x3 x3500)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_succ x1001 x3500) (d_C_succ x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_succ z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_succ x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_C_succ x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_pred :: Nat -> ConstStore -> Nat
 d_C_pred x1 x3500 = case x1 of
@@ -942,8 +956,9 @@ d_C_pred x1 x3500 = case x1 of
      (I x5) -> O x5
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_pred x1001 x3500) (d_C_pred x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_pred z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_pred x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_C_pred x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_plus_caret :: Nat -> Nat -> ConstStore -> Nat
 d_OP_plus_caret x1 x2 x3500 = case x1 of
@@ -952,8 +967,9 @@ d_OP_plus_caret x1 x2 x3500 = case x1 of
      (I x6) -> d_OP__casePT_26 x6 x2 x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_caret x1001 x2 x3500) (d_OP_plus_caret x1002 x2 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_plus_caret z x2 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_plus_caret x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP_plus_caret x1001 x2) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_minus_caret :: Nat -> Nat -> ConstStore -> BinInt
 d_OP_minus_caret x1 x2 x3500 = case x1 of
@@ -962,8 +978,9 @@ d_OP_minus_caret x1 x2 x3500 = case x1 of
      (I x6) -> d_OP__casePT_24 x6 x2 x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_caret x1001 x2 x3500) (d_OP_minus_caret x1002 x2 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_minus_caret z x2 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_minus_caret x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP_minus_caret x1001 x2) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_mult2 :: BinInt -> ConstStore -> BinInt
 d_C_mult2 x1 x3500 = case x1 of
@@ -972,8 +989,9 @@ d_C_mult2 x1 x3500 = case x1 of
      (Neg x3) -> Neg (O x3)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_mult2 x1001 x3500) (d_C_mult2 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_mult2 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_mult2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_mult2 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_star_caret :: Nat -> Nat -> ConstStore -> Nat
 d_OP_star_caret x1 x2 x3500 = case x1 of
@@ -982,8 +1000,9 @@ d_OP_star_caret x1 x2 x3500 = case x1 of
      (I x4) -> d_OP_plus_caret x2 (O (d_OP_star_caret x4 x2 x3500)) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_star_caret x1001 x2 x3500) (d_OP_star_caret x1002 x2 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_star_caret z x2 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_star_caret x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP_star_caret x1001 x2) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_div2 :: Nat -> ConstStore -> Nat
 d_C_div2 x1 x3500 = case x1 of
@@ -992,8 +1011,9 @@ d_C_div2 x1 x3500 = case x1 of
      (I x3) -> x3
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_div2 x1001 x3500) (d_C_div2 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_div2 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_div2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_C_div2 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_mod2 :: Nat -> ConstStore -> BinInt
 d_C_mod2 x1 x3500 = case x1 of
@@ -1002,8 +1022,9 @@ d_C_mod2 x1 x3500 = case x1 of
      (I x3) -> Pos IHi
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_C_mod2 x1001 x3500) (d_C_mod2 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_mod2 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_C_mod2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_C_mod2 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_quotRemNat :: Nat -> Nat -> ConstStore -> Curry_Prelude.OP_Tuple2 BinInt BinInt
 d_C_quotRemNat x1 x2 x3500 = d_OP__casePT_23 x1 x2 (Curry_Prelude.d_OP_eq_eq x2 IHi x3500) x3500
@@ -1014,8 +1035,9 @@ d_OP_quotRemNat_dot_shift_dot_104 x1 x2 x3500 = case x1 of
      (I x4) -> I x2
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2 x3500) (d_OP_quotRemNat_dot_shift_dot_104 x1002 x2 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemNat_dot_shift_dot_104 z x2 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP_quotRemNat_dot_shift_dot_104 x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP_quotRemNat_dot_shift_dot_104 x1001 x2) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_lteqInteger :: BinInt -> BinInt -> ConstStore -> Curry_Prelude.C_Bool
 d_C_lteqInteger x1 x2 x3500 = Curry_Prelude.d_OP_slash_eq (d_C_cmpInteger x1 x2 x3500) Curry_Prelude.C_GT x3500
@@ -1027,8 +1049,9 @@ d_C_cmpInteger x1 x2 x3500 = case x1 of
      (Neg x8) -> d_OP__casePT_12 x8 x2 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_cmpInteger x1001 x2 x3500) (d_C_cmpInteger x1002 x2 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_cmpInteger z x2 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_cmpInteger x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_cmpInteger x1001 x2) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_neg :: BinInt -> ConstStore -> BinInt
 d_C_neg x1 x3500 = case x1 of
@@ -1037,8 +1060,9 @@ d_C_neg x1 x3500 = case x1 of
      (Neg x3) -> Pos x3
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_neg x1001 x3500) (d_C_neg x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_neg z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_neg x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_neg x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_inc :: BinInt -> ConstStore -> BinInt
 d_C_inc x1 x3500 = case x1 of
@@ -1047,8 +1071,9 @@ d_C_inc x1 x3500 = case x1 of
      (Neg x3) -> d_OP__casePT_11 x3 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_inc x1001 x3500) (d_C_inc x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_inc z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_inc x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_inc x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_dec :: BinInt -> ConstStore -> BinInt
 d_C_dec x1 x3500 = case x1 of
@@ -1057,8 +1082,9 @@ d_C_dec x1 x3500 = case x1 of
      (Neg x5) -> Neg (d_C_succ x5 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_dec x1001 x3500) (d_C_dec x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_dec z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_dec x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_dec x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_plus_hash :: BinInt -> BinInt -> ConstStore -> BinInt
 d_OP_plus_hash x1 x2 x3500 = case x1 of
@@ -1067,8 +1093,9 @@ d_OP_plus_hash x1 x2 x3500 = case x1 of
      (Neg x6) -> d_OP__casePT_8 x1 x6 x2 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_plus_hash x1001 x2 x3500) (d_OP_plus_hash x1002 x2 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_plus_hash z x2 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_plus_hash x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP_plus_hash x1001 x2) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_minus_hash :: BinInt -> BinInt -> ConstStore -> BinInt
 d_OP_minus_hash x1 x2 x3500 = case x2 of
@@ -1077,8 +1104,9 @@ d_OP_minus_hash x1 x2 x3500 = case x2 of
      (Neg x4) -> d_OP_plus_hash x1 (Pos x4) x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_minus_hash x1 x1001 x3500) (d_OP_minus_hash x1 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_minus_hash x1 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_minus_hash x1 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP_minus_hash x1 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_star_hash :: BinInt -> BinInt -> ConstStore -> BinInt
 d_OP_star_hash x1 x2 x3500 = case x1 of
@@ -1087,8 +1115,9 @@ d_OP_star_hash x1 x2 x3500 = case x1 of
      (Neg x6) -> d_OP__casePT_6 x6 x2 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP_star_hash x1001 x2 x3500) (d_OP_star_hash x1002 x2 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_star_hash z x2 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP_star_hash x1001 x2 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP_star_hash x1001 x2) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_quotRemInteger :: BinInt -> BinInt -> ConstStore -> Curry_Prelude.OP_Tuple2 BinInt BinInt
 d_C_quotRemInteger x1 x2 x3500 = case x2 of
@@ -1097,56 +1126,63 @@ d_C_quotRemInteger x1 x2 x3500 = case x2 of
      (Neg x9) -> d_OP__casePT_4 x9 x1 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_quotRemInteger x1 x1001 x3500) (d_C_quotRemInteger x1 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_quotRemInteger x1 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_quotRemInteger x1 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_quotRemInteger x1 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP2_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP2_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP2_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP3_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP3_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP3_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP5_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP5_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP5_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP6_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP6_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP6_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP8_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP8_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP8_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_quotRemInteger_dot___hash_selFP9_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1001 x3500) (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_quotRemInteger_dot___hash_selFP9_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_quotRemInteger_dot___hash_selFP9_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_divModInteger :: BinInt -> BinInt -> ConstStore -> Curry_Prelude.OP_Tuple2 BinInt BinInt
 d_C_divModInteger x1 x2 x3500 = case x2 of
@@ -1155,56 +1191,63 @@ d_C_divModInteger x1 x2 x3500 = case x2 of
      (Neg x11) -> d_OP__casePT_1 x11 x1 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_C_divModInteger x1 x1001 x3500) (d_C_divModInteger x1 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_C_divModInteger x1 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_C_divModInteger x1 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_C_divModInteger x1 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP11_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP11_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP11_hash_d x1001 x3500) (d_OP_divModInteger_dot___hash_selFP11_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP11_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP11_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP11_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP12_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP12_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP12_hash_m x1001 x3500) (d_OP_divModInteger_dot___hash_selFP12_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP12_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP12_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP12_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP14_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP14_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP14_hash_d x1001 x3500) (d_OP_divModInteger_dot___hash_selFP14_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP14_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP14_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP14_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP15_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP15_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP15_hash_m x1001 x3500) (d_OP_divModInteger_dot___hash_selFP15_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP15_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP15_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP15_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP17_hash_d :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP17_hash_d x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x2
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP17_hash_d x1001 x3500) (d_OP_divModInteger_dot___hash_selFP17_hash_d x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP17_hash_d z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP17_hash_d x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP17_hash_d x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP_divModInteger_dot___hash_selFP18_hash_m :: Curry_Prelude.OP_Tuple2 BinInt BinInt -> ConstStore -> BinInt
 d_OP_divModInteger_dot___hash_selFP18_hash_m x1 x3500 = case x1 of
      (Curry_Prelude.OP_Tuple2 x2 x3) -> x3
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP_divModInteger_dot___hash_selFP18_hash_m x1001 x3500) (d_OP_divModInteger_dot___hash_selFP18_hash_m x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP_divModInteger_dot___hash_selFP18_hash_m z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP_divModInteger_dot___hash_selFP18_hash_m x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP_divModInteger_dot___hash_selFP18_hash_m x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_C_divInteger :: BinInt -> BinInt -> ConstStore -> BinInt
 d_C_divInteger x1 x2 x3500 = Curry_Prelude.d_C_fst (d_C_divModInteger x1 x2 x3500) x3500
@@ -1232,8 +1275,9 @@ d_OP__casePT_1 x11 x1 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 x20 (d_C_neg x21 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_1 x11 x1001 x3500) (d_OP__casePT_1 x11 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_1 x11 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_1 x11 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_1 x11 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_1 x11 x1 x3000 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1251,8 +1295,9 @@ nd_OP__casePT_1 x11 x1 x3000 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 x20 (d_C_neg x21 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_1 x11 x1001 x3000 x3500) (nd_OP__casePT_1 x11 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_1 x11 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_1 x11 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_1 x11 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_0 x11 x14 x15 x3500 = case x15 of
      Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x14 x3500) x15
@@ -1260,8 +1305,9 @@ d_OP__casePT_0 x11 x14 x15 x3500 = case x15 of
      (Pos x17) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x14 x3500) x3500) (d_OP_minus_hash x15 (Pos x11) x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_0 x11 x14 x1001 x3500) (d_OP__casePT_0 x11 x14 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_0 x11 x14 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_0 x11 x14 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_0 x11 x14 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_0 x11 x14 x15 x3000 x3500 = case x15 of
      Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x14 x3500) x15
@@ -1269,8 +1315,9 @@ nd_OP__casePT_0 x11 x14 x15 x3000 x3500 = case x15 of
      (Pos x17) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x14 x3500) x3500) (d_OP_minus_hash x15 (Pos x11) x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_0 x11 x14 x1001 x3000 x3500) (nd_OP__casePT_0 x11 x14 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_0 x11 x14 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_0 x11 x14 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_0 x11 x14 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_3 x3 x1 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1282,8 +1329,9 @@ d_OP__casePT_3 x3 x1 x3500 = case x1 of
            in (d_OP__casePT_2 x3 x7 x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_3 x3 x1001 x3500) (d_OP__casePT_3 x3 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_3 x3 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_3 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_3 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_3 x3 x1 x3000 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1297,8 +1345,9 @@ nd_OP__casePT_3 x3 x1 x3000 x3500 = case x1 of
                 in (nd_OP__casePT_2 x3 x7 x8 x2000 x3500)))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_3 x3 x1001 x3000 x3500) (nd_OP__casePT_3 x3 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_3 x3 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_3 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_3 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_2 x3 x7 x8 x3500 = case x8 of
      Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x7 x3500) x8
@@ -1306,8 +1355,9 @@ d_OP__casePT_2 x3 x7 x8 x3500 = case x8 of
      (Pos x10) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x7 x3500) x3500) (d_OP_minus_hash (Pos x3) x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_2 x3 x7 x1001 x3500) (d_OP__casePT_2 x3 x7 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_2 x3 x7 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_2 x3 x7 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_2 x3 x7 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_2 x3 x7 x8 x3000 x3500 = case x8 of
      Zero -> Curry_Prelude.OP_Tuple2 (d_C_neg x7 x3500) x8
@@ -1315,8 +1365,9 @@ nd_OP__casePT_2 x3 x7 x8 x3000 x3500 = case x8 of
      (Pos x10) -> Curry_Prelude.OP_Tuple2 (d_C_neg (d_C_inc x7 x3500) x3500) (d_OP_minus_hash (Pos x3) x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_2 x3 x7 x1001 x3000 x3500) (nd_OP__casePT_2 x3 x7 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_2 x3 x7 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_2 x3 x7 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_2 x3 x7 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_4 x9 x1 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1332,8 +1383,9 @@ d_OP__casePT_4 x9 x1 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 x16 (d_C_neg x17 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_4 x9 x1001 x3500) (d_OP__casePT_4 x9 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_4 x9 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_4 x9 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_4 x9 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_4 x9 x1 x3000 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1349,8 +1401,9 @@ nd_OP__casePT_4 x9 x1 x3000 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 x16 (d_C_neg x17 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_4 x9 x1001 x3000 x3500) (nd_OP__casePT_4 x9 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_4 x9 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_4 x9 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_4 x9 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_5 x3 x1 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1362,8 +1415,9 @@ d_OP__casePT_5 x3 x1 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 (d_C_neg x7 x3500) (d_C_neg x8 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_5 x3 x1001 x3500) (d_OP__casePT_5 x3 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_5 x3 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_5 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_5 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_5 x3 x1 x3000 x3500 = case x1 of
      Zero -> Curry_Prelude.OP_Tuple2 Zero Zero
@@ -1375,8 +1429,9 @@ nd_OP__casePT_5 x3 x1 x3000 x3500 = case x1 of
            in (Curry_Prelude.OP_Tuple2 (d_C_neg x7 x3500) (d_C_neg x8 x3500))
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_5 x3 x1001 x3000 x3500) (nd_OP__casePT_5 x3 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_5 x3 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_5 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_5 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_6 x6 x2 x3500 = case x2 of
      Zero -> Zero
@@ -1384,8 +1439,9 @@ d_OP__casePT_6 x6 x2 x3500 = case x2 of
      (Neg x8) -> Pos (d_OP_star_caret x6 x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_6 x6 x1001 x3500) (d_OP__casePT_6 x6 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_6 x6 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_6 x6 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_6 x6 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_6 x6 x2 x3000 x3500 = case x2 of
      Zero -> Zero
@@ -1393,8 +1449,9 @@ nd_OP__casePT_6 x6 x2 x3000 x3500 = case x2 of
      (Neg x8) -> Pos (d_OP_star_caret x6 x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_6 x6 x1001 x3000 x3500) (nd_OP__casePT_6 x6 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_6 x6 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_6 x6 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_6 x6 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_7 x3 x2 x3500 = case x2 of
      Zero -> Zero
@@ -1402,8 +1459,9 @@ d_OP__casePT_7 x3 x2 x3500 = case x2 of
      (Neg x5) -> Neg (d_OP_star_caret x3 x5 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_7 x3 x1001 x3500) (d_OP__casePT_7 x3 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_7 x3 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_7 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_7 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_7 x3 x2 x3000 x3500 = case x2 of
      Zero -> Zero
@@ -1411,8 +1469,9 @@ nd_OP__casePT_7 x3 x2 x3000 x3500 = case x2 of
      (Neg x5) -> Neg (d_OP_star_caret x3 x5 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_7 x3 x1001 x3000 x3500) (nd_OP__casePT_7 x3 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_7 x3 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_7 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_7 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_8 x1 x6 x2 x3500 = case x2 of
      Zero -> x1
@@ -1420,8 +1479,9 @@ d_OP__casePT_8 x1 x6 x2 x3500 = case x2 of
      (Neg x8) -> Neg (d_OP_plus_caret x6 x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_8 x1 x6 x1001 x3500) (d_OP__casePT_8 x1 x6 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_8 x1 x6 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_8 x1 x6 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_8 x1 x6 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_8 x1 x6 x2 x3000 x3500 = case x2 of
      Zero -> x1
@@ -1429,8 +1489,9 @@ nd_OP__casePT_8 x1 x6 x2 x3000 x3500 = case x2 of
      (Neg x8) -> Neg (d_OP_plus_caret x6 x8 x3500)
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_8 x1 x6 x1001 x3000 x3500) (nd_OP__casePT_8 x1 x6 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_8 x1 x6 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_8 x1 x6 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_8 x1 x6 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_9 x1 x3 x2 x3500 = case x2 of
      Zero -> x1
@@ -1438,8 +1499,9 @@ d_OP__casePT_9 x1 x3 x2 x3500 = case x2 of
      (Neg x5) -> d_OP_minus_caret x3 x5 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_9 x1 x3 x1001 x3500) (d_OP__casePT_9 x1 x3 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_9 x1 x3 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_9 x1 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_9 x1 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_9 x1 x3 x2 x3000 x3500 = case x2 of
      Zero -> x1
@@ -1447,8 +1509,9 @@ nd_OP__casePT_9 x1 x3 x2 x3000 x3500 = case x2 of
      (Neg x5) -> d_OP_minus_caret x3 x5 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_9 x1 x3 x1001 x3000 x3500) (nd_OP__casePT_9 x1 x3 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_9 x1 x3 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_9 x1 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_9 x1 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_10 x2 x3500 = case x2 of
      IHi -> Zero
@@ -1456,8 +1519,9 @@ d_OP__casePT_10 x2 x3500 = case x2 of
      (I x4) -> Pos (O x4)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_10 x1001 x3500) (d_OP__casePT_10 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_10 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_10 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_10 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_10 x2 x3000 x3500 = case x2 of
      IHi -> Zero
@@ -1465,8 +1529,9 @@ nd_OP__casePT_10 x2 x3000 x3500 = case x2 of
      (I x4) -> Pos (O x4)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_10 x1001 x3000 x3500) (nd_OP__casePT_10 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_10 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_10 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_10 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_11 x3 x3500 = case x3 of
      IHi -> Zero
@@ -1474,8 +1539,9 @@ d_OP__casePT_11 x3 x3500 = case x3 of
      (I x5) -> Neg (O x5)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_11 x1001 x3500) (d_OP__casePT_11 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_11 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_11 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_11 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_11 x3 x3000 x3500 = case x3 of
      IHi -> Zero
@@ -1483,8 +1549,9 @@ nd_OP__casePT_11 x3 x3000 x3500 = case x3 of
      (I x5) -> Neg (O x5)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_11 x1001 x3000 x3500) (nd_OP__casePT_11 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_11 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_11 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_11 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_12 x8 x2 x3500 = case x2 of
      Zero -> Curry_Prelude.C_LT
@@ -1492,8 +1559,9 @@ d_OP__casePT_12 x8 x2 x3500 = case x2 of
      (Neg x10) -> d_C_cmpNat x10 x8 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_12 x8 x1001 x3500) (d_OP__casePT_12 x8 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_12 x8 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_12 x8 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_12 x8 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_12 x8 x2 x3000 x3500 = case x2 of
      Zero -> Curry_Prelude.C_LT
@@ -1501,8 +1569,9 @@ nd_OP__casePT_12 x8 x2 x3000 x3500 = case x2 of
      (Neg x10) -> d_C_cmpNat x10 x8 x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_12 x8 x1001 x3000 x3500) (nd_OP__casePT_12 x8 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_12 x8 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_12 x8 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_12 x8 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_13 x5 x2 x3500 = case x2 of
      Zero -> Curry_Prelude.C_GT
@@ -1510,8 +1579,9 @@ d_OP__casePT_13 x5 x2 x3500 = case x2 of
      (Neg x7) -> Curry_Prelude.C_GT
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_13 x5 x1001 x3500) (d_OP__casePT_13 x5 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_13 x5 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_13 x5 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_13 x5 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_13 x5 x2 x3000 x3500 = case x2 of
      Zero -> Curry_Prelude.C_GT
@@ -1519,8 +1589,9 @@ nd_OP__casePT_13 x5 x2 x3000 x3500 = case x2 of
      (Neg x7) -> Curry_Prelude.C_GT
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_13 x5 x1001 x3000 x3500) (nd_OP__casePT_13 x5 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_13 x5 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_13 x5 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_13 x5 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_14 x2 x3500 = case x2 of
      Zero -> Curry_Prelude.C_EQ
@@ -1528,8 +1599,9 @@ d_OP__casePT_14 x2 x3500 = case x2 of
      (Neg x4) -> Curry_Prelude.C_GT
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_14 x1001 x3500) (d_OP__casePT_14 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_14 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_14 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_14 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_14 x2 x3000 x3500 = case x2 of
      Zero -> Curry_Prelude.C_EQ
@@ -1537,16 +1609,18 @@ nd_OP__casePT_14 x2 x3000 x3500 = case x2 of
      (Neg x4) -> Curry_Prelude.C_GT
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_14 x1001 x3000 x3500) (nd_OP__casePT_14 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_14 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_14 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_14 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_23 x1 x2 x3 x3500 = case x3 of
      Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 (Pos x1) Zero
      Curry_Prelude.C_False -> d_OP__casePT_22 x1 x2 (Curry_Prelude.d_OP_eq_eq x1 IHi x3500) x3500
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_23 x1 x2 x1001 x3500) (d_OP__casePT_23 x1 x2 x1002 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_23 x1 x2 z x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (d_OP__casePT_23 x1 x2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((d_OP__casePT_23 x1 x2 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_23 x1 x2 x3 x3000 x3500 = case x3 of
      Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 (Pos x1) Zero
@@ -1555,16 +1629,18 @@ nd_OP__casePT_23 x1 x2 x3 x3000 x3500 = case x3 of
            in (seq x2000 (nd_OP__casePT_22 x1 x2 (Curry_Prelude.d_OP_eq_eq x1 IHi x3500) x2000 x3500))
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_23 x1 x2 x1001 x3000 x3500) (nd_OP__casePT_23 x1 x2 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_23 x1 x2 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (nd_OP__casePT_23 x1 x2 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_23 x1 x2 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_22 x1 x2 x3 x3500 = case x3 of
      Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 Zero (Pos x2)
      Curry_Prelude.C_False -> d_OP__casePT_21 x1 x2 (Curry_Prelude.d_C_otherwise x3500) x3500
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_22 x1 x2 x1001 x3500) (d_OP__casePT_22 x1 x2 x1002 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_22 x1 x2 z x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (d_OP__casePT_22 x1 x2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((d_OP__casePT_22 x1 x2 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_22 x1 x2 x3 x3000 x3500 = case x3 of
      Curry_Prelude.C_True -> Curry_Prelude.OP_Tuple2 Zero (Pos x2)
@@ -1573,16 +1649,18 @@ nd_OP__casePT_22 x1 x2 x3 x3000 x3500 = case x3 of
            in (seq x2000 (nd_OP__casePT_21 x1 x2 (Curry_Prelude.d_C_otherwise x3500) x2000 x3500))
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_22 x1 x2 x1001 x3000 x3500) (nd_OP__casePT_22 x1 x2 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_22 x1 x2 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (nd_OP__casePT_22 x1 x2 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_22 x1 x2 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_21 x1 x2 x3 x3500 = case x3 of
      Curry_Prelude.C_True -> d_OP__casePT_20 x1 x2 (d_C_cmpNat x1 x2 x3500) x3500
      Curry_Prelude.C_False -> Curry_Prelude.d_C_failed x3500
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_21 x1 x2 x1001 x3500) (d_OP__casePT_21 x1 x2 x1002 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_21 x1 x2 z x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (d_OP__casePT_21 x1 x2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((d_OP__casePT_21 x1 x2 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_21 x1 x2 x3 x3000 x3500 = case x3 of
      Curry_Prelude.C_True -> let
@@ -1591,8 +1669,9 @@ nd_OP__casePT_21 x1 x2 x3 x3000 x3500 = case x3 of
      Curry_Prelude.C_False -> Curry_Prelude.d_C_failed x3500
      (Curry_Prelude.Choice_C_Bool x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_21 x1 x2 x1001 x3000 x3500) (nd_OP__casePT_21 x1 x2 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Bool x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_21 x1 x2 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 (nd_OP__casePT_21 x1 x2 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Bool x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_21 x1 x2 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Bool x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_20 x1 x2 x3 x3500 = case x3 of
      Curry_Prelude.C_EQ -> Curry_Prelude.OP_Tuple2 (Pos IHi) Zero
@@ -1600,8 +1679,9 @@ d_OP__casePT_20 x1 x2 x3 x3500 = case x3 of
      Curry_Prelude.C_GT -> d_OP__casePT_19 x1 x2 (d_C_quotRemNat (d_C_div2 x1 x3500) x2 x3500) x3500
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_20 x1 x2 x1001 x3500) (d_OP__casePT_20 x1 x2 x1002 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_20 x1 x2 z x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (d_OP__casePT_20 x1 x2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((d_OP__casePT_20 x1 x2 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_20 x1 x2 x3 x3000 x3500 = case x3 of
      Curry_Prelude.C_EQ -> Curry_Prelude.OP_Tuple2 (Pos IHi) Zero
@@ -1611,15 +1691,17 @@ nd_OP__casePT_20 x1 x2 x3 x3000 x3500 = case x3 of
            in (seq x2000 (nd_OP__casePT_19 x1 x2 (d_C_quotRemNat (d_C_div2 x1 x3500) x2 x3500) x2000 x3500))
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_20 x1 x2 x1001 x3000 x3500) (nd_OP__casePT_20 x1 x2 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_20 x1 x2 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (nd_OP__casePT_20 x1 x2 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_20 x1 x2 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_19 x1 x2 x5 x3500 = case x5 of
      (Curry_Prelude.OP_Tuple2 x3 x4) -> d_OP__casePT_18 x1 x2 x4 x3 x3500
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_19 x1 x2 x1001 x3500) (d_OP__casePT_19 x1 x2 x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_19 x1 x2 z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP__casePT_19 x1 x2 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP__casePT_19 x1 x2 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_19 x1 x2 x5 x3000 x3500 = case x5 of
      (Curry_Prelude.OP_Tuple2 x3 x4) -> let
@@ -1627,8 +1709,9 @@ nd_OP__casePT_19 x1 x2 x5 x3000 x3500 = case x5 of
            in (seq x2000 (nd_OP__casePT_18 x1 x2 x4 x3 x2000 x3500))
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_19 x1 x2 x1001 x3000 x3500) (nd_OP__casePT_19 x1 x2 x1002 x3000 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_19 x1 x2 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (nd_OP__casePT_19 x1 x2 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_19 x1 x2 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_18 x1 x2 x4 x3 x3500 = case x3 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos IHi) (d_OP_minus_caret x1 x2 x3500)
@@ -1636,8 +1719,9 @@ d_OP__casePT_18 x1 x2 x4 x3 x3500 = case x3 of
      (Neg x12) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_18 x1 x2 x4 x1001 x3500) (d_OP__casePT_18 x1 x2 x4 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_18 x1 x2 x4 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_18 x1 x2 x4 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_18 x1 x2 x4 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_18 x1 x2 x4 x3 x3000 x3500 = case x3 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos IHi) (d_OP_minus_caret x1 x2 x3500)
@@ -1647,8 +1731,9 @@ nd_OP__casePT_18 x1 x2 x4 x3 x3000 x3500 = case x3 of
      (Neg x12) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_18 x1 x2 x4 x1001 x3000 x3500) (nd_OP__casePT_18 x1 x2 x4 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_18 x1 x2 x4 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_18 x1 x2 x4 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_18 x1 x2 x4 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_17 x1 x2 x5 x4 x3500 = case x4 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) (d_C_mod2 x1 x3500)
@@ -1656,8 +1741,9 @@ d_OP__casePT_17 x1 x2 x5 x4 x3500 = case x4 of
      (Neg x11) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_17 x1 x2 x5 x1001 x3500) (d_OP__casePT_17 x1 x2 x5 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_17 x1 x2 x5 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_17 x1 x2 x5 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_17 x1 x2 x5 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_17 x1 x2 x5 x4 x3000 x3500 = case x4 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) (d_C_mod2 x1 x3500)
@@ -1667,15 +1753,17 @@ nd_OP__casePT_17 x1 x2 x5 x4 x3000 x3500 = case x4 of
      (Neg x11) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_17 x1 x2 x5 x1001 x3000 x3500) (nd_OP__casePT_17 x1 x2 x5 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_17 x1 x2 x5 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_17 x1 x2 x5 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_17 x1 x2 x5 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_16 x1 x2 x5 x6 x9 x3500 = case x9 of
      (Curry_Prelude.OP_Tuple2 x7 x8) -> d_OP__casePT_15 x5 x8 x7 x3500
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_16 x1 x2 x5 x6 x1001 x3500) (d_OP__casePT_16 x1 x2 x5 x6 x1002 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_16 x1 x2 x5 x6 z x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (d_OP__casePT_16 x1 x2 x5 x6 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((d_OP__casePT_16 x1 x2 x5 x6 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_16 x1 x2 x5 x6 x9 x3000 x3500 = case x9 of
      (Curry_Prelude.OP_Tuple2 x7 x8) -> let
@@ -1683,8 +1771,9 @@ nd_OP__casePT_16 x1 x2 x5 x6 x9 x3000 x3500 = case x9 of
            in (seq x2000 (nd_OP__casePT_15 x5 x8 x7 x2000 x3500))
      (Curry_Prelude.Choice_OP_Tuple2 x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_16 x1 x2 x5 x6 x1001 x3000 x3500) (nd_OP__casePT_16 x1 x2 x5 x6 x1002 x3000 x3500)
      (Curry_Prelude.Choices_OP_Tuple2 x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_16 x1 x2 x5 x6 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 (nd_OP__casePT_16 x1 x2 x5 x6 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_OP_Tuple2 x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_16 x1 x2 x5 x6 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_OP_Tuple2 x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_15 x5 x8 x7 x3500 = case x7 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) x8
@@ -1692,8 +1781,9 @@ d_OP__casePT_15 x5 x8 x7 x3500 = case x7 of
      (Neg x10) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_15 x5 x8 x1001 x3500) (d_OP__casePT_15 x5 x8 x1002 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_15 x5 x8 z x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (d_OP__casePT_15 x5 x8 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((d_OP__casePT_15 x5 x8 x1001) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_15 x5 x8 x7 x3000 x3500 = case x7 of
      Zero -> Curry_Prelude.OP_Tuple2 (Pos (O x5)) x8
@@ -1701,8 +1791,9 @@ nd_OP__casePT_15 x5 x8 x7 x3000 x3500 = case x7 of
      (Neg x10) -> Curry_Prelude.d_C_failed x3500
      (Choice_BinInt x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_15 x5 x8 x1001 x3000 x3500) (nd_OP__casePT_15 x5 x8 x1002 x3000 x3500)
      (Choices_BinInt x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_15 x5 x8 z x3000 x3500) x1001
-     (Guard_BinInt x1000 x1001) -> guardCons x1000 (nd_OP__casePT_15 x5 x8 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_BinInt x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_15 x5 x8 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_BinInt x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_24 x6 x2 x3500 = case x2 of
      IHi -> Pos (O x6)
@@ -1710,8 +1801,9 @@ d_OP__casePT_24 x6 x2 x3500 = case x2 of
      (I x8) -> d_C_mult2 (d_OP_minus_caret x6 x8 x3500) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_24 x6 x1001 x3500) (d_OP__casePT_24 x6 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_24 x6 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_24 x6 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_24 x6 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_24 x6 x2 x3000 x3500 = case x2 of
      IHi -> Pos (O x6)
@@ -1719,8 +1811,9 @@ nd_OP__casePT_24 x6 x2 x3000 x3500 = case x2 of
      (I x8) -> d_C_mult2 (d_OP_minus_caret x6 x8 x3500) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_24 x6 x1001 x3000 x3500) (nd_OP__casePT_24 x6 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_24 x6 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_24 x6 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_24 x6 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_25 x1 x3 x2 x3500 = case x2 of
      IHi -> Pos (d_C_pred x1 x3500)
@@ -1728,8 +1821,9 @@ d_OP__casePT_25 x1 x3 x2 x3500 = case x2 of
      (I x5) -> d_C_dec (d_C_mult2 (d_OP_minus_caret x3 x5 x3500) x3500) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_25 x1 x3 x1001 x3500) (d_OP__casePT_25 x1 x3 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_25 x1 x3 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_25 x1 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_25 x1 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_25 x1 x3 x2 x3000 x3500 = case x2 of
      IHi -> Pos (d_C_pred x1 x3500)
@@ -1737,8 +1831,9 @@ nd_OP__casePT_25 x1 x3 x2 x3000 x3500 = case x2 of
      (I x5) -> d_C_dec (d_C_mult2 (d_OP_minus_caret x3 x5 x3500) x3500) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_25 x1 x3 x1001 x3000 x3500) (nd_OP__casePT_25 x1 x3 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_25 x1 x3 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_25 x1 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_25 x1 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_26 x6 x2 x3500 = case x2 of
      IHi -> O (d_C_succ x6 x3500)
@@ -1746,8 +1841,9 @@ d_OP__casePT_26 x6 x2 x3500 = case x2 of
      (I x8) -> O (d_OP_plus_caret (d_C_succ x6 x3500) x8 x3500)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_26 x6 x1001 x3500) (d_OP__casePT_26 x6 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_26 x6 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_26 x6 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_26 x6 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_26 x6 x2 x3000 x3500 = case x2 of
      IHi -> O (d_C_succ x6 x3500)
@@ -1755,8 +1851,9 @@ nd_OP__casePT_26 x6 x2 x3000 x3500 = case x2 of
      (I x8) -> O (d_OP_plus_caret (d_C_succ x6 x3500) x8 x3500)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_26 x6 x1001 x3000 x3500) (nd_OP__casePT_26 x6 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_26 x6 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_26 x6 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_26 x6 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_27 x3 x2 x3500 = case x2 of
      IHi -> I x3
@@ -1764,8 +1861,9 @@ d_OP__casePT_27 x3 x2 x3500 = case x2 of
      (I x5) -> I (d_OP_plus_caret x3 x5 x3500)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_27 x3 x1001 x3500) (d_OP__casePT_27 x3 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_27 x3 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_27 x3 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_27 x3 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_27 x3 x2 x3000 x3500 = case x2 of
      IHi -> I x3
@@ -1773,8 +1871,9 @@ nd_OP__casePT_27 x3 x2 x3000 x3500 = case x2 of
      (I x5) -> I (d_OP_plus_caret x3 x5 x3500)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_27 x3 x1001 x3000 x3500) (nd_OP__casePT_27 x3 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_27 x3 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_27 x3 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_27 x3 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_28 x2 x3500 = case x2 of
      IHi -> IHi
@@ -1782,8 +1881,9 @@ d_OP__casePT_28 x2 x3500 = case x2 of
      (I x4) -> I (O x4)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_28 x1001 x3500) (d_OP__casePT_28 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_28 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_28 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_28 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_28 x2 x3000 x3500 = case x2 of
      IHi -> IHi
@@ -1791,8 +1891,9 @@ nd_OP__casePT_28 x2 x3000 x3500 = case x2 of
      (I x4) -> I (O x4)
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_28 x1001 x3000 x3500) (nd_OP__casePT_28 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_28 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_28 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_28 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_30 x8 x2 x3500 = case x2 of
      IHi -> Curry_Prelude.C_GT
@@ -1800,8 +1901,9 @@ d_OP__casePT_30 x8 x2 x3500 = case x2 of
      (I x10) -> d_C_cmpNat x8 x10 x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_30 x8 x1001 x3500) (d_OP__casePT_30 x8 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_30 x8 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_30 x8 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_30 x8 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_30 x8 x2 x3000 x3500 = case x2 of
      IHi -> Curry_Prelude.C_GT
@@ -1811,8 +1913,9 @@ nd_OP__casePT_30 x8 x2 x3000 x3500 = case x2 of
      (I x10) -> d_C_cmpNat x8 x10 x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_30 x8 x1001 x3000 x3500) (nd_OP__casePT_30 x8 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_30 x8 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_30 x8 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_30 x8 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_29 x8 x9 x10 x3500 = case x10 of
      Curry_Prelude.C_EQ -> Curry_Prelude.C_GT
@@ -1820,8 +1923,9 @@ d_OP__casePT_29 x8 x9 x10 x3500 = case x10 of
      Curry_Prelude.C_GT -> Curry_Prelude.C_GT
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_29 x8 x9 x1001 x3500) (d_OP__casePT_29 x8 x9 x1002 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_29 x8 x9 z x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (d_OP__casePT_29 x8 x9 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((d_OP__casePT_29 x8 x9 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_29 x8 x9 x10 x3000 x3500 = case x10 of
      Curry_Prelude.C_EQ -> Curry_Prelude.C_GT
@@ -1829,8 +1933,9 @@ nd_OP__casePT_29 x8 x9 x10 x3000 x3500 = case x10 of
      Curry_Prelude.C_GT -> Curry_Prelude.C_GT
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_29 x8 x9 x1001 x3000 x3500) (nd_OP__casePT_29 x8 x9 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_29 x8 x9 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (nd_OP__casePT_29 x8 x9 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_29 x8 x9 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_32 x5 x2 x3500 = case x2 of
      IHi -> Curry_Prelude.C_GT
@@ -1838,8 +1943,9 @@ d_OP__casePT_32 x5 x2 x3500 = case x2 of
      (I x7) -> d_OP__casePT_31 x5 x7 (d_C_cmpNat x5 x7 x3500) x3500
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_32 x5 x1001 x3500) (d_OP__casePT_32 x5 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_32 x5 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_32 x5 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_32 x5 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_32 x5 x2 x3000 x3500 = case x2 of
      IHi -> Curry_Prelude.C_GT
@@ -1849,8 +1955,9 @@ nd_OP__casePT_32 x5 x2 x3000 x3500 = case x2 of
            in (seq x2000 (nd_OP__casePT_31 x5 x7 (d_C_cmpNat x5 x7 x3500) x2000 x3500))
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_32 x5 x1001 x3000 x3500) (nd_OP__casePT_32 x5 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_32 x5 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_32 x5 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_32 x5 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_31 x5 x7 x8 x3500 = case x8 of
      Curry_Prelude.C_EQ -> Curry_Prelude.C_LT
@@ -1858,8 +1965,9 @@ d_OP__casePT_31 x5 x7 x8 x3500 = case x8 of
      Curry_Prelude.C_GT -> Curry_Prelude.C_GT
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_31 x5 x7 x1001 x3500) (d_OP__casePT_31 x5 x7 x1002 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_31 x5 x7 z x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (d_OP__casePT_31 x5 x7 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((d_OP__casePT_31 x5 x7 x1001) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_31 x5 x7 x8 x3000 x3500 = case x8 of
      Curry_Prelude.C_EQ -> Curry_Prelude.C_LT
@@ -1867,8 +1975,9 @@ nd_OP__casePT_31 x5 x7 x8 x3000 x3500 = case x8 of
      Curry_Prelude.C_GT -> Curry_Prelude.C_GT
      (Curry_Prelude.Choice_C_Ordering x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_31 x5 x7 x1001 x3000 x3500) (nd_OP__casePT_31 x5 x7 x1002 x3000 x3500)
      (Curry_Prelude.Choices_C_Ordering x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_31 x5 x7 z x3000 x3500) x1001
-     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 (nd_OP__casePT_31 x5 x7 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Curry_Prelude.Guard_C_Ordering x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_31 x5 x7 x1001 x3000) $! (addCs x1000 x3500))
+     (Curry_Prelude.Fail_C_Ordering x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 d_OP__casePT_33 x2 x3500 = case x2 of
      IHi -> Curry_Prelude.C_EQ
@@ -1876,8 +1985,9 @@ d_OP__casePT_33 x2 x3500 = case x2 of
      (I x4) -> Curry_Prelude.C_LT
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (d_OP__casePT_33 x1001 x3500) (d_OP__casePT_33 x1002 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> d_OP__casePT_33 z x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (d_OP__casePT_33 x1001 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((d_OP__casePT_33 x1001) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo
 
 nd_OP__casePT_33 x2 x3000 x3500 = case x2 of
      IHi -> Curry_Prelude.C_EQ
@@ -1885,5 +1995,6 @@ nd_OP__casePT_33 x2 x3000 x3500 = case x2 of
      (I x4) -> Curry_Prelude.C_LT
      (Choice_Nat x1000 x1001 x1002) -> narrow x1000 (nd_OP__casePT_33 x1001 x3000 x3500) (nd_OP__casePT_33 x1002 x3000 x3500)
      (Choices_Nat x1000 x1001) -> narrows x3500 x1000 (\z -> nd_OP__casePT_33 z x3000 x3500) x1001
-     (Guard_Nat x1000 x1001) -> guardCons x1000 (nd_OP__casePT_33 x1001 x3000 (addCs x1000 x3500))
-     _ -> failCons
+     (Guard_Nat x1000 x1001) -> guardCons x1000 ((nd_OP__casePT_33 x1001 x3000) $! (addCs x1000 x3500))
+     (Fail_Nat x1000 x1001) -> failCons x1000 x1001
+     _ -> failCons 0 defFailInfo

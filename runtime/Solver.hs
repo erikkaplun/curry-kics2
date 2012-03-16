@@ -34,7 +34,7 @@ solve cnstrs val = solve' (getConstrList cnstrs) val
   solve' (c:cs) a = solveOne c a >>- solve' cs
 
 solveOne :: (Store m, NonDet a) => Constraint -> a -> Solution m a
-solveOne Unsolvable _ = noSolution
+solveOne (Unsolvable _ _) _ = noSolution
 solveOne (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
   where
   follow ChooseLeft  = mkSolution $ guardCons (StructConstr lcs) e

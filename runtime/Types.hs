@@ -15,6 +15,8 @@ module Types
 import ConstStore
 import ID
 
+
+
 -- ---------------------------------------------------------------------------
 -- Try structure
 -- ---------------------------------------------------------------------------
@@ -28,7 +30,7 @@ import ID
 -- the search strategies.
 data Try a
   = Val a               -- ^ Value in head normal form (HNF)
-  | Fail                -- ^ Failure
+  | Fail Int FailInfo   -- ^ Failure with covering depth and additional information
   | Choice ID a a       -- ^ Binary choice, introduced by the (?) operator
   | Narrowed ID [a]     -- ^ N-ary choice for narrowed variable
   | Free ID [a]         -- ^ N-ary choice for free variable, where
@@ -73,7 +75,7 @@ class NonDet a where
   -- |Construct a n-ary choice, used for free variables and narrowing
   choicesCons:: ID -> [a] -> a
   -- |Construct a failed computation
-  failCons   :: a
+  failCons   :: Int -> FailInfo -> a
   -- |Construct a constrained value
   guardCons  :: Constraints -> a -> a
   -- |Convert a value into the generic 'Try' structure
@@ -87,7 +89,7 @@ class NonDet a where
   match      :: (ID -> a -> a -> b)     -- ^ Binary Choice
              -> (ID -> [a] -> b)        -- ^ n-ary Choice for narrowed variable
              -> (ID -> [a] -> b)        -- ^ n-ary Choice for free variable
-             -> b                       -- ^ Failure
+             -> (Int -> FailInfo -> b)  -- ^ Failure
              -> (Constraints -> a -> b) -- ^ Constrained value
              -> (a -> b)                -- ^ Head Normal Form
              -> a                       -- ^ value to apply the functions to
@@ -97,7 +99,7 @@ class NonDet a where
 
   match chc nrwd fr fl grd vl x = case try x of
     Val v          -> vl v
-    Fail           -> fl
+    Fail cd info   -> fl cd info
     Choice i x1 x2 -> chc i x1 x2
     Narrowed i xs  -> nrwd i xs
     Free i xs      -> fr i xs
@@ -282,8 +284,8 @@ unifyTry :: Unifiable a => a -> a -> ConstStore -> C_Success
 unifyTry xVal yVal csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF hx, hy
   where
   -- failure
-  unify Fail _    _ = failCons
-  unify  _   Fail _ = failCons
+  unify (Fail cd info) _              _ = failCons cd info
+  unify _              (Fail cd info) _ = failCons cd info
   -- binary choice
   unify (Choice i x1 x2) hy cs = choiceCons i (unify (try x1) hy cs)
                                               (unify (try x2) hy cs)
@@ -399,14 +401,14 @@ data C_Success
      = C_Success
      | Choice_C_Success ID C_Success C_Success
      | Choices_C_Success ID ([C_Success])
-     | Fail_C_Success
+     | Fail_C_Success Int FailInfo
      | Guard_C_Success Constraints C_Success
 
 instance Show C_Success where
   showsPrec d (Choice_C_Success i x y) = showsChoice d i x y
   showsPrec d (Choices_C_Success i xs) = showsChoices d i xs
   showsPrec d (Guard_C_Success cs e) = showsGuard d cs e
-  showsPrec _ Fail_C_Success = showChar '!'
+  showsPrec _ (Fail_C_Success _ _) = showChar '!'
   showsPrec _ C_Success = showString "Success"
 
 instance Read C_Success where
@@ -419,14 +421,14 @@ instance NonDet C_Success where
   guardCons = Guard_C_Success
   try (Choice_C_Success i x y) = tryChoice i x y
   try (Choices_C_Success i xs) = tryChoices i xs
-  try Fail_C_Success = Fail
+  try (Fail_C_Success cd info) = Fail cd info
   try (Guard_C_Success cs e) = Guard cs e
   try x = Val x
   match f _ _ _ _ _ (Choice_C_Success i x y) = f i x y
   match _ f _ _ _ _ (Choices_C_Success i@(NarrowedID _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Success i@(FreeID _ _) xs) = f i xs
   match _ _ _ _ _ _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ Fail_C_Success = f
+  match _ _ _ f _ _ (Fail_C_Success cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Success cs e) = f cs e
   match _ _ _ _ _ f x = f x
 
@@ -438,12 +440,12 @@ instance NormalForm C_Success where
   ($!!) cont (Choice_C_Success i x y) = nfChoice cont i x y
   ($!!) cont (Choices_C_Success i xs) = nfChoices cont i xs
   ($!!) cont (Guard_C_Success c x) = guardCons c (cont $!! x)
-  ($!!) _ Fail_C_Success = failCons
+  ($!!) _    (Fail_C_Success cd info) = failCons cd info
   ($##) cont C_Success = cont C_Success
   ($##) cont (Choice_C_Success i x y) = gnfChoice cont i x y
   ($##) cont (Choices_C_Success i xs) = gnfChoices cont i xs
   ($##) cont (Guard_C_Success c x) = guardCons c (cont $## x)
-  ($##) _ Fail_C_Success = failCons
+  ($##) _    (Fail_C_Success cd info) = failCons cd info
   ($!<) cont C_Success = cont C_Success
   ($!<) cont (Choice_C_Success i x y) = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_Success i xs) = nfChoicesIO cont i xs
@@ -453,34 +455,34 @@ instance NormalForm C_Success where
 
 instance Unifiable C_Success where
   (=.=) C_Success C_Success _ = C_Success
-  (=.=) _ _ _ = Fail_C_Success
+  (=.=) _ _ _ = Fail_C_Success 0 defFailInfo
   (=.<=) C_Success C_Success _ = C_Success
-  (=.<=) _ _ _ = Fail_C_Success
+  (=.<=) _ _ _ = Fail_C_Success 0 defFailInfo
   bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
   bind i (Choice_C_Success j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
   bind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ Fail_C_Success = [Unsolvable]
+  bind _ (Fail_C_Success cd info) = [Unsolvable cd info]
   bind i (Guard_C_Success cs e) = (getConstrList cs) ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
   lazyBind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ Fail_C_Success = [Unsolvable]
+  lazyBind _ (Fail_C_Success cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_Success cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
   constrain i C_Success                = Guard_C_Success (ValConstr i C_Success [i :=: ChooseN 0 0]) C_Success
   constrain i (Choice_C_Success j l r) = constrainChoice i j l r
   constrain i (Choices_C_Success j xs) = constrainChoices i j xs
-  constrain _ Fail_C_Success           = Fail_C_Success
+  constrain _ (Fail_C_Success cd info) = Fail_C_Success cd info
   constrain i (Guard_C_Success cs e)   = constrainGuard i cs e
 
 instance Coverable C_Success where
   cover s@C_Success               = s
   cover (Choice_C_Success i x y)  = Choice_C_Success (coverID i) (cover x) (cover y)
   cover (Choices_C_Success i xs)  = Choices_C_Success (coverID i) (map cover xs)
-  cover f@Fail_C_Success            = f
+  cover (Fail_C_Success cd info)  = Fail_C_Success (cd + 1) info
   cover (Guard_C_Success cs x)    = Guard_C_Success (coverConstraints cs) (cover x)
 -- END GENERATED FROM PrimTypes.curry
 
@@ -499,7 +501,7 @@ instance Read (a -> b) where
 instance NonDet b => NonDet (a -> b) where
   choiceCons    i f g = \ x -> choiceCons  i (f x) (g x)
   choicesCons    i fs = \ x -> choicesCons i (map ($x) fs)
-  failCons            = \ _ -> failCons
+  failCons    cd info = \ _ -> failCons cd info
   guardCons       c f = \ x -> guardCons c (f x)
   try                 = Val
 

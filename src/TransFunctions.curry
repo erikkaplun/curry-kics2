@@ -443,8 +443,10 @@ newBranches qn' vs i pConsName =
              (liftOrs [Var constStoreVarIdx, Var 1000, lCall, Var 1001])
     , Branch (Pattern (mkGuardName typeName) [1000, 1001])
              (liftGuard [Var 1000, guardCall 1000 1001])
+    , Branch (Pattern (mkFailName typeName) [1000, 1001])
+             (liftFail [Var 1000, Var 1001])
     , Branch (Pattern ("", "_") [])
-             liftFail
+             (liftFail [Lit (Intc 0),defFailInfo])
     ] -- TODO Magic numbers?
 
 -- Complete translation of an expression where all newly introduced supply
@@ -694,7 +696,7 @@ float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
 liftGuard   = funcCall (basics, "guardCons")
-liftFail    = funcCall (basics, "failCons") []
+liftFail    = funcCall (basics, "failCons")
 qmark e1 e2 = funcCall (renameQName (prelude, "?")) [e1, e2]
 
 splitSupply = funcCall (basics, "splitSupply")
@@ -703,12 +705,11 @@ leftSupply  = funcCall (basics, "leftSupply")
 rightSupply = funcCall (basics, "rightSupply")
 generate i  = funcCall (basics, "generate") [i]
 
+defFailInfo = funcCall (basics, "defFailInfo") []
+
 -- ---------------------------------------------------------------------------
 -- Helper functions
 -- ---------------------------------------------------------------------------
-
-defaultPragmas :: String
-defaultPragmas = "{-# LANGUAGE MagicHash #-}"
 
 defaultModules :: [String]
 defaultModules = [basics]

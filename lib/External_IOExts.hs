@@ -55,7 +55,7 @@ external_d_C_prim_getAssoc str _ = toCurry
 data C_IORef a
     = Choice_C_IORef ID (C_IORef a) (C_IORef a)
     | Choices_C_IORef ID ([C_IORef a])
-    | Fail_C_IORef
+    | Fail_C_IORef Int FailInfo
     | Guard_C_IORef Constraints (C_IORef a)
     | C_IORef (IORef a)
 
@@ -72,15 +72,17 @@ instance NonDet (C_IORef a) where
   guardCons = Guard_C_IORef
   try (Choice_C_IORef i x y) = tryChoice i x y
   try (Choices_C_IORef s xs) = tryChoices s xs
-  try Fail_C_IORef = Fail
+  try (Fail_C_IORef cd info) = Fail cd info
   try (Guard_C_IORef c e) = Guard c e
   try x = Val x
   match f _ _ _ _ _ (Choice_C_IORef  i x y)                 = f i x y
   match _ f _ _ _ _ (Choices_C_IORef i@(NarrowedID _ _) xs) = f i xs
+  match _ f _ _ _ _ (Choices_C_IORef i@(CovNarrowedID _ _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_IORef i@(FreeID _ _)     xs) = f i xs
-  match _ _ _ _ _ _ (Choices_C_IORef i@(ChoiceID _) _)      =
+  match _ _ f _ _ _ (Choices_C_IORef i@(CovFreeID _ _ _)     xs) = f i xs
+  match _ _ _ _ _ _ (Choices_C_IORef i _)      =
     error ("IOExts.IORef.match: Choices with ChoiceID " ++ show i)
-  match _ _ _ f _ _ Fail_C_IORef                            = f
+  match _ _ _ f _ _ (Fail_C_IORef cd info)                  = f cd info
   match _ _ _ _ f _ (Guard_C_IORef cs e)                    = f cs e
   match _ _ _ _ _ f x                                       = f x
 
@@ -92,12 +94,12 @@ instance NormalForm (C_IORef a) where
   ($!!) cont (Choice_C_IORef i io1 io2) cs = nfChoice cont i io1 io2 cs
   ($!!) cont (Choices_C_IORef i ios)    cs = nfChoices cont i ios cs
   ($!!) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $!! io) (addCs c cs))
-  ($!!) _    Fail_C_IORef               cs = failCons
+  ($!!) _    (Fail_C_IORef cd info)     cs = failCons cd info
   ($##) cont io@(C_IORef _)             cs = cont io cs
   ($##) cont (Choice_C_IORef i io1 io2) cs = gnfChoice cont i io1 io2 cs
   ($##) cont (Choices_C_IORef i ios)    cs = gnfChoices cont i ios cs
   ($##) cont (Guard_C_IORef c io)       cs = guardCons c ((cont $## io) (addCs c cs))
-  ($##) _    Fail_C_IORef               cs = failCons
+  ($##) _    (Fail_C_IORef cd info)     cs = failCons cd info
   ($!<) cont (Choice_C_IORef i x y)     = nfChoiceIO cont i x y
   ($!<) cont (Choices_C_IORef i xs)     = nfChoicesIO cont i xs
   ($!<) cont x                          = cont x
@@ -109,12 +111,12 @@ instance Unifiable (C_IORef a) where
   bind i (Choice_C_IORef j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   bind i (Choices_C_IORef j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
-  bind _ Fail_C_IORef = [Unsolvable]
+  bind _ (Fail_C_IORef cd info) = [Unsolvable cd info]
   bind i (Guard_C_IORef cs e) = (getConstrList cs) ++ (bind i e)
   lazyBind i (Choice_C_IORef j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_IORef j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_IORef j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
-  lazyBind _ Fail_C_IORef = [Unsolvable]
+  lazyBind _ (Fail_C_IORef cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_IORef cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
 instance CP.Curry a => CP.Curry (C_IORef a) where
@@ -124,7 +126,7 @@ instance CP.Curry a => CP.Curry (C_IORef a) where
 instance Coverable (C_IORef a) where
   cover (Choice_C_IORef i x y) = Choice_C_IORef (coverID i) (cover x) (cover y)
   cover (Choices_C_IORef i xs) = Choices_C_IORef (coverID i) (map cover xs)
-  cover f@Fail_C_IORef         = f
+  cover (Fail_C_IORef cd info) = Fail_C_IORef (cd + 1) info
   cover (Guard_C_IORef cs x)   = Guard_C_IORef (coverConstraints cs) (cover x)
   cover r@(C_IORef _)          = r
 
