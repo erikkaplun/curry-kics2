@@ -44,22 +44,38 @@ data C_ValueSequence a = EmptyVS | Values (Curry_Prelude.OP_List a)
 instance Curry_Prelude.Curry (C_ValueSequence a) where
 
 instance Show (C_ValueSequence a) where
+  showsPrec = error "SearchTree: ValueSequence: showsPrec"
 
 instance Read (C_ValueSequence a) where
+  readsPrec = error "SearchTree: ValueSequence: readsPrec"
 
 instance Unifiable (C_ValueSequence a) where
+  (=.=)      = error "SearchTree: ValueSequence: (=.=)"
+  (=.<=)     = error "SearchTree: ValueSequence: (=.<=)"
+  bind       = error "SearchTree: ValueSequence: bind"
+  lazyBind   = error "SearchTree: ValueSequence: lazyBind"
+  constrain  = error "SearchTree: ValueSequence: constrain"
 
 instance NonDet (C_ValueSequence a) where
   choiceCons  = Choice_VS
   choicesCons = Choices_VS
   guardCons   = Guard_VS
+  failCons    = error "SearchTree: ValueSequence: failCons"
+  try        = error "SearchTree: ValueSequence: try" 
+  match      = error "SearchTree: ValueSequence: match" 
 
 instance Generable (C_ValueSequence a) where
+  generate = error "SearchTree: ValueSequence: generate"
 
 instance Coverable (C_ValueSequence a) where
+  cover   = error "SearchTree: ValueSequence: cover"
+  uncover = error "SearchTree: ValueSequence: uncover"
 
 instance NormalForm (C_ValueSequence a) where
-
+ ($!!)    = error "SearchTree: ValueSequence: ($!!)"
+ ($##)    = error "SearchTree: ValueSequence: ($##)"
+ ($!<)    = error "SearchTree: ValueSequence: ($!<)"
+ searchNF = error "SearchTree: ValueSequence: searchNF"
 
 external_d_C_emptyVS :: ConstStore -> C_ValueSequence a
 external_d_C_emptyVS _ = EmptyVS
