@@ -3,7 +3,7 @@
 -- check whether functions are set-valued/nondeterministic, i.e., might
 -- have several results even for ground argument terms.
 --
--- Michael Hanus, March 2005
+-- Michael Hanus, March 2012
 ------------------------------------------------------------------------------
 
 module Nondeterminism(analyseNondeterminism,analyseSetValued) where
@@ -43,7 +43,8 @@ analyseSetValued = analyseWithDependencies isSetValuedDefined or
 -- Is a function f defined to be potentially set-valued, i.e., is the rule
 -- nondeterministic or does it contain extra variables?
 isSetValuedDefined :: FuncDecl -> Bool
-isSetValuedDefined (Func f _ _ _ rule) = f/=("Prelude","failed") && isSetValuedRule rule
+isSetValuedDefined (Func f _ _ _ rule) =
+  f `notElem` [pre "failed",pre "$!!",pre "$##"] && isSetValuedRule rule
 
 isSetValuedRule (Rule _ e) = orInExpr e || extraVarInExpr e
 isSetValuedRule (External _) = False
@@ -60,3 +61,5 @@ extraVarInExpr (Or e1 e2) = extraVarInExpr e1 || extraVarInExpr e2
 extraVarInExpr (Case _  e bs) = extraVarInExpr e || any extraVarInBranch bs
                 where extraVarInBranch (Branch _ be) = extraVarInExpr be
 
+
+pre n = ("Prelude",n)
