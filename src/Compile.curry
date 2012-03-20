@@ -213,6 +213,12 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
     , showDecls m od td fd
     , unlines extdecls
     ]
+ where
+  defaultPragmas :: String
+  defaultPragmas = 
+      "{-# LANGUAGE MagicHash #-}\n"
+   ++ "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
+
 
 -- lookup an external file for a module and return either the content or an
 -- empty String

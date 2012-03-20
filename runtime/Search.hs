@@ -59,7 +59,7 @@ mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO io)           _     = io
-toIO Fail_C_IO           _     = error "toIO: failed"
+toIO (Fail_C_IO _ _)     _     = error "toIO: failed"
 toIO (Choice_C_IO _ _ _) _     = error "toIO: Non-determinism in IO occured"
 toIO (Guard_C_IO cs e)   store = do
   mbSolution <- solve cs e
@@ -170,7 +170,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
     | d <= 0    = indent l k . showChar '_' . nl
     | otherwise = indent l k . case ndVal of
       Val v         -> showString "Val " . shows v . nl
-      Fail          -> showChar '!' . nl
+      Fail _ _      -> showChar '!' . nl
       Choice  i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
       Narrowed i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
       Free     i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
@@ -215,7 +215,7 @@ printValsDFS backTrack cont goal = do
   trace $ "prdfs: " ++ take 200 (show goal)
   match prChoice prNarrowed prFree prFail prGuard prVal goal
   where
-  prFail         = return ()
+  prFail _ _     = return ()
   prVal v        = searchNF (printValsDFS backTrack) cont v
   prChoice i x y = lookupDecision i >>= follow
     where
@@ -311,7 +311,7 @@ searchDFS act goal = do
     trace $ "dfs: " ++ take 200 (show x)
     match dfsChoice dfsNarrowed dfsFree dfsFail dfsGuard dfsVal x
     where
-    dfsFail           = mnil
+    dfsFail _ _       = mnil
     dfsVal v          = searchNF searchDFS cont v
 
     dfsChoice i x1 x2 = lookupDecision i >>= follow
@@ -383,7 +383,7 @@ searchBFS act goal = do
     trace $ "bfs: " ++ take 200 (show x)
     match bfsChoice bfsNarrowed bfsFree bfsFail bfsGuard bfsVal x
     where
-    bfsFail         = reset >> next cont xs ys
+    bfsFail _ _     = reset >> next cont xs ys
     bfsVal v        = (set >> searchNF searchBFS cont v)
                       +++ (reset >> next cont xs ys) -- TODO: Check this!
     bfsChoice i a b = set >> lookupDecision i >>= follow
@@ -478,7 +478,7 @@ startIDS olddepth newdepth act goal = do
     trace $ "ids: " ++ take 200 (show x)
     match idsChoice idsNarrowed idsFree idsFail idsGuard idsVal x
     where
-    idsFail = mnil
+    idsFail _ _ = mnil
     idsVal v | n <= newdepth - olddepth = searchNF (startIDS olddepth n) cont v
              | otherwise                = mnil
 
@@ -571,7 +571,7 @@ searchMSearch x = evalStateT (searchMSearch' return x) (Map.empty :: DecisionMap
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => (a -> m b) -> a -> m b
 searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
   where
-  smpFail         = mzero
+  smpFail cd info = if cd > 0 then szero (cd - 1) info else mzero
   smpVal v        = searchNF searchMSearch' cont v
 
   smpChoice i x y = lookupDecision i >>= follow
@@ -593,7 +593,7 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     (pns,sumF)            = case i of
-      NarrowedID      pns _ -> (pns,msum)
+      NarrowedID      pns _ -> (pns, msum)
       CovNarrowedID 1 pns s -> (pns, ssum (NarrowedID pns s))
       CovNarrowedID n pns s -> (pns, ssum (CovNarrowedID (n - 1) pns s))
       FreeID          pns _ -> (pns, msum)
@@ -601,12 +601,13 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
       CovFreeID     n pns s -> (pns, ssum (CovNarrowedID ( n - 1) pns s))
 
 
-  smpGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
+  smpGuard cs e = maybeSolve >>= \mbSltn -> case mbSltn of
     Nothing      -> mzero
     Just (_, e') -> maybeconstrain (searchMSearch' cont e')
    where
-   cs' = getCoveredConstraints cs
-   maybeconstrain = maybe id constrainMSearch cs'
+   (cov,uncov) = partitionConstraints cs
+   maybeconstrain = maybe id constrainMSearch cov
+   maybeSolve = maybe (mkSolution e) (flip solve e) uncov
 
   processLB i cs xs = decide i NoDecision
                     $ guardCons (StructConstr cs) (choicesCons i xs)

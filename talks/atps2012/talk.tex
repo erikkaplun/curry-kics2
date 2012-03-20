@@ -9,6 +9,7 @@
 \usepackage{agstyle}
 \usepackage{currycode}
 \usepackage{tikz}
+\usepackage{listings}
 
 \newcommand{\ergo}{$\Rightarrow$}
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
@@ -41,74 +42,132 @@
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Functional Logic Programming}
 \begin{itemize}
-\item Was ist FLP?
-\item Nichtdeterminismus => Suchen => Suchstrategien
-\item Curry-Folie
-\item KiCS2-Überblick
-\end{itemize}
-
-\begin{itemize}
-\item KiCS2 is a compiler from Curry to Haskell
-\item Non-determinism is explicitly represented in
-      the data structures
+\item combines features from functional and logic programming
+  \begin{itemize}
+   \item higher-order functions
+   \item demand-driven evaluation
+   \item non-determinism
+   \item logic variables
+  \end{itemize}
+\item search for results
+\item different search strategies
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]%-------------------------------------------------------
+\begin{frame}[fragile]%------------------------------------------------------
 \frametitle{Curry}
+\begin{columns}[t]
+
+\begin{column}{.4\textwidth}
 \begin{itemize}
-\item Überlappende Regeln, Fragezeichen
-\item Freie Variablen
-\item Constraints
+\item functional logic programming language
+\item non-strict semantics
+\item Haskell-like syntax
+\item extended with:
+  \begin{itemize}
+  \item non-determinism through overlapping rules
+  \item free (logic) variables
+  \item constraints and unification
+  \end{itemize}
 \end{itemize}
+\end{column}
+
+\begin{column}{.5\textwidth}
+\begin{curry}%{Example}
+(?) :: a -> a -> a
+x ? _ = x
+_ ? y = y
+
+coin :: Int
+coin = 1 ? 2
+
+(++) :: [a] -> [a] -> [a]
+[] ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+last :: [a] -> a
+last xs | (ys ++ [z]) =:= xs = z
+  where ys, z free
+\end{curry}
+\end{column}
+
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Curry-Implementierungen und Top-Level-Suchen}
-\begin{itemize}
-\item PAKCS: DFS               ; Prolog
-\item MCC  : DFS               ; C
-\item KiCS : DFS, BFS          ; Unsafe Haskell
-\item KiCS2: DFS, BFS, IDS, PAR; Haskell, easily extensible
-\end{itemize}
+\frametitle{Curry implementations} % and their search strategies}
+%Todo Tabelle , Zielsprache, Suchstrategien, extensible
+%     KiCS2 einblenden
+\begin{description}
+\item[PAKCS] translates to Prolog, uses backtracking (DFS)
+\item[MCC]   translates to C, DFS
+\item[KiCS]  translates to unsafe Haskell, DFS and BFS
+\item[KiCS2] translates to Haskell, DFS, BFS, IDS, PAR, easily extensible
+\end{description}
 \end{frame}
 
 \section{Search Strategies}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Darstellung des Suchraums als Datenstruktur in KiCS2}
+\frametitle{Search implementation in KiCS2}
+
 \begin{itemize}
-\item Hinweis auf Laziness
-\item Grafik
-  \begin{itemize}
-  \item Curry-Ausdruck
-  \item Korrespondierer Suchraum
-  \item Evtl. noch Datenstruktur
-  \end{itemize}
+\item based on an explicit representation of the search space
+\item normal form computation lazily evaluates the search tree
+      of an expression
 \end{itemize}
+
+
+\begin{columns}[t]
+\begin{column}{0.45\textwidth}
+\begin{curry}[Curry expression]
+last [T,F] 
+=> ys ++ [z] =:= [T,F] &> z 
+   where ys, z free
+\end{curry}
+\end{column}
+
+\begin{column}{0.45\textwidth}
+\begin{block}{Corresponding search tree}
+\begin{tikzpicture}
+\node (qys)   at (2,4) {$\code{?}^{\code{ys}}$};
+\node (f1)    at (1,3) {$\code{!}$}           ;
+\node (qx)    at (3,3) {$\code{?}^{\code{x}}$} ;
+\node (qxs)   at (2,2) {$\code{?}^{\code{xs}}$};
+\node (f2)    at (4,2) {$\code{!}$}           ;
+\node (qz)    at (1,1) {$\code{?}^{\code{z}}$} ;
+\node (f3)    at (3,1) {$\code{!}$}           ;
+\node (f4)    at (0,0) {$\code{!}$}           ;
+\node (false) at (2,0) {$\code{F}$}           ;
+\draw (qys) -- node[sloped,above]{\tiny{$\code{[]}$}}   (f1)   ;
+\draw (qys) -- node[sloped,above]{\tiny{$\code{x:xs}$}} (qx)   ;
+\draw (qx)  -- node[sloped,above]{\tiny{$\code{T}$}}    (qxs)  ;
+\draw (qx)  -- node[sloped,above]{\tiny{$\code{F}$}}    (f2)   ;
+\draw (qxs) -- node[sloped,above]{\tiny{$\code{[]}$}}   (qz)   ;
+\draw (qxs) -- node[sloped,above]{\tiny{$\code{\_:\_}$}}(f3)   ;
+\draw (qz)  -- node[sloped,above]{\tiny{$\code{T}$}}    (f4)   ;
+\draw (qz)  -- node[sloped,above]{\tiny{$\code{F}$}}    (false);
+\end{tikzpicture}
+\end{block}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Berechnung des Suchraums}
-\begin{itemize}
-\item Normalformberechnung
-\item Call-time-choice durch IDs
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Suchstrategien}
+\frametitle{Search strategies}
 
 \begin{itemize}
-  \item Based on tree representation of search space
-  \item Strategies only extract values
-  \item Available: depth-first, breadth-first, iterative deepening
+  \item based on tree representation of search space
+  \item strategies only extract values from this search tree
+  \item available strategies : depth-first, breadth-first, iterative deepening
 \end{itemize}
 
 \begin{haskell}[SearchTree]
-data SearchTree a = None
-                  | One a
-                  | Choice (SearchTree a) (SearchTree a)
+data SearchTree a
+  = None
+  | One a
+  | Choice (SearchTree a)
+           (SearchTree a)
 \end{haskell}
 
 \begin{haskell}[Depth-first-search using SearchTree]
@@ -121,11 +180,27 @@ allValuesDFS (Choice x y) = allValuesDFS x ++ allValuesDFS y
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
-\frametitle{Nutzung}
+\frametitle{Exploration of search results}
+\begin{haskell}[Interactive Top-Level Search]
+printResults :: [a] -> IO ()
+printResults []     = putStrLn "No more values"
+printResults (x:xs) = do print x
+                         putStr "More values? "
+                         inp <- getLine
+                         if inp == "yes" then printResults xs
+                                         else return ()
+                                         
+getSearchTree exp >>= printResults . allValuesDFS %todo overlay BFS
+\end{haskell}
+
+%todo Folie für BFS
+
+\begin{curryblock}{Encapsulated Search}
 \begin{itemize}
-\item printResults als Beispiel für Top-Level-Suche
-\item Als eingekapselte Suche, SearchTree als Curry-Struktur
+\item search tree available in Curry
+\item allows user-defined search strategies
 \end{itemize}
+\end{curryblock}
 \end{frame}
 
 \section{Benchmarks}
@@ -136,29 +211,32 @@ Program: permutation sort of a list with 15 values
 \begin{center}
 \includegraphics[width=11cm]{gfx/permsort}
 \end{center}
-\begin{itemize}
-\item DFS/eDFS: Overhead durch Suchbaum, Faktor 3
-\item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
-\item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
-\item IDS(+1)/IDS(*2): Overhead durch Gewährleistung von CTC
-\item IDS(*2)/eIDS(*2): Overhead durch Suchbaum, Faktor 1,5
-\item IDS(+1)/eIDS(+1). \todo{Aussage}
-\end{itemize}
+%\begin{itemize}
+%\item DFS/eDFS: Overhead durch Suchbaum, Faktor 3
+%\item $\text{IDS}_{10}^{+1}$ is very slow due to the linear search space
+%\item $\text{eIDS}_{10}^{+1}$ profits from sharing the search tree
+%\item IDS(+1)/IDS(*2): Overhead durch Gewährleistung von CTC
+%\item IDS(*2)/eIDS(*2): Overhead durch Suchbaum, Faktor 1,5
+%\item IDS(+1)/eIDS(+1). \todo{Aussage}
+%\end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: Last}
-Program: halve the Peano number $1600$ by inverting addition
+Program: find the last element of a 10,000 element list
 \begin{center}
 \includegraphics[width=11cm]{gfx/last}
 \end{center}
-
-\todo{Laufzeit von BFS erklären}
+% \todo{Laufzeit von BFS erklären}
 \end{frame}
 
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Benchmark: NDNums}
-\todo{IDS ist voll gut!}
+Program: find 29 in \code{g 0 where g n = g (n+1) ? (n ? g (n+1))}
+\begin{center}
+\includegraphics[width=11cm]{gfx/ndnums}
+\end{center}
+%\todo{IDS ist voll gut!}
 \end{frame}
 
 \section{Conclusion}
@@ -166,12 +244,17 @@ Program: halve the Peano number $1600$ by inverting addition
 \begin{frame}[fragile]%-------------------------------------------------------
 \frametitle{Conclusion}
 
+\begin{block}{KiCS2}
 \begin{itemize}
-\item Vermeidung von (Problemen bei Festlegung auf DFS)
-\item Vorstellung unseres Ansatzes
-\item Erste praktische Ergebnisse
-\item Vollständige Suchstrategien sind eine ernstzunehmende Alternative zu DFS
+% \item Presentation of our approach to search
+\item explicit representation of search space
+\item search strategy selected by user
+\item first practical results
+\item avoid problems arising from the use of a fixed strategy
+\item complete strategies are realistic alternatives to DFS
+\item complete strategies support declarative programming style
 \end{itemize}
+\end{block}
 
 \end{frame}
 
@@ -179,9 +262,10 @@ Program: halve the Peano number $1600$ by inverting addition
 \frametitle{Future Work}
 
 \begin{itemize}
-\item Untersuchung komplexerer Programme (vllt. sogar reale Programme?)
-\item Untersuchung des Speicherverhaltens
-\item Untersuchung weiterer Suchstrategien
+\item analysis of more complex programs
+\item analysis of memory behaviour
+\item analysis of additional (parallel) strategies
+\item program analysis to choose appropriate search strategy
 \end{itemize}
 
 \end{frame}

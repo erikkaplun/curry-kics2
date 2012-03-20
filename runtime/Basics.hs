@@ -79,25 +79,25 @@ matchChar rules cs = matchInteger (map (mapFst ord) rules) cs
 matchInteger :: NonDet a => [(Int, a)] -> BinInt -> ConstStore -> a
 matchInteger rules (Neg nat) cs             =
   matchNat (map (mapFst abs) $ filter ((<0).fst) rules) nat cs
-matchInteger rules Zero _                   = maybe failCons id $ lookup 0 rules
+matchInteger rules Zero _                   = maybe (failCons 0 defFailInfo) id $ lookup 0 rules
 matchInteger rules (Pos nat) cs             = matchNat (filter ((>0).fst) rules) nat cs
 matchInteger rules (Choice_BinInt i l r) cs =
   narrow i (matchInteger rules l cs) (matchInteger rules r cs)
 matchInteger rules (Choices_BinInt i xs) cs =
   narrows cs i (\x -> matchInteger rules x cs) xs
-matchInteger _     Fail_BinInt _            = failCons
+matchInteger _     (Fail_BinInt cd info) _  = failCons cd info
 matchInteger rules (Guard_BinInt c int)  cs = guardCons c (matchInteger rules int $! addCs c cs)
 
 matchNat :: NonDet a => [(Int, a)] -> Nat -> ConstStore -> a
-matchNat []    _  _                 = failCons
-matchNat rules IHi _                = maybe failCons id $ lookup 1 rules
+matchNat []    _  _                 = failCons 0 defFailInfo
+matchNat rules IHi _                = maybe (failCons 0 defFailInfo) id $ lookup 1 rules
 matchNat rules (O nat) cs           = matchNat (map halfKey $ filter (evenPos.fst) rules) nat cs
   where
   evenPos n = even n && (0 < n)
 matchNat rules (I nat) cs            = matchNat (map halfKey $ filter (odd.fst) rules) nat cs
 matchNat rules (Choice_Nat i l r) cs = narrow i (matchNat rules l cs) (matchNat rules r cs)
 matchNat rules (Choices_Nat i xs) cs = narrows cs i (\x -> matchNat rules x cs) xs
-matchNat _     Fail_Nat _            = failCons
+matchNat _     (Fail_Nat cd info) _  = failCons cd info
 matchNat rules (Guard_Nat c nat) cs  = guardCons c $ matchNat rules nat $! addCs c cs
 
 halfKey :: (Int,a) -> (Int,a)
@@ -108,7 +108,7 @@ mapFst f (a, b) = (f a, b)
 
 (&) :: C_Success -> C_Success -> ConstStore -> C_Success
 (&) C_Success                s _  = s
-(&) x@Fail_C_Success         _ _  = x
+(&) x@(Fail_C_Success _ _)   _ _  = x
 (&) (Guard_C_Success c e)    s cs = Guard_C_Success   c ((e & s) $! addCs c cs)
 (&) (Choice_C_Success i a b) s cs = Choice_C_Success  i ((a & s) cs) ((b & s) cs)
 (&) (Choices_C_Success i xs) s cs = Choices_C_Success (narrowID i) (map (\x -> (x & s) cs) xs)

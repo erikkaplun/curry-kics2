@@ -3,9 +3,11 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( -- * Constraints
-    Constraint (..), Constraints(..), getConstrList
-  , coverConstraints, getCoveredConstraints
+  ( -- * FailInfo
+    FailInfo, defFailInfo 
+    -- * Constraints
+  , Constraint (..), Constraints(..), getConstrList
+  , coverConstraints, partitionConstraints
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
@@ -19,10 +21,21 @@ module ID
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
+import Data.List (partition)
 
 import Debug
 import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
 import qualified IDSupply
+
+-- ---------------------------------------------------------------------------
+-- Fail Info
+--  - will eventually collect information about the origin of failures
+-- ---------------------------------------------------------------------------
+
+type FailInfo = ()
+
+defFailInfo :: FailInfo
+defFailInfo = ()
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -33,7 +46,7 @@ data Constraint
   -- |Binding of an 'ID' to a 'Decision'
   = ID :=: Decision
   -- |Unsolvable constraint
-  | Unsolvable
+  | Unsolvable Int FailInfo
   -- |Non-deterministic choice between two lists of constraints
   | ConstraintChoice ID [Constraint] [Constraint]
   -- |Non-deterministic choice between a list of lists of constraints
@@ -46,16 +59,19 @@ coverConstraint (ConstraintChoice i cs1 cs2)
 coverConstraint (ConstraintChoices i css) 
  = ConstraintChoices (coverID i) (map (map coverConstraint) css)
 coverConstraint (i :=: d) = coverID i :=: d 
+coverConstraint (Unsolvable cd info) = Unsolvable (cd + 1) info
 
 uncoverConstraint :: Constraint -> Constraint
 uncoverConstraint (ConstraintChoice i cs1 cs2) = ConstraintChoice (uncoverID i) (map uncoverConstraint cs1)
                                                                                 (map uncoverConstraint cs2)
 uncoverConstraint (ConstraintChoices i css) = ConstraintChoices (uncoverID i) (map (map uncoverConstraint) css)
 uncoverConstraint (i :=: d) = uncoverID i :=: d
+uncoverConstraint (Unsolvable cd info) = Unsolvable (cd - 1) info
 
 isCoveredConstraint (ConstraintChoice i _ _) = isCoveredID i
 isCoveredConstraint (ConstraintChoices i _)  = isCoveredID i
 isCoveredConstraint (i :=: _)                = isCoveredID i
+isCoveredConstraint (Unsolvable cd _)        = cd > 0
 
 -- A Value Constraint is used to bind a Value to an id it also contains the
 -- structural constraint information that describes the choice to be taken
@@ -82,13 +98,17 @@ coverConstraints (StructConstr c) = StructConstr (map coverConstraint c)
 coverConstraints (ValConstr i a c)
   = ValConstr (coverID i) (cover a) (map coverConstraint c)
 
-getCoveredConstraints :: Constraints -> Maybe Constraints
-getCoveredConstraints (ValConstr i a c) 
-  | isCoveredID i = Just $ValConstr (uncoverID i) (uncover a) (map uncoverConstraint c)
-  | otherwise     = Nothing 
-getCoveredConstraints (StructConstr c) = if null constrList then Nothing else (Just (StructConstr constrList))
+partitionConstraints :: Constraints -> (Maybe Constraints,Maybe Constraints)
+partitionConstraints constr@(ValConstr i a c) 
+  | isCoveredID i = (Just $ValConstr (uncoverID i) (uncover a) (map uncoverConstraint c)
+                    , Nothing)
+  | otherwise     = (Nothing, Just constr) 
+partitionConstraints (StructConstr c) = (mkMaybeConstr cov, mkMaybeConstr uncov)
  where
- constrList = map uncoverConstraint (filter isCoveredConstraint c)
+ (cov,uncov) = mapFst (map uncoverConstraint) (partition isCoveredConstraint c)
+ mapFst f (x,y) = (f x, y)
+ mkMaybeConstr [] = Nothing
+ mkMaybeConstr cs = Just (StructConstr cs)
 
 -- ---------------------------------------------------------------------------
 -- Decision
