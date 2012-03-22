@@ -4,7 +4,7 @@
 -- ---------------------------------------------------------------------------
 module ID
   ( -- * FailInfo
-    FailInfo, defFailInfo 
+    FailInfo, defFailInfo
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList
   , coverConstraints, partitionConstraints
@@ -68,8 +68,9 @@ uncoverConstraint (ConstraintChoices i css) = ConstraintChoices (uncoverID i) (m
 uncoverConstraint (i :=: d) = uncoverID i :=: d
 uncoverConstraint (Unsolvable cd info) = Unsolvable (cd - 1) info
 
+isCoveredConstraint :: Constraint -> Bool
 isCoveredConstraint (ConstraintChoice i _ _) = isCoveredID i
-isCoveredConstraint (ConstraintChoices i _)  = isCoveredID i
+isCoveredConstraint (ConstraintChoices  i _) = isCoveredID i
 isCoveredConstraint (i :=: _)                = isCoveredID i
 isCoveredConstraint (Unsolvable cd _)        = cd > 0
 
@@ -142,9 +143,9 @@ instance Eq Decision where
   ChooseLeft  == ChooseLeft  = True
   ChooseRight == ChooseRight = True
   ChooseN c _ == ChooseN d _ = c == d
-  BindTo  _   == BindTo  _   = error "ID.Decision.(==): BindTo"
-  BoundTo _ _ == BoundTo _ _ = error "ID.Decision.(==): BoundTo"
-  LazyBind _  == LazyBind _  = error "ID.Decision.(==): LazyBind"
+  BindTo  _   == BindTo  _   = internalError "ID.Decision.(==): BindTo"
+  BoundTo _ _ == BoundTo _ _ = internalError "ID.Decision.(==): BoundTo"
+  LazyBind _  == LazyBind _  = internalError "ID.Decision.(==): LazyBind"
   _           == _           = False
 
 -- |Default 'Decision'. The default 'Decision' is provided via a function to
@@ -195,8 +196,8 @@ isCoveredID (NarrowedID  _ _)     = False
 
 -- |Retrieve the 'IDSupply' from an 'ID'
 supply :: ID -> IDSupply
-supply (ChoiceID          _) = error "ID.supply: ChoiceID"
-supply (CovChoiceID     _ _) = error "ID.supply: CovChoiceID"
+supply (ChoiceID          _) = internalError "ID.supply: ChoiceID"
+supply (CovChoiceID     _ _) = internalError "ID.supply: CovChoiceID"
 supply (FreeID        _   s) = s
 supply (CovFreeID     _ _ s) = s
 supply (NarrowedID    _   s) = s
@@ -216,8 +217,8 @@ thisID = ChoiceID . unique
 
 -- |Convert a free or narrowed 'ID' into a narrowed one
 narrowID :: ID -> ID
-narrowID (ChoiceID      _) = error "ID.narrowID: ChoiceID"
-narrowID (CovChoiceID _ _) = error "ID.narrowID: CovChoiceID"
+narrowID (ChoiceID      _) = internalError "ID.narrowID: ChoiceID"
+narrowID (CovChoiceID _ _) = internalError "ID.narrowID: CovChoiceID"
 narrowID (FreeID      p s) = NarrowedID p s
 narrowID (CovFreeID d p s) = CovNarrowedID d p s
 narrowID narrowedID      = narrowedID
@@ -226,13 +227,13 @@ narrowID narrowedID      = narrowedID
 leftID :: ID -> ID
 leftID  (FreeID      _ s) = freeID    [] (leftSupply s)
 leftID  (CovFreeID d _ s) = covFreeID d [] (leftSupply s) 
-leftID  _               = error "ID.leftID: no FreeID"
+leftID  _               = internalError "ID.leftID: no FreeID"
 
 -- |Retrieve the right child 'ID' from a free 'ID'
 rightID :: ID -> ID
 rightID (FreeID      _ s) = freeID [] (rightSupply s)
 rightID (CovFreeID d _ s) = covFreeID d [] (rightSupply s)
-rightID  _              = error "ID.rightID: no FreeID"
+rightID  _              = internalError "ID.rightID: no FreeID"
 
 getKey :: ID -> Integer
 getKey = mkInteger . getUnique
@@ -263,12 +264,12 @@ uncoverID (CovNarrowedID d pns s) = CovNarrowedID (d - 1) pns s
 uncoverID i                       = i  
 
 matchIdIgnoreCov :: a -> a -> a -> ID -> a
-matchIdIgnoreCov chV _   _   i@(ChoiceID          _) = chV
-matchIdIgnoreCov chV _   _   i@(CovChoiceID   _   _) = chV
-matchIdIgnoreCov _   frV _   i@(FreeID          _ _) = frV
-matchIdIgnoreCov _   frV _   i@(CovFreeID     _ _ _) = frV
-matchIdIgnoreCov _   _   naV i@(NarrowedID      _ _) = naV
-matchIdIgnoreCov _   _   naV i@(CovNarrowedID _ _ _) = naV
+matchIdIgnoreCov chV _   _   (ChoiceID          _) = chV
+matchIdIgnoreCov chV _   _   (CovChoiceID   _   _) = chV
+matchIdIgnoreCov _   frV _   (FreeID          _ _) = frV
+matchIdIgnoreCov _   frV _   (CovFreeID     _ _ _) = frV
+matchIdIgnoreCov _   _   naV (NarrowedID      _ _) = naV
+matchIdIgnoreCov _   _   naV (CovNarrowedID _ _ _) = naV
 
 
 -- ---------------------------------------------------------------------------
@@ -279,10 +280,10 @@ class Coverable a where
   -- Transformes all identifier of choices in the data-structures
   -- to covered identifiers
   cover :: a -> a
-  cover = error "cover is undefined"
+  cover = internalError "cover is undefined"
   -- Uncovers all identifier of choices in the data-structure
   uncover :: a -> a
-  uncover = error "uncover is undefined"
+  uncover = internalError "uncover is undefined"
 instance Coverable a => Coverable [a] where
   cover = map cover
 
@@ -346,7 +347,7 @@ lookupDecisionID i = getDecisionRaw (getUnique i) >>= unchain
         NoDecision    -> return () --shortenTo lastId
         ChooseN _ num -> propagateBind i j num -- lastId num
         LazyBind _    -> return () --shortenTo lastId
-        _             -> error $ "ID.lookupDecisionID: " ++ show c
+        _             -> internalError $ "ID.lookupDecisionID: " ++ show c
       return retVal
 --       where
 --         shortenTo lastId = when (j /= lastId) $ do
@@ -363,7 +364,7 @@ lookupDecisionID i = getDecisionRaw (getUnique i) >>= unchain
         NoDecision     -> return ()
         ChooseN _ num' -> checkPropagation i j num num'
         LazyBind _     -> return ()
-        _              -> error $ "ID.lookupDecisionID: " ++ show c
+        _              -> internalError $ "ID.lookupDecisionID: " ++ show c
       return retVal
 
     -- For all other choices, there are no chains at all
@@ -454,7 +455,7 @@ resetFreeVar i oldDecision = reset oldDecision i -- (supply i)
   propagate c j (BoundTo _ num) = do
     setDecisionRaw (getUnique j) c
     mapM_ (reset NoDecision) $ nextNIDs j num
-  propagate _ _ _ = error "ID.resetFreeVar.propagate: no binding"
+  propagate _ _ _ = internalError "ID.resetFreeVar.propagate: no binding"
 
 -- Compute a list of the next n free 'ID's for a given 'ID'
 nextNIDs :: ID -> Int -> [ID]
@@ -467,7 +468,7 @@ nextNIDsFromSupply s n = map (freeID []) $ nextSupplies n s
 -- |Compute the next n independent 'IDSupply's for a given 'IDSupply' s
 nextSupplies :: Int -> IDSupply -> [IDSupply]
 nextSupplies n s
-  | n <  0    = error $ "ID.nextNSupplies: " ++ show n
+  | n <  0    = internalError $ "ID.nextNSupplies: " ++ show n
   | n == 0    = []
   | n == 1    = [leftSupply s]
   | otherwise = nextNSupplies' n s

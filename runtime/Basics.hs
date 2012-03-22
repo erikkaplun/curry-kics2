@@ -10,6 +10,7 @@ module Basics
 import Data.Char(ord)
 import GHC.Exts (Int#, Char#, chr#)
 
+import Debug (internalError)
 import PrimTypes
 import Search
 import Types
@@ -26,19 +27,25 @@ nd f a _ cs = f a cs
 acceptCs ::  (b -> c)-> (a -> b) -> a -> ConstStore -> c
 acceptCs cont f x _ = cont (f x)
 
+-- |Wrap a deterministic function to a higher-order-non-deterministic function
 wrapDX :: (c -> b) -> (a -> ConstStore -> c) -> Func a b
 wrapDX wrap f = wrapNX wrap (nd f)
 
+-- |Wrap a non-deterministic function to a higher-order-non-deterministic
+-- function
 wrapNX :: (c -> b) -> (a -> IDSupply -> ConstStore -> c) -> Func a b
 wrapNX wrap f = Func (\a s cs -> wrap $ f a s cs)
 
+-- |Apply a deterministic function
 d_apply :: (a -> ConstStore -> b) -> a -> ConstStore -> b
 d_apply f a cs = f a cs
 
+-- |Apply a higher-order-non-deterministic function
 nd_apply :: NonDet b => Func a b -> a -> IDSupply -> ConstStore -> b
 nd_apply fun a s cs = d_dollar_bang apply fun cs
-  where apply (Func f)  cs' = f a s cs'
-        apply _           _ = error "Basics.nd_apply.apply: no ground term"
+  where
+  apply (Func f) cs' = f a s cs'
+  apply _          _ = internalError "Basics.nd_apply.apply: no ground term"
 
 -- ---------------------------------------------------------------------------
 -- Auxilaries for normalforms
@@ -113,7 +120,7 @@ mapFst f (a, b) = (f a, b)
 (&) (Choice_C_Success i a b) s cs = Choice_C_Success  i ((a & s) cs) ((b & s) cs)
 (&) (Choices_C_Success i xs) s cs = Choices_C_Success (narrowID i) (map (\x -> (x & s) cs) xs)
 
-{- parallel & from Bernd
+{- interleaved (&) from Bernd
 (&) :: C_Success -> C_Success -> C_Success
 (&) C_Success        y = y
 (&) x@Fail_C_Success _ = x

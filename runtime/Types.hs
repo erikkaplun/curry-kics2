@@ -13,9 +13,8 @@ module Types
   ) where
 
 import ConstStore
+import Debug
 import ID
-
-
 
 -- ---------------------------------------------------------------------------
 -- Try structure
@@ -43,7 +42,7 @@ data Try a
 tryChoice :: ID -> a -> a -> Try a
 tryChoice i@(ChoiceID      _) = Choice i
 tryChoice i@(CovChoiceID _ _) = Choice i
-tryChoice _              = error "Basics.tryChoice: no ChoiceID"
+tryChoice _                   = internalError "Basics.tryChoice: no ChoiceID"
 
 -- |Convert a n-ary choice of type a into one of type 'Try' a
 tryChoices :: ID -> [a] -> Try a
@@ -51,7 +50,7 @@ tryChoices i@(FreeID          _ _) = Free     i
 tryChoices i@(CovFreeID     _ _ _) = Free     i
 tryChoices i@(NarrowedID      _ _) = Narrowed i
 tryChoices i@(CovNarrowedID _ _ _) = Narrowed i
-tryChoices i                       = error ("Basics.tryChoices: wrong ID " ++ show i)
+tryChoices i                       = internalError $ "Basics.tryChoices: wrong ID " ++ show i
 
 -- unused because of triviality:
 
@@ -111,19 +110,20 @@ class NonDet a where
 narrow :: NonDet a => ID -> a -> a -> a
 narrow i@(ChoiceID      _) = choiceCons i
 narrow i@(CovChoiceID _ _) = choiceCons i
-narrow _                   = error "Basics.narrow: no ChoiceID"
+narrow _                   = internalError "Basics.narrow: no ChoiceID"
 
 -- |Convert an n-ary choice of a free variable into one with a narrowed variable
 -- |If the varible is bound in either the local or the global constraint store
 -- |the value found in the store is used
 narrows :: NonDet b => ConstStore -> ID -> (a -> b) -> [a] -> b
-narrows cs i@(FreeID        p s) f xs = lookupWithGlobalCs cs i f
-                                   $ choicesCons (NarrowedID p s) (map f xs)
-narrows cs i@(CovFreeID   d p s) f xs = lookupWithGlobalCs cs i f
-                                   $ choicesCons (CovNarrowedID d p s) (map f xs)
+narrows cs i@(FreeID        p s) f xs
+  = lookupWithGlobalCs cs i f $ choicesCons (NarrowedID p s) (map f xs)
+narrows cs i@(CovFreeID   d p s) f xs
+  = lookupWithGlobalCs cs i f $ choicesCons (CovNarrowedID d p s) (map f xs)
 narrows _  i@(NarrowedID      _ _) f xs = choicesCons i (map f xs)
 narrows _  i@(CovNarrowedID _ _ _) f xs = choicesCons i (map f xs)
-narrows _ (ChoiceID _) _ _ = error "Types.narrows: ChoiceID"
+narrows _    (ChoiceID          _) _ _  = internalError "Types.narrows: ChoiceID"
+narrows _    (CovChoiceID     _ _) _ _  = internalError "Types.narrows: CovChoiceID"
 
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
@@ -153,7 +153,7 @@ nfChoice :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> a -> a -
 nfChoice cont i x1 x2 cs = case i of
   ChoiceID      _ -> newChoice
   CovChoiceID _ _ -> newChoice
-  _               -> error "Basics.nfChoice: no ChoiceID"
+  _               -> internalError "Basics.nfChoice: no ChoiceID"
  where newChoice = choiceCons i ((cont $!! x1) cs) ((cont $!! x2) cs)
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
@@ -161,7 +161,7 @@ nfChoice cont i x1 x2 cs = case i of
 nfChoices :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> [a] -> ConstStore -> b
 nfChoices cont i xs cs = matchIdIgnoreCov err freeV narrV i
   where
-   err = error "Basics.nfChoices: ChoiceID"
+   err = internalError "Basics.nfChoices: ChoiceID"
    freeV = cont (choicesCons i xs) cs
    narrV = choicesCons i (map (\x -> (cont $!! x) cs) xs)
 
@@ -170,7 +170,7 @@ nfChoices cont i xs cs = matchIdIgnoreCov err freeV narrV i
 gnfChoice :: (NormalForm a, NonDet b) => (a -> ConstStore -> b) -> ID -> a -> a -> ConstStore -> b
 gnfChoice cont i x1 x2 cs = matchIdIgnoreCov chV err err i
   where chV = choiceCons i ((cont $## x1) cs) ((cont $## x2) cs)
-        err = error "Basics.gnfChoice: no ChoiceID"
+        err = internalError "Basics.gnfChoice: no ChoiceID"
 
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the n alternatives of a n-ary choice.
@@ -180,14 +180,14 @@ gnfChoices cont i xs cs = narrows cs  i (\x -> (cont $## x) cs) xs
 nfChoiceIO :: (NormalForm a) => (a -> IO b) -> ID -> a -> a -> IO b
 nfChoiceIO cont i x1 x2 = matchIdIgnoreCov chV err err i
  where chV = cont $ choiceCons i x1 x2
-       err = error "Basics.nfChoiceIO: no ChoiceID"
+       err = internalError "Basics.nfChoiceIO: no ChoiceID"
 -- nfChoiceIO cont i@(ID _) x1 x2 = do
 --   x1' <- return $!< x1
 --   x2' <- return $!< x2
 --   cont (choiceCons i x1' x2')
 
 nfChoicesIO :: (NormalForm a) => (a -> IO b) -> ID -> [a] -> IO b
-nfChoicesIO _      (ChoiceID _)     _  = error "Basics.nfChoicesIO: ChoiceID"
+nfChoicesIO _      (ChoiceID _)     _  = internalError "Basics.nfChoicesIO: ChoiceID"
 nfChoicesIO cont i@(FreeID _ _) xs = lookupDecisionID i >>= follow
   where
   follow (ChooseN c _, _) = cont $!< (xs !! c)
@@ -195,9 +195,9 @@ nfChoicesIO cont i@(FreeID _ _) xs = lookupDecisionID i >>= follow
     setDecision i NoDecision
     cont (guardCons (StructConstr cs) (choicesCons i xs))
   follow (NoDecision,  _) = cont (choicesCons i xs) -- TODO replace i with j?
-  follow c                = error $ "Basics.nfChoicesIO.follow: " ++ show c
+  follow c                = internalError $ "Basics.nfChoicesIO.follow: " ++ show c
 nfChoicesIO cont i@(NarrowedID  _ _) xs = cont (choicesCons i xs)
-nfChoicesIO _ _ _ = error "Types: nfChoicesIO: Covered ID found"
+nfChoicesIO _ _ _ = internalError "Types: nfChoicesIO: Covered ID found"
 -- nfChoicesIO cont i xs = do
 -- --   ys <- mapM (return $!<) xs
 --   cont (choicesCons i xs)
@@ -236,7 +236,7 @@ constrainChoice i j l r = Choice_C_Success j (constrain i l) (constrain i r)
 
 constrainChoices :: Unifiable a => ID -> ID -> [a] -> C_Success
 constrainChoices i j xs = matchIdIgnoreCov err frV naV j
-  where err = error $ "constrainChoices: " ++ show j
+  where err = internalError $ "constrainChoices: " ++ show j
         frV = Guard_C_Success (ValConstr i xs [i :=: BindTo j]) C_Success
         naV = Choices_C_Success j (map (constrain i) xs)
 
@@ -366,10 +366,10 @@ showsChoice d i@(ChoiceID _) x1 x2
   = showString "(?" . shows i . showChar ' '
   . showsPrec d x1 . showChar ' ' . showsPrec d x2
   . showChar ')'
-showsChoice _ _ _ _ = error "showsChoice with no ChoiceID"
+showsChoice _ _ _ _ = internalError "showsChoice: No ChoiceID"
 
 showsChoices :: Show a => Int -> ID -> [a] -> ShowS
-showsChoices _   (ChoiceID _)     _  = error "showsChoices with ChoiceID"
+showsChoices _   (ChoiceID _)     _  = internalError "showsChoices: ChoiceID"
 showsChoices _ i@(FreeID _ _)     _  = shows i
 showsChoices d i@(NarrowedID _ _) xs
   = showString "[?" . shows i
@@ -427,7 +427,7 @@ instance NonDet C_Success where
   match f _ _ _ _ _ (Choice_C_Success i x y) = f i x y
   match _ f _ _ _ _ (Choices_C_Success i@(NarrowedID _ _) xs) = f i xs
   match _ _ f _ _ _ (Choices_C_Success i@(FreeID _ _) xs) = f i xs
-  match _ _ _ _ _ _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ _ _ _ (Choices_C_Success i@(ChoiceID _) _) = internalError ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
   match _ _ _ f _ _ (Fail_C_Success cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Success cs e) = f cs e
   match _ _ _ _ _ f x = f x
@@ -451,7 +451,7 @@ instance NormalForm C_Success where
   ($!<) cont (Choices_C_Success i xs) = nfChoicesIO cont i xs
   ($!<) cont x = cont x
   searchNF _ cont C_Success = cont C_Success
-  searchNF _ _ x = error ("Prelude.Success.searchNF: no constructor: " ++ (show x))
+  searchNF _ _ x = internalError ("Prelude.Success.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Success where
   (=.=) C_Success C_Success _ = C_Success
@@ -462,14 +462,14 @@ instance Unifiable C_Success where
   bind i (Choice_C_Success j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
   bind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   bind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
-  bind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
+  bind _ (Choices_C_Success i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
   bind _ (Fail_C_Success cd info) = [Unsolvable cd info]
   bind i (Guard_C_Success cs e) = (getConstrList cs) ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind i (Choice_C_Success j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
   lazyBind i (Choices_C_Success j@(FreeID _ _) _) = [(i :=: (BindTo j))]
   lazyBind i (Choices_C_Success j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_C_Success i@(ChoiceID _) _) = error ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _ (Choices_C_Success i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ (Fail_C_Success cd info) = [Unsolvable cd info]
   lazyBind i (Guard_C_Success cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
   constrain i C_Success                = Guard_C_Success (ValConstr i C_Success [i :=: ChooseN 0 0]) C_Success
@@ -493,10 +493,10 @@ instance Coverable C_Success where
 -- Higher Order functions
 instance Show (a -> b) where
   show _ = "<<function>>"
---   show = error "show for function is undefined"
+--   show = internalError "show for function is undefined"
 
 instance Read (a -> b) where
-  readsPrec = error "read for function is undefined"
+  readsPrec = internalError "read for function is undefined"
 
 instance NonDet b => NonDet (a -> b) where
   choiceCons    i f g = \ x -> choiceCons  i (f x) (g x)
@@ -506,7 +506,7 @@ instance NonDet b => NonDet (a -> b) where
   try                 = Val
 
 instance NonDet b => Generable (a -> b) where
-  generate = error "generate for function is undefined"
+  generate = internalError "generate for function is undefined"
 
 instance NonDet b => NormalForm (a -> b) where
   cont $!! f = cont f
@@ -515,10 +515,10 @@ instance NonDet b => NormalForm (a -> b) where
   searchNF _ cont f = cont f
 
 instance NonDet b => Unifiable (a -> b) where
-  (=.=)    = error "(=.=) for function is undefined"
-  (=.<=)   = error "(=.<=) for function is undefined"
-  bind     = error "bind for function is undefined"
-  lazyBind = error "lazyBind for function is undefined"
+  (=.=)    = internalError "(=.=) for function is undefined"
+  (=.<=)   = internalError "(=.<=) for function is undefined"
+  bind     = internalError "bind for function is undefined"
+  lazyBind = internalError "lazyBind for function is undefined"
 
 instance Coverable (a -> b) where
   cover f = f

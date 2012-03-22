@@ -58,13 +58,13 @@ mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
 -- ---------------------------------------------------------------------------
 
 toIO :: C_IO a -> ConstStore -> IO a
-toIO (C_IO io)           _     = io
-toIO (Fail_C_IO _ _)     _     = error "toIO: failed"
-toIO (Choice_C_IO _ _ _) _     = error "toIO: Non-determinism in IO occured"
-toIO (Guard_C_IO cs e)   store = do
+toIO (C_IO           io) _     = io
+toIO (Fail_C_IO     _ _) _     = nondetError "IO action failed"
+toIO (Choice_C_IO _ _ _) _     = nondetError "Non-determinism in IO occured"
+toIO (Guard_C_IO   cs e) store = do
   mbSolution <- solve cs e
   case mbSolution of
-    Nothing       -> error "toIO (Guard): failed"
+    Nothing       -> nondetError "IO action failed"
     Just (_, val) -> do
       -- add the constraint to the global constraint store to make it
       -- available to subsequent operations.
@@ -73,7 +73,7 @@ toIO (Guard_C_IO cs e)   store = do
       toIO val (cs `addCs` store)
 
 -- TODO@fre: lookup value in constraint map and global map?
-toIO (Choices_C_IO   (ChoiceID     _)  _) _  = error "choices with ChoiceID"
+toIO (Choices_C_IO   (ChoiceID     _)  _) _  = internalError "choices with ChoiceID"
 toIO (Choices_C_IO i@(NarrowedID _ _) xs) cs = followToIO i xs cs
 toIO (Choices_C_IO i@(FreeID     _ _) xs) cs = do
   -- bindings of free variables are looked up first in the local
@@ -89,9 +89,9 @@ followToIO i xs store = do
   c <- lookupDecision i
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
-    NoDecision      -> error "toIO (Choices): Non-determinism in IO occured"
+    NoDecision      -> nondetError "Non-determinism in IO occured"
     LazyBind cs   -> toIO (guardCons (StructConstr cs) (choicesCons i xs)) store
-    _             -> error $ "followToIO: " ++ show c
+    _             -> internalError $ "followToIO: " ++ show c
 
 fromIO :: IO a -> C_IO a
 fromIO io = C_IO io
