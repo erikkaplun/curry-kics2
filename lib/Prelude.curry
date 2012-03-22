@@ -18,7 +18,7 @@ infixl 7 *, `div`, `mod`
 infixl 6 +, -
 -- infixr 5 :                          -- declared together with list
 infixr 5 ++
-infix  4 =:=, ==, /=, <, >, <=, >=, =:<=, =:<<=
+infix  4 =:=, ==, /=, <, >, <=, >=, =:<=
 infix  4  `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||
@@ -950,11 +950,11 @@ cond external
 (=:<=) :: a -> a -> Success
 (=:<=) external
 
---- Non-strict equational constraint for linear function patterns.
---- Thus, it must be ensured that the first argument is always (after evalutation
---- by narrowing) a linear pattern. Experimental.
-(=:<<=) :: a -> a -> Success
-(=:<<=) external
+-- --- Non-strict equational constraint for linear function patterns.
+-- --- Thus, it must be ensured that the first argument is always (after evalutation
+-- --- by narrowing) a linear pattern. Experimental.
+-- (=:<<=) :: a -> a -> Success
+-- (=:<<=) external
 
 -- --- internal function to implement =:<=
 -- ifVar :: _ -> a -> a -> a

@@ -795,9 +795,6 @@ external_d_C_cond succ a cs = ((\_ _ -> a) `d_OP_dollar_hash` succ) cs
 external_d_OP_eq_colon_lt_eq :: Curry a => a -> a -> ConstStore -> C_Success
 external_d_OP_eq_colon_lt_eq = (=:<=)
 
-external_d_OP_eq_colon_lt_lt_eq :: Curry a => a -> a -> ConstStore -> C_Success
-external_d_OP_eq_colon_lt_lt_eq = error "external_d_OP_eq_colon_lt_lt_eq"
-
 -- External ND
 -- -----------
 
