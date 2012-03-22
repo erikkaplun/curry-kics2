@@ -123,16 +123,6 @@ CGISERVERFILE=$CGIFILEPATHNAME/$CGIPROG.server
 # unique key for this cgi script:
 CGIKEY="$CGIFILEPATHNAME/$CGIPROG `date '+%m/%d/%y/%H/%M/%S'`"
 
-# generate cgi script:
-rm -f $CGIFILE
-echo "#!/bin/sh" >> $CGIFILE
-if test -n "$LANG" ; then
-  echo "LANG=$LANG" >> $CGIFILE
-  echo "export LANG" >> $CGIFILE
-fi
-echo "$KICS2HOME/www/submitform $SERVERTIMEOUT $LOADBALANCE \"$CGIPROG\" \"$CGIKEY\" \"$CGISERVERFILE\" 2> /dev/null" >> $CGIFILE
-chmod 755 $CGIFILE
-
 # generate server program implementing the cgi script application:
 rm -f $MAINCURRY
 echo "module $MAINMOD($MAINCALL) where" >> $MAINCURRY
@@ -174,6 +164,16 @@ if [ -f $CGISERVERFILE ] ; then
   echo "Stop old version of the server '$CGISERVERFILE'..."
   $KICS2HOME/www/Registry stopscript "$CGISERVERFILE"
 fi
+
+# generate cgi script:
+rm -f $CGIFILE
+echo "#!/bin/sh" >> $CGIFILE
+if test -n "$LANG" ; then
+  echo "LANG=$LANG" >> $CGIFILE
+  echo "export LANG" >> $CGIFILE
+fi
+echo "$KICS2HOME/www/submitform $SERVERTIMEOUT $LOADBALANCE \"$CGIPROG\" \"$CGIKEY\" \"$CGISERVERFILE\" 2> /dev/null" >> $CGIFILE
+chmod 755 $CGIFILE
 
 # move compiled executable to final position:
 mv $STATE $CGISERVERFILE
