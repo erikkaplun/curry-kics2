@@ -250,7 +250,7 @@ readXmlFile file =
 --- If file or parse errors occur, Nothing is returned.
 readUnsafeXmlFile :: String -> IO (Maybe XmlExp)
 readUnsafeXmlFile file =
-  catchFail (readXmlFile file >>= return . Just) (return Nothing)
+  catch (readXmlFile file >>= return . Just) (\_ -> return Nothing)
 
 --- Pretty prints the contents of an XML file.
 showXmlFile :: String -> IO ()

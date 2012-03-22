@@ -97,10 +97,10 @@ updateFile f file = do
 exclusiveIO :: String -> IO a -> IO a
 exclusiveIO lockfile action = do
   system ("lockfile -1 "++lockfile)
-  catchFail (do actionResult <- action
-                system ("rm -f "++lockfile)
-                return actionResult )
-            (system ("rm -f "++lockfile) >> failed)
+  catch (do actionResult <- action
+            system ("rm -f "++lockfile)
+            return actionResult )
+        (\e -> system ("rm -f "++lockfile) >> ioError e)
 
 
 --- Defines a global association between two strings.

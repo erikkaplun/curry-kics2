@@ -57,13 +57,13 @@ doForAllServers cmt action = do
  where
   doForServer (pid,progname,port) = do
     putStrLn $ cmt ++ progname++":\n(pid: "++show pid++", port: "++port++")"
-    catchFail (action (pid,progname,port) >> done) done
+    catch (action (pid,progname,port) >> done) (const done)
 
 cmdForAllServers :: String -> CgiServerMsg -> IO ()
 cmdForAllServers cmt servercmd =
   doForAllServers
     cmt
-    (\ (_,_,port) -> catchFail (runCgiServerCmd port servercmd) done)
+    (\ (_,_,port) -> catch (runCgiServerCmd port servercmd) (const done))
 
 -- Get the registry with active processes and clean up the registry file.
 getAndCleanRegistry :: IO [(Int,String,String)]

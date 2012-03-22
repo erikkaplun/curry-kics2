@@ -413,7 +413,8 @@ browserGUI gstate rmod rtxt names =
   showDoing gp str = setConfig rstatus (Text ("Status: "++str)) gp
 
   -- Execute an I/O action safely, i.e., catch all errors and failures:
-  safeIO gp act = catchFail act (putMainMessage gp "Failure occurred!")
+  safeIO gp act =
+    catch act (\e -> putMainMessage gp ("Failure occurred: "++showError e))
 
   -- click on a module name in left module column:
   selmod gp =

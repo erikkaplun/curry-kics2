@@ -141,17 +141,17 @@ cgiInteractiveScript portname = do
   cgiServerEnvVals <- mapIO getEnviron cgiServerEnvVars
   let cgiServerEnv = zip cgiServerEnvVars cgiServerEnvVals
   formEnv <- getFormVariables
-  catchFail (sendToServerAndPrintOrFail cgiServerEnv formEnv)
-            (putStrLn errorPage)
+  catch (sendToServerAndPrintOrFail cgiServerEnv formEnv)
+        (putStrLn . errorPage)
  where
   sendToServerAndPrintOrFail cgiEnviron newcenv = do
     h <- trySendScriptServerMessage portname (CgiSubmit cgiEnviron newcenv)
     hPutStrAndClose h
 
-  errorPage =
+  errorPage e =
     "Content-type: text/html\n\n" ++
     "<html>\n<head><title>Server Error</title></head>\n" ++
-    "<body>\n<h1>Server Error</h1>\n</body>\n</html>"
+    "<body>\n<h1>Server Error</h1>\n" ++ showError e ++ "</body>\n</html>"
 
 
 -- Forward user inputs to cgi server process:
@@ -165,15 +165,15 @@ cgiScript url serverargs loadbalance portname serverprog = do
    then do -- call to initial script
      scriptKey <- if loadbalance==Multiple then getFreshKey
                                            else return ""
-     catchFail (submitToServerOrStart url serverargs loadbalance portname
+     catch (submitToServerOrStart url serverargs loadbalance portname
                                       scriptKey serverprog cgiServerEnv)
-               (putStrLn (noHandlerPage url urlparam))
+           (\_ -> putStrLn (noHandlerPage url urlparam))
    else do -- call to continuation script
      let scriptKey = maybe "" id (lookup "SCRIPTKEY" formEnv)
          cgiEnviron = ("SCRIPTKEY",scriptKey) : cgiServerEnv
          newcenv = filter (\e -> fst e /= "SCRIPTKEY") formEnv
-     catchFail (sendToServerAndPrintOrFail scriptKey cgiEnviron newcenv)
-               (putStrLn (noHandlerPage url urlparam))
+     catch (sendToServerAndPrintOrFail scriptKey cgiEnviron newcenv)
+           (\_ -> putStrLn (noHandlerPage url urlparam))
  where
   sendToServerAndPrintOrFail scriptKey cgiEnviron newcenv = do
     h <- trySendScriptServerMessage (portname++scriptKey) 
