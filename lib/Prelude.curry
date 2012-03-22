@@ -700,20 +700,28 @@ getLine           = do c <- getChar
 --- Currently, it contains only an error message as a string,
 --- but it might be extended in the future to distinguish
 --- various error situations.
-data IOError = IOError String
+data IOError
+  = UserError   String -- user-specified error
+  | FailError   String -- failing computation
+  | NondetError String -- non-deterministic computation
 
 --- A user error value is created by providing a description of the
 --- error situation as a string.
 userError :: String -> IOError
-userError s = IOError s
+userError s = UserError s
 
 --- Raises an I/O exception with a given error value.
 ioError :: IOError -> IO _
-ioError (IOError s) = error s
+ioError err = prim_ioError $## err
+
+prim_ioError :: IOError -> IO _
+prim_ioError external
 
 --- Shows an error values as a string.
 showError :: IOError -> String
-showError (IOError s) = s
+showError (UserError   s) = "user error: "   ++ s
+showError (FailError   s) = "fail error: "   ++ s
+showError (NondetError s) = "nondet error: " ++ s
 
 --- Catches a possible error or failure during the execution of an
 --- I/O action. <code>(catch act errfun)</code> executes the I/O action
@@ -722,14 +730,6 @@ showError (IOError s) = s
 --- to the error value.
 catch :: IO a -> (IOError -> IO a) -> IO a
 catch external
-
---- Catches a possible failure during the execution of an I/O action.
---- <code>(catchFail act err)</code>:
---- apply action <code>act</code> and, if it fails or raises an exception,
---- print a corresponding error message and apply action <code>err</code>.
-catchFail         :: IO a -> IO a -> IO a
-catchFail external
-
 
 --- Converts an arbitrary term into an external string representation.
 show    :: _ -> String

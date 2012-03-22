@@ -8,6 +8,7 @@ import Data.List (intercalate)
 import qualified Data.Map as Map
 
 import Debug
+import Exception
 import PrimTypes -- for C_IO
 import MonadList
 import Solver
@@ -59,12 +60,12 @@ mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
 
 toIO :: C_IO a -> ConstStore -> IO a
 toIO (C_IO           io) _     = io
-toIO (Fail_C_IO     _ _) _     = nondetError "IO action failed"
-toIO (Choice_C_IO _ _ _) _     = nondetError "Non-determinism in IO occured"
+toIO (Fail_C_IO     _ _) _     = throwFail "IO action failed"
+toIO (Choice_C_IO _ _ _) _     = throwNondet "Non-determinism in IO occured"
 toIO (Guard_C_IO   cs e) store = do
   mbSolution <- solve cs e
   case mbSolution of
-    Nothing       -> nondetError "IO action failed"
+    Nothing       -> throwFail "IO action failed"
     Just (_, val) -> do
       -- add the constraint to the global constraint store to make it
       -- available to subsequent operations.
@@ -89,7 +90,7 @@ followToIO i xs store = do
   c <- lookupDecision i
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
-    NoDecision      -> nondetError "Non-determinism in IO occured"
+    NoDecision      -> throwNondet "Non-determinism in IO occured"
     LazyBind cs   -> toIO (guardCons (StructConstr cs) (choicesCons i xs)) store
     _             -> internalError $ "followToIO: " ++ show c
 

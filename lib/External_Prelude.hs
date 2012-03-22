@@ -11,6 +11,7 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 import System.IO
 
 import Debug
+import Exception
 import PrimTypes
 
 -- ---------------------------------------------------------------------------
@@ -624,9 +625,6 @@ external_d_C_ensureNotFree x cs =
     Guard c e    -> guardCons c (external_d_C_ensureNotFree e (addCs c cs))
     _            -> x
 
-external_d_C_prim_error :: C_String -> ConstStore -> a
-external_d_C_prim_error s _ = error (fromCurry s)
-
 external_d_C_failed :: NonDet a => ConstStore -> a
 external_d_C_failed _ = failCons 0 defFailInfo
 
@@ -799,23 +797,33 @@ external_nd_OP_gt_gt_eq m f s cs = fromIO $ do
  let cs2 = combineCs cs cs1
  toIO (nd_apply f x s cs2) cs2
 
-instance ConvertCurryHaskell C_IOError C.IOException where
-  toCurry                 = C_IOError . toCurry . show
+-- Exception handling
 
-  fromCurry (C_IOError s) = userError $ fromCurry s
-  fromCurry _             = internalError "non-deterministic IOError"
+instance ConvertCurryHaskell C_IOError CurryException where
+  toCurry (UserException   s) = C_UserError   (toCurry s)
+  toCurry (FailException   s) = C_FailError   (toCurry s)
+  toCurry (NondetException s) = C_NondetError (toCurry s)
+
+  fromCurry (C_UserError   s) = UserException   $ fromCurry s
+  fromCurry (C_FailError   s) = FailException   $ fromCurry s
+  fromCurry (C_NondetError s) = NondetException $ fromCurry s
+  fromCurry _                 = internalError "non-deterministic IOError"
+
+external_d_C_prim_error :: C_String -> ConstStore -> a
+external_d_C_prim_error s _ = C.throw $ UserException (fromCurry s)
+
+external_d_C_prim_ioError :: C_IOError -> ConstStore -> C_IO a
+external_d_C_prim_ioError e _ = C.throw $ (fromCurry e :: CurryException)
 
 external_d_C_catch :: C_IO a -> (C_IOError -> ConstStore -> C_IO a) -> ConstStore -> C_IO a
 external_d_C_catch act hndl cs = fromIO $ C.catch (toIO act cs) handle
-  where handle e = toIO (hndl (toCurry (e :: C.IOException)) cs) cs
+  where handle e = toIO (hndl (toCurry (e :: CurryException)) cs) cs
 
 external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> ConstStore -> C_IO a
 external_nd_C_catch act hndl s cs = fromIO $ C.catch (toIO act cs) handle
-  where handle e = toIO (nd_apply hndl (toCurry (e :: C.IOException)) s cs) cs
+  where handle e = toIO (nd_apply hndl (toCurry (e :: CurryException)) s cs) cs
 
-external_d_C_catchFail :: C_IO a -> C_IO a -> ConstStore -> C_IO a
-external_d_C_catchFail act err cs = fromIO $ C.catch (toIO act cs) handle
-  where handle e = hPutStrLn stderr (show (e :: C.IOException)) >> toIO err cs
+-- other stuff
 
 external_d_C_prim_show :: Show a => a -> ConstStore -> C_String
 external_d_C_prim_show a _ = toCurry (show a)

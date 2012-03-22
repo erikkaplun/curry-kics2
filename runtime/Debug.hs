@@ -1,8 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fforce-recomp #-}
-module Debug (internalError, nondetError, trace) where
-
-import Control.Exception (throw)
+module Debug  where
 
 trace :: String -> IO ()
 #ifdef DEBUG
@@ -13,6 +11,3 @@ trace _   = return ()
 
 internalError :: String -> a
 internalError = error . ("Internal error: " ++)
-
-nondetError :: String -> a
-nondetError = throw . userError
