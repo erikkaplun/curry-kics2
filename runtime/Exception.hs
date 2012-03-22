@@ -11,7 +11,8 @@ throwNondet :: String -> a
 throwNondet = throw . NondetException
 
 data CurryException
-  = UserException     String
+  = IOException       String
+  | UserException     String
   | FailException     String
   | NondetException   String
   deriving (Show, Typeable)

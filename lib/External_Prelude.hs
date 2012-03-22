@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, MagicHash, MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns, MagicHash, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 import qualified Control.Exception as C
 
@@ -800,10 +800,12 @@ external_nd_OP_gt_gt_eq m f s cs = fromIO $ do
 -- Exception handling
 
 instance ConvertCurryHaskell C_IOError CurryException where
+  toCurry (IOException     s) = C_IOError     (toCurry s)
   toCurry (UserException   s) = C_UserError   (toCurry s)
   toCurry (FailException   s) = C_FailError   (toCurry s)
   toCurry (NondetException s) = C_NondetError (toCurry s)
 
+  fromCurry (C_IOError     s) = IOException     $ fromCurry s
   fromCurry (C_UserError   s) = UserException   $ fromCurry s
   fromCurry (C_FailError   s) = FailException   $ fromCurry s
   fromCurry (C_NondetError s) = NondetException $ fromCurry s
@@ -816,12 +818,18 @@ external_d_C_prim_ioError :: C_IOError -> ConstStore -> C_IO a
 external_d_C_prim_ioError e _ = C.throw $ (fromCurry e :: CurryException)
 
 external_d_C_catch :: C_IO a -> (C_IOError -> ConstStore -> C_IO a) -> ConstStore -> C_IO a
-external_d_C_catch act hndl cs = fromIO $ C.catch (toIO act cs) handle
-  where handle e = toIO (hndl (toCurry (e :: CurryException)) cs) cs
+external_d_C_catch act hndl cs = fromIO $ C.catches (toIO act cs) handlers
+  where handlers = exceptionHandlers cs (\e -> hndl e cs)
 
 external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> ConstStore -> C_IO a
-external_nd_C_catch act hndl s cs = fromIO $ C.catch (toIO act cs) handle
-  where handle e = toIO (nd_apply hndl (toCurry (e :: CurryException)) s cs) cs
+external_nd_C_catch act hndl s cs = fromIO $ C.catches (toIO act cs) handlers
+  where handlers = exceptionHandlers cs (\e -> nd_apply hndl e s cs)
+
+exceptionHandlers :: ConstStore -> (C_IOError -> C_IO a) -> [C.Handler a]
+exceptionHandlers cs hndl =
+  [ C.Handler (\ (e :: CurryException) -> toIO (hndl $ toCurry         e) cs)
+  , C.Handler (\ (e ::  C.IOException) -> toIO (hndl $ fromIOException e) cs)
+  ] where fromIOException = toCurry . IOException . show
 
 -- other stuff
 

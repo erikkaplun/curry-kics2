@@ -701,7 +701,8 @@ getLine           = do c <- getChar
 --- but it might be extended in the future to distinguish
 --- various error situations.
 data IOError
-  = UserError   String -- user-specified error
+  = IOError     String -- normal IO error
+  | UserError   String -- user-specified error
   | FailError   String -- failing computation
   | NondetError String -- non-deterministic computation
 
