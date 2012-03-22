@@ -4,11 +4,13 @@ import qualified Control.Exception as C
 
 -- ATTENTION: Do not introduce line breaks in import declarations as these
 -- are not recognized!
-import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#), (+#), (-#), (*#), quotInt#, remInt#, negateInt#)
+import GHC.Exts (Int (I#), Int#, (==#), (/=#), (<#), (>#), (<=#))
+import GHC.Exts ((+#), (-#), (*#), quotInt#, remInt#, negateInt#)
 import GHC.Exts (Float (F#), Float#, eqFloat#, leFloat#, negateFloat#)
 import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 import System.IO
 
+import Debug
 import PrimTypes
 
 -- ---------------------------------------------------------------------------
@@ -634,6 +636,7 @@ external_d_OP_eq_eq  = (=?=)
 external_d_OP_lt_eq :: Curry a => a -> a -> ConstStore -> C_Bool
 external_d_OP_lt_eq = (<?=)
 
+-- characters
 
 external_d_C_prim_ord :: C_Char -> ConstStore -> C_Int
 external_d_C_prim_ord (C_Char c)    _ = C_Int (ord# c)
@@ -642,6 +645,8 @@ external_d_C_prim_ord (CurryChar c) _ = C_CurryInt c
 external_d_C_prim_chr :: C_Int -> ConstStore -> C_Char
 external_d_C_prim_chr (C_Int i)      _ = C_Char (chr# i)
 external_d_C_prim_chr (C_CurryInt i) _ = CurryChar i
+
+-- int arithmetics
 
 external_d_OP_plus :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_OP_plus (C_Int      x) (C_Int      y) _  = C_Int (x +# y)
@@ -691,9 +696,16 @@ external_d_C_quotRem (C_CurryInt x) (C_Int      y) cs = (mkIntTuple `d_dollar_ba
 external_d_C_quotRem (C_CurryInt x) (C_CurryInt y) cs = (mkIntTuple `d_dollar_bang` ((x `d_C_quotRemInteger` y) cs)) cs
 external_d_C_quotRem x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_C_quotRem` b) cs2)) `d_OP_dollar_hash` y) cs1) `d_OP_dollar_hash` x) cs
 
--- ---------------------------------------------------------------------------
--- PrimOps taken from GHC.Base
--- ---------------------------------------------------------------------------
+external_d_C_div :: C_Int -> C_Int -> ConstStore -> C_Int
+external_d_C_div (C_Int      x) (C_Int      y) _
+  | y ==# 0#  = Fail_C_Int 0 defFailInfo
+  | otherwise = C_Int (x `divInt#` y)
+external_d_C_div (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_divInteger` y) cs)
+external_d_C_div (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_divInteger` (primint2curryint y)) cs)
+external_d_C_div (C_CurryInt x) (C_CurryInt y) cs = C_CurryInt ((x `d_C_divInteger` y) cs)
+external_d_C_div x y cs = ((\a cs1-> ((\b cs2-> ((a `external_d_C_div` b) cs2)) `d_OP_dollar_hash` y) cs1) `d_OP_dollar_hash` x) cs
+
+-- PrimOp taken from GHC.Base
 divInt# :: Int# -> Int# -> Int#
 x# `divInt#` y#
         -- Be careful NOT to overflow if we do any additional arithmetic
@@ -705,23 +717,6 @@ x# `divInt#` y#
     | (x# <# 0#) && (y# ># 0#) = ((x# +# 1#) `quotInt#` y#) -# 1#
     | otherwise                = x# `quotInt#` y#
 
-modInt# :: Int# -> Int# -> Int#
-x# `modInt#` y#
-    | (x# ># 0#) && (y# <# 0#) ||
-      (x# <# 0#) && (y# ># 0#)    = if r# /=# 0# then r# +# y# else 0#
-    | otherwise                   = r#
-    where
-    !r# = x# `remInt#` y#
-
-external_d_C_div :: C_Int -> C_Int -> ConstStore -> C_Int
-external_d_C_div (C_Int      x) (C_Int      y) _
-  | y ==# 0#  = Fail_C_Int 0 defFailInfo
-  | otherwise = C_Int (x `divInt#` y)
-external_d_C_div (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryint x) `d_C_divInteger` y) cs)
-external_d_C_div (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_divInteger` (primint2curryint y)) cs)
-external_d_C_div (C_CurryInt x) (C_CurryInt y) cs = C_CurryInt ((x `d_C_divInteger` y) cs)
-external_d_C_div x y cs = ((\a cs1-> ((\b cs2-> ((a `external_d_C_div` b) cs2)) `d_OP_dollar_hash` y) cs1) `d_OP_dollar_hash` x) cs
-
 external_d_C_mod :: C_Int -> C_Int -> ConstStore -> C_Int
 external_d_C_mod (C_Int      x) (C_Int      y) _
   | y ==# 0#  = Fail_C_Int 0 defFailInfo
@@ -730,6 +725,15 @@ external_d_C_mod (C_Int      x) (C_CurryInt y) cs = C_CurryInt (((primint2curryi
 external_d_C_mod (C_CurryInt x) (C_Int      y) cs = C_CurryInt ((x `d_C_modInteger` (primint2curryint y)) cs)
 external_d_C_mod (C_CurryInt x) (C_CurryInt y) cs = C_CurryInt ((x `d_C_modInteger` y) cs)
 external_d_C_mod x y cs = ((\a cs1 -> ((\b cs2 -> ((a `external_d_C_mod` b)) cs2) `d_OP_dollar_hash` y) cs1) `d_OP_dollar_hash` x) cs
+
+-- PrimOp taken from GHC.Base
+modInt# :: Int# -> Int# -> Int#
+x# `modInt#` y#
+    | (x# ># 0#) && (y# <# 0#) ||
+      (x# <# 0#) && (y# ># 0#)    = if r# /=# 0# then r# +# y# else 0#
+    | otherwise                   = r#
+    where
+    !r# = x# `remInt#` y#
 
 -- TODO: $! instead of $#?
 external_d_C_divMod :: C_Int -> C_Int ->  ConstStore -> OP_Tuple2 C_Int C_Int
@@ -757,6 +761,8 @@ external_d_C_success _ = C_Success
 external_d_OP_ampersand :: C_Success -> C_Success -> ConstStore -> C_Success
 external_d_OP_ampersand = (&)
 
+-- IO stuff
+
 external_d_C_return :: a -> ConstStore -> C_IO a
 external_d_C_return a _ = fromIO (return a)
 
@@ -779,12 +785,37 @@ external_d_C_prim_writeFile s1 s2 _ = toCurry writeFile s1 s2
 external_d_C_prim_appendFile :: C_String -> C_String -> ConstStore -> C_IO OP_Unit
 external_d_C_prim_appendFile s1 s2 _ = toCurry appendFile s1 s2
 
+external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> ConstStore -> C_IO t1) -> ConstStore -> C_IO t1
+external_d_OP_gt_gt_eq m f cs = fromIO $ do
+  x <- toIO m cs
+  cs1 <- lookupGlobalCs
+  let cs2 = combineCs cs cs1
+  toIO  (f x cs2) cs2
+
+external_nd_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> ConstStore -> C_IO t1
+external_nd_OP_gt_gt_eq m f s cs = fromIO $ do
+ x <- toIO m cs
+ cs1 <- lookupGlobalCs
+ let cs2 = combineCs cs cs1
+ toIO (nd_apply f x s cs2) cs2
+
+instance ConvertCurryHaskell C_IOError C.IOException where
+  toCurry                 = C_IOError . toCurry . show
+
+  fromCurry (C_IOError s) = userError $ fromCurry s
+  fromCurry _             = internalError "non-deterministic IOError"
+
+external_d_C_catch :: C_IO a -> (C_IOError -> ConstStore -> C_IO a) -> ConstStore -> C_IO a
+external_d_C_catch act hndl cs = fromIO $ C.catch (toIO act cs) handle
+  where handle e = toIO (hndl (toCurry (e :: C.IOException)) cs) cs
+
+external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> ConstStore -> C_IO a
+external_nd_C_catch act hndl s cs = fromIO $ C.catch (toIO act cs) handle
+  where handle e = toIO (nd_apply hndl (toCurry (e :: C.IOException)) s cs) cs
+
 external_d_C_catchFail :: C_IO a -> C_IO a -> ConstStore -> C_IO a
-external_d_C_catchFail act err cs = fromIO $ C.catch (toIOWithFailCheck act) handle
-  where handle e = hPutStrLn stderr (show (e :: C.SomeException)) >> (toIO err cs)
-        toIOWithFailCheck act =
-          case act of (Fail_C_IO _ _) -> ioError (userError "I/O action failed")
-                      _               -> toIO act cs
+external_d_C_catchFail act err cs = fromIO $ C.catch (toIO act cs) handle
+  where handle e = hPutStrLn stderr (show (e :: C.IOException)) >> toIO err cs
 
 external_d_C_prim_show :: Show a => a -> ConstStore -> C_String
 external_d_C_prim_show a _ = toCurry (show a)
@@ -828,27 +859,7 @@ external_d_C_apply = d_apply
 external_nd_C_apply :: NonDet b => Func a b -> a -> IDSupply -> ConstStore -> b
 external_nd_C_apply = nd_apply
 
-external_d_C_catch :: C_IO a -> (C_IOError -> ConstStore -> C_IO a) -> ConstStore -> C_IO a
-external_d_C_catch act cont cs = fromIO $ C.catch (toIO act cs) handle where
-  handle e = toIO  (cont  (C_IOError  (toCurry  (show (e :: C.SomeException)))) cs) cs
 
-external_nd_C_catch :: C_IO a -> Func C_IOError (C_IO a) -> IDSupply -> ConstStore -> C_IO a
-external_nd_C_catch act cont s cs = fromIO $ C.catch (toIO act cs) handle where
-  handle e = toIO  (nd_apply cont (C_IOError $ toCurry $ show (e :: C.SomeException)) s cs) cs
-
-external_d_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> (t0 -> ConstStore -> C_IO t1) -> ConstStore -> C_IO t1
-external_d_OP_gt_gt_eq m f cs = fromIO $ do
-  x <- toIO m cs
-  cs1 <- lookupGlobalCs
-  let cs2 = combineCs cs cs1
-  toIO  (f x cs2) cs2
-
-external_nd_OP_gt_gt_eq :: (Curry t0, Curry t1) => C_IO t0 -> Func t0 (C_IO t1) -> IDSupply -> ConstStore -> C_IO t1
-external_nd_OP_gt_gt_eq m f s cs = fromIO $ do
- x <- toIO m cs
- cs1 <- lookupGlobalCs
- let cs2 = combineCs cs cs1
- toIO (nd_apply f x s cs2) cs2
 
 -- Encapsulated search
 -- -------------------
