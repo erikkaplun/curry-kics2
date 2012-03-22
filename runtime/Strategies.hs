@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Strategies
   ( bfsSearch, dfsSearch, parSearch
   , idsSearch, idsDefaultDepth, idsDefaultIncr
