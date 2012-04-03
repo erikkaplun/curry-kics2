@@ -1,8 +1,10 @@
 \documentclass{article}
 
 \usepackage{listings}
+\lstset{basicstyle=\small\ttfamily}
 
 \title{On the combination of Set Functions and Failures}
+\author{Fabian Reck}
 
 \begin{document}
 
@@ -16,27 +18,28 @@ Set Functions was a more complex instance of the following:
 \begin{lstlisting}
 data Size = Small | Big
 
-sizes :: Size
-sizes = Small ? Big
+aSize :: Size
+aSize = Small ? Big
 
-getSmallest | isEmpty (set1 isSmallest aSize) = aSize
-  where aSize = sizes
+getSmallest | isEmpty (set1 smallerThan size) = size
+  where size = aSize
 
-isSmallest size | size < sizes = size
+smallerThan size | anotherSize < size = anotherSize
+  where anotherSize = aSize
 \end{lstlisting}
 
 This program is a straightforward implementation of the intuitive definition
 that a value from a non-deterministic expression is the smallest if there
-is no smaller one. And with our implementation of Set Function it works
+is no smaller one. And with our implementation of Set Functions it works
 just fine, there is only the one result \lstinline{Small}.
 
-No let's change the definition of \lstinline{getSmallest}:
+Now let's change the definition of \lstinline{getSmallest}:
 
 \begin{lstlisting}
 getSmallest 
- | isEmpty (set1 isSmallest (aSize =:= sizes &> aSize))
- = aSize
- where aSize = size
+ | isEmpty (set1 smallerThan (size =:= aSize &> size))
+ = size
+ where size = aSize
 \end{lstlisting}
 
 This new definition is more complex and somewhat contrived but
@@ -102,12 +105,15 @@ of the first example.
 
 A way out of this dilemma is to combine the two options:
 
-\textit{A set that contains only failing computations that stem from an argument
-        is a failing computation it is the set without any failing computations
-        otherwise}
+% TODO: Definition?
+\begin{quote}
+A set that contains only failing computations that stem from an argument
+is a failing computation.
+Otherwise, it is the set without any failing computations.
+\end{quote}
 
-This implies that the following program has to return the empty set rather than
-a failing computation. 
+This implies that the following program has to return the empty set
+rather than a failing computation.
 
 \begin{lstlisting}
 failOrSomething x = failed ? x
