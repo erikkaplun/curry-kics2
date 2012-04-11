@@ -59,10 +59,10 @@ mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
 -- ---------------------------------------------------------------------------
 
 toIO :: C_IO a -> ConstStore -> IO a
-toIO (C_IO           io) _     = io
-toIO (Fail_C_IO     _ _) _     = throwFail "IO action failed"
-toIO (Choice_C_IO _ _ _) _     = throwNondet "Non-determinism in IO occured"
-toIO (Guard_C_IO   cs e) store = do
+toIO (C_IO             io) _     = io
+toIO (Fail_C_IO       _ _) _     = throwFail "IO action failed"
+toIO (Choice_C_IO _ _ _ _) _     = throwNondet "Non-determinism in IO occured"
+toIO (Guard_C_IO  _  cs e) store = do
   mbSolution <- solve cs e
   case mbSolution of
     Nothing       -> throwFail "IO action failed"
@@ -74,9 +74,9 @@ toIO (Guard_C_IO   cs e) store = do
       toIO val (cs `addCs` store)
 
 -- TODO@fre: lookup value in constraint map and global map?
-toIO (Choices_C_IO   (ChoiceID     _)  _) _  = internalError "choices with ChoiceID"
-toIO (Choices_C_IO i@(NarrowedID _ _) xs) cs = followToIO i xs cs
-toIO (Choices_C_IO i@(FreeID     _ _) xs) cs = do
+toIO (Choices_C_IO _  (ChoiceID     _)  _) _  = internalError "choices with ChoiceID"
+toIO (Choices_C_IO _ i@(NarrowedID _ _) xs) cs = followToIO i xs cs
+toIO (Choices_C_IO _ i@(FreeID     _ _) xs) cs = do
   -- bindings of free variables are looked up first in the local
   -- constraint store and then in the global constraint store
   lookupCs cs i (flip toIO cs) tryGlobal
@@ -91,7 +91,7 @@ followToIO i xs store = do
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
     NoDecision      -> throwNondet "Non-determinism in IO occured"
-    LazyBind cs   -> toIO (guardCons (StructConstr cs) (choicesCons i xs)) store
+    LazyBind cs   -> toIO (guardCons defCover (StructConstr cs) (choicesCons defCover i xs)) store
     _             -> internalError $ "followToIO: " ++ show c
 
 fromIO :: IO a -> C_IO a
@@ -170,12 +170,12 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
   showsTree d l k ndVal
     | d <= 0    = indent l k . showChar '_' . nl
     | otherwise = indent l k . case ndVal of
-      Val v         -> showString "Val " . shows v . nl
-      Fail _ _      -> showChar '!' . nl
-      Choice  i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
-      Narrowed i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
-      Free     i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
-      Guard    cs e -> shows cs . nl . showsChildren d l [("", try e)]
+      Val v           -> showString "Val " . shows v . nl
+      Fail _ _        -> showChar '!' . nl
+      Choice  _ i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
+      Narrowed _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
+      Free     _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
+      Guard    _ cs e -> shows cs . nl . showsChildren d l [("", try e)]
 
   indent []      _ = id
   indent (hd:tl) k = showString (concatMap showLines $ reverse tl)
@@ -216,9 +216,9 @@ printValsDFS backTrack cont goal = do
   trace $ "prdfs: " ++ take 200 (show goal)
   match prChoice prNarrowed prFree prFail prGuard prVal goal
   where
-  prFail _ _     = return ()
-  prVal v        = searchNF (printValsDFS backTrack) cont v
-  prChoice i x y = lookupDecision i >>= follow
+  prFail _ _       = return ()
+  prVal v          = searchNF (printValsDFS backTrack) cont v
+  prChoice _ i x y = lookupDecision i >>= follow
     where
     follow ChooseLeft  = printValsDFS backTrack cont x
     follow ChooseRight = printValsDFS backTrack cont y
@@ -233,14 +233,14 @@ printValsDFS backTrack cont goal = do
       where decide bt c a = setDecision i c >> printValsDFS bt cont a
     follow c           = error $ "Search.prChoice: " ++ show c
 
-  prFree i xs   = lookupDecisionID i >>= follow
+  prFree _ i xs   = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
     follow (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
-    follow (NoDecision , j) = cont $ choicesCons j xs
+    follow (NoDecision , j) = cont $ choicesCons defCover j xs
     follow c                = error $ "Search.prFree: " ++ show c
 
-  prNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
+  prNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs) = processLB backTrack cs i xs
     follow (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
@@ -252,9 +252,9 @@ printValsDFS backTrack cont goal = do
         zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
       where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
     follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
-  prNarrowed i _ = error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
+  prNarrowed _ i _ = error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
 
-  prGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
+  prGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing                      -> return ()
     Just (reset, e') | backTrack -> printValsDFS True  cont e' >> reset
                      | otherwise -> printValsDFS False cont e'
@@ -262,12 +262,12 @@ printValsDFS backTrack cont goal = do
   processLB True cs i xs = do
     reset <- setUnsetDecision i NoDecision
     printValsDFS backTrack cont
-      (guardCons (StructConstr cs) $ choicesCons i xs)
+      (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs)
     reset
   processLB False cs i xs = do
     setDecision i NoDecision
     printValsDFS backTrack cont
-      (guardCons (StructConstr cs) $ choicesCons i xs)
+      (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs)
 
 -- |Apply the first ternary function to the zipping of three lists, but
 -- take the second function for the last triple.
@@ -315,35 +315,35 @@ searchDFS act goal = do
     dfsFail _ _       = mnil
     dfsVal v          = searchNF searchDFS cont v
 
-    dfsChoice i x1 x2 = lookupDecision i >>= follow
+    dfsChoice _ i x1 x2 = lookupDecision i >>= follow
       where
       follow ChooseLeft  = dfs cont x1
       follow ChooseRight = dfs cont x2
       follow NoDecision  = decide i ChooseLeft x1 +++ decide i ChooseRight x2
       follow c           = error $ "Search.dfsChoice: Bad choice " ++ show c
 
-    dfsFree i xs = lookupDecisionID i >>= follow
+    dfsFree cd i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = dfs cont (xs !! c)
-      follow (NoDecision , j) = cont $ choicesCons j xs
+      follow (NoDecision , j) = cont $ choicesCons cd j xs
       follow c                = error $ "Search.dfsFree: Bad choice " ++ show c
 
-    dfsNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
+    dfsNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs xs
       follow (ChooseN c _) = dfs cont (xs !! c)
       follow NoDecision    = foldr1 (+++) $
         zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0 ..] pns xs
       follow c             = error $ "Search.dfsNarrowed: Bad choice " ++ show c
-    dfsNarrowed i _ = error $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
+    dfsNarrowed _ i _ = error $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
 
-    dfsGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
+    dfsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> dfs cont e' |< reset
 
     processLB i cs xs = decide i NoDecision
-                      $ guardCons (StructConstr cs) $ choicesCons i xs
+                      $ guardCons defCover (StructConstr cs) $ choicesCons defCover i xs
 
     decide i c y = do
       reset <- setUnsetDecision i c
@@ -387,7 +387,7 @@ searchBFS act goal = do
     bfsFail _ _     = reset >> next cont xs ys
     bfsVal v        = (set >> searchNF searchBFS cont v)
                       +++ (reset >> next cont xs ys) -- TODO: Check this!
-    bfsChoice i a b = set >> lookupDecision i >>= follow
+    bfsChoice _ i a b = set >> lookupDecision i >>= follow
       where
       follow ChooseLeft  = bfs cont xs ys set reset a
       follow ChooseRight = bfs cont xs ys set reset b
@@ -396,23 +396,23 @@ searchBFS act goal = do
         next cont xs (decide i ChooseLeft a : decide i ChooseRight b : ys)
       follow c           = error $ "Search.bfsChoice: Bad choice " ++ show c
 
-    bfsNarrowed i@(NarrowedID pns _) zs = set >> lookupDecision i >>= follow
+    bfsNarrowed _ i@(NarrowedID pns _) zs = set >> lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs zs
       follow (ChooseN c _) = bfs cont xs ys set reset (zs !! c)
       follow NoDecision    = reset >> next cont xs
         (zipWith3 (\n pn y -> decide i (ChooseN n pn) y) [0..] pns zs ++ ys)
       follow c             = error $ "Search.bfsNarrowed: Bad choice " ++ show c
-    bfsNarrowed i _ = error $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
+    bfsNarrowed _ i _ = error $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
 
-    bfsFree i zs = set >> lookupDecisionID i >>= follow
+    bfsFree _ i zs = set >> lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs zs
       follow (ChooseN c _, _) = bfs cont xs ys set reset (zs !! c)
-      follow (NoDecision , j) = reset >> (cont (choicesCons j zs) +++ (next cont xs ys))
+      follow (NoDecision , j) = reset >> (cont (choicesCons defCover j zs) +++ (next cont xs ys))
       follow c                = error $ "Search.bfsFree: Bad choice " ++ show c
 
-    bfsGuard cs e = set >> solve cs e >>= \mbSltn -> case mbSltn of
+    bfsGuard _ cs e = set >> solve cs e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
       Just (newReset, a) -> bfs cont xs ys set (newReset >> reset) a
 
@@ -423,7 +423,7 @@ searchBFS act goal = do
     processLB i cs zs = do
       newReset <- setUnsetDecision i NoDecision
       bfs cont xs ys set (reset >> newReset)
-        (guardCons (StructConstr cs) (choicesCons i zs))
+        (guardCons defCover (StructConstr cs) (choicesCons defCover i zs))
 
     decide i c y = ( setDecision i c          >> set
                    , setDecision i NoDecision >> reset
@@ -483,7 +483,7 @@ startIDS olddepth newdepth act goal = do
     idsVal v | n <= newdepth - olddepth = searchNF (startIDS olddepth n) cont v
              | otherwise                = mnil
 
-    idsChoice i x1 x2 = lookupDecision i >>= follow
+    idsChoice _ i x1 x2 = lookupDecision i >>= follow
       where
       follow ChooseLeft  = ids n cont x1
       follow ChooseRight = ids n cont x2
@@ -491,23 +491,23 @@ startIDS olddepth newdepth act goal = do
                          $ decide i ChooseLeft x1 +++ decide i ChooseRight x2
       follow c           = error $ "Search.idsChoice: Bad choice " ++ show c
 
-    idsFree i xs = lookupDecisionID i >>= follow
+    idsFree _ i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = ids n cont (xs !! c)
-      follow (NoDecision , j) = cont $ choicesCons j xs
+      follow (NoDecision , j) = cont $ choicesCons defCover j xs
       follow c                = error $ "Search.idsFree: Bad choice " ++ show c
 
-    idsNarrowed i@(NarrowedID pns _) xs = lookupDecision i >>= follow
+    idsNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs xs
       follow (ChooseN c _) = ids n cont (xs !! c)
       follow NoDecision    = checkDepth $ foldr1 (+++) $
         zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0 ..] pns xs
       follow c             = error $ "Search.idsNarrowed: Bad choice " ++ show c
-    idsNarrowed i _ = error $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
+    idsNarrowed _ i _ = error $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
 
-    idsGuard cs e = solve cs e >>= \mbSltn -> case mbSltn of
+    idsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> ids n cont e' |< reset
 
@@ -515,7 +515,7 @@ startIDS olddepth newdepth act goal = do
 
     processLB i cs xs = do
       reset <- setUnsetDecision i NoDecision
-      ids n cont (guardCons (StructConstr cs) $ choicesCons i xs) |< reset
+      ids n cont (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs) |< reset
 
     decide i c y = do
       reset <- setUnsetDecision i c
@@ -572,45 +572,35 @@ searchMSearch x = evalStateT (searchMSearch' return x) (Map.empty :: DecisionMap
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => (a -> m b) -> a -> m b
 searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
   where
-  smpFail cd info = if cd > 0 then szero (cd - 1) info else mzero
+  smpFail cd info = if isCovered cd then szero (decCover cd) info else mzero
   smpVal v        = searchNF searchMSearch' cont v
 
-  smpChoice i x y = lookupDecision i >>= follow
+  smpChoice cd i x y = lookupDecision i >>= follow
     where
     follow ChooseLeft  = searchMSearch' cont x
     follow ChooseRight = searchMSearch' cont y
     follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
     follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
-    plus = case i of
-     ChoiceID _ -> mplus
-     CovChoiceID 1 u -> splus (ChoiceID u)
-     CovChoiceID n u -> splus (CovChoiceID (n - 1) u)  
+    plus = if isCovered cd then splus (decCover cd) i else mplus 
 
-  smpChoices i xs = lookupDecision i >>= follow
+  smpChoices cd i xs = lookupDecision i >>= follow
     where
-    follow (LazyBind cs)  = processLB i cs xs
+    follow (LazyBind cs)  = processLB cd i cs xs
     follow (ChooseN c _)  = searchMSearch' cont (xs !! c)
     follow NoDecision     = sumF $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
-    (pns,sumF)            = case i of
-      NarrowedID      pns _ -> (pns, msum)
-      CovNarrowedID 1 pns s -> (pns, ssum (NarrowedID pns s))
-      CovNarrowedID n pns s -> (pns, ssum (CovNarrowedID (n - 1) pns s))
-      FreeID          pns _ -> (pns, msum)
-      CovFreeID     1 pns s -> (pns, ssum (NarrowedID pns s))
-      CovFreeID     n pns s -> (pns, ssum (CovNarrowedID ( n - 1) pns s))
+    pns = case i of
+           FreeID pns _ -> pns
+           NarrowedID pns _ -> pns
+    sumF = if isCovered cd then ssum (decCover cd) i else msum
 
 
-  smpGuard cs e = maybeSolve >>= \mbSltn -> case mbSltn of
-    Nothing      -> mzero
-    Just (_, e') -> maybeconstrain (searchMSearch' cont e')
-   where
-   (cov,uncov) = partitionConstraints cs
-   maybeconstrain = maybe id constrainMSearch cov
-   maybeSolve = maybe (mkSolution e) (flip solve e) uncov
+  smpGuard cd cs e 
+   | isCovered cd = constrainMSearch (decCover cd) cs (searchMSearch' cont e)
+   | otherwise = solve cs e >>= maybe mzero (searchMSearch' cont . snd)
 
-  processLB i cs xs = decide i NoDecision
-                    $ guardCons (StructConstr cs) (choicesCons i xs)
+  processLB cd i cs xs = decide i NoDecision
+                        $ guardCons cd (StructConstr cs) (choicesCons cd i xs)
 
   decide i c y = setDecision i c >> searchMSearch' cont y

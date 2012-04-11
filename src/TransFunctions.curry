@@ -437,16 +437,16 @@ newBranches qn' vs i pConsName =
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
       lCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++  [constStoreVarIdx]) in
   returnM $
-    [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002])
-             (liftOr [Var 1000, call 1001, call 1002])
-    , Branch (Pattern (mkChoicesName typeName) [1000, 1001])
-             (liftOrs [Var constStoreVarIdx, Var 1000, lCall, Var 1001])
-    , Branch (Pattern (mkGuardName typeName) [1000, 1001])
-             (liftGuard [Var 1000, guardCall 1000 1001])
+    [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002, 1003])
+             (liftOr [Var 1000, Var 1001, call 1002, call 1003])
+    , Branch (Pattern (mkChoicesName typeName) [1000, 1001, 1002])
+             (liftOrs [Var constStoreVarIdx, Var 1000, Var 1001, lCall, Var 1002])
+    , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
+             (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
              (liftFail [Var 1000, Var 1001])
     , Branch (Pattern ("", "_") [])
-             (liftFail [Lit (Intc 0),defFailInfo])
+             (liftFail [defCover, defFailInfo])
     ] -- TODO Magic numbers?
 
 -- Complete translation of an expression where all newly introduced supply
@@ -706,6 +706,7 @@ rightSupply = funcCall (basics, "rightSupply")
 generate i  = funcCall (basics, "generate") [i]
 
 defFailInfo = funcCall (basics, "defFailInfo") []
+defCover    = funcCall (basics, "defCover") []
 
 -- ---------------------------------------------------------------------------
 -- Helper functions

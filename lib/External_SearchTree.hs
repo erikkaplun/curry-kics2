@@ -12,9 +12,9 @@ instance Monad C_SearchTree where
   C_Value x >>= f = f x
   C_Or x y  >>= f = C_Or (x >>= f) (y >>= f)
 
-  Choice_C_SearchTree i x y >>= f = Choice_C_SearchTree i (x >>= f) (y >>= f)
-  Choices_C_SearchTree i xs >>= f = Choices_C_SearchTree i (map (>>= f) xs)
-  Guard_C_SearchTree cs x   >>= f = Guard_C_SearchTree cs (x >>= f)
+  Choice_C_SearchTree cd i x y >>= f = Choice_C_SearchTree cd i (x >>= f) (y >>= f)
+  Choices_C_SearchTree cd i xs >>= f = Choices_C_SearchTree cd i (map (>>= f) xs)
+  Guard_C_SearchTree cd cs x   >>= f = Guard_C_SearchTree cd cs (x >>= f)
   Fail_C_SearchTree cd info >>= _ = Fail_C_SearchTree cd info   
   
 
@@ -37,9 +37,9 @@ external_d_OP_bar_plus_plus_bar l1 l2 _ = l1 |++| l2
 
 data C_ValueSequence a = EmptyVS | Values (Curry_Prelude.OP_List a) 
                        | FailVS (Curry_Prelude.C_Int)
-                       | Choice_VS ID (C_ValueSequence a) (C_ValueSequence a)
-                       | Choices_VS ID [C_ValueSequence a]
-                       | Guard_VS Constraints (C_ValueSequence a)
+                       | Choice_VS Cover ID (C_ValueSequence a) (C_ValueSequence a)
+                       | Choices_VS Cover ID [C_ValueSequence a]
+                       | Guard_VS Cover Constraints (C_ValueSequence a)
 
 instance Curry_Prelude.Curry (C_ValueSequence a) where
 
@@ -54,7 +54,6 @@ instance Unifiable (C_ValueSequence a) where
   (=.<=)     = error "SearchTree: ValueSequence: (=.<=)"
   bind       = error "SearchTree: ValueSequence: bind"
   lazyBind   = error "SearchTree: ValueSequence: lazyBind"
-  constrain  = error "SearchTree: ValueSequence: constrain"
 
 instance NonDet (C_ValueSequence a) where
   choiceCons  = Choice_VS
@@ -69,7 +68,6 @@ instance Generable (C_ValueSequence a) where
 
 instance Coverable (C_ValueSequence a) where
   cover   = error "SearchTree: ValueSequence: cover"
-  uncover = error "SearchTree: ValueSequence: uncover"
 
 instance NormalForm (C_ValueSequence a) where
  ($!!)    = error "SearchTree: ValueSequence: ($!!)"
@@ -91,32 +89,32 @@ external_d_C_failVS d@(Curry_Prelude.C_Int d') _
 external_d_C_vsToList :: C_ValueSequence a -> ConstStore -> Curry_Prelude.OP_List a
 external_d_C_vsToList (Values xs)   _ = xs
 external_d_C_vsToList (FailVS (Curry_Prelude.C_Int d))    _ = failCons (I# d) defFailInfo
-external_d_C_vsToList (Choice_VS i x y) cs = choiceCons i (external_d_C_vsToList x cs)
-                                                          (external_d_C_vsToList y cs)
-external_d_C_vsToList (Choices_VS i xs) cs = 
-  choicesCons i (map (flip external_d_C_vsToList cs) xs )
-external_d_C_vsToList (Guard_VS c x) cs =
-  guardCons c (external_d_C_vsToList x cs)
+external_d_C_vsToList (Choice_VS cd i x y) cs = choiceCons cd i (external_d_C_vsToList x cs)
+                                                                (external_d_C_vsToList y cs)
+external_d_C_vsToList (Choices_VS cd i xs) cs = 
+  choicesCons cd i (map (flip external_d_C_vsToList cs) xs )
+external_d_C_vsToList (Guard_VS cd c x) cs =
+  guardCons cd c (external_d_C_vsToList x cs)
 
 (|++|) :: Curry_Prelude.Curry a => C_ValueSequence a -> C_ValueSequence a -> C_ValueSequence a 
-EmptyVS         |++| vs = vs
-Values xs       |++| vs = Values (Curry_Prelude.d_OP_plus_plus xs (getValues vs) emptyCs)
-FailVS d        |++| vs = failSmallest d vs
-Choice_VS i x y |++| vs = choiceCons i (x |++| vs) (y |++| vs) 
-Choices_VS i xs |++| vs = choicesCons i (map (|++| vs) xs)
-Guard_VS cs xs  |++| vs = guardCons cs (xs |++| vs)
+EmptyVS            |++| vs = vs
+Values xs          |++| vs = Values (Curry_Prelude.d_OP_plus_plus xs (getValues vs) emptyCs)
+FailVS d           |++| vs = failSmallest d vs
+Choice_VS cd i x y |++| vs = choiceCons cd i (x |++| vs) (y |++| vs) 
+Choices_VS cd i xs |++| vs = choicesCons cd i (map (|++| vs) xs)
+Guard_VS cd cs xs  |++| vs = guardCons cd cs (xs |++| vs)
 
-getValues EmptyVS           = Curry_Prelude.OP_List
-getValues (FailVS _)        = Curry_Prelude.OP_List
-getValues (Values xs)       = xs
-getValues (Choice_VS i x y) = choiceCons i (getValues x) (getValues y)
-getValues (Choices_VS i xs) = choicesCons i (map getValues xs)
-getValues (Guard_VS cs x)   = guardCons cs (getValues x)
+getValues EmptyVS              = Curry_Prelude.OP_List
+getValues (FailVS _)           = Curry_Prelude.OP_List
+getValues (Values xs)          = xs
+getValues (Choice_VS cd i x y) = choiceCons cd i (getValues x) (getValues y)
+getValues (Choices_VS cd i xs) = choicesCons cd i (map getValues xs)
+getValues (Guard_VS cd cs x)   = guardCons cd cs (getValues x)
 
-failSmallest d EmptyVS           = FailVS d
-failSmallest d (FailVS d2)       = FailVS (Curry_Prelude.d_C_min d d2 emptyCs)
-failSmallest _ vs@(Values xs)    = vs
-failSmallest d (Choice_VS i x y) = choiceCons i (failSmallest d x) (failSmallest d y)
-failSmallest d (Choices_VS i xs) = choicesCons i (map (failSmallest d) xs)
-failSmallest d (Guard_VS cs x)   = guardCons cs (failSmallest d x)
+failSmallest d EmptyVS              = FailVS d
+failSmallest d (FailVS d2)          = FailVS (Curry_Prelude.d_C_min d d2 emptyCs)
+failSmallest _ vs@(Values xs)       = vs
+failSmallest d (Choice_VS cd i x y) = choiceCons cd i (failSmallest d x) (failSmallest d y)
+failSmallest d (Choices_VS cd i xs) = choicesCons cd i (map (failSmallest d) xs)
+failSmallest d (Guard_VS cd cs x)   = guardCons cd cs (failSmallest d x)
 
