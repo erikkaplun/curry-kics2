@@ -720,6 +720,7 @@ prim_ioError external
 
 --- Shows an error values as a string.
 showError :: IOError -> String
+showError (IOError     s) = "i/o error: "   ++ s
 showError (UserError   s) = "user error: "   ++ s
 showError (FailError   s) = "fail error: "   ++ s
 showError (NondetError s) = "nondet error: " ++ s
