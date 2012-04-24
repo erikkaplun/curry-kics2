@@ -88,7 +88,7 @@ if [ $# != 1 -a $# != 3 ] ; then
   exit 1
 fi
 
-# Compute the main directory where PACKS is installed:
+# Compute the main installation directory of KiCS2:
 PATHNAME=`(cd \`dirname $0\` > /dev/null ; pwd)`
 KICS2HOME=`expr $PATHNAME : '\(.*\)/bin'`
 export KICS2HOME

@@ -1,0 +1,98 @@
+% MH's settings for beamer presentations
+
+\usepackage{pgfpages}
+
+% settings for standard presentations
+\mode<presentation>
+{
+ \usetheme{Madrid}
+}
+
+% settings for handouts
+\mode<handout>
+{
+ \usetheme{Madrid}
+ \setbeamercolor{background canvas}{bg=black!5}
+ % for 4 slides on 1 page:
+ \pgfpagesuselayout{4 on 1}[a4paper,landscape,border shrink=5mm]
+ % for 2 slides on 1 page:
+ %\pgfpagesuselayout{2 on 1}[a4paper,border shrink=5mm]
+}
+
+\usepackage{xspace}
+\usepackage{times}
+
+%\def\beamerdim{25pt}
+\beamersetleftmargin{0.4cm}
+\beamersetrightmargin{0.3cm}
+
+% My header:
+\pgfdeclarehorizontalshading{frametitleshade}{25pt}{%
+  color(0pt)=(structure);
+  color(\paperwidth)=(black)}
+
+\useframetitletemplate{%
+\vspace*{-0.2ex}%
+\hspace*{-0.8em}%
+\vbox{%
+\hbox to\textwidth{\pgfuseshading{frametitleshade}}
+\vskip-3.2ex
+\color{white}{\Large\raisebox{4pt}{\hspace*{0.3cm}\insertframetitle}\hfill\includegraphics[width=0.6cm]{/home/mh/lib/logos/christine_grBlack.jpg}\hspace*{-1.2em}\strut}
+}}
+
+
+% My footer:
+\pgfdeclarehorizontalshading{framefootshade}{10pt}{%
+  color(0pt)=(structure);
+  color(\paperwidth)=(black)}
+
+\usefoottemplate{%
+\hspace*{-1.9em}%
+\vbox{%
+\hbox to\textwidth{\pgfuseshading{framefootshade}}
+\vskip-2.8ex
+\color{white}\textbf{\hspace*{0.5cm}\tiny\insertshortauthor~~(\insertshortinstitute)\hfill\insertshorttitle\hfill\insertshortdate\hspace*{8ex}\insertframenumber~~~\hspace*{-2.8em}\strut}
+}}
+
+% Suppress all navigation symbols:
+\setbeamertemplate{navigation symbols}{}
+
+\beamertemplateshadowblocks
+\usepackage{tikz}
+\usepackage{pgf}
+
+\usepackage{alltt}
+
+
+% define some useful colors
+\newcommand{\white}{\color{white}}%0,0,1}}
+\newcommand{\blue}{\color{blue}}%0,0,1}}
+\newcommand{\green}{{\color[rgb]{0.2,0.6,0.2}}}
+\newcommand{\dgreen}{\color[rgb]{0.1,0.4,0.1}}
+\newcommand{\red}{\color{red}}%0,0,1}}
+\newcommand{\dblue}{\color[rgb]{0.1,0.1,0.4}}
+\newcommand{\dgrey}{\color[rgb]{0.2,0.2,0.4}}
+\newcommand{\lgrey}{\color[rgb]{0.5,0.5,0.5}}
+
+\newcommand{\code}[1]{\mbox{\dgrey\tt #1}}
+\newcommand{\ccode}[1]{``\mbox{\dgrey\tt #1}''}
+\newcommand{\icode}[1]{\mbox{\footnotesize\tt #1}}  % program text in indices
+\newcommand{\bs}{\char92} % backslash
+\newcommand{\us}{\char95} % underscore
+\newcommand{\ul}[1]{{\underline{#1}}}
+\newcommand{\citebib}[1]{{\dgreen [#1]}}
+
+\newenvironment{prog}{\begin{alltt}\dgrey}{\end{alltt}}
+%\usenavigationsymboltemplate{}
+
+%\usepackage{lmodern}
+%\usepackage[T1]{fontenc} 
+
+%\usepackage{times}
+
+\newcommand{\expandlist}[1]{\addtolength{\itemsep}{#1}\vspace{#1}}
+\newcommand{\comment}[1]{}
+
+% Use some nice templates
+%\beamertemplatetransparentcovereddynamic
+
