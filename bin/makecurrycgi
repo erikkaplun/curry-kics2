@@ -9,29 +9,29 @@ MAINCALL="main_cgi_9999_$$"
 
 ERROR=
 HELP=no
-WRITEERRORS=yes
 COMPACT=no
 DEBUG=no
 DEBUGFILE=
-ULIMIT="-t 60"
+ULIMIT="-t 120"
 MAIN=main
 CGIFILE=
 WUIJS=no
 WUIMODULES=
 SERVERTIMEOUT=
+STANDALONE=no
 LOADBALANCE="-loadbalance standard"
 ARGS=
 
 while [ $# -gt 0 -a -z "$ERROR" ]; do
   case $1 in
    -help | -h | -\? ) HELP=yes ;;
-   -noerror         ) WRITEERRORS=no ;;
    -compact         ) COMPACT=yes ;;
    -debug           ) DEBUG=yes ;;
    -debugfile       ) shift ; DEBUGFILE=$1 ;;
    -servertimeout   ) shift ; SERVERTIMEOUT="-servertimeout $1" ;;
    -multipleservers ) LOADBALANCE="-loadbalance multiple" ;; # backward compt.
    -loadbalance     ) shift ; LOADBALANCE="-loadbalance $1" ;;
+   -standalone      ) STANDALONE=yes ;;
    -ulimit          ) shift; ULIMIT=$1 ;;
    -wuijs           ) WUIJS=yes ;;
    -wui             ) shift; WUIMODULES="$WUIMODULES $1" ;;
@@ -66,13 +66,13 @@ if [ $# != 1 -a $# != 3 ] ; then
   echo "<curry>    : name of the Curry program (without suffix) containing the script"
   echo
   echo "FURTHER OPTIONS:"
-  echo "-noerror   : do not write errors in error log file of the web server"
-  echo "-compact   : reduce size of generated cgi program by deleting unused functions"
-  echo "-debug     : include code for showing failures"
-  echo "             (= PAKCS options '+printfail/+allfails')"
-  echo "-debugfile f: include code for storing failure trace in file f"
-  echo "             (= PAKCS options '+consfail file:f')"
+  #echo "-compact   : reduce size of generated cgi program by deleting unused functions"
+  #echo "-debug     : include code for showing failures"
+  #echo "             (= PAKCS options '+printfail/+allfails')"
+  #echo "-debugfile f: include code for storing failure trace in file f"
+  #echo "             (= PAKCS options '+consfail file:f')"
   echo "-ulimit <l>: set 'ulimit <l>' when executing the cgi program"
+  echo "             (default: '-t 120')"
   echo "-servertimeout <ms>: set the timeout for the cgi server process to"
   echo "                     <ms> milliseconds (default: 7200000 / two hours)"
   echo "-loadbalance <t>: start new server process if load for one server is"
@@ -82,6 +82,8 @@ if [ $# != 1 -a $# != 3 ] ; then
   echo "        standard: some standard load balancing (default)"
   echo "        multiple: new server process for each initial call to"
   echo "                  a cgi script (only reasonable with short timeout)"
+  echo "-standalone: generate standalone script (i.e., copy programs"
+  echo "             required from KiCS2 system to local directory)"
   echo "-wuijs     : generate JavaScript support code for WUIs"
   echo "-wui <mod> : consider also imported module <mod> (that contains WUI"
   echo "             specifications) when generating JavaScript support code"
@@ -118,7 +120,11 @@ fi
 # name of the server:
 CGIFILEPATHNAME=`(cd $CGIDIR > /dev/null ; pwd)`
 CGISERVERPROG=$CGIPROG.server
-CGISERVERFILE=$CGIFILEPATHNAME/$CGIPROG.server
+CGISERVEREXEC=$CGIFILEPATHNAME/$CGIPROG.server
+CGISERVERCMD=$CGISERVEREXEC
+if test -n "$ULIMIT" ; then
+  CGISERVERCMD=$CGISERVEREXEC.sh # used if ulimit is present
+fi
 
 # unique key for this cgi script:
 CGIKEY="$CGIFILEPATHNAME/$CGIPROG `date '+%m/%d/%y/%H/%M/%S'`"
@@ -160,9 +166,16 @@ if test ! -f $STATE ; then
 fi
 
 # stop old server, if necessary:
-if [ -f $CGISERVERFILE ] ; then
-  echo "Stop old version of the server '$CGISERVERFILE'..."
-  $KICS2HOME/www/Registry stopscript "$CGISERVERFILE"
+if [ -f $CGISERVEREXEC ] ; then
+  echo "Stop old version of the server '$CGISERVEREXEC'..."
+  $KICS2HOME/www/Registry stopscript "$CGISERVEREXEC"
+fi
+
+SUBMITFORM="$KICS2HOME/www/submitform"
+# copy executable from KiCS2 system (if required):
+if [ $STANDALONE = yes ] ; then
+  cp -p "$SUBMITFORM" submitform
+  SUBMITFORM="./submitform"
 fi
 
 # generate cgi script:
@@ -172,12 +185,18 @@ if test -n "$LANG" ; then
   echo "LANG=$LANG" >> $CGIFILE
   echo "export LANG" >> $CGIFILE
 fi
-echo "$KICS2HOME/www/submitform $SERVERTIMEOUT $LOADBALANCE \"$CGIPROG\" \"$CGIKEY\" \"$CGISERVERFILE\" 2> /dev/null" >> $CGIFILE
+echo "$SUBMITFORM $SERVERTIMEOUT $LOADBALANCE \"$CGIPROG\" \"$CGIKEY\" \"$CGISERVERCMD\" 2>> $CGIFILE.log" >> $CGIFILE
 chmod 755 $CGIFILE
 
 # move compiled executable to final position:
-mv $STATE $CGISERVERFILE
-chmod 755 $CGISERVERFILE
+mv $STATE $CGISERVEREXEC
+chmod 755 $CGISERVEREXEC
+if test -n "$ULIMIT" ; then
+  echo "#!/bin/sh" > $CGISERVERCMD
+  echo "ulimit $ULIMIT" >> $CGISERVERCMD
+  echo "exec $CGISERVEREXEC \"\$@\"" >> $CGISERVERCMD
+  chmod 755 $CGISERVERCMD
+fi
 
 $KICS2HOME/bin/cleancurry $MAINMOD
 rm -f $MAINMOD.curry
