@@ -174,7 +174,7 @@ fi
 SUBMITFORM="$KICS2HOME/www/submitform"
 # copy executable from KiCS2 system (if required):
 if [ $STANDALONE = yes ] ; then
-  cp -p "$SUBMITFORM" submitform
+  cp -p "$SUBMITFORM" $CGIFILEPATHNAME/submitform
   SUBMITFORM="./submitform"
 fi
 
