@@ -28,7 +28,8 @@ LIB_CURRY = Prelude.curry \
 	    Parser.curry Pretty.curry \
 	    Profile.curry PropertyFile.curry \
             Random.curry Read.curry ReadNumeric.curry ReadShowTerm.curry \
-            RedBlackTree.curry SearchTree.curry SetRBT.curry \
+            RedBlackTree.curry \
+	    SearchTree.curry SetFunctions.curry SetRBT.curry \
 	    Socket.curry Sort.curry System.curry \
             TableRBT.curry Time.curry Traversal.curry \
             Unsafe.curry URL.curry WUI.curry WUIjs.curry \

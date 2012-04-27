@@ -1,13 +1,30 @@
 ------------------------------------------------------------------------
---- This module provides an interface to set functions similarly to
---- the prototypical implementation of set functions in PAKCS.
---- IMPORTANT NOTE: this module only implements the same interface
---- but the functionality is different!
---- This stub is only intended to allow the compilation of
---- PAKCS applications containing set functions with KiCS2.
+--- This module contains an implementation of set functions.
+--- The general idea of set functions
+--- is described in:
+---
+--- > S. Antoy, M. Hanus: Set Functions for Functional Logic Programming
+--- > Proc. 11th International Conference on Principles and Practice
+--- > of Declarative Programming (PPDP'09), pp. 73-82, ACM Press, 2009
+---
+--- Intuition: If `f` is an n-ary function, then `(setn f)` is a set-valued
+--- function that collects all non-determinism caused by f (but not
+--- the non-determinism caused by evaluating arguments!) in a set.
+--- Thus, `(setn f a1 ... an)` returns the set of all
+--- values of `(f b1 ... bn)` where `b1`,...,`bn` are values
+--- of the arguments `a1`,...,`an` (i.e., the arguments are
+--- evaluated "outside" this capsule so that the non-determinism
+--- caused by evaluating these arguments is not captured in this capsule
+--- but yields several results for `(setn...)`.
+--- Similarly, logical variables occuring in `a1`,...,`an` are not bound
+--- inside this capsule.
+--- The set of values returned by a set function is represented
+--- by an abstract type 'Values' on which several operations are
+--- defined in this module. Actually, it is a multiset of values,
+--- i.e., duplicates are not removed.
 ---
 --- @author Michael Hanus
---- @version Wed Nov 16 18:30:02 CET 2011
+--- @version Fri Apr 27 15:02:19 CEST 2012
 ------------------------------------------------------------------------
 
 module SetFunctions

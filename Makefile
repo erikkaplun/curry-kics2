@@ -7,7 +7,7 @@ MAJORVERSION=0
 # The minor version number:
 MINORVERSION=1
 # The version date:
-COMPILERDATE=16/12/11
+COMPILERDATE=25/04/12
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -176,7 +176,9 @@ frontendsources:
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
-	cd ${KICS2DIST} && ${MAKE} frontendsources # install front end sources
+	# install front end sources if they are not present:
+	if [ ! -d frontend ] ; then \
+	  cd ${KICS2DIST} && ${MAKE} frontendsources ; fi
 	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
 	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
