@@ -12,6 +12,7 @@ import FlatCurry
 import HTML
 import HtmlParser
 import List
+import Char
 import Markdown
 
 --------------------------------------------------------------------------
@@ -29,9 +30,7 @@ generateTexDocs docparams anainfo progname modcmts progcmts = do
   return $
     (imports,
      "\\currymodule{"++getLastName progname++"}\n" ++
-     (if withMarkdown docparams
-      then markdownText2LaTeX modcmt
-      else htmlString2Tex docparams modcmt) ++ "\n" ++
+     htmlString2Tex docparams modcmt ++ "\n" ++
      (if null textypes then ""
       else "\\currytypesstart\n" ++ textypes ++ "\\currytypesstop\n") ++
      (if null texfuncs then ""
@@ -44,8 +43,27 @@ generateTexDocs docparams anainfo progname modcmts progcmts = do
 htmlString2Tex :: DocParams -> String -> String
 htmlString2Tex docparams cmt =
   if withMarkdown docparams
-  then markdownText2LaTeX cmt
-  else showLatexExps (parseHtmlString cmt)
+  then markdownText2LaTeX (replaceIdLinks cmt)
+  else showLatexExps (parseHtmlString (replaceIdLinks cmt))
+
+-- replace identifier hyperlinks in a string (i.e., enclosed in single quotes)
+-- by code markdown:
+replaceIdLinks :: String -> String
+replaceIdLinks str = case str of
+  [] -> []
+  ('\\':'\'':cs) -> '\'' : replaceIdLinks cs
+  (c:cs) -> if c=='\'' then tryReplaceIdLink [] cs
+                       else c : replaceIdLinks cs
+ where
+  tryReplaceIdLink ltxt [] = '\'' : reverse ltxt
+  tryReplaceIdLink ltxt (c:cs)
+   | isSpace c = '\'' : reverse ltxt ++ c : replaceIdLinks cs -- no space in id
+   | c == '\'' = checkId (reverse ltxt) ++ replaceIdLinks cs
+   | otherwise = tryReplaceIdLink (c:ltxt) cs
+
+  checkId s = if ' ' `elem` s
+              then '\'' : s ++ ['\'']
+              else "<code>"++s++"</code>"
 
 -- generate short HTML documentation for a function if it is exported:
 genTexFunc docparams progcmts _ (Func (_,fname) _ fvis ftype _) =

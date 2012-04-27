@@ -139,9 +139,7 @@ getExportedFuns funs = map (\(Func (_,name) _ _ _ _)->name)
 genHtmlModule :: DocParams -> String -> [HtmlExp]
 genHtmlModule docparams modcmts =
   let (maincmt,avcmts) = splitComment modcmts
-   in (if withMarkdown docparams
-       then markdownText2HTML maincmt
-       else [par [HtmlText maincmt]]) ++
+   in [par (docComment2HTML docparams maincmt)] ++
       map (\a->par [bold [htxt "Author: "], htxt a])
           (getCommentType "author" avcmts) ++
       map (\a->par [bold [htxt "Version: "], htxt a])
