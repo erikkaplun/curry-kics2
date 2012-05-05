@@ -5,7 +5,7 @@
 # The major version number:
 MAJORVERSION=0
 # The minor version number:
-MINORVERSION=1
+MINORVERSION=2
 # The version date:
 COMPILERDATE=25/04/12
 # The Haskell installation info
@@ -176,10 +176,13 @@ frontendsources:
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
-	# install front end sources if they are not present:
+	# install front end sources from repository if they are not present:
 	if [ ! -d frontend ] ; then \
 	  cd ${KICS2DIST} && ${MAKE} frontendsources ; fi
+	cp -pr frontend ${KICS2DIST}               # copy frontend
 	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
+	# generate compile and REPL in order to have the bootstrapped
+	# Haskell translations in the distribution:
 	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
@@ -203,6 +206,7 @@ cleandist:
 	rm -rf .git .gitignore bin/.gitignore
 	rm -rf frontend/curry-base/.git frontend/curry-base/.gitignore
 	rm -rf frontend/curry-frontend/.git frontend/curry-frontend/.gitignore
+	rm -rf frontend/curry-base/dist frontend/curry-frontend/dist
 	rm -rf docs/src
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
