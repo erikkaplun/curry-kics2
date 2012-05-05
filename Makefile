@@ -176,10 +176,12 @@ frontendsources:
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
-	# install front end sources from repository if they are not present:
-	if [ ! -d frontend ] ; then \
-	  cd ${KICS2DIST} && ${MAKE} frontendsources ; fi
-	cp -pr frontend ${KICS2DIST}               # copy frontend
+	# copy or install front end sources in distribution:
+	if [ -d frontend ] ; then \
+	  cp -pr frontend ${KICS2DIST} ; \
+	else \
+	  cd ${KICS2DIST} && ${MAKE} frontendsources ; \
+	fi
 	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
@@ -215,6 +217,6 @@ cleandist:
 HTMLDIR=${HOME}/public_html/kics2/download
 .PHONY: publish
 publish:
-	cp kics2.tar.gz INSTALL.html ${HTMLDIR}
+	cp kics2.tar.gz docs/INSTALL.html ${HTMLDIR}
 	chmod -R go+rX ${HTMLDIR}
 	@echo "Don't forget to run 'update-kics2' to make the update visible!"
