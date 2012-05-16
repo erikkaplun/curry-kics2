@@ -113,7 +113,7 @@ mainGhciComm :: ReplState -> IO ()
 mainGhciComm rst = do
   let (Just (GhciComm _ hdl _)) = rst->ghcicomm
   hPutStrLnGhci rst hdl $ ':':(if rst->showTime then "" else "un")++"set +s"
-  showGhciOutput rst "main"
+  showGhciOutput rst "safeExec main"
   unless (not (rst->showTime)) (hGetLine hdl >>= putStrLn)
 
 -- send an IO expression to ghci and print the stdout data from ghci
@@ -476,7 +476,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                    ++ map (</> rst -> outputSubdir) (rst -> importPaths)
       ghcCompile = unwords . filter (not . null) $
         [ Inst.ghcExec ++ if useghci then "i" else ""
-        , if rst -> optim then "-O2" else ""
+        , if rst -> optim && not useghci then "-O2" else ""
         , if useghci then "" else "--make"
         , if rst -> verbose < 2 then "-v0" else "-v1"
         , "-XMultiParamTypeClasses"
@@ -510,6 +510,7 @@ createHaskellMain rst goalstate isdet isio
       [ "module Main where"
       , "import MonadList"
       , "import Basics"
+      , "import SafeExec"
       , if printOperation == "print" then "" else "import Curry_Prelude"
       , "import Curry_" ++ stripSuffix mainGoalFile
       , ""
