@@ -2,6 +2,8 @@
 # Makefile for ID compiler
 ########################################################################
 
+# Is this a global installation (with restricted functionality)?
+GLOBALINSTALL=yes
 # The major version number:
 MAJORVERSION=0
 # The minor version number:
@@ -125,6 +127,11 @@ ${INSTALLHS}: Makefile
 	echo "" >> ${INSTALLHS}
 	echo 'ghcExec :: String' >> ${INSTALLHS}
 	echo 'ghcExec = "'${GHC}'"' >> ${INSTALLHS}
+	echo "" >> ${INSTALLHS}
+	echo 'installGlobal :: Bool' >> ${INSTALLHS}
+	@if [ ${GLOBALINSTALL} = yes ] ; \
+	 then echo 'installGlobal = True' >> ${INSTALLHS} ; \
+	 else echo 'installGlobal = False' >> ${INSTALLHS} ; fi
 
 # install required cabal packages
 

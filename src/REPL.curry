@@ -595,10 +595,10 @@ execMain rst cmpstatus mainexp = do
     return dist
 
 -- all the available commands:
-allCommands = ["quit","help","?","load","reload","add","eval",
-               "browse","cd","fork",
-               "programs","edit","interface","source","show","set","save",
-               "type","usedimports"]
+allCommands =
+  ["quit","help","?","load","reload","add","eval","browse","cd","fork",
+   "programs","edit","interface","source","show","set","save",
+   "type","usedimports"]
 
 -- Process a command of the REPL.
 -- The result is either just a new ReplState or Nothing if an error occurred.
@@ -769,18 +769,18 @@ processSetOption rst option
                     allopts = filter (isPrefixOf (map toLower opt)) allOptions
                  in
      if null allopts
-     then writeErrorMsg ("unknown option: ':"++option++"'") >> return Nothing
+     then writeErrorMsg ("unknown option: '"++option++"'") >> return Nothing
      else if length allopts > 1
           then writeErrorMsg ("ambiguous option: ':"++option++"'") >>
                return Nothing
           else processThisOption rst (head allopts) (strip args)
 
-allOptions = ["bfs","dfs","prdfs","choices","ids","par","paths","supply",
-              "cmp","ghc","rts","args",
-              "v0","v1","v2","v3","v4"] ++
-             concatMap (\f->['+':f,'-':f])
-                       ["interactive","first","optimize","bindings",
-                        "time","ghci"]
+allOptions =
+  ["bfs","dfs","prdfs","choices","ids","par","paths",
+   "cmp","rts","args","v0","v1","v2","v3","v4"] ++
+  concatMap (\f->['+':f,'-':f])
+            ["interactive","first","optimize","bindings","time","ghci"] ++
+  if Inst.installGlobal then [] else ["supply","ghc"]
 
 processThisOption :: ReplState -> String -> String -> IO (Maybe ReplState)
 processThisOption rst option args
@@ -852,8 +852,10 @@ printOptions rst = putStrLn $
   "bfs            - set search mode to breadth-first search\n"++
   "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
   "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "choices [<n>]  - set search mode to print the choice structure as a tree up to level <n>\n"++
-  "supply <I>     - set idsupply implementation (integer, ioref or ghc)\n"++
+  "choices [<n>]  - set search mode to print the choice structure as a tree\n"++
+  "                 (up to level <n>)\n"++
+  ifLocal
+    "supply <I>     - set idsupply implementation (ghc|integer|ioref|pureio)\n"++
   "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
   "                 2: backend messages, 3: intermediate messages and commands;\n"++
   "                 4: all intermediate results)\n"++
@@ -864,11 +866,16 @@ printOptions rst = putStrLn $
   "+/-time        - show execution time\n"++
   "+/-ghci        - use ghci instead of ghc to evaluate main expression\n"++
   "cmp <opts>     - additional options passed to KiCS2 compiler\n" ++
-  "ghc <opts>     - additional options passed to GHC\n"++
-  "                 (e.g., -DDISABLE_CS, -DSTRICT_VAL_BIND)\n" ++
+  ifLocal
+   ("ghc <opts>     - additional options passed to GHC\n"++
+    "                 (e.g., -DDISABLE_CS, -DSTRICT_VAL_BIND)\n") ++
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   "args <args>    - run-time arguments passed to main program\n" ++
   showCurrentOptions rst
+
+-- Hide string if the current installation is global:
+ifLocal :: String -> String
+ifLocal s = if Inst.installGlobal then "" else s
 
 showCurrentOptions rst = "\nCurrent settings:\n"++
   "import paths      : " ++
@@ -884,7 +891,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
       ) ++ "\n" ++
   "idsupply          : " ++ rst->idSupply ++ "\n" ++
   "compiler options  : " ++ rst->cmpOpts ++ "\n" ++
-  "ghc options       : " ++ rst->ghcOpts ++ "\n" ++
+  ifLocal ("ghc options       : " ++ rst->ghcOpts ++ "\n") ++
   "run-time options  : " ++ rst->rtsOpts ++ "\n" ++
   "run-time arguments: " ++ rst->rtsArgs ++ "\n" ++
   "verbosity         : " ++ show (rst->verbose) ++ "\n" ++

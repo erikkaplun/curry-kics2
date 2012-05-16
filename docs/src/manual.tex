@@ -84,7 +84,7 @@
 {\Huge\bf KiCS2 0.2}\\[4ex]
 {\huge The Kiel Curry System (Version 2)}\\[7ex]
 {\huge User Manual}\\[4ex]
-Version of April 25, 2012\\[6ex]
+Version of May 16, 2012\\[6ex]
 \Large
 Michael Hanus$^1$ [editor] \\[3ex]
 {\large Additional Contributors:}\\[2ex]
@@ -154,22 +154,45 @@ DFG grants Ha 2457/5-1 and Ha 2457/5-2.
 
 \section{Overview of KiCS2}
 
-\subsection{General Use}
-\label{sec-general}
+\subsection{Installation}
+\label{sec-install}
 
 This version of KiCS2 has been developed and
 tested on Linux systems.
 In principle, it should be also executable on other
 platforms on which a Haskell implementation (Glasgow Haskell Compiler
 and Cabal) exists, like in many Linux distributions, Sun Solaris,
-or Mac OS X systems
-(see the file \code{INSTALL.html} in the KiCS2 directory
-for a description of the necessary software to install KiCS2).
+or Mac OS X systems.
+
+Installation instructions for KiCS2 can be found in
+the file \code{INSTALL.txt} stored in the KiCS2 installation directory.
+Note that there are two possibilities to install KiCS2:
+\begin{description}
+\item[Global installation:]\index{global installation}\index{installation!global}
+KiCS2 is installed in some global system directory where users
+have no write permission. In this case, some options for experimenting
+with KiCS2 (like \code{supply} or \code{ghc}, see below)
+are not available (since they require the recompilation of parts of
+the installed system).
+\item[Local installation:]\index{local installation}\index{installation!local}
+KiCS2 is installed in some local user directory where the user
+has write permission. The requires the setting of the option
+\begin{lstlisting}
+GLOBALINSTALL=no
+\end{lstlisting}
+in the \code{Makefile} of the KiCS2 installation.
+In this case, all options of KiCS2 are available.
+\end{description}
+In the following, $kics2home$ denotes the installation directory
+of the KiCS2 installation.
+
+
+\subsection{General Use}
+\label{sec-general}
 
 All executables required to use the different components
-of KiCS2 are stored in the directory \code{$kics2home$/bin}
-(where $kics2home$ is the installation directory of the complete
-KiCS2 installation). You should add this directory
+of KiCS2 are stored in the directory \code{$kics2home$/bin}.
+You should add this directory
 to your path (e.g., by the \code{bash} command
 \ccode{export PATH=$kics2home$/bin:\$PATH}).
 
@@ -576,7 +599,7 @@ of threads according the current number of available processors.
 \item[\fbox{\code{par $n$}}]\pindex{par}
 Similarly to \code{par} but use $n$ parallel threads.
 
-\item[\fbox{\code{choices}}]\pindex{choices}
+\item[\fbox{\code{choices $n$}}]\pindex{choices}
 Show the internal choice structure
 (according to the implementation described in
 \cite{BrasselHanusPeemoellerReck11})
@@ -585,8 +608,11 @@ in a tree-like structure.
 This mode is only useful for debugging or
 understanding the implementation of non-deterministic
 evaluations used in KiCS2.
+If the optional argument $n$ is provided,
+the tree is shown up to depth $n$.
 
 \item[\fbox{\code{supply $i$}}]\pindex{supply}
+(not available in global installations, see Section~\ref{sec-install})
 Use implementation $i$ as the identifier supply for choice structures
 (see \cite{BrasselHanusPeemoellerReck11} for a detailed explanation).
 Currently, the following values for $i$ are supported:
@@ -672,6 +698,7 @@ has the effect that all optimizations performed by the KiCS2 compiler
 are turned off.
 
 \item[\fbox{\code{ghc $opts$}}]\pindex{ghc}
+(not available in global installations, see Section~\ref{sec-install})
 Define additional options passed to the Glasgow Haskell Compiler
 when the generated Haskell programs are compiled.
 Usually, such options are useful only for experimental purposes.
@@ -1303,7 +1330,7 @@ currytest testList
 \end{curry}
 (\code{currytest} is a program stored in \code{$kics2home$/bin}
 where $kics2home$ is the installation directory of KiCS2;
-see Section~\ref{sec-general}).
+see Section~\ref{sec-install}).
 In our example, \ccode{testList.curry} is the program containing the
 definition of all assertions. This has the effect
 that all exported top-level functions
@@ -1368,7 +1395,7 @@ erd2curry myerd.xmi
 \end{curry}
 (\code{erd2curry} is a program stored in \code{$kics2home$/bin}
 where $kics2home$ is the installation directory of KiCS2;
-see Section~\ref{sec-general}).
+see Section~\ref{sec-install}).
 If \code{MyData} is the name of the ERD, the Curry program file
 \ccode{MyData.curry} is generated containing all the necessary
 database access code as described in \cite{BrasselHanusMueller08PADL}.
