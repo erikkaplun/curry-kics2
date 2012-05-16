@@ -47,6 +47,9 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
+	# compile all libraries if the installation is a global one:
+	@if [ ${GLOBALINSTALL} = yes ] ; \
+	 then cd lib && ${MAKE} compileall ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages

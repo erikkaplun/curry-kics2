@@ -4,6 +4,8 @@
 CYMAKE=`pwd`/../bin/cymake
 CYMAKEPARAMS=--no-verb --no-warn --no-overlap-warn 
 
+REPL=../bin/.local/idci
+
 # directory for HTML documentation files:
 DOCDIR=CDOC
 # directory for LaTeX documentation files:
@@ -74,6 +76,11 @@ meta/.curry/%.fcy: meta/%.curry
 
 meta/.curry/%.acy: meta/%.curry
 	"${CYMAKE}" --acy ${CYMAKEPARAMS} $*
+
+# compile all libraries:
+.PHONY: compileall
+compileall:
+	"${REPL}" :set v2 :l AllLibraries :eval main :quit
 
 # create HTML documentation files for system libraries
 .PHONY: doc
