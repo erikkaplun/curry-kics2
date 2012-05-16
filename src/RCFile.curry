@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------
---- Some operations to handle to KiCS2 configuration file
+--- Some operations to handle the KiCS2 resource configuration file
 --- that is stored in $HOME/.kics2rc
 ----------------------------------------------------------------------
 

@@ -4,7 +4,7 @@
 -- ---------------------------------------------------------------------------
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiParamTypeClasses, Rank2Types #-}
-{-# OPTIONS_GHC -fno-warn-orphans -fforce-recomp #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Types
   ( module ConstStore

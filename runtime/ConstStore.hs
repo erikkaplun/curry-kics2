@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP, ExistentialQuantification #-}
-{-# OPTIONS_GHC -fforce-recomp #-}
 
 module ConstStore where
 

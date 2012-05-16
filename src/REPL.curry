@@ -22,6 +22,7 @@ import Distribution
 import qualified Installation as Inst
 import Files
 import Names (funcInfoFile)
+import PropertyFile
 
 getBanner :: IO String
 getBanner = do
@@ -188,6 +189,10 @@ writeErrorMsg :: String -> IO ()
 writeErrorMsg msg = putStrLn ("ERROR: "++msg)
 
 --------------------------------------------------------------------------
+--- Location of the system configuration file.
+scFileName :: String
+scFileName = installDir ++ "/.kics2sc"
+
 main = do
   rcdefs <- readRC
   args   <- getArgs
@@ -456,6 +461,10 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                   (if isdet then "" else "non-") ++ "deterministic and " ++
                   (if isio then "" else "not ") ++ "of IO type..."
   createHaskellMain rst goalstate isdet isio
+  oldGhcOptions <- readPropertyFile scFileName >>=
+                   return . flip rcValue "GHC_OPTIONS"
+  if oldGhcOptions == rst -> ghcOpts then done
+   else updatePropertyFile scFileName "GHC_OPTIONS" (rst -> ghcOpts)
   let useghci    = rst->useGhci && not createexecutable && not (rst->interactive)
       parSearch  = case rst -> ndMode of
                      Par _ -> True
@@ -477,6 +486,7 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
         , if parSearch then "-threaded" else ""
         , "-cpp" -- use the C pre processor -- TODO WHY?
         , rst -> ghcOpts
+        , if oldGhcOptions == rst -> ghcOpts then "" else "-fforce-recomp"
         , if not (null (rst -> rtsOpts)) || parSearch then "-rtsopts" else ""
         , "-i" ++ (concat $ intersperse ":" ghcImports)
         , "." </> rst -> outputSubdir </> "Main.hs"
