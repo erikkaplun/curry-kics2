@@ -54,7 +54,8 @@ install: kernel
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
 	# compile all libraries if the installation is a global one:
 	@if [ ${GLOBALINSTALL} = yes ] ; \
-	 then cd src && ${MAKE} compilelibs && \
+	 then cd lib && ${MAKE} ../src/AllLibraries.curry && \
+	      cd ../src && ${MAKE} compilelibs && \
 	      cd ../lib && ${MAKE} acy ; fi
 	chmod -R go+rX .
 

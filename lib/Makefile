@@ -48,7 +48,14 @@ LIB_FCY   = `echo $(LIB_CURRY:%.curry=.curry/%.fcy) | sed 's|\.curry/meta/|meta/
 LIB_ACY   = `echo $(LIB_CURRY:%.curry=.curry/%.acy) | sed 's|\.curry/meta/|meta/.curry/|g'`
 LIB_HTML  = $(LIB_CURRY:.curry=.html)
 LIB_TEX   = $(LIB_CURRY:.curry=.tex)
-LIB_NAMES = `echo $(LIB_CURRY) | sed 's|meta/||g'` # lib names without meta/ prefix
+# lib names without meta/ prefix
+LIB_NAMES = `echo $(LIB_CURRY:%.curry=%) | sed 's|meta/||g'`
+
+ALLLIBS=../src/AllLibraries.curry
+$(ALLLIBS): $(LIB_CURRY)
+	rm -f $(ALLLIBS)
+	for i in $(LIB_NAMES) ; do echo "import $$i" >> $(ALLLIBS) ; done
+	echo "main = 42" >> $(ALLLIBS)
 
 .PHONY: all
 all: fcy acy
