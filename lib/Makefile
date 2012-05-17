@@ -1,10 +1,8 @@
 # Makefile for various compilations of the system libraries,
 # in particular, to generate the documentation
 
-CYMAKE=`pwd`/../bin/cymake
-CYMAKEPARAMS=--no-verb --no-warn --no-overlap-warn 
-
-REPL=../bin/.local/idci
+CYMAKE=../bin/cymake
+CYMAKEPARAMS=--no-verb --no-warn --no-overlap-warn -i. -imeta
 
 # directory for HTML documentation files:
 DOCDIR=CDOC
@@ -76,11 +74,6 @@ meta/.curry/%.fcy: meta/%.curry
 
 meta/.curry/%.acy: meta/%.curry
 	"${CYMAKE}" --acy ${CYMAKEPARAMS} $*
-
-# compile all libraries:
-.PHONY: compileall
-compileall:
-	"${REPL}" :set v2 :l AllLibraries :eval main :quit
 
 # create HTML documentation files for system libraries
 .PHONY: doc

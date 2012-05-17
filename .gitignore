@@ -29,6 +29,7 @@ stage[1,2,3]
 *.bak
 Installation.*
 make.log
+.kics2sc
 
 # ignore front end since it is managed in another repository
 mccparser
