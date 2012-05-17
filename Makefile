@@ -49,7 +49,8 @@ installwithlogging:
 install: kernel
 	# compile all libraries if the installation is a global one:
 	@if [ ${GLOBALINSTALL} = yes ] ; \
-	 then cd lib && ${MAKE} compileall ; fi
+	 then cd src && ${MAKE} compilelibs && \
+	      cd ../lib && ${MAKE} acy ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
