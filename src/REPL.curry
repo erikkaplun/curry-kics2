@@ -23,6 +23,7 @@ import qualified Installation as Inst
 import Files
 import Names (funcInfoFile)
 import PropertyFile
+import Time
 
 getBanner :: IO String
 getBanner = do
@@ -119,8 +120,9 @@ mainGhciComm rst = do
 -- send an IO expression to ghci and print the stdout data from ghci
 showGhciOutput :: ReplState -> String -> IO ()
 showGhciOutput rst cmd = do
+  ctime <- getLocalTime
   let (Just (GhciComm _ hdl _)) = rst->ghcicomm
-      stopstring = "XXX"
+      stopstring = "???" ++ reverse (calendarTimeToString ctime) ++ "==="
   hPutStrLnGhci rst hdl (cmd++" >> putStrLn \""++stopstring++"\"")
   hPrintLinesBefore hdl stopstring
  where
