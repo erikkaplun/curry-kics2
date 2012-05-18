@@ -1,7 +1,4 @@
-# Translate CPNS demon for fast startup:
-
-# Required:
-# - installed curry2prolog system
+# Translate CPNS demon to support named ports in distributed Curry programs:
 
 CPNSD=CPNSD
 LOGFILE="/tmp/PAKCS_CPNSD_LOG"
