@@ -21,6 +21,8 @@ BOOTLOG=boot.log
 LOCALBIN=bin/.local
 # The path to the Glasgow Haskell Compiler:
 GHC=`which ghc`
+# The path to the package configuration file
+PKGCONF=`ghc-pkg --user -v0 list | head -1 | sed "s/://"`
 
 .PHONY: all
 all:
@@ -131,7 +133,7 @@ ${INSTALLHS}: Makefile
 	echo 'installDate = "'`date`'"' >> ${INSTALLHS}
 	echo "" >> ${INSTALLHS}
 	echo 'ghcExec :: String' >> ${INSTALLHS}
-	echo 'ghcExec = "'${GHC}'"' >> ${INSTALLHS}
+	echo 'ghcExec = "'${GHC}'" ++ " -package-conf '${PKGCONF}'"' >> ${INSTALLHS}
 	echo "" >> ${INSTALLHS}
 	echo 'installGlobal :: Bool' >> ${INSTALLHS}
 	@if [ ${GLOBALINSTALL} = yes ] ; \
