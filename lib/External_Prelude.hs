@@ -11,7 +11,7 @@ import GHC.Exts (Char (C#), Char#, eqChar#, leChar#, ord#, chr#)
 import System.IO
 
 import Debug
-import Exception
+import CurryException
 import PrimTypes
 
 -- ---------------------------------------------------------------------------

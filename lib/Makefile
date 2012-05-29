@@ -1,7 +1,7 @@
 # Makefile for various compilations of the system libraries,
 # in particular, to generate the documentation
 
-CYMAKE=../bin/cymake
+CYMAKE=${BINDIR}/cymake
 CYMAKEPARAMS=--no-verb --no-warn --no-overlap-warn -i. -imeta
 
 # directory for HTML documentation files:
@@ -9,7 +9,7 @@ DOCDIR=CDOC
 # directory for LaTeX documentation files:
 TEXDOCDIR=TEXDOC
 # the currydoc program:
-CURRYDOC=`pwd`/../bin/currydoc
+CURRYDOC=${BINDIR}/currydoc
 
 LIB_CURRY = Prelude.curry \
 	    AllSolutions.curry Array.curry Assertion.curry \
@@ -18,6 +18,7 @@ LIB_CURRY = Prelude.curry \
 	    Constraint.curry CPNS.curry CSV.curry  \
             Dequeue.curry Directory.curry Distribution.curry  \
             FileGoodies.curry FiniteMap.curry Float.curry \
+	    FilePath.curry \
 	    Global.curry GraphInductive.curry GUI.curry \
 	    HTML.curry HtmlCgi.curry HtmlParser.curry \
 	    Integer.curry IO.curry IOExts.curry \
@@ -42,20 +43,58 @@ LIB_CURRY = Prelude.curry \
 	    meta/FlatCurryGoodies.curry \
 	    meta/FlatCurryXML.curry \
 	    meta/FlexRigid.curry \
-	    meta/PrettyAbstract.curry 
+	    meta/PrettyAbstract.curry
 
-LIB_FCY   = `echo $(LIB_CURRY:%.curry=.curry/%.fcy) | sed 's|\.curry/meta/|meta/.curry/|g'`
-LIB_ACY   = `echo $(LIB_CURRY:%.curry=.curry/%.acy) | sed 's|\.curry/meta/|meta/.curry/|g'`
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+LIB_FCY   = ${subst .curry/meta,meta/.curry,${LIB_CURRY:%.curry=.curry/%.fcy}}
+LIB_ACY   = ${subst .curry/meta,meta/.curry,${LIB_CURRY:%.curry=.curry/%.acy}}
 LIB_HTML  = $(LIB_CURRY:.curry=.html)
 LIB_TEX   = $(LIB_CURRY:.curry=.tex)
 # lib names without meta/ prefix
-LIB_NAMES = `echo $(LIB_CURRY:%.curry=%) | sed 's|meta/||g'`
+LIB_NAMES = ${subst meta/,${empty},${subst .curry,${empty},${LIB_CURRY}}}
+LIB_NAMES_SEP = ${subst ${space},${comma}${space},${LIB_NAMES:%=Curry_%}}
 
-ALLLIBS=../src/AllLibraries.curry
-$(ALLLIBS): $(LIB_CURRY)
+ALLLIBS=AllLibraries.curry
+$(ALLLIBS): $(LIB_CURRY) Makefile
 	rm -f $(ALLLIBS)
 	for i in $(LIB_NAMES) ; do echo "import $$i" >> $(ALLLIBS) ; done
 	echo "main = 42" >> $(ALLLIBS)
+
+########################################################################
+# support for global installation
+########################################################################
+
+# compile all libraries:
+.PHONY: compilelibs
+compilelibs: AllLibraries.curry
+	"${REPL}" :set v2 :set path ${LIBDIR}:${LIBDIR}/meta :l AllLibraries :eval main :quit
+	../bin/cleancurry AllLibraries
+
+
+PKGNAME=kics2-libraries
+CABAL=${PKGNAME}.cabal
+
+${CABAL}:../Makefile Makefile
+	echo "Name:           ${PKGNAME}" > ${CABAL}
+	echo "Version:        ${MAJORVERSION}.${MINORVERSION}" >> ${CABAL}
+	echo "Description:    The standard libraries for KiCS2" >> ${CABAL}
+	echo "License:        OtherLicense" >> ${CABAL}
+	echo "Author:         Fabian Reck" >> ${CABAL}
+	echo "Maintainer:     fre@informatik.uni-kiel.de" >> ${CABAL}
+	echo "Build-Type:     Simple" >> ${CABAL}
+	echo "Cabal-Version:  >= 1.9.2" >> ${CABAL}
+	echo "" >> ${CABAL}
+	echo "Library" >> ${CABAL}
+	echo "  Build-Depends: kics2-runtime, base, old-time, directory, process," >> ${CABAL}
+	echo "                 parallel-tree-search, network, unix" >> ${CABAL}
+	echo "  Exposed-modules: ${LIB_NAMES_SEP}" >> ${CABAL}
+	echo "  hs-source-dirs: ./.curry/kics2, ./meta/.curry/kics2" >> ${CABAL}
+
+.PHONY: installlibs
+installlibs : ${CABAL} ${ALLLIBS}
+	cabal install -O2
 
 .PHONY: all
 all: fcy acy
@@ -130,5 +169,7 @@ meta/%.tex: ../meta/%.curry
 clean:
 	rm -f "${DOCDIR}"/*
 	rm -f "${TEXDOCDIR}"/*
+	rm -fr dist
+	rm -f ${CABAL}
 	../bin/cleancurry
 	cd meta && ../../bin/cleancurry

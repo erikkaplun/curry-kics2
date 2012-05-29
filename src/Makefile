@@ -30,12 +30,6 @@ COMPILERSOURCES = Compile.curry \
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
-# binary directory and executables
-BINDIR=../bin
-LOCALBIN=${BINDIR}/.local
-COMP=${BINDIR}/idc
-REPL=${LOCALBIN}/idci
-
 .PHONY: all
 all: CompileBoot REPLBoot
 
@@ -100,16 +94,6 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 	# recompile compiler with new installation information:
 	rm ${COMP}
 	${MAKE} CompileBoot
-
-########################################################################
-# support for global installation
-########################################################################
-
-# compile all libraries:
-.PHONY: compilelibs
-compilelibs:
-	"${REPL}" :set v2 :l AllLibraries :eval main :quit
-	../bin/cleancurry AllLibraries
 
 ########################################################################
 # clean

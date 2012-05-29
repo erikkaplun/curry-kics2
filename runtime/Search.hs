@@ -8,7 +8,7 @@ import Data.List (intercalate)
 import qualified Data.Map as Map
 
 import Debug
-import Exception
+import CurryException
 import PrimTypes -- for C_IO
 import MonadList
 import Solver
