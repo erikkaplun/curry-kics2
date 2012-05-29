@@ -2,6 +2,9 @@
 # Makefile for ID compiler
 ########################################################################
 
+# The absolut path of the installation directory:
+IDIR=`pwd | sed 's|/src$$||'`
+
 # The Curry installation info
 INSTALLCURRY=Installation.curry
 # ghc options
@@ -9,7 +12,7 @@ GHCOPTIONS=-O2 --make -v1 -cpp
 # ghc language extensions for compiling translating Curry programs:
 GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec -package ghc
 # ghc includes for compiling translating Curry programs:
-GHCINCLUDES=-i../runtime:../runtime/idsupplyghc:./.curry/kics2/:../lib/.curry/kics2/:../lib/meta/.curry/kics2/
+GHCINCLUDES=-i${IDIR}/runtime:${IDIR}/runtime/idsupplyghc:${IDIR}/src/.curry/kics2/:${IDIR}/lib/.curry/kics2/:${IDIR}/lib/meta/.curry/kics2/
 
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \
@@ -22,13 +25,19 @@ COMPILERSOURCES = Compile.curry \
 	          Dependency2.curry GetOpt.curry \
 	          AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
 	          Names.curry Analysis.curry \
-	          FiniteMap.curry \
 	          SCC.curry Base.curry Files.curry \
 	          AbstractHaskell.curry \
 	          CompilerOpts.curry Utils.curry
 
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
+
+
+# binary directory and executables
+BINDIR=${IDIR}/bin
+LOCALBIN=${BINDIR}/.local
+COMP=${BINDIR}/idc
+REPL=${LOCALBIN}/idci
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -70,7 +79,7 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES}
-	${COMP} -v2 -i../lib:../lib/meta Compile.curry
+	${COMP} -v2 -i${IDIR}/lib:${IDIR}/lib/meta Compile.curry
 
 ########################################################################
 # REPL
@@ -86,14 +95,24 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES}
-	${COMP} -v2 -i../lib:../lib/meta REPL.curry
+	${COMP} -v2 -i${IDIR}/lib:${IDIR}/lib/meta REPL.curry
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Installation.hs: Installation.curry
-	${COMP} -v2 -i../lib Installation.curry
+	${COMP} -v2 -i${IDIR}/lib Installation.curry
 	# recompile compiler with new installation information:
 	rm ${COMP}
 	${MAKE} CompileBoot
+
+########################################################################
+# support for global installation
+########################################################################
+
+# compile all libraries:
+.PHONY: compilelibs
+compilelibs:
+	"${REPL}" :set v2 :l AllLibraries :eval main :quit
+	${IDIR}/bin/cleancurry AllLibraries
 
 ########################################################################
 # clean
