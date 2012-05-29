@@ -323,12 +323,18 @@ addSlash a xs = (a++c,d)
 readDriveUNC :: FilePath -> Maybe (FilePath, FilePath)
 readDriveUNC (s1:s2:'?':s3:xs) | all isPathSeparator [s1,s2,s3] =
     case map toUpper xs of
-        ('U':'N':'C':s4:_) | isPathSeparator s4 ->
-            let (a,b) = readDriveShareName (drop 4 xs)
-            in Just (s1:s2:'?':s3:take 4 xs ++ a, b)
-        _ -> case readDriveLetter xs of
+        ('U':'N':'C':s4:_) -> 
+           if isPathSeparator s4
+              then 
+                let (a,b) = readDriveShareName (drop 4 xs)
+                in Just (s1:s2:'?':s3:take 4 xs ++ a, b)
+              else rdl
+        _ -> rdl
+ where 
+  rdl = case readDriveLetter xs of
                  Just (a,b) -> Just (s1:s2:'?':s3:a,b)
                  Nothing -> Nothing
+
 readDriveUNC _ = Nothing
 
 
@@ -367,8 +373,10 @@ joinDrive a b | isPosix = a ++ b
               | null b = a
               | isPathSeparator (last a) = a ++ b
               | otherwise = case a of
-                                [a1,':'] | isLetter a1 -> a ++ b
-                                _ -> a ++ [pathSeparator] ++ b
+                             [a1,':'] -> if isLetter a1 
+                                          then a ++ b
+                                          else a ++ [pathSeparator] ++ b
+                             _ -> a ++ [pathSeparator] ++ b
 
 
 -- | Get the drive from a filepath.
