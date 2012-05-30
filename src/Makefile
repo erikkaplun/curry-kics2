@@ -105,16 +105,6 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 	${MAKE} CompileBoot
 
 ########################################################################
-# support for global installation
-########################################################################
-
-# compile all libraries:
-.PHONY: compilelibs
-compilelibs:
-	"${REPL}" :set v2 :l AllLibraries :eval main :quit
-	${IDIR}/bin/cleancurry AllLibraries
-
-########################################################################
 # clean
 ########################################################################
 
