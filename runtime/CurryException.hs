@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Exception where
+module CurryException where
 
 import Control.Exception (Exception (..), throw)
 import Data.Typeable (Typeable (..))

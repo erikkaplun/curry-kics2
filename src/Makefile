@@ -32,6 +32,7 @@ COMPILERSOURCES = Compile.curry \
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 
+
 # binary directory and executables
 BINDIR=${IDIR}/bin
 LOCALBIN=${BINDIR}/.local

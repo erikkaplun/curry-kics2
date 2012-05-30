@@ -2,12 +2,12 @@
 # Makefile for ID compiler
 ########################################################################
 
-# Is this a global installation (with restricted functionality)?
+# Is this a global installation (with restricted functionality)(yes/no)?
 GLOBALINSTALL=yes
 # The major version number:
-MAJORVERSION=0
+export MAJORVERSION=0
 # The minor version number:
-MINORVERSION=2
+export MINORVERSION=2
 # The version date:
 COMPILERDATE=16/05/12
 # The Haskell installation info
@@ -17,12 +17,20 @@ INSTALLCURRY=src/Installation.curry
 # Logfile for make:
 MAKELOG=make.log
 BOOTLOG=boot.log
-# Directory where local executables are stored:
-LOCALBIN=bin/.local
 # The path to the Glasgow Haskell Compiler:
 GHC=`which ghc`
 # The path to the package configuration file
 PKGCONF=`ghc-pkg --user -v0 list | head -1 | sed "s/://"`
+# the root directory
+export ROOT = ${CURDIR}
+# binary directory and executables
+export BINDIR=${ROOT}/bin
+# Directory where local executables are stored:
+export LOCALBIN=${BINDIR}/.local
+# Directory where the libraries are located:
+export LIBDIR=${ROOT}/lib
+export COMP=${BINDIR}/idc
+export REPL=${LOCALBIN}/idci
 
 .PHONY: all
 all:
@@ -49,17 +57,17 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
+	# compile all libraries if the installation is a global one:
+	@if [ ${GLOBALINSTALL} = yes ] ; \
+	 then cd runtime && ${MAKE} && \
+	      cd ../lib && ${MAKE} compilelibs && \
+	      ${MAKE} installlibs && \
+	      ${MAKE} acy && chmod -R go+rX . ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
-	# compile all libraries if the installation is a global one:
-	@if [ ${GLOBALINSTALL} = yes ] ; \
-	 then cd lib && ${MAKE} ../src/AllLibraries.curry && \
-	      cd ../src && ${MAKE} compilelibs && \
-	      cd ../lib && ${MAKE} acy ; fi
-	chmod -R go+rX .
 
 # install a kernel system without all tools
 .PHONY: kernel

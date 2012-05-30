@@ -57,6 +57,7 @@ type ReplState =
                                -- 3 = show intermediate messages, commands
                                -- 4 = show intermediate results
   , importPaths  :: [String]   -- additional directories to search for imports
+  , libPaths     :: [String]   -- direcoties containg the standard libraries
   , outputSubdir :: String
   , mainMod      :: String     -- name of main module
   , addMods      :: [String]   -- names of additionally added modules
@@ -162,6 +163,7 @@ initReplState =
   , idSupply     = "ghc"
   , verbose      = 1
   , importPaths  = []
+  , libPaths     = map (Inst.installDir </>) ["/lib","/lib/meta"]
   , outputSubdir = "/.curry/kics2/"
   , mainMod      = "Prelude"
   , addMods      = []
@@ -207,15 +209,13 @@ main = do
 
 -- The default import paths of KiCS2.
 -- It consists of the path defined by the environment variable CURRYPATH,
--- the "libraries" property defined in ~/.kics2rc, and the
--- directories of the system libraries of KiCS2.
-defaultImportPaths :: ReplState -> IO [String]
+-- and the "libraries" property defined in ~/.kics2rcdefaultImportPaths :: ReplState -> IO [String]
 defaultImportPaths rst = do
   currypath <- getEnviron "CURRYPATH"
   let rclibs = rcValue (rst->rcvars) "libraries"
   return $ (if null currypath then [] else splitPath currypath) ++
-           (if null rclibs    then [] else splitPath rclibs) ++
-           map (Inst.installDir </>) ["/lib","/lib/meta"]
+           (if null rclibs    then [] else splitPath rclibs)
+
 
 defaultImportPathsWith :: ReplState -> String -> IO [String]
 defaultImportPathsWith rst dirs =
@@ -276,7 +276,8 @@ getAcyOfMainGoal rst = do
   let mainGoalProg    = stripSuffix mainGoalFile
       acyMainGoalFile = inCurrySubdir (mainGoalProg ++ ".acy")
       frontendParams  = setQuiet    (rst -> verbose < 2)
-                      $ setFullPath ("." : rst -> importPaths) defaultParams
+                      $ setFullPath ("." : rst -> importPaths ++ rst -> libPaths)
+                                    defaultParams
   callFrontendWithParams ACY frontendParams mainGoalProg
   acyExists <- doesFileExist acyMainGoalFile
   if not acyExists
@@ -434,7 +435,7 @@ compileCurryProgram rst curryprog ismain = do
   let compileProg = (rst->idcHome) </> "bin" </> "idc"
       idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
                     "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
-                    (concatMap (\i -> " -i "++i) (rst->importPaths))
+                    (concatMap (\i -> " -i "++i) (rst->importPaths ++ rst->libPaths))
       compileCmd  = unwords [compileProg,idcoptions,rst->cmpOpts,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
@@ -471,11 +472,16 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
       parSearch  = case rst -> ndMode of
                      Par _ -> True
                      _     -> False
-      ghcImports = [ rst -> idcHome ++ "/runtime"
-                   , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply
-                   , "." </> rst -> outputSubdir
-                   ]
-                   ++ map (</> rst -> outputSubdir) (rst -> importPaths)
+      ghcImports = if Inst.installGlobal
+                   then [] 
+                   else [ rst -> idcHome ++ "/runtime"
+                        , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply]
+                   ++ ["." </> rst -> outputSubdir]
+                   ++ map (</> rst -> outputSubdir) 
+                          ((if Inst.installGlobal
+                            then []
+                            else (rst -> libPaths))
+                           ++ (rst -> importPaths))
       ghcCompile = unwords . filter (not . null) $
         [ Inst.ghcExec
         , if rst -> optim && not useghci then "-O2" else ""
@@ -635,7 +641,7 @@ processThisCommand rst cmd args
           let (dirname,modname) = splitDirectoryBaseName dirmodname
           if dirname=="." then done else setCurrentDirectory dirname
           mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
-          maybe (writeErrorMsg "source file of module not found" >>
+          maybe (writeErrorMsg ("source file of module " ++ dirmodname ++ " not found") >>
                  return Nothing)
                 (\fn ->
                    readAndProcessSourceFileOptions rst' fn >>=
@@ -657,7 +663,7 @@ processThisCommand rst cmd args
          then writeErrorMsg "missing module name" >> return Nothing
          else do
           mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                                          ("." : rst->importPaths)
+                                          ("." : rst->importPaths ++ rst->libPaths)
           maybe (writeErrorMsg "source file of module not found" >>
                  return Nothing)
                 (\_ -> return (Just { addMods := modname : rst->addMods | rst}))
@@ -699,7 +705,7 @@ processThisCommand rst cmd args
   | cmd=="show"
    = do let modname = if null args then rst->mainMod else stripSuffix args
         mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                                ("." : rst->importPaths)
+                                ("." : rst->importPaths ++ rst->libPaths)
         maybe (writeErrorMsg "source file not found" >> return Nothing)
               (\fn -> do let showcmd = rcValue (rst->rcvars) "showcommand"
                          system $ (if null showcmd then "cat" else showcmd)
@@ -936,7 +942,7 @@ printHelpOnCommands = putStrLn $
   ":quit            - leave the system\n"
 
 -- Print all Curry programs in current load path:
-printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths)
+printAllLoadPathPrograms rst = mapIO_ printDirPrograms ("." : rst->importPaths ++ rst->libPaths)
  where
   printDirPrograms dir = do
     putStrLn $ "Curry programs in directory "++dir++":"
