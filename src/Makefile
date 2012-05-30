@@ -2,7 +2,7 @@
 # Makefile for ID compiler
 ########################################################################
 
-# The absolut path of the installation directory:
+# The absolute path of the installation directory:
 IDIR=`pwd | sed 's|/src$$||'`
 
 # The Curry installation info

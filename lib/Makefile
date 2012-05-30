@@ -68,7 +68,7 @@ $(ALLLIBS): $(LIB_CURRY) Makefile
 
 # compile all libraries:
 .PHONY: compilelibs
-compilelibs: AllLibraries.curry
+compilelibs: ${ALLLIBS}
 	"${REPL}" :set v2 :set path ${LIBDIR}:${LIBDIR}/meta :l AllLibraries :eval main :quit
 	../bin/cleancurry AllLibraries
 

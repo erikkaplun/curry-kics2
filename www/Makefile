@@ -3,9 +3,9 @@
 .PHONY: all
 all: submitform Registry
 
-submitform: ../lib/HtmlCgi.curry ../lib/NamedSocket.curry ../lib/CPNS.curry
-	cd ../lib && ../bin/kics2 :set v2 :l HtmlCgi :save :q
-	mv ../lib/HtmlCgi submitform
+submitform: SubmitForm.curry ../lib/HtmlCgi.curry ../lib/NamedSocket.curry ../lib/CPNS.curry
+	../bin/kics2 :set v2 :l SubmitForm :save :q
+	mv SubmitForm submitform
 
 Registry: Registry.curry ../lib/HtmlCgi.curry
 	../bin/kics2 :set v2 :l Registry :save :q

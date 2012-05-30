@@ -30,6 +30,7 @@ stage[1,2,3]
 Installation.*
 make.log
 .kics2sc
+lib/AllLibraries.curry
 
 # ignore front end since it is managed in another repository
 mccparser

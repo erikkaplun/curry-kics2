@@ -7,12 +7,12 @@
 --- server implementing the application.
 ---
 --- @author Michael Hanus
---- @version November 2007
+--- @version June 2012
 ------------------------------------------------------------------------------
 
 module HtmlCgi(CgiServerMsg(..),runCgiServerCmd,
                cgiServerRegistry,registerCgiServer,unregisterCgiServer,
-               readCgiServerMsg,noHandlerPage,main)
+               readCgiServerMsg,noHandlerPage,submitForm)
   where
 
 import System
@@ -61,7 +61,9 @@ readCgiServerMsg handle = do
      _ -> return Nothing
 
 --------------------------------------------------------------------------
--- Read arguments and start script:
+-- Main program to start a cgi script. It reads arguments and starts a small
+-- script to forward the arguments to a cgi server process.
+--
 -- Optional script arguments:
 -- "-servertimeout n": The timeout period for the cgi server in milliseconds.
 --                     If the cgi server process does not receive any request
@@ -71,7 +73,7 @@ readCgiServerMsg handle = do
 -- "-loadbalance <t>": specifies kind of load balancing (see makecurrycgi)
 --                     Current possible values for <t>:
 --                     "no|standard|multiple"
-main = do
+submitForm = do
   args <- getArgs
   let (serverargs,lb,rargs) = stripServerArgs "" NoBalance args
   case rargs of
