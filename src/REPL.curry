@@ -472,10 +472,10 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
       parSearch  = case rst -> ndMode of
                      Par _ -> True
                      _     -> False
-      ghcImports = if Inst.installGlobal
-                   then [] 
-                   else [ rst -> idcHome ++ "/runtime"
-                        , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply]
+      ghcImports = (if Inst.installGlobal
+                    then [] 
+                    else [ rst -> idcHome ++ "/runtime"
+                         , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply])
                    ++ ["." </> rst -> outputSubdir]
                    ++ map (</> rst -> outputSubdir) 
                           ((if Inst.installGlobal
