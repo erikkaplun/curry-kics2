@@ -84,7 +84,7 @@
 {\Huge\bf KiCS2 0.2}\\[4ex]
 {\huge The Kiel Curry System (Version 2)}\\[7ex]
 {\huge User Manual}\\[4ex]
-Version of May 16, 2012\\[6ex]
+Version of May 30, 2012\\[6ex]
 \Large
 Michael Hanus$^1$ [editor] \\[3ex]
 {\large Additional Contributors:}\\[2ex]
@@ -176,11 +176,11 @@ are not available (since they require the recompilation of parts of
 the installed system).
 \item[Local installation:]\index{local installation}\index{installation!local}
 KiCS2 is installed in some local user directory where the user
-has write permission. The requires the setting of the option
+has write permission and the option \code{GLOBALINSTALL}
+in the \code{Makefile} of the KiCS2 installation is set as follows:
 \begin{lstlisting}
 GLOBALINSTALL=no
 \end{lstlisting}
-in the \code{Makefile} of the KiCS2 installation.
 In this case, all options of KiCS2 are available.
 \end{description}
 In the following, $kics2home$ denotes the installation directory

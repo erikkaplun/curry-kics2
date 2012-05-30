@@ -1,10 +1,10 @@
---- --------------------------------------------------------------------------
+------------------------------------------------------------------------------
 --- This library defines a representation of a search space as
 --- a tree and various search strategies on this tree.
 ---
 --- @author  Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version March 2012
---- --------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 module SearchTree
   ( SearchTree (..), someSearchTree, getSearchTree
@@ -19,7 +19,7 @@ data SearchTree a = Value a
 
 -- A value sequence is a sequence of values that
 -- implements the semantics of set functions w.r.t. failures
-data ValueSequence a -- external
+data ValueSequence _ -- external
 
 emptyVS :: ValueSequence a
 emptyVS external
@@ -116,7 +116,7 @@ allValuesBFS t = vsToList (allBFS [t])
 
 children :: [SearchTree a] -> [SearchTree a]
 children []             = []
-children (Fail d:ts)    = children ts
+children (Fail _:ts)    = children ts
 children (Value _:ts)   = children ts
 children (Or x y:ts)    = x:y:children ts
 

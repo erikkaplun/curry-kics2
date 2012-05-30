@@ -9,7 +9,7 @@ export MAJORVERSION=0
 # The minor version number:
 export MINORVERSION=2
 # The version date:
-COMPILERDATE=16/05/12
+COMPILERDATE=30/05/12
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
@@ -204,17 +204,17 @@ dist:
 	else \
 	  cd ${KICS2DIST} && ${MAKE} frontendsources ; \
 	fi
-	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
 	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean           # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak # clean executables
-	sed -e "/distribution/,\$$d" < Makefile > ${KICS2DIST}/Makefile
+	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
 	chmod 644 kics2.tar.gz
@@ -228,9 +228,8 @@ dist:
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitignore bin/.gitignore
-	rm -rf frontend/curry-base/.git frontend/curry-base/.gitignore
-	rm -rf frontend/curry-frontend/.git frontend/curry-frontend/.gitignore
-	rm -rf frontend/curry-base/dist frontend/curry-frontend/dist
+	cd frontend/curry-base     && rm -rf .git .gitignore dist
+	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf docs/src
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
