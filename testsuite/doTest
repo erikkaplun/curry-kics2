@@ -7,8 +7,10 @@ KICS2BIN=$KiCS2HOME/bin
 TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonStrictUnif testFuncPattern"
 
 # test for standard libraries
-#TESTLIBS="testGlobalVariable"
-TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testFlatCurryXML testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testSetFunctions testSort testSystem testTraversal"
+TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testSetFunctions testSort testSystem testTraversal"
+# further tests for the future:
+# testGlobalVariable # not yet implemented
+# testFlatCurryXML # causes memory overflow
 
 ALLTESTS="$TESTLANG $TESTLIBS"
 
