@@ -12,7 +12,7 @@ IDSUPPDIR=idsupplyioref
 
 .PHONY: installpkg
 installpkg: ${CABAL}
-	cabal install -O2
+	cabal install -O2 # --force-reinstalls
 
 ${CABAL}: ../Makefile Makefile
  ifdef MAJORVERSION
@@ -33,7 +33,7 @@ ${CABAL}: ../Makefile Makefile
 	echo "                   SafeExec, MonadList, Installation, MonadSearch" >> ${CABAL}
 	echo "  Other-modules:   ConstStore, ID, Search, Solver," >> ${CABAL}
 	echo "                   Strategies, Types" >> ${CABAL}
-	echo "  hs-source-dirs: ., idsupplyioref" >> ${CABAL}
+	echo "  hs-source-dirs: ., ${IDSUPPDIR}" >> ${CABAL}
   else
 	@echo "Error: MINORVERSION is not defined"
 	@echo "This target should only be called from the toplevel makefile."

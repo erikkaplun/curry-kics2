@@ -620,7 +620,7 @@ Currently, the following values for $i$ are supported:
 \item[\code{integer}:]\pindex{integer}
 Use unbounded integers as choice identifiers.
 This implementation is described in \cite{BrasselHanusPeemoellerReck11}.
-\item[\code{ghc} (default):]\pindex{ghc}
+\item[\code{ghc}:]\pindex{ghc}
 Use a more sophisticated implementation of choice
 identifiers (based on the ideas described in \cite{AugustssonRittriSynek94})
 provided by the Glasgow Haskell Compiler.
@@ -629,7 +629,7 @@ Use IO references (i.e., memory cells) for choice identifiers.
 This is the most efficient implementation for top-level depth-first search
 but cannot be used for more sophisticated search methods
 like encapsulated search.
-\item[\code{ioref}:]\pindex{ioref}
+\item[\code{ioref} (default):]\pindex{ioref}
 Use a mixture of \code{ghc} and \code{pureio}.
 IO references are used for top-level depth-first search
 and \code{ghc} identifiers are used for encapsulated search methods.

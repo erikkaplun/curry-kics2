@@ -160,7 +160,7 @@ initReplState :: ReplState
 initReplState =
   { idcHome      = ""
   , rcvars       = []
-  , idSupply     = "ghc"
+  , idSupply     = "ioref"
   , verbose      = 1
   , importPaths  = []
   , libPaths     = map (Inst.installDir </>) ["/lib","/lib/meta"]

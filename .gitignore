@@ -31,6 +31,10 @@ Installation.*
 make.log
 .kics2sc
 lib/AllLibraries.curry
+lib/dist
+lib/kics2-libraries.cabal
+runtime/dist
+runtime/kics2-runtime.cabal
 
 # ignore front end since it is managed in another repository
 mccparser
