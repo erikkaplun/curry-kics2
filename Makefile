@@ -61,13 +61,15 @@ install: kernel
 	@if [ ${GLOBALINSTALL} = yes ] ; \
 	 then cd runtime && ${MAKE} && \
 	      cd ../lib && ${MAKE} compilelibs && \
-	      ${MAKE} installlibs && \
-	      ${MAKE} acy && chmod -R go+rX . ; fi
+	                   ${MAKE} installlibs && \
+	                   ${MAKE} acy ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
+	# make everything accessible:
+	chmod -R go+rX .
 
 # install a kernel system without all tools
 .PHONY: kernel
