@@ -2,9 +2,9 @@
 
 # Start interactive read-eval-print loop for KiCS2
 
-# Compute the installation directory of the system
-PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
-KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
+# The installation directory of KiCS2
+KICS2HOME=`echo KICS2HOME must be defined here!`
+
 REPL="$KICS2HOME/bin/.local/idci"
 if [ ! -x "$REPL" ] ; then
   echo "ERROR: executable '$REPL' not found!" >&2

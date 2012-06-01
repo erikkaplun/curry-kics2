@@ -1,9 +1,10 @@
 #!/bin/sh
 # shell script to call the front end for Curry
 
-# Compute the installation directory of the system
-PATHNAME=`(cd "\`dirname \"$0\"\`" > /dev/null ; pwd)`
-KICS2HOME=`expr "$PATHNAME" : '\(.*\)/bin'`
+# The installation directory of KiCS2
+KICS2HOME=`echo KICS2HOME must be defined here!`
+
+# define appropriate 'cymake' executable:
 CYMAKE="$KICS2HOME/mccparser/bin/cymake"
 if [ ! -x "$CYMAKE" ] ; then
   # try cymake of local installation
@@ -21,7 +22,6 @@ if [ ! -x "$CYMAKE" ] ; then
   echo "ERROR: Curry parser not found!" >&2
   exit 1
 fi
-#echo CYMAKE=$CYMAKE
 
 # define KICS2RC
 KICS2RC=$HOME/.kics2rc
