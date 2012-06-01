@@ -9,7 +9,7 @@ export MAJORVERSION=0
 # The minor version number:
 export MINORVERSION=2
 # The version date:
-COMPILERDATE=30/05/12
+COMPILERDATE=01/06/12
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
 # The Curry installation info
