@@ -231,14 +231,14 @@ printValsDFS backTrack cont goal = do
       -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
       -- be ignored in between
       where decide bt c a = setDecision i c >> printValsDFS bt cont a
-    follow c           = error $ "Search.prChoice: " ++ show c
+    follow c           = internalError $ "Search.prChoice: " ++ show c
 
   prFree _ i xs   = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
     follow (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
     follow (NoDecision , j) = cont $ choicesCons defCover j xs
-    follow c                = error $ "Search.prFree: " ++ show c
+    follow c                = internalError $ "Search.prFree: " ++ show c
 
   prNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
@@ -251,8 +251,8 @@ printValsDFS backTrack cont goal = do
       | otherwise        = foldr1 (>>) $
         zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
       where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
-    follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
-  prNarrowed _ i _ = error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
+    follow c           = internalError $ "Search.prNarrowed: Bad choice " ++ show c
+  prNarrowed _ i _ = internalError $ "Search.prNarrowed: Bad narrowed ID " ++ show i
 
   prGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
     Nothing                      -> return ()
@@ -320,14 +320,14 @@ searchDFS act goal = do
       follow ChooseLeft  = dfs cont x1
       follow ChooseRight = dfs cont x2
       follow NoDecision  = decide i ChooseLeft x1 +++ decide i ChooseRight x2
-      follow c           = error $ "Search.dfsChoice: Bad choice " ++ show c
+      follow c           = internalError $ "Search.dfsChoice: Bad choice " ++ show c
 
     dfsFree cd i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = dfs cont (xs !! c)
       follow (NoDecision , j) = cont $ choicesCons cd j xs
-      follow c                = error $ "Search.dfsFree: Bad choice " ++ show c
+      follow c                = internalError $ "Search.dfsFree: Bad choice " ++ show c
 
     dfsNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
       where
@@ -335,8 +335,8 @@ searchDFS act goal = do
       follow (ChooseN c _) = dfs cont (xs !! c)
       follow NoDecision    = foldr1 (+++) $
         zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0 ..] pns xs
-      follow c             = error $ "Search.dfsNarrowed: Bad choice " ++ show c
-    dfsNarrowed _ i _ = error $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
+      follow c             = internalError $ "Search.dfsNarrowed: Bad choice " ++ show c
+    dfsNarrowed _ i _ = internalError $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
 
     dfsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
@@ -394,7 +394,7 @@ searchBFS act goal = do
       follow NoDecision  = do
         reset
         next cont xs (decide i ChooseLeft a : decide i ChooseRight b : ys)
-      follow c           = error $ "Search.bfsChoice: Bad choice " ++ show c
+      follow c           = internalError $ "Search.bfsChoice: Bad choice " ++ show c
 
     bfsNarrowed _ i@(NarrowedID pns _) zs = set >> lookupDecision i >>= follow
       where
@@ -402,15 +402,15 @@ searchBFS act goal = do
       follow (ChooseN c _) = bfs cont xs ys set reset (zs !! c)
       follow NoDecision    = reset >> next cont xs
         (zipWith3 (\n pn y -> decide i (ChooseN n pn) y) [0..] pns zs ++ ys)
-      follow c             = error $ "Search.bfsNarrowed: Bad choice " ++ show c
-    bfsNarrowed _ i _ = error $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
+      follow c             = internalError $ "Search.bfsNarrowed: Bad choice " ++ show c
+    bfsNarrowed _ i _ = internalError $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
 
     bfsFree _ i zs = set >> lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs zs
       follow (ChooseN c _, _) = bfs cont xs ys set reset (zs !! c)
       follow (NoDecision , j) = reset >> (cont (choicesCons defCover j zs) +++ (next cont xs ys))
-      follow c                = error $ "Search.bfsFree: Bad choice " ++ show c
+      follow c                = internalError $ "Search.bfsFree: Bad choice " ++ show c
 
     bfsGuard _ cs e = set >> solve cs e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
@@ -490,14 +490,14 @@ startIDS olddepth newdepth act goal = do
       follow ChooseRight = ids n cont x2
       follow NoDecision  = checkDepth
                          $ decide i ChooseLeft x1 +++ decide i ChooseRight x2
-      follow c           = error $ "Search.idsChoice: Bad choice " ++ show c
+      follow c           = internalError $ "Search.idsChoice: Bad choice " ++ show c
 
     idsFree _ i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = ids n cont (xs !! c)
       follow (NoDecision , j) = cont $ choicesCons defCover j xs
-      follow c                = error $ "Search.idsFree: Bad choice " ++ show c
+      follow c                = internalError $ "Search.idsFree: Bad choice " ++ show c
 
     idsNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
       where
@@ -505,8 +505,8 @@ startIDS olddepth newdepth act goal = do
       follow (ChooseN c _) = ids n cont (xs !! c)
       follow NoDecision    = checkDepth $ foldr1 (+++) $
         zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0 ..] pns xs
-      follow c             = error $ "Search.idsNarrowed: Bad choice " ++ show c
-    idsNarrowed _ i _ = error $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
+      follow c             = internalError $ "Search.idsNarrowed: Bad choice " ++ show c
+    idsNarrowed _ i _ = internalError $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
 
     idsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
@@ -581,7 +581,7 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
     follow ChooseLeft  = searchMSearch' cont x
     follow ChooseRight = searchMSearch' cont y
     follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
-    follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
+    follow c           = internalError $ "Search.smpChoice: Bad decision " ++ show c
     plus = if isCovered cd then splus (decCover cd) i else mplus 
 
   smpChoices cd i xs = lookupDecision i >>= follow
@@ -590,10 +590,11 @@ searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smp
     follow (ChooseN c _)  = searchMSearch' cont (xs !! c)
     follow NoDecision     = sumF $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
-    follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
+    follow c              = internalError $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID pns _ -> pns
-           NarrowedID pns _ -> pns
+           FreeID     pns' _ -> pns'
+           NarrowedID pns' _ -> pns'
+           _                 -> internalError $ "Search.smpChoices: " ++ show i
     sumF = if isCovered cd then ssum (decCover cd) i else msum
 
 

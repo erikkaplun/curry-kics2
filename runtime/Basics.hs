@@ -2,6 +2,7 @@
 
 module Basics
   ( module Basics
+  , module FailInfo
   , module PrimTypes
   , module Search
   , module Types
@@ -11,6 +12,7 @@ import Data.Char(ord)
 import GHC.Exts (Int#, Char#, chr#)
 
 import Debug (internalError)
+import FailInfo
 import PrimTypes
 import Search
 import Types

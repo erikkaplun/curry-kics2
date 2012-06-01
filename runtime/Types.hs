@@ -14,6 +14,7 @@ module Types
 
 import ConstStore
 import Debug
+import FailInfo
 import ID
 
 -- ---------------------------------------------------------------------------

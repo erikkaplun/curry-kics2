@@ -3,10 +3,8 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( -- * FailInfo
-    FailInfo, defFailInfo
-    -- * Cover
-  , Cover, incCover, decCover, defCover, isCovered
+  ( -- * Cover
+    Cover, incCover, decCover, defCover, isCovered
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList
     -- * Decisions
@@ -21,35 +19,33 @@ module ID
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
-import Data.List (partition)
 
 import Debug
+import FailInfo (FailInfo)
 import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
 import qualified IDSupply
 
 -- ---------------------------------------------------------------------------
--- Fail Info
---  - will eventually collect information about the origin of failures
--- ---------------------------------------------------------------------------
-
-type FailInfo = ()
-
-defFailInfo :: FailInfo
-defFailInfo = ()
-
--- ---------------------------------------------------------------------------
 -- Cover
--- - used to store information about the covering depth of choices,
---   guards and failures
+-- ---------------------------------------------------------------------------
 
+-- |Type used to store information about the covering depth of choices,
+-- guards and failures
 type Cover = Int
+
+-- |Increase covering depth
 incCover :: Cover -> Cover
 incCover = (+ 1)
+
+-- |Decrease covering depth
 decCover :: Cover -> Cover
 decCover = flip (-) 1
+
+-- |Default covering depth (corresponds to no covering)
 defCover :: Cover
 defCover = 0
 
+-- |Is the non-determinism covered?
 isCovered :: Cover -> Bool
 isCovered x = x > 0
 
@@ -68,7 +64,6 @@ data Constraint
   -- |Non-deterministic choice between a list of lists of constraints
   | ConstraintChoices Cover ID [[Constraint]]
  deriving (Show,Eq)
-
 
 -- A Value Constraint is used to bind a Value to an id it also contains the
 -- structural constraint information that describes the choice to be taken

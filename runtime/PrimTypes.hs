@@ -4,6 +4,7 @@ module PrimTypes where
 import System.IO (Handle)
 
 import Debug
+import FailInfo
 import Types
 
 -- BinInt
