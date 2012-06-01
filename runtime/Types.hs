@@ -117,6 +117,15 @@ narrows cs cd i@(FreeID        p s) f xs
 narrows _  cd i@(NarrowedID      _ _) f xs = choicesCons cd i (map f xs)
 narrows _  _    (ChoiceID          _) _ _  = internalError "Types.narrows: ChoiceID"
 
+
+bindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
+bindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ i:=: BindTo j ]
+                                    | otherwise    = [ConstraintChoices cd (NarrowedID p s) (map (bind i) xs)]
+
+lazyBindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
+lazyBindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ i:=: BindTo j ]
+                                        | otherwise    = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind i) xs)]
+
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
 -- ---------------------------------------------------------------------------
@@ -456,16 +465,16 @@ instance Unifiable C_Success where
   (=.<=) C_Success C_Success _ = C_Success
   (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
   bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
-  bind i (Choice_C_Success cd j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Success cd j@(FreeID _ _) _) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choice_C_Success cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
+  bind i (Choices_C_Success cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs 
+  bind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
   bind _ (Choices_C_Success cd i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
   bind _ (Fail_C_Success cd info) = [Unsolvable info]
   bind i (Guard_C_Success _ cs e) = (getConstrList cs) ++ (bind i e)
   lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
-  lazyBind i (Choice_C_Success cd j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Success cd j@(FreeID _ _) _) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choice_C_Success cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_Success cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs 
+  lazyBind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Choices_C_Success cd i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ (Fail_C_Success cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Success cd cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]

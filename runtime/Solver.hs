@@ -35,21 +35,21 @@ solve cnstrs val = solve' (getConstrList cnstrs) val
 
 solveOne :: (Store m, NonDet a) => Constraint -> a -> Solution m a
 solveOne (Unsolvable _) _ = noSolution
-solveOne (ConstraintChoice i lcs rcs) e = lookupDecision i >>= follow
+solveOne (ConstraintChoice cd i lcs rcs) e = lookupDecision i >>= follow
   where
-  follow ChooseLeft  = mkSolution $ guardCons  defCover (StructConstr lcs) e
-  follow ChooseRight = mkSolution $ guardCons  defCover (StructConstr rcs) e
-  follow NoDecision  = mkSolution $ choiceCons defCover i
-                                    (guardCons defCover (StructConstr lcs) e)
-                                    (guardCons defCover (StructConstr rcs) e)
+  follow ChooseLeft  = mkSolution $ guardCons  cd (StructConstr lcs) e
+  follow ChooseRight = mkSolution $ guardCons  cd (StructConstr rcs) e
+  follow NoDecision  = mkSolution $ choiceCons cd i
+                                    (guardCons cd (StructConstr lcs) e)
+                                    (guardCons cd (StructConstr rcs) e)
   follow c           = error $ "Solver.solve.choose: CC:" ++ show c
 
-solveOne cc@(ConstraintChoices i css) e = lookupDecision i >>= follow
+solveOne cc@(ConstraintChoices cd i css) e = lookupDecision i >>= follow
   where
-  follow (ChooseN c _) = mkSolution $ guardCons defCover (StructConstr (css !! c)) e
-  follow NoDecision    = mkSolution $ choicesCons defCover i
-                                    $ map (\cs -> guardCons defCover (StructConstr cs) e) css
-  follow (LazyBind cs) = mkSolution $ guardCons defCover (StructConstr (cs ++ [cc])) e
+  follow (ChooseN c _) = mkSolution $ guardCons cd (StructConstr (css !! c)) e
+  follow NoDecision    = mkSolution $ choicesCons cd i
+                                    $ map (\cs -> guardCons cd (StructConstr cs) e) css
+  follow (LazyBind cs) = mkSolution $ guardCons cd (StructConstr (cs ++ [cc])) e
   follow c             = error $ "Solver.solve.choose: CCs:" ++ show c
 
 solveOne (i :=: cc) e = lookupDecision i >>= follow cc

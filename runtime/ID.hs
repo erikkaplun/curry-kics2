@@ -64,9 +64,9 @@ data Constraint
   -- |Unsolvable constraint
   | Unsolvable FailInfo
   -- |Non-deterministic choice between two lists of constraints
-  | ConstraintChoice ID [Constraint] [Constraint]
+  | ConstraintChoice Cover ID [Constraint] [Constraint]
   -- |Non-deterministic choice between a list of lists of constraints
-  | ConstraintChoices ID [[Constraint]]
+  | ConstraintChoices Cover ID [[Constraint]]
  deriving (Show,Eq)
 
 
