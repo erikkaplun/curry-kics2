@@ -1,6 +1,10 @@
 #!/bin/sh
 # Compile a Curry program (using the HTML library) into a cgi script
 
+# The installation directory of KiCS2
+KICS2HOME=`echo KICS2HOME must be defined here!`
+export KICS2HOME
+
 # Standard suffix that will be added to the main script:
 CGISUFFIX="_CGIMAIN_$$"
 # Name of the main function in the main script (should not be in conflict
@@ -89,11 +93,6 @@ if [ $# != 1 -a $# != 3 ] ; then
   echo "             specifications) when generating JavaScript support code"
   exit 1
 fi
-
-# Compute the main installation directory of KiCS2:
-PATHNAME=`(cd \`dirname $0\` > /dev/null ; pwd)`
-KICS2HOME=`expr $PATHNAME : '\(.*\)/bin'`
-export KICS2HOME
 
 # Definitions for WUI/JavaScript generation:
 WUIJS_PREPROCESSOR=$KICS2HOME/tools/curry2js/Curry2JS

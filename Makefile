@@ -69,9 +69,19 @@ install: kernel
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
 
+# install some scripts of KICS2 in the bin directory:
+.PHONY: installscripts
+installscripts:
+	@if [ ! -d ${BINDIR} ] ; then mkdir -p ${BINDIR} ; fi
+	cp src/cleancurry.sh ${BINDIR}/cleancurry
+	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/cymake.sh > ${BINDIR}/cymake
+	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/kics2.sh > ${BINDIR}/kics2
+	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/makecurrycgi.sh > ${BINDIR}/makecurrycgi
+	cd ${BINDIR} && chmod 755 cleancurry cymake kics2 makecurrycgi
+
 # install a kernel system without all tools
 .PHONY: kernel
-kernel: ${INSTALLCURRY} installfrontend
+kernel: ${INSTALLCURRY} installscripts installfrontend
 	${MAKE} Compile
 	${MAKE} REPL
 
@@ -91,7 +101,7 @@ libdoc:
 # install the front end if necessary:
 .PHONY: installfrontend
 installfrontend:
-	@if [ ! -d ${LOCALBIN} ] ; then mkdir ${LOCALBIN} ; fi
+	@if [ ! -d ${LOCALBIN} ] ; then mkdir -p ${LOCALBIN} ; fi
 	# install mcc front end if sources are present:
 	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
 	# install local front end if sources are present:
@@ -198,6 +208,7 @@ frontendsources:
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
+	cd ${KICS2DIST} && ${MAKE} installscripts ; \
 	# copy or install front end sources in distribution:
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
@@ -213,7 +224,6 @@ dist:
 	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
-	cd ${KICS2DIST}/bin && rm -rf .local idc idc.bak # clean executables
 	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz .
@@ -230,6 +240,7 @@ cleandist:
 	rm -rf .git .gitignore bin/.gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
+	rm -rf bin # clean executables
 	rm -rf docs/src
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
