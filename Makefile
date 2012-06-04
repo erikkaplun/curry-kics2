@@ -38,7 +38,7 @@ all:
 
 # bootstrap the compiler using PAKCS
 .PHONY: bootstrap
-bootstrap: ${INSTALLCURRY}
+bootstrap: ${INSTALLCURRY} installscripts
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
 	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}

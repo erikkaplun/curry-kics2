@@ -563,24 +563,21 @@ bindChoiceRule :: QName -> QName -> (QName, Rule)
 bindChoiceRule qf funcName = (funcName,
   simpleRule [PVar i, mkChoicePattern qf "j"]
     ( list2ac [ applyF (basics "ConstraintChoice")
-                [ Var j
+                [Var cd, Var j
                 , applyF funcName [Var i, Var x]
                 , applyF funcName [Var i, Var y]
                 ]
               ]
-    )) where [i,j,x,y] = newVars ["i","j","x","y"]
+    )) where [i,j,x,y,cd] = newVars ["i","j","x","y","cd"]
 
 -- bind i (Choices_TYPENAME j@(FreeID _ _) xs) = [i :=: BindTo j]
 -- lazyBind i (Choices_TYPENAME j@(FreeID _ _) xs) = [i :=: BindTo j]
 bindFreeRule ::QName -> QName -> (QName, Rule)
-bindFreeRule qf funcName = (funcName,
+bindFreeRule qf funcName@(_,bname) = (funcName,
   simpleRule
     [ PVar i, mkFreeChoicesPattern qf "j"]
-    ( list2ac [ applyF (basics ":=:")
-                [ Var (1,"i"), applyF (basics "BindTo") [Var j] ]
-              ]
-    ))
-    where [i,j] = newVars  ["i","j"]
+    (applyF (pre (bname ++ "OrNarrow")) [Var i, Var cd, Var j, Var xs])) 
+    where [i,j,cd, xs] = newVars  ["i","j", "cd", "xs"]
 
 -- bind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (bind i) xs)]
 -- lazyBind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (lazyBind i) xs)]
@@ -589,12 +586,12 @@ bindNarrowedRule qf funcName = (funcName,
   simpleRule
     [ PVar i, mkNarrowedChoicesPattern qf "j"]
     ( list2ac [ applyF (basics "ConstraintChoices")
-                [ Var j
+                [ Var cd, Var j
                 , applyF (pre "map") [applyF funcName [Var i], Var xs]
                 ]
               ]
     ))
-    where [i,j,xs] = newVars ["i","j","xs"]
+    where [i,j,xs, cd] = newVars ["i","j","xs", "cd"]
 
 -- bind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
 -- lazyBind _ c@(Choices_TYPENAME (ChoiceID _) _) = error ("Choices with ChoiceID: " ++ show c)
