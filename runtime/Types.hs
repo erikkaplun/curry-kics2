@@ -119,12 +119,12 @@ narrows _  _    (ChoiceID          _) _ _  = internalError "Types.narrows: Choic
 
 
 bindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
-bindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ i:=: BindTo j ]
-                                    | otherwise    = [ConstraintChoices cd (NarrowedID p s) (map (bind i) xs)]
+bindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ConstraintChoices cd (NarrowedID p s) (map (bind i) xs)]
+                                    | otherwise    = [ i :=: BindTo j ]
 
 lazyBindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
-lazyBindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ i:=: BindTo j ]
-                                        | otherwise    = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind i) xs)]
+lazyBindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind i) xs)]
+                                        | otherwise    = [ i :=: BindTo j ]
 
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
