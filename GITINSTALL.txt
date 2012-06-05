@@ -58,7 +58,7 @@ Currently, there are at least two options:
     this distribution by `make kernel`), you can copy the initial
     KiCS2 compiler into the git version by the command
 
-        cp -p tmp/kics2/bin/idc bin/idc
+        cp -p tmp/kics2/bin/.local/kics2c bin/.local/kics2c
 
     in the directory `kics2`.
 

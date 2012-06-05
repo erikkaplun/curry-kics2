@@ -381,7 +381,7 @@ mainExpr s o (Goal True  _ goal) = searchExpr s
     Count       -> "countAll"
 
 kics2 hoOpt ghcOpt supply strategy output gl@(Goal _ mod goal)
-  = idcBenchmark tag hoOpt ghcOpt (chooseSupply supply) mod goal (mainExpr strategy output gl)
+  = kics2Benchmark tag hoOpt ghcOpt (chooseSupply supply) mod goal (mainExpr strategy output gl)
  where tag = concat [ "KICS2"
                     , if ghcOpt then "+"  else ""
                     , if hoOpt  then "_D" else ""
@@ -404,9 +404,9 @@ mkTag mod goal comp
   | goal == "main" = mod ++ '@' : comp
   | otherwise      = mod ++ ':' : goal ++ '@' : comp
 
-idcBenchmark tag hooptim ghcoptim idsupply mod goal mainexp =
+kics2Benchmark tag hooptim ghcoptim idsupply mod goal mainexp =
   [ { bmName    = mkTag mod goal tag
-    , bmPrepare = idcCompile mod hooptim ghcoptim idsupply mainexp
+    , bmPrepare = kics2Compile mod hooptim ghcoptim idsupply mainexp
     , bmCommand = ("./Main", [])
     , bmCleanup = ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
     }
@@ -466,17 +466,17 @@ swiBenchmark mod = if onlyKiCS2 then [] else
 -- Compile target with KiCS2
 -- ---------------------------------------------------------------------------
 
--- Command to compile a module and execute main with idcompiler:
+-- Command to compile a module and execute main with kics2:
 -- arg1: module name
 -- arg2: compile with higher-order optimization?
 -- arg3: compile Haskell target with GHC optimization?
 -- arg4: idsupply implementation (integer or pureio)
 -- arg5: main (Haskell!) call
-idcCompile mod hooptim ghcoptim idsupply mainexp = do
-  -- 1. Call the idc to create the Haskell module
-  let idcCmd = (kics2Home ++ "/bin/idc", [ "-q", if hooptim then "" else "-O0"
-                                         , "-i" ++ kics2Home ++ "/lib", mod])
-  traceCmd idcCmd
+kics2Compile mod hooptim ghcoptim idsupply mainexp = do
+  -- 1. Call the kics2c to create the Haskell module
+  let kics2cCmd = (kics2Home ++ "/bin/.local/kics2c",
+    [ "-q", if hooptim then "" else "-O0" , "-i" ++ kics2Home ++ "/lib", mod])
+  traceCmd kics2cCmd
 
   -- 2. Create the Main.hs program containing the call to the initial expression
   let mainFile = "Main.hs"
@@ -588,7 +588,7 @@ benchHOFP withMon goal = concatMap ($goal)
   , if withMon then monc else skip
   ]
 
--- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
+-- Benchmarking functional logic programs with kics2/pakcs/mcc in DFS mode
 benchFLPDFS :: Bool -> Goal -> [Benchmark]
 benchFLPDFS withMon goal = concatMap ($goal)
   [ kics2 True False S_Integer PRDFS All
@@ -599,7 +599,7 @@ benchFLPDFS withMon goal = concatMap ($goal)
   , if withMon then monc else skip
   ]
 
--- Benchmarking functional logic programs with unification with idc/pakcs/mcc
+-- Benchmarking functional logic programs with unification with kics2/pakcs/mcc
 benchFLPDFSU :: Goal -> [Benchmark]
 benchFLPDFSU goal = concatMap ($goal)
   [ kics2 True True S_PureIO PRDFS All
@@ -608,7 +608,7 @@ benchFLPDFSU goal = concatMap ($goal)
   , mcc
   ]
 
--- Benchmarking functional patterns with idc/pakcs
+-- Benchmarking functional patterns with kics2/pakcs
 benchFunPats :: Goal -> [Benchmark]
 benchFunPats goal = concatMap ($goal)
   [ kics2 True True S_PureIO PRDFS All
@@ -616,13 +616,13 @@ benchFunPats goal = concatMap ($goal)
   , pakcs
   ]
 
--- Benchmarking functional programs with idc/pakcs/mcc
+-- Benchmarking functional programs with kics2/pakcs/mcc
 -- with a given name for the main operation
 benchFPWithMain :: Goal -> [Benchmark]
 benchFPWithMain goal = concatMap ($goal)
   [ kics2 True True S_Integer IODFS All, pakcs, mcc ]
 
--- Benchmarking functional logic programs with idc/pakcs/mcc in DFS mode
+-- Benchmarking functional logic programs with kics2/pakcs/mcc in DFS mode
 -- with a given name for the main operation
 benchFLPDFSWithMain :: Goal -> [Benchmark]
 benchFLPDFSWithMain goal = concatMap ($goal)

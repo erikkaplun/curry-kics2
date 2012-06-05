@@ -29,8 +29,8 @@ export BINDIR=${ROOT}/bin
 export LOCALBIN=${BINDIR}/.local
 # Directory where the libraries are located:
 export LIBDIR=${ROOT}/lib
-export COMP=${BINDIR}/idc
-export REPL=${LOCALBIN}/idci
+export COMP=${LOCALBIN}/kics2c
+export REPL=${LOCALBIN}/kics2i
 
 .PHONY: all
 all:
@@ -185,7 +185,7 @@ clean:
 .PHONY: cleanall
 cleanall: clean
 	bin/cleancurry -r
-	rm -rf bin/idc ${LOCALBIN}
+	rm -rf ${LOCALBIN}
 
 
 ###############################################################################
@@ -219,7 +219,7 @@ dist:
 	fi
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
-	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
+	cd bin/.local && cp kics2c ${KICS2DIST}/bin/.local # copy bootstrap compiler
 	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
 	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
 	cd ${KICS2DIST} && ${MAKE} clean           # clean object files
