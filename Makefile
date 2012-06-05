@@ -194,7 +194,7 @@ cleanall: clean
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
 # repository with new front-end:
-FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/kics2/repos
+FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
 
 # install the sources of the front end from its repository
 .PHONY: frontendsources
