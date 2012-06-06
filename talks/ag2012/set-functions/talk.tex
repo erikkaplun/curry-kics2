@@ -1,0 +1,364 @@
+\documentclass[utf8]{beamer}
+
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usetheme{Boadilla}
+
+\lstset{basicstyle=\small}
+
+\setbeamertemplate{footline}%{infolines theme}
+{
+\leavevmode%
+\hbox{%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+\usebeamerfont{author in head/foot}\insertshortauthor%~~(\insertshortinstitute)
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+\usebeamerfont{title in head/foot}\insertshorttitle
+\end{beamercolorbox}%
+\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+\usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+\end{beamercolorbox}}%
+\vskip0pt%
+}
+
+
+
+\newcommand{\prog}{\mathcal{P}}
+\newcommand{\cons}{\mathcal{C}}
+\newcommand{\func}{\mathcal{F}}
+\newcommand{\vars}{\mathcal{V}}
+\newcommand{\term}[1]{\mathcal{T}_{#1}}
+\newcommand{\sem}[1]{[\![#1]\!]_\prog} % semantic parantheses for partial values
+\newcommand{\enc}[1]{|#1|} % the encapsulation operator
+\newcommand{\encc}[1]{\langle #1 \rangle} % the encapsulation constructor
+\newcommand{\up}[1]{\lceil #1 \rceil} % set of all total values greater than #1
+
+\newcommand{\nats}{\mathbb{N}} % The set of all natural numbers
+\newcommand{\natz}{\mathbb{N}_0} % The set of all natural numbers and zero
+
+\newcommand{\bigcupdot}{% For big disjunct union
+\mathop{%
+\vphantom{\bigcup}%
+\mathpalette\setbigcupdot\cdot}\displaylimits}
+\newcommand{\setbigcupdot}[2]{\ooalign{\hfil$#1\bigcup$\hfil\cr\hfil$#2$\hfil\cr\cr}}
+
+\newcommand{\cupdot}{\ensuremath{\mathaccent\cdot \cup}} % for small disjunct union
+
+
+\begin{document}
+
+
+\title[Set Functions and Negation as Failure]{Semantics of Set Functions wrt. Negation as Failure}
+
+\date{June 06, 2012}
+
+\author[M. Hanus, B. Peemöller, \underline{F. Reck}]
+ { Michael Hanus \and Björn Peemöller\\
+            \underline{Fabian Reck} \\
+  \texttt{\{mh, bjp, fre\}@informatik.uni-kiel.de}}
+
+\institute{Kiel University}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}[fragile]
+\frametitle{Curry}
+\begin{columns}[t]
+\column{.45\textwidth}
+\begin{itemize}
+\item Lazy functional logic programing language.
+\item Haskell-like syntax.
+\item Extended by non-determinism, free variables, constraints, unification,
+      failure.
+\end{itemize}
+\begin{example}<2>
+\begin{lstlisting}
+> ensure aBool
+True
+\end{lstlisting}
+\end{example}
+\column{.45\textwidth}
+\begin{block}{Running Code Example}
+\begin{lstlisting}
+data Bool = True | False
+
+aBool :: Bool
+aBool = True ? False
+
+not True  = False
+not False = True
+
+ensure True = True
+\end{lstlisting}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example}
+\begin{block}{Flight data as non-deterministic operation}
+\begin{lstlisting}[mathescape]
+flight = (LH469, Portland, Frankfurt, 10:.15)
+       ? (NWA92, Portland, Amsterdam, 10:.00)
+       ? (LH10,  Frankfurt,Hamburg,    1:.00)
+       ? (KL1783,Amsterdam,Hamburg,    1:.52)
+       
+itinerary orig dest 
+   | flight =:= (num,orig,dest,len)
+   = [num]                         where num,len free
+
+itinerary orig dest 
+   | flight =:= (num1,orig,stop,len1)
+   & flight =:= (num2,stop,dest,len2)
+   = [num1,num2]      where num1,len1,num2,len2,stop free
+\end{lstlisting}
+\end{block}
+\pause
+Problem: itinerary with shortest air time? $\leadsto$ reason about \emph{all} values
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Encapsulated Search}
+\begin{itemize}
+\item Allows to access the non-deterministic results of an expression
+      within the program
+\end{itemize}
+\begin{block}{Example}
+\begin{lstlisting}
+> allValues aBool
+{True,False}
+\end{lstlisting}
+\end{block}
+\pause
+\begin{block}{Problem}
+\begin{lstlisting}
+> allValues $! aBool
+{True}
+{False}
+\end{lstlisting}%$
+\end{block}
+\begin{itemize}
+\item Result depends on the evaluation order
+\item Declarative languages are order independent 
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Set Functions}
+\begin{itemize}
+\item Novel approach to encapsulated search
+\item For every function $f$ there is a function $f_S$
+\item $f_S$ takes the same arguments as $f$
+\item The result of $f_S$: Set of non-deterministic results of $f$
+\item Non-determinism in arguments to $f_S$ is not capsuled
+\item Every result of $f \overline{t}$ is element of a
+      result of $f_S \overline{t}$
+\end{itemize}
+\begin{block}{Example}
+\begin{lstlisting}[mathescape]
+> aBool$_S$ 
+{True,False}
+
+> not$_S$ aBool
+{False}
+{True}
+\end{lstlisting}
+\end{block} 
+\end{frame}
+
+
+
+
+
+
+\begin{frame}[fragile]
+\frametitle{Negation as Failure}
+\begin{itemize}
+\item Just check if the result of a set function is the empty set
+\begin{block}{Example}
+\begin{lstlisting}[mathescape]
+data Size = Small | Big
+aSize = Small ? Big
+
+smallerThan size | anotherSize < size = anotherSize
+  where anotherSize = aSize
+
+getSmallest | isEmpty (smallerThan$_S$ size) = size
+  where size = aSize
+
+> getSmallest
+Small
+\end{lstlisting}
+\end{block}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Early Implementation Approach}
+\begin{itemize}
+\item Evaluate the arguments strictly \emph{before}
+      passing them to the function
+\pause
+\begin{block}{Problem}
+\begin{lstlisting}[mathescape]
+answer x = 42
+
+> answer (ensure False)
+42
+
+> answer$_S$ (ensure False)
+no more solutions
+\end{lstlisting}
+\end{block}
+\item Separate non-determinism from arguments without being strict
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Negation as Failure and Failures}
+\begin{block}{Problem}
+\begin{lstlisting}[mathescape]
+getSmallest | isEmpty (smallerThan$_S$ 
+                         (size =:= aSize &> size)) 
+            = size
+  where size = aSize
+
+> getSmallest
+Small
+Small
+Big
+\end{lstlisting}
+\end{block}
+\begin{itemize}
+ \item Failures in arguments may yield empty results of set functions
+ \item Set functions should behave as if arguments were
+       evaluated outside
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Be Lazy}
+\begin{block}{Problem}
+\begin{lstlisting}[mathescape]
+trueOrSomething x = True ? x
+> trueOrSomething failed
+True
+> trueOrSomething$_S$ failed
+no more solutions
+\end{lstlisting}
+\end{block}
+\begin{itemize}
+\item Ignore failures from arguments in the presence of other results.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{CRWL for Set Functions}
+
+Defines the semantics $\sem{e}$ of an expression $e$ wrt. a program $\prog$ as
+the set of all possible partial results of $e$.
+
+\begin{itemize}
+\item<1-> $\sem{\bot} = \{\bot\}$
+\item<1,3-> $\sem{c(e_1,\ldots, e_n)} = \{c(v_1,\ldots, v_n) \mid v_i \in \sem{e_i}, i \in \nats_{\le n}\}$
+\item<1,4->  $\sem{f(e_1,\ldots,e_n)} =\{\bot\} \cup \bigcup\{\sem{e}\mid v_i \in \sem{e_i}, i \in \nats_{\le n}, e \in match(f(v_1,\ldots,v_n),\prog)\}$
+\item<1,5-> The set function part 
+\begin{align*} 
+\sem{f_s(e_1,\ldots, e_n)} = \{\bot\}\cup \{\enc{f(v_1,\ldots, v_n)} \mid i \in  v_i \in \sem{e_i}, \nats_{\le n}\}\\
+\enc{e} = \begin{cases}
+             \bot, & \mbox{if } \sem{e} \cap \term{\cons \cup \{\encc{\cdot}\}} = \O \mbox{ and } \\
+                   & \exists e' \in \up{e} : \sem{e'} \cap \term{\cons \cup \{\encc{\cdot}\}} \not = \O\\
+             \encc{\sem{e} \cap \term{\cons \cup \{\encc{\cdot}\}}}, & \mbox{otherwise}
+               \end{cases}
+\end{align*}
+\end{itemize}
+\end{frame}
+
+\section{Compilation scheme}
+
+\begin{frame}[fragile]
+\frametitle{Representation of Non-Determinism and Failure in KiCS2}
+\begin{itemize}
+  \item No built-in non-determinism in Haskell.
+  \item Idea: Explicit representation in data types as constructors.
+\end{itemize}
+\pause
+\begin{block}{Curry}
+\begin{lstlisting}
+data Bool = True | False
+aBool = True ? False
+ensure True = True
+\end{lstlisting}
+\end{block}
+
+\begin{block}{Haskell}
+\begin{lstlisting}
+data Bool = True | False | Choice Bool Bool | Fail
+aBool = Choice True False
+ensure True         = True
+ensure (Choice l r) = Choice (ensure l) (ensure r)
+ensure _            = Fail
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Implementation of Set Functions}
+\begin{itemize}
+\item Mark choices that stem from arguments
+\begin{block}{Curry}
+\begin{lstlisting}[mathescape]
+answer$_S$ x = search (answer (cover x))
+
+cover True         = True
+cover False        = False
+cover (Choice l r) = Choice$^C$ (cover l) (cover r)
+cover Fail         = Fail $^C$
+
+search (Choice l r)  = combine (search l)  (search r)
+search (Choice$^C$ l r) = Choice (search l) (search r)
+search Fail          = {}
+search Fail$^C$         = Fail
+search x             = {x}
+\end{lstlisting}
+\end{block}
+\item Marked choices and failures are retained 
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation of Set Functions}
+\begin{block}{Curry}
+\begin{lstlisting}[mathescape]
+combine Fail x    = x
+combine x    y    = x $\cup$ noFail y
+
+noFail Fail = {}
+noFail y    = y
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Conclusion and future work}
+\begin{itemize}
+\item Set functions are an order independent approach to encapsulated
+      search
+\item Check for empty result set allows programming with negation as failure
+\item Difficult to handle failing arguments
+\item Extend semantics to full Curry
+\end{itemize}
+\end{frame}
+
+\end{document}
