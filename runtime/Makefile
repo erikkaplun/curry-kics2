@@ -48,4 +48,4 @@ ${CABAL}: ../Makefile Makefile
 .PHONY: clean
 clean:
 	rm -f ${CABAL}
-	rm -fr dist
+	rm -rf dist

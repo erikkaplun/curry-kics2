@@ -175,11 +175,12 @@ installhaskell:
 clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd src   ; ${MAKE} clean
+	cd src     && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
-	cd cpns  ; ${MAKE} clean
-	cd tools ; ${MAKE} clean
-	cd www   ; ${MAKE} clean
+	cd cpns    && ${MAKE} clean
+	cd tools   && ${MAKE} clean
+	cd runtime && ${MAKE} clean
+	cd www     && ${MAKE} clean
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -219,11 +220,11 @@ dist:
 	fi
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
-	cd bin/.local && cp kics2c ${KICS2DIST}/bin/.local # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean           # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
+	cp bin/.local/kics2c ${KICS2DIST}/bin/.local # copy bootstrap compiler
+	cd ${KICS2DIST} && ${MAKE} Compile           # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL              # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean             # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist         # delete unnessary files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile
