@@ -20,7 +20,6 @@ clean:
 	-cabal clean
 	rm -f $(CABAL_FILE)
 
-
 $(CABAL_FILE): ../Makefile Makefile
 ifndef VERSION
 	$(error VERSION is not defined. Please use 'make' on top-level)
