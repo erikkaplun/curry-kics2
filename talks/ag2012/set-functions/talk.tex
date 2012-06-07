@@ -273,7 +273,7 @@ the set of all possible partial results of $e$.
 \item<1,4->  $\sem{f(e_1,\ldots,e_n)} =\{\bot\} \cup \bigcup\{\sem{e}\mid v_i \in \sem{e_i}, i \in \nats_{\le n}, e \in match(f(v_1,\ldots,v_n),\prog)\}$
 \item<1,5-> The set function part 
 \begin{align*} 
-\sem{f_s(e_1,\ldots, e_n)} = \{\bot\}\cup \{\enc{f(v_1,\ldots, v_n)} \mid i \in  v_i \in \sem{e_i}, \nats_{\le n}\}\\
+\sem{f_s(e_1,\ldots, e_n)} = \{\bot\}\cup \{\enc{f(v_1,\ldots, v_n)} \mid  v_i \in \sem{e_i}, i \in \nats_{\le n}\}\\
 \enc{e} = \begin{cases}
              \bot, & \mbox{if } \sem{e} \cap \term{\cons \cup \{\encc{\cdot}\}} = \O \mbox{ and } \\
                    & \exists e' \in \up{e} : \sem{e'} \cap \term{\cons \cup \{\encc{\cdot}\}} \not = \O\\
