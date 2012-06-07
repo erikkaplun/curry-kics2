@@ -450,9 +450,9 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
              (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
-             (liftFail [Var 1000, Var 1001])
+             (traceFail (Var 1000) qn' (map Var vs) (Var 1001))
     , Branch (Pattern ("", "_") [])
-             (liftFail [defCover, defFailInfo])
+             (consFail qn' (Var i))
     ] -- TODO Magic numbers?
 
 -- Complete translation of an expression where all newly introduced supply
@@ -698,6 +698,26 @@ char c = funcCall curryChar charExpr
 
 float :: Float -> Expr
 float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
+
+traceFail cd qn args fail = liftFail
+  [ cd
+  , funcCall (basics, "traceFail")
+    [ showQName qn
+    , list2FCList (map (\a -> funcCall (prelude, "show") [a]) args)
+    , fail
+    ]
+  ]
+
+consFail qn arg = liftFail
+  [ defCover
+  , funcCall (basics, "consFail")
+    [ showQName $ unRenameQName qn
+    , list2FCList [funcCall (prelude, "show") [arg]]
+    ]
+  ]
+
+showQName qn = list2FCList $ map (Lit . Charc) (q ++ '.' : n)
+  where (q,n) = unRenamePrefixedFunc qn
 
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
