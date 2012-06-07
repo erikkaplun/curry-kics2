@@ -171,7 +171,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
     | d <= 0    = indent l k . showChar '_' . nl
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
-      Fail _ _        -> showChar '!' . nl
+      Fail _ info     -> showChar '!' . nl . shows info . nl
       Choice  _ i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
       Narrowed _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
       Free     _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
