@@ -5,6 +5,7 @@
 module FailInfo
   ( FailInfo (..)
   , defFailInfo
+  , customFail
   , consFail
   , traceFail
   ) where
@@ -20,6 +21,9 @@ defFailInfo = FailInfo []
 
 addTrace :: String -> FailInfo -> FailInfo
 addTrace t fi = fi { failTrace = t : failTrace fi }
+
+customFail :: String -> FailInfo
+customFail msg = addTrace msg defFailInfo
 
 consFail :: String -> [String] -> FailInfo
 consFail fun args = addTrace (fmtCall fun args) defFailInfo
