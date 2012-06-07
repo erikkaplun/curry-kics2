@@ -75,6 +75,9 @@ renameQName (q, n) = (renameModule q, genRename n)
 unRenameQName :: QName -> QName
 unRenameQName (q, n) = (unRenameModule q, unGenRename n)
 
+unRenamePrefixedFunc :: QName -> QName
+unRenamePrefixedFunc qn = unRenameQName (dropFuncPrefix qn)
+
 genRename :: String -> String
 genRename n
   | n == "[]"     = "OP_List"
@@ -94,6 +97,12 @@ unGenRename n
 
 externalFunc :: QName -> QName
 externalFunc (q, n) = (q, "external_" ++ n)
+
+dropFuncPrefix :: QName -> QName
+dropFuncPrefix (m, f) = case f of
+  'd' : '_' : fun       -> (m, fun)
+  'n' : 'd' : '_' : fun -> (m, fun)
+  _                     -> (m, f)
 
 -- Compute the determinism prefix of a curry function
 -- 1st arg: is the function used for compilation in determinism mode
