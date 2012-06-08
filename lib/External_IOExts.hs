@@ -106,14 +106,14 @@ instance NormalForm (C_IORef a) where
 instance Unifiable (C_IORef a) where
   (=.=) _ _ = error "(=.=) for C_IORef"
   (=.<=) _ _ = error "(=.<=) for C_IORef"
-  bind i (Choice_C_IORef _ j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_IORef _ j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_IORef _ j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choice_C_IORef cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
+  bind i (Choices_C_IORef cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
+  bind i (Choices_C_IORef cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
   bind _ (Fail_C_IORef cd info) = [Unsolvable info]
   bind i (Guard_C_IORef _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind i (Choice_C_IORef _ j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_IORef _ j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_IORef _ j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choice_C_IORef cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_IORef cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
+  lazyBind i (Choices_C_IORef cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Fail_C_IORef cd info) = [Unsolvable info]
   lazyBind i (Guard_C_IORef _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 

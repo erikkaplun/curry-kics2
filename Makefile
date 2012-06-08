@@ -29,8 +29,8 @@ export BINDIR=${ROOT}/bin
 export LOCALBIN=${BINDIR}/.local
 # Directory where the libraries are located:
 export LIBDIR=${ROOT}/lib
-export COMP=${BINDIR}/idc
-export REPL=${LOCALBIN}/idci
+export COMP=${LOCALBIN}/kics2c
+export REPL=${LOCALBIN}/kics2i
 
 .PHONY: all
 all:
@@ -38,7 +38,7 @@ all:
 
 # bootstrap the compiler using PAKCS
 .PHONY: bootstrap
-bootstrap: ${INSTALLCURRY}
+bootstrap: ${INSTALLCURRY} installscripts
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
 	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
@@ -61,13 +61,15 @@ install: kernel
 	@if [ ${GLOBALINSTALL} = yes ] ; \
 	 then cd runtime && ${MAKE} && \
 	      cd ../lib && ${MAKE} compilelibs && \
-	      ${MAKE} installlibs && \
-	      ${MAKE} acy && chmod -R go+rX . ; fi
+	                   ${MAKE} installlibs && \
+	                   ${MAKE} acy ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then cd docs/src && ${MAKE} install ; fi
+	# make everything accessible:
+	chmod -R go+rX .
 
 # install some scripts of KICS2 in the bin directory:
 .PHONY: installscripts
@@ -173,17 +175,18 @@ installhaskell:
 clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd src   ; ${MAKE} clean
+	cd src     && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
-	cd cpns  ; ${MAKE} clean
-	cd tools ; ${MAKE} clean
-	cd www   ; ${MAKE} clean
+	cd cpns    && ${MAKE} clean
+	cd tools   && ${MAKE} clean
+	cd runtime && ${MAKE} clean
+	cd www     && ${MAKE} clean
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
 cleanall: clean
 	bin/cleancurry -r
-	rm -rf bin/idc ${LOCALBIN}
+	rm -rf ${LOCALBIN}
 
 
 ###############################################################################
@@ -192,7 +195,7 @@ cleanall: clean
 # temporary directory to create distribution version
 KICS2DIST=/tmp/kics2
 # repository with new front-end:
-FRONTENDREPO=http://www-ps.informatik.uni-kiel.de/kics2/repos
+FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
 
 # install the sources of the front end from its repository
 .PHONY: frontendsources
@@ -217,11 +220,11 @@ dist:
 	fi
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
-	cd bin && cp idc ${KICS2DIST}/bin          # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile         # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL            # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean           # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist       # delete unnessary files
+	cp bin/.local/kics2c ${KICS2DIST}/bin/.local # copy bootstrap compiler
+	cd ${KICS2DIST} && ${MAKE} Compile           # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL              # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean             # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist         # delete unnessary files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile

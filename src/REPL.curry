@@ -48,7 +48,7 @@ cleanMainGoalFile rst
 
 -- REPL state:
 type ReplState =
-  { idcHome      :: String     -- installation directory of the system
+  { kics2Home    :: String     -- installation directory of the system
   , rcvars       :: [(String,String)] -- content of rc file
   , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
   , verbose      :: Int        -- verbosity level: 0 = quiet,
@@ -158,7 +158,7 @@ data MainCompile = MainError | MainDet | MainNonDet
 -- Initial state of REPL:
 initReplState :: ReplState
 initReplState =
-  { idcHome      = ""
+  { kics2Home      = ""
   , rcvars       = []
   , idSupply     = "ioref"
   , verbose      = 1
@@ -200,7 +200,7 @@ scFileName = installDir ++ "/.kics2sc"
 main = do
   rcdefs <- readRC
   args   <- getArgs
-  let rst = { idcHome := Inst.installDir
+  let rst = { kics2Home := Inst.installDir
             , rcvars := rcdefs
             | initReplState }
   ipath  <- defaultImportPaths rst
@@ -353,8 +353,8 @@ writeMainGoalFile rst imports mtype goal =
   writeFile mainGoalFile
             (unlines $ map ("import "++)
                            (nub (rst->mainMod : rst->addMods ++ imports)) ++
-                       (maybe [] (\ts -> ["idcMainGoal :: "++ts]) mtype) ++
-                       ["idcMainGoal = "++goal])
+                       (maybe [] (\ts -> ["kics2MainGoal :: "++ts]) mtype) ++
+                       ["kics2MainGoal = "++goal])
 
 --- If the main goal is polymorphic, make it monomorphic by adding a type
 --- declaration where type variables are replaced by type "()".
@@ -432,11 +432,11 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> Bool -> IO Int
 compileCurryProgram rst curryprog ismain = do
-  let compileProg = (rst->idcHome) </> "bin" </> "idc"
-      idcoptions  = --(if rst->verbose < 2 then "-q " else "") ++
+  let compileProg = (rst->kics2Home) </> "bin" </> ".local" </> "kics2c"
+      kics2options  = --(if rst->verbose < 2 then "-q " else "") ++
                     "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths ++ rst->libPaths))
-      compileCmd  = unwords [compileProg,idcoptions,rst->cmpOpts,curryprog]
+      compileCmd  = unwords [compileProg,kics2options,rst->cmpOpts,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
  where
@@ -453,12 +453,12 @@ createAndCompileMain :: ReplState -> Bool -> String -> MainGoalCompile
 createAndCompileMain rst createexecutable mainexp goalstate = do
   infos <- readInfoFile rst
   --print infos
-  let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_idcMainGoal")
+  let isdet = not (null (filter (\i -> (snd (fst i)) == "d_C_kics2MainGoal")
                                 infos))
       isio  = snd
                (head
                 (filter (\i -> snd (fst i) ==
-                           (if isdet then "d" else "nd") ++ "_C_idcMainGoal")
+                           (if isdet then "d" else "nd") ++ "_C_kics2MainGoal")
                         infos))
   writeVerboseInfo rst 3 $ "Initial goal is " ++
                   (if isdet then "" else "non-") ++ "deterministic and " ++
@@ -474,8 +474,8 @@ createAndCompileMain rst createexecutable mainexp goalstate = do
                      _     -> False
       ghcImports = (if Inst.installGlobal
                     then [] 
-                    else [ rst -> idcHome ++ "/runtime"
-                         , rst -> idcHome ++ "/runtime/idsupply" ++ rst -> idSupply])
+                    else [ rst -> kics2Home ++ "/runtime"
+                         , rst -> kics2Home ++ "/runtime/idsupply" ++ rst -> idSupply])
                    ++ ["." </> rst -> outputSubdir]
                    ++ map (</> rst -> outputSubdir) 
                           ((if Inst.installGlobal
@@ -522,7 +522,7 @@ createHaskellMain rst goalstate isdet isio
       , if printOperation == "print" then "" else "import Curry_Prelude"
       , "import Curry_" ++ stripSuffix mainGoalFile
       , ""
-      , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "idcMainGoal"
+      , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "kics2MainGoal"
       ]
   where
   printOperation = case goalstate of
@@ -717,7 +717,7 @@ processThisCommand rst cmd args
   | cmd=="interface"
    = do let modname  = if null args then rst->mainMod else stripSuffix args
             toolexec = "tools/GenInt"
-            genint   = rst->idcHome </> toolexec
+            genint   = rst->kics2Home </> toolexec
         giexists <- doesFileExist genint
         if giexists
          then system (genint ++ " -int " ++ modname) >> return (Just rst)
@@ -727,7 +727,7 @@ processThisCommand rst cmd args
      then writeErrorMsg "superfluous argument" >> return Nothing
      else do
         let toolexec = "tools/browser/BrowserGUI"
-            browser  = rst->idcHome </> toolexec
+            browser  = rst->kics2Home </> toolexec
         cbexists <- doesFileExist browser
         if cbexists
          then system (browser ++ " " ++ rst->mainMod) >> return (Just rst)
@@ -735,7 +735,7 @@ processThisCommand rst cmd args
   | cmd=="usedimports"
    = do let modname  = if null args then rst->mainMod else stripSuffix args
             toolexec = "tools/ImportCalls"
-            icalls   = rst->idcHome </> toolexec
+            icalls   = rst->kics2Home </> toolexec
         icexists <- doesFileExist icalls
         if icexists
          then system (icalls ++ " " ++ modname) >> return (Just rst)
@@ -1022,7 +1022,7 @@ showFunctionInModule :: ReplState -> String -> String -> IO (Maybe ReplState)
 showFunctionInModule rst mod fun = do
   let mbh      = lookup mod (rst->sourceguis)
       toolexec = "tools/SourceProgGUI"
-      spgui    = rst->idcHome </> toolexec
+      spgui    = rst->kics2Home </> toolexec
   spgexists <- doesFileExist spgui
   if not spgexists
    then errorMissingTool toolexec >> return Nothing

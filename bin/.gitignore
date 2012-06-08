@@ -1,3 +1,12 @@
+# compiler
+.local
+cleancurry
+cymake
+idc
+kics2
+makecurrycgi
+
+# tools
 addtypes
 currybrowse
 currycreatemake

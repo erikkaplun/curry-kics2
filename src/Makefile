@@ -36,8 +36,8 @@ REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
 # binary directory and executables
 BINDIR=${IDIR}/bin
 LOCALBIN=${BINDIR}/.local
-COMP=${BINDIR}/idc
-REPL=${LOCALBIN}/idci
+COMP=${LOCALBIN}/kics2c
+REPL=${LOCALBIN}/kics2i
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -69,12 +69,14 @@ bootstrap:
 Compile.state: ${INSTALLCURRY} Compile.curry
 	pakcs -s Compile
 	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mkdir -p ${LOCALBIN}
 	mv Compile.state ${COMP}
 
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
 	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	mkdir -p ${LOCALBIN}
 	mv CompileBoot ${COMP}
 
 # Translate Curry->Haskell compiler into Haskell:

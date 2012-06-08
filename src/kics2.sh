@@ -5,7 +5,7 @@
 # The installation directory of KiCS2
 KICS2HOME=`echo KICS2HOME must be defined here!`
 
-REPL="$KICS2HOME/bin/.local/idci"
+REPL="$KICS2HOME/bin/.local/kics2i"
 if [ ! -x "$REPL" ] ; then
   echo "ERROR: executable '$REPL' not found!" >&2
   echo "Run: cd $KICS2HOME && make" >&2

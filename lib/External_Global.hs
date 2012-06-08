@@ -66,14 +66,14 @@ instance Unifiable (C_Global a) where
     | f1 == f2  = C_Success
   (=.=) _ _ _ = Fail_C_Success 0 defFailInfo
   (=.<=) = (=.=)
-  bind i (Choice_C_Global _ j l r) = [(ConstraintChoice j (bind i l) (bind i r))]
-  bind i (Choices_C_Global _ j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  bind i (Choices_C_Global _ j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (bind i) xs))]
+  bind i (Choice_C_Global cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
+  bind i (Choices_C_Global cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
+  bind i (Choices_C_Global cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
   bind _ (Fail_C_Global cd info) = [Unsolvable info]
   bind i (Guard_C_Global _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind i (Choice_C_Global _ j l r) = [(ConstraintChoice j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Global _ j@(FreeID _ _) xs) = [(i :=: (BindTo j))]
-  lazyBind i (Choices_C_Global _ j@(NarrowedID _ _) xs) = [(ConstraintChoices j (map (lazyBind i) xs))]
+  lazyBind i (Choice_C_Global cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
+  lazyBind i (Choices_C_Global cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
+  lazyBind i (Choices_C_Global cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Fail_C_Global cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Global _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 

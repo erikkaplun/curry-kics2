@@ -41,8 +41,6 @@ mccparser
 
 # binaries
 benchmarks/Benchmarks
-bin/idc
-bin/.local
 cpns/CPNSD
 examples/comptest
 frontend

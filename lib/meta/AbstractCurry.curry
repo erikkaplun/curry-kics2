@@ -211,7 +211,9 @@ data CPattern
   | CPRecord [CField CPattern] (Maybe CPattern) -- record pattern (extended curry)
 
 --- Data type for representing branches in case expressions.
-data CBranchExpr = CBranch CPattern CExpr
+data CBranchExpr
+  = CBranch CPattern CExpr
+  | CGuardedBranch CPattern [(CExpr, CExpr)]
 
 --- Data type for representing literals occurring in an expression.
 --- It is either an integer, a float, or a character constant.
