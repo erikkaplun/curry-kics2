@@ -6,10 +6,10 @@ Installation Instructions for the GIT Repository
 
 If you want to install the up-to-date version of KiCS2
 from the developer's repository, you have to clone the
-[git repository](http://www-ps.informatik.uni-kiel.de/kics2/repos/kics2.git),
+[git repository](https://git-ps.informatik.uni-kiel.de/curry/kics2),
 e.g., by the shell command
 
-    git clone http://www-ps.informatik.uni-kiel.de/kics2/repos/kics2.git
+    git clone git://git-ps.informatik.uni-kiel.de/curry/kics2.git
 
 This creates a new directory `kics2` containing the current version.
 Go into this directory by
@@ -52,13 +52,13 @@ Currently, there are at least two options:
     Download and install the KiCS2 distribution from the
     [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
     Be sure to use a different directory than `kics2` for this installation,
-    e.g., install this in `tmp/kics2`.
+    e.g., install this in `/tmp/kics2`.
     If you successfully installed this distribution (note that you do not
     need the complete installation so that it is sufficient to install
     this distribution by `make kernel`), you can copy the initial
     KiCS2 compiler into the git version by the command
 
-        cp -p tmp/kics2/bin/idc bin/idc
+        cp -p /tmp/kics2/bin/.local/kics2c bin/.local/kics2c
 
     in the directory `kics2`.
 
