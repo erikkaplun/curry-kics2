@@ -712,7 +712,7 @@ eqConsRule hoResult (FC.Cons qn carity _ _)
     eqBody    = if carity == 0
       then constF (curryPre "C_True")
       else foldr1
-          (\x xs -> applyF (curryPre "d_OP_ampersand_ampersand") [x, xs, Var cs])
+          (\x xs -> applyF curryAnd [x, xs, Var cs])
           (map (\i -> applyF (curryPre "=?=") [mkVar "x" i, mkVar "y" i, Var cs])
                 [1..carity])
     cs = (2 * carity + 1, "cs")
@@ -733,9 +733,9 @@ ordConsRules hoResult (FC.Cons qn carity _ _ : cds)
     ordBody l = case l of
       []     -> constF (curryPre "C_True")
       [i]    -> applyF (curryPre "<?=") [mkVar "x" i, mkVar "y" i, Var cs]
-      (i:is) -> applyF (curryPre "d_OP_bar_bar")
-                  [ applyF (curryPre "d_OP_lt") xiyi
-                  , applyF (curryPre "d_OP_ampersand_ampersand")
+      (i:is) -> applyF curryOr
+                  [ applyF curryLt xiyi
+                  , applyF curryAnd
                       [applyF (curryPre "=?=") xiyi, ordBody is, Var cs]
                   , Var cs
                   ] where xiyi = [mkVar "x" i, mkVar "y" i, Var cs]
@@ -899,7 +899,7 @@ basics :: String -> QName
 basics n = ("Basics", n)
 
 curryPre :: String -> QName
-curryPre n = (renameModule "Prelude", n)
+curryPre n = (curryPrelude, n)
 
 narrow :: QName
 narrow = basics "narrow"
@@ -913,4 +913,11 @@ cover = basics "cover"
 incCover :: QName
 incCover = basics "incCover"
 
+curryAnd :: QName
+curryAnd = curryPre $ funcPrefix True D FO ++ genRename "&&"
 
+curryOr :: QName
+curryOr = curryPre $ funcPrefix True D FO ++ genRename "||"
+
+curryLt :: QName
+curryLt = curryPre $ funcPrefix True D FO ++ genRename "<"
