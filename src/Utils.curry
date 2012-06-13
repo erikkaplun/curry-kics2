@@ -21,6 +21,9 @@ liftIO f m = m >>= return . f
 unless :: Bool -> IO () -> IO ()
 unless flag act = if flag then done else act
 
+notNull :: [a] -> Bool
+notNull = not . null
+
 when :: Bool -> IO () -> IO ()
 when flag act = if flag then act else done
 

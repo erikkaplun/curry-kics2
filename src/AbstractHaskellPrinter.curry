@@ -10,7 +10,8 @@
 ------------------------------------------------------------------------------
 
 module AbstractHaskellPrinter
-  ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl, showTypeExpr, showFuncDecl
+  ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl
+  , showTypeExpr, showFuncDecl
   , showLiteral, showExpr, showPattern, showInt, showFloat
   ) where
 

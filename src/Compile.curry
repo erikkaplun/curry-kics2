@@ -31,7 +31,7 @@ import SimpleMake
 -- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (when, foldIO)
+import Utils (when, foldIO, notNull)
 
 -- parse the command-line arguments and build the specified files
 main :: IO ()
@@ -206,7 +206,7 @@ integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (stripSuffix fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
-  return $ unlines $ filter (not . null)
+  return $ unlines $ filter notNull
     [ unlines (defaultPragmas : pragmas)
     , showModuleHeader m td fd imps
     , unlines extimps
