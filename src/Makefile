@@ -49,12 +49,13 @@ bootstrap:
 	@echo "Compiling stage 1"
 	${MAKE} CompileInitial
 	cp ${COMP} ../stage1
+	cd .. && bin/cleancurry -r
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
 	${MAKE} CompileBoot
 	cp ${COMP} ../stage2
 	# Create kics2 via kics2 (stage 3)
-	cd .. ; bin/cleancurry -r
+	cd .. && bin/cleancurry -r
 	@echo "Compiling stage 3"
 	${MAKE} CompileBoot
 	cp ${COMP} ../stage3
@@ -69,7 +70,7 @@ bootstrap:
 .PHONY: CompileInitial
 CompileInitial: ${INSTALLCURRY} Compile.curry
 	mkdir -p ${LOCALBIN}
-	@if [ -n "${KICS2}" ] ; then \
+	@if [ -x "${KICS2}" ] ; then \
 	  ${KICS2} :l Compile :save :quit ; \
 	  ${MAKE} backup_compiler ; \
 	  mv Compile ${COMP} ; \
