@@ -32,6 +32,8 @@ export LIBDIR=${ROOT}/lib
 export COMP=${LOCALBIN}/kics2c
 export REPL=${LOCALBIN}/kics2i
 
+SCRIPTS=cleancurry cymake kics2 makecurrycgi
+
 .PHONY: all
 all:
 	${MAKE} installwithlogging
@@ -75,11 +77,10 @@ install: kernel
 .PHONY: installscripts
 installscripts:
 	@if [ ! -d ${BINDIR} ] ; then mkdir -p ${BINDIR} ; fi
-	cp src/cleancurry.sh ${BINDIR}/cleancurry
-	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/cymake.sh > ${BINDIR}/cymake
-	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/kics2.sh > ${BINDIR}/kics2
-	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/makecurrycgi.sh > ${BINDIR}/makecurrycgi
-	cd ${BINDIR} && chmod 755 cleancurry cymake kics2 makecurrycgi
+	for script in ${SCRIPTS}; do \
+          sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/$$script.sh       > ${BINDIR}/$$script ; \
+        done
+	cd ${BINDIR} && chmod 755 ${SCRIPTS}
 
 # install a kernel system without all tools
 .PHONY: kernel
@@ -187,6 +188,7 @@ clean:
 cleanall: clean
 	bin/cleancurry -r
 	rm -rf ${LOCALBIN}
+#	cd ${BINDIR} && rm -f ${SCRIPTS}
 
 
 ###############################################################################

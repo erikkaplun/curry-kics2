@@ -169,7 +169,7 @@ meta/%.tex: ../meta/%.curry
 clean:
 	rm -f "${DOCDIR}"/*
 	rm -f "${TEXDOCDIR}"/*
-	rm -fr dist
+	rm -rf dist
 	rm -f ${CABAL}
 	../bin/cleancurry
 	cd meta && ../../bin/cleancurry
