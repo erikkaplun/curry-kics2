@@ -231,7 +231,7 @@ processArgsAndStart rst (arg:args) =
 --- Retrieve the KiCS2 banner
 getBanner :: IO String
 getBanner = do
-  logo <- readFile (Inst.installDir ++ "/data/logo.txt")
+  logo <- readFile $ Inst.installDir </> "include" </> "logo" <.> "txt"
   return (logo ++ version)
  where version = "Version "
               ++ show Inst.majorVersion ++ "." ++ show Inst.minorVersion
