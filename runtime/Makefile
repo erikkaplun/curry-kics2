@@ -1,8 +1,6 @@
 # Makefile to generate the kics2-runtime.cabal
 # and install the runtime environment as ghc package
 
-
-
 # The name of the ghc package
 PKGNAME=kics2-runtime
 # The name of the cabal file
@@ -49,3 +47,5 @@ ${CABAL}: ../Makefile Makefile
 clean:
 	rm -f ${CABAL}
 	rm -rf dist
+	rm -f *.hi *.o *.hi-boot *.o-boot
+	rm -f ./idsupply*/*.hi ./idsupply*/*.o

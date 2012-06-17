@@ -5,7 +5,7 @@
 .PHONY: all
 all: Benchmarks
 
-# generate saved state for Curry->FLVM compiler:
+# generate binary for Benchmarks program:
 Benchmarks: Benchmarks.curry
 	cleancurry
 	../bin/kics2 :l Benchmarks :save :q

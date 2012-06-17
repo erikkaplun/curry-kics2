@@ -28,7 +28,7 @@
 stage[1,2,3]
 *.bak
 Installation.*
-make.log
+*.log
 .kics2sc
 lib/AllLibraries.curry
 lib/dist
@@ -37,10 +37,11 @@ runtime/dist
 runtime/kics2-runtime.cabal
 
 # ignore front end since it is managed in another repository
-mccparser
+mccparser/
 
 # binaries
 benchmarks/Benchmarks
+bin/
 cpns/CPNSD
 examples/comptest
 frontend
