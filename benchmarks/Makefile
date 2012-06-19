@@ -20,3 +20,4 @@ publish:
 .PHONY: clean
 clean:
 	cleancurry
+	rm -f bench.log

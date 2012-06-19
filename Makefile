@@ -176,12 +176,13 @@ installhaskell:
 clean:
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd src     && ${MAKE} clean
+	cd benchmarks && ${MAKE} clean
+	cd cpns       && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
-	cd cpns    && ${MAKE} clean
-	cd tools   && ${MAKE} clean
-	cd runtime && ${MAKE} clean
-	cd www     && ${MAKE} clean
+	cd runtime    && ${MAKE} clean
+	cd src        && ${MAKE} clean
+	cd tools      && ${MAKE} clean
+	cd www        && ${MAKE} clean
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
