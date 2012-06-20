@@ -4,6 +4,7 @@ import FiniteMap
 import FlatCurry
 import FlatCurryGoodies
 import Maybe (fromJust, fromMaybe)
+import List (partition)
 
 import Base
 import Dependency2
@@ -157,3 +158,28 @@ ordHelp2 functype arity orderMap =
              let func1 = (ordHelp2 x 0 orderMap)
                  funcRest = (ordHelp2 y (arity-1) orderMap)
              in (hoOr func1 funcRest)
+
+-------------------------------------------------------------------------------------------
+-- Visibility analysis
+-------------------------------------------------------------------------------------------
+
+analyzeVisibility :: Prog -> ([QName],[QName])
+analyzeVisibility p =
+  splitVisibleFuncs (progFuncs p) |++| splitVisibleTypesNCons (progTypes p)
+
+splitVisibleFuncs funcs =
+   let (pubs,privs) =  partition (\f -> funcVisibility f == Public) funcs in
+   (map funcName pubs, map funcName privs)
+
+splitVisibleTypesNCons types =
+   let (pubs,privs) = partition (\t -> typeVisibility t == Public) types in
+    (map typeName pubs, map typeName privs)
+    |++| splitVisibleCons (concatMap typeConsDecls (filter (not . isTypeSyn) types))
+
+splitVisibleCons cons =
+  let (pubs,privs) = partition (\c -> consVisibility c == Public) cons in  
+   (map consName pubs, map consName privs)                  
+
+(|++|) :: ([a],[b]) -> ([a],[b]) -> ([a],[b])
+(xs1, xs2) |++| (ys1,ys2) = (xs1 ++ ys1 , xs2 ++ ys2)
+  

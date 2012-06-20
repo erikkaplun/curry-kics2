@@ -1,7 +1,7 @@
 module TransFunctions where
 
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
-  , lookupFM, plusFM)
+  , lookupFM, plusFM, delListFromFM)
 import List (find, intersperse, isPrefixOf)
 import Maybe
 
@@ -191,14 +191,20 @@ transProg p@(Prog m is ts fs _) =
   let modNDRes     = analyseND     p (st -> ndResult)
       modHOResFun  = analyseHOFunc p (st -> hoResultFun)
       modHOResCons = analyseHOCons p
-      modTypeMap   = getConsMap ts in
+      modTypeMap   = getConsMap ts 
+      (_,priv)     = analyzeVisibility p  
+      visNDRes     = modNDRes     `delListFromFM` priv
+      visHOFun     = modHOResFun  `delListFromFM` priv
+      visHOCons    = modHOResCons `delListFromFM` priv
+      visType      = modTypeMap   `delListFromFM` priv
+  in
   addNDAnalysis     modNDRes      `bindM_`
   addHOFunAnalysis  modHOResFun  `bindM_`
   addHOConsAnalysis modHOResCons `bindM_`
   addTypeMap        modTypeMap   `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
-  returnM $ (Prog m is [] (concat fss) [], (modTypeMap, modNDRes, modHOResFun, modHOResCons))
+  returnM $ (Prog m is [] (concat fss) [], (visType , visNDRes, visHOFun, visHOCons))
 
 -- Register the types of constructors to be able to retrieve the types for
 -- constructors used in case patterns.
