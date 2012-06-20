@@ -223,11 +223,12 @@ dist:
 	fi
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:
-	cp bin/.local/kics2c ${KICS2DIST}/bin/.local # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile           # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL              # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean             # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist         # delete unnessary files
+	mkdir -p ${KICS2DIST}/bin/.local
+	cp bin/.local/kics2c ${KICS2DIST}/bin/.local/ # copy bootstrap compiler
+	cd ${KICS2DIST} && ${MAKE} Compile            # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL               # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean              # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist          # delete unnessary files
 	# copy documentation:
 	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
 	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile
