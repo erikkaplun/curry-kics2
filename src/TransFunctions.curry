@@ -192,11 +192,11 @@ transProg p@(Prog m is ts fs _) =
       modHOResFun  = analyseHOFunc p (st -> hoResultFun)
       modHOResCons = analyseHOCons p
       modTypeMap   = getConsMap ts 
-      (_,priv)     = analyzeVisibility p  
-      visNDRes     = modNDRes     `delListFromFM` priv
-      visHOFun     = modHOResFun  `delListFromFM` priv
-      visHOCons    = modHOResCons `delListFromFM` priv
-      visType      = modTypeMap   `delListFromFM` priv
+      visInfo      = analyzeVisibility p  
+      visNDRes     = modNDRes     `delListFromFM` getPrivateFunc visInfo
+      visHOFun     = modHOResFun  `delListFromFM` getPrivateFunc visInfo
+      visHOCons    = modHOResCons `delListFromFM` getPrivateCons visInfo
+      visType      = modTypeMap   `delListFromFM` getPrivateCons visInfo
   in
   addNDAnalysis     modNDRes      `bindM_`
   addHOFunAnalysis  modHOResFun  `bindM_`
