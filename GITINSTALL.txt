@@ -35,7 +35,22 @@ implementation on your machine in order to start the
 bootstrapping process.
 Currently, there are at least two options:
 
-1. Bootstrapping with PAKCS
+1. Bootstrapping with KiCS2 (the faster option)
+
+    Download and install the KiCS2 distribution from the
+    [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
+    Be sure to use a different directory than `kics2` for this installation,
+    e.g., install this in `/tmp/kics2`.
+    If you successfully installed this distribution (note that you do not
+    need the complete installation so that it is sufficient to install
+    this distribution by `make kernel`), you can generate the initial
+    KiCS2 compiler by the command
+
+        make bootstrap KICS2=/tmp/kics2/bin/kics2
+
+    in the directory `kics2`.
+
+2. Bootstrapping with PAKCS (the slower option)
 
     Download and install the PAKCS implementation of Curry from the
     [PAKCS web site](http://www.informatik.uni-kiel.de/~pakcs).
@@ -44,21 +59,6 @@ Currently, there are at least two options:
     KiCS2 compiler by the command
 
         make bootstrap
-
-    in the directory `kics2`.
-
-2. Bootstrapping with KiCS2
-
-    Download and install the KiCS2 distribution from the
-    [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
-    Be sure to use a different directory than `kics2` for this installation,
-    e.g., install this in `/tmp/kics2`.
-    If you successfully installed this distribution (note that you do not
-    need the complete installation so that it is sufficient to install
-    this distribution by `make kernel`), you can copy the initial
-    KiCS2 compiler into the git version by the command
-
-        cp -p /tmp/kics2/bin/.local/kics2c bin/.local/kics2c
 
     in the directory `kics2`.
 

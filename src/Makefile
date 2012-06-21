@@ -45,16 +45,17 @@ all: CompileBoot REPLBoot
 .PHONY: bootstrap
 bootstrap:
 	${MAKE} clean
-	# Create kics2 via PAKCS (stage 1)
+	# Create kics2 via PAKCS or other KiCS2 (stage 1)
 	@echo "Compiling stage 1"
-	${MAKE} Compile.state
+	${MAKE} CompileInitial
 	cp ${COMP} ../stage1
+	cd .. && bin/cleancurry -r
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
 	${MAKE} CompileBoot
 	cp ${COMP} ../stage2
 	# Create kics2 via kics2 (stage 3)
-	cd .. ; bin/cleancurry -r
+	cd .. && bin/cleancurry -r
 	@echo "Compiling stage 3"
 	${MAKE} CompileBoot
 	cp ${COMP} ../stage3
@@ -65,17 +66,28 @@ bootstrap:
 # Compile
 ########################################################################
 
-# generate executable for Curry->Haskell compiler via PAKCS:
-Compile.state: ${INSTALLCURRY} Compile.curry
-	pakcs -s Compile
-	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+# generate executable for Curry->Haskell compiler via PAKCS or other KiCS2:
+.PHONY: CompileInitial
+CompileInitial: ${INSTALLCURRY} Compile.curry
 	mkdir -p ${LOCALBIN}
-	mv Compile.state ${COMP}
+	@if [ -x "${KICS2}" ] ; then \
+	  ${KICS2} :l Compile :save :quit ; \
+	  ${MAKE} backup_compiler ; \
+	  mv Compile ${COMP} ; \
+	else \
+	  pakcs -s Compile ; \
+	  ${MAKE} backup_compiler ; \
+	  mv Compile.state ${COMP} ; \
+	fi
+
+.PHONY: backup_compiler
+backup_compiler:
+	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
 
 # generate executable for Curry->Haskell compiler:
 CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 	ghc ${GHCOPTIONS} ${GHCEXTS} ${GHCINCLUDES} CompileBoot.hs
-	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
+	${MAKE} backup_compiler
 	mkdir -p ${LOCALBIN}
 	mv CompileBoot ${COMP}
 

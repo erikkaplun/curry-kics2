@@ -163,18 +163,32 @@ ordHelp2 functype arity orderMap =
 -- Visibility analysis
 -------------------------------------------------------------------------------------------
 
-analyzeVisibility :: Prog -> ([QName],[QName])
+data Visibilities = Vis ([QName],[QName]) ([QName],[QName]) ([QName],[QName])
+
+getPrivateFunc (Vis (_  ,priv) _                   _) = priv
+getPublicFunc  (Vis (pub,   _) _                   _) = pub
+
+getPrivateType (Vis _          (_  ,priv)          _) = priv
+getPublicType  (Vis _          (pub,   _)          _) = pub
+
+getPrivateCons (Vis _          _          (_  ,priv)) = priv
+getPublicCons  (Vis _          _          (pub,   _)) = pub
+
+analyzeVisibility :: Prog -> Visibilities
 analyzeVisibility p =
-  splitVisibleFuncs (progFuncs p) |++| splitVisibleTypesNCons (progTypes p)
+  Vis (splitVisibleFuncs (progFuncs p))
+      (splitVisibleTypes types)
+      (splitVisibleCons  (concatMap typeConsDecls (filter (not . isTypeSyn) types)))
+ where
+  types = progTypes p
 
 splitVisibleFuncs funcs =
    let (pubs,privs) =  partition (\f -> funcVisibility f == Public) funcs in
    (map funcName pubs, map funcName privs)
 
-splitVisibleTypesNCons types =
+splitVisibleTypes types =
    let (pubs,privs) = partition (\t -> typeVisibility t == Public) types in
     (map typeName pubs, map typeName privs)
-    |++| splitVisibleCons (concatMap typeConsDecls (filter (not . isTypeSyn) types))
 
 splitVisibleCons cons =
   let (pubs,privs) = partition (\c -> consVisibility c == Public) cons in  
