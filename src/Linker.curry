@@ -1,22 +1,22 @@
-module Linker where
+module Linker
+  ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
+  , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain
+  ) where
 
 import AbstractCurry
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
-import IO
+import IO (Handle)
 import Directory
-import IOExts
-import Time
 import System
 import FileGoodies
 
-
 import qualified Installation as Inst
 import Files
+import GhciComm
 import Names         (funcInfoFile)
 import RCFile
 import Utils
-
 
 type ReplState =
   { kics2Home    :: String     -- installation directory of the system
@@ -45,7 +45,7 @@ type ReplState =
   , rtsArgs      :: String     -- run-time arguments passed to main application
   , quit         :: Bool       -- terminate the REPL?
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
-  , ghcicomm     :: Maybe GhciCommunication -- possible ghci comm. info
+  , ghcicomm     :: Maybe GhciComm -- possible ghci comm. info
   }
 
 --- Initial state of REPL
@@ -76,93 +76,14 @@ initReplState =
   , ghcicomm     = Nothing
   }
 
---- Mode of non-deterministic evaluation of main goal
-data NonDetMode = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices Int
-
-
---- --------------------------------------------------------------------------
---- Information for communication with ghci
---- (triple of command, handle, and KiCS2 verbosity of this command)
-data GhciCommunication = GhciComm String Handle Int
-
---- start ghci communication (if necessary)
-startGhciComm :: ReplState -> String -> IO ReplState
-startGhciComm rst cmd = let v = rst->verbose in
-  maybe (do hdl <- connectToCommand cmd
-            let rst' = { ghcicomm := Just (GhciComm cmd hdl v) | rst }
-            showGhciOutput rst' "putStrLn \"\""
-            return rst'
-        )
-        (\ (GhciComm cmd0 hdl0 v0) ->
-          if cmd==cmd0
-          then hPutStrLnGhci rst hdl0 ":reload" >> return rst
-          else do hPutStrLnGhci rst hdl0 ":quit"
-                  unless (v0 < 2) (hGetLine hdl0 >>= putStrLn)
-                  hClose hdl0
-                  hdl <- connectToCommand cmd
-                  return { ghcicomm := Just (GhciComm cmd hdl v) | rst }
-        )
-        (rst->ghcicomm)
-
---- terminate ghci communication
-stopGhciComm :: ReplState -> IO ReplState
-stopGhciComm rst =
-  maybe (return rst)
-        (\ (GhciComm _ hdl _) -> hPutStrLnGhci rst hdl ":quit" >>
-                                 hClose hdl >>
-                                 return { ghcicomm := Nothing | rst })
-        (rst->ghcicomm)
-
---- send "main" to ghci and print results
-mainGhciComm :: ReplState -> IO ()
-mainGhciComm rst = do
-  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
-  hPutStrLnGhci rst hdl $ ':':(if rst->showTime then "" else "un")++"set +s"
-  showGhciOutput rst "safeExec main"
-  unless (not (rst->showTime)) (hGetLine hdl >>= putStrLn)
-
---- send an IO expression to ghci and print the stdout data from ghci
-showGhciOutput :: ReplState -> String -> IO ()
-showGhciOutput rst cmd = do
-  ctime <- getLocalTime
-  let (Just (GhciComm _ hdl _)) = rst->ghcicomm
-      stopstring = "???" ++ reverse (calendarTimeToString ctime) ++ "==="
-  hPutStrLnGhci rst hdl (cmd++" >> putStrLn \""++stopstring++"\"")
-  hPrintLinesBefore hdl stopstring
- where
-   hPrintLinesBefore h stop = do
-     line <- hGetLine h
-     --putStrLn $ "FROM GHCI> "++line
-     if line == stop
-       then done
-       else putStrLn line >> hPrintLinesBefore h stop
-
---- Send and show (if demanded) a string to ghci handle:
-hPutStrLnGhci :: ReplState -> Handle -> String -> IO ()
-hPutStrLnGhci rst h s = do
-  writeVerboseInfo rst 2 $ "SEND TO GHCI> "++s
-  hPutStrLn h s
-  hFlush h
+loadPaths :: ReplState -> [String]
+loadPaths rst = "." : rst -> importPaths ++ rst -> libPaths
 
 -- ---------------------------------------------------------------------------
-
-
---- Result of compiling main goal
-data MainGoalCompile
-  = GoalError                             -- error occurred
-  | GoalWithoutBindings CurryProg         -- goal does not contain free vars
-  | GoalWithBindings CurryProg Int String -- number of vars / new goal
-
---- Result of compiling main program
-data MainCompile = MainError | MainDet | MainNonDet
-
--- ---------------------------------------------------------------------------
-
 
 --- Location of the system configuration file.
 scFileName :: String
 scFileName = Inst.installDir </> ".kics2sc"
-
 
 --- File name of created Main file
 mainGoalFile :: String
@@ -172,124 +93,160 @@ mainGoalFile = "Curry_Main_Goal.curry"
 writeVerboseInfo :: ReplState -> Int -> String -> IO ()
 writeVerboseInfo rst lvl msg = unless (rst -> verbose < lvl) (putStrLn msg)
 
-
-
 -- Reads the determinism infomation for the main goal file
 readInfoFile :: ReplState -> IO [((String,String),Bool)]
 readInfoFile rst = do
   readQTermFile (funcInfoFile (rst -> outputSubdir) mainGoalFile)
 
--- Create and compile the main module containing the main goal
-createAndCompileMain :: ReplState -> Bool -> String -> MainGoalCompile
-                     -> IO (ReplState,MainCompile)
-createAndCompileMain rst createexecutable mainexp goalstate = do
+getGoalInfo :: ReplState -> IO (Bool, Bool)
+getGoalInfo rst = do
   infos <- readInfoFile rst
   --print infos
   let isdet = notNull (filter (\i -> (snd (fst i)) == "d_C_kics2MainGoal")
                                 infos)
-      isio  = snd
-               (head
-                (filter (\i -> snd (fst i) ==
+      isio  = snd (head (filter (\i -> snd (fst i) ==
                            (if isdet then "d" else "nd") ++ "_C_kics2MainGoal")
                         infos))
   writeVerboseInfo rst 3 $ "Initial goal is " ++
-                  (if isdet then "" else "non-") ++ "deterministic and " ++
-                  (if isio  then "" else "not ") ++ "of IO type..."
-  createHaskellMain rst goalstate isdet isio
-  oldGhcOptions <- readPropertyFile scFileName >>=
-                   return . flip rcValue "GHC_OPTIONS"
-  if oldGhcOptions == rst -> ghcOpts then done
-   else updatePropertyFile scFileName "GHC_OPTIONS" (rst -> ghcOpts)
-  let useghci    = rst->useGhci && not createexecutable && not (rst->interactive)
-      parSearch  = case rst -> ndMode of
-                     Par _ -> True
-                     _     -> False
-      ghcImports = (if Inst.installGlobal
-                    then [] 
-                    else [ rst -> kics2Home ++ "/runtime"
-                         , rst -> kics2Home ++ "/runtime/idsupply" ++ rst -> idSupply])
-                   ++ ["." </> rst -> outputSubdir]
-                   ++ map (</> rst -> outputSubdir) 
-                          ((if Inst.installGlobal
-                            then []
-                            else (rst -> libPaths))
-                           ++ (rst -> importPaths))
-      ghcCompile = unwords . filter notNull $
-        [ Inst.ghcExec
-        , if rst -> optim && not useghci then "-O2" else ""
-        , if useghci then "--interactive" else "--make"
-        , if rst -> verbose < 2 then "-v0" else "-v1"
-        , "-XMultiParamTypeClasses"
-        , "-XFlexibleInstances"
-        , "-XRelaxedPolyRec" --due to problem in FlatCurryShow
-        , if (rst -> idSupply) `elem` ["ghc","ioref"] then "-package ghc" else ""
-        , if parSearch then "-threaded" else ""
-        , "-cpp" -- use the C pre processor -- TODO WHY?
-        , rst -> ghcOpts
-        , if oldGhcOptions == rst -> ghcOpts then "" else "-fforce-recomp"
-        , if notNull (rst -> rtsOpts) || parSearch then "-rtsopts" else ""
-        , "-i" ++ (intercalate ":" ghcImports)
-        , "." </> rst -> outputSubdir </> "Main.hs"
-        ]
-                     -- also: -fforce-recomp -funbox-strict-fields ?
-  writeVerboseInfo rst 2 $ "Compiling Main.hs with: "++ghcCompile
-  rst' <- if useghci then startGhciComm rst ghcCompile
-                          else return rst
-  status <- if useghci
-            then do writeVerboseInfo rst' 1
-                                  ("Evaluating expression: " ++ strip mainexp)
-                    mainGhciComm rst'
-                    return 0
-            else system ghcCompile
-  return (rst',if status>0 then MainError else
-               if isdet || isio then MainDet else MainNonDet)
+                (if isdet then "" else "non-") ++ "deterministic and " ++
+                (if isio  then "" else "not ") ++ "of IO type..."
+  return (isdet, isio)
+
+updateGhcOptions :: String -> IO Bool
+updateGhcOptions newOpts = do
+  oldOpts <- readPropertyFile scFileName >>= return . flip rcValue key
+  if oldOpts == newOpts
+    then return False
+    else do
+      updatePropertyFile scFileName key newOpts
+      return True
+ where key = "GHC_OPTIONS"
+
+--- Result of compiling main program
+data MainCompile = MainError | MainDet | MainNonDet
+
+-- Create and compile the main module containing the main goal
+createAndCompileMain :: ReplState -> Bool -> String -> Maybe Int
+                     -> IO (ReplState, MainCompile)
+createAndCompileMain rst createExecutable mainExp bindings = do
+  (isdet, isio) <- getGoalInfo rst
+  wasUpdated    <- updateGhcOptions (rst -> ghcOpts)
+  writeFile mainFile $ mainModule rst isdet isio bindings
+
+  let ghcCompile = ghcCall rst useGhci wasUpdated mainFile
+  writeVerboseInfo rst 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  (rst', status) <- if useGhci
+                      then compileWithGhci rst ghcCompile mainExp
+                      else system ghcCompile >>= \stat -> return (rst, stat)
+  return (rst', if status > 0 then MainError else
+                if isdet || isio then MainDet else MainNonDet)
+ where
+  mainFile = "." </> rst -> outputSubdir </> "Main.hs"
+  -- option parsing
+  useGhci = rst -> useGhci && not createExecutable && not (rst -> interactive)
+
+compileWithGhci :: ReplState -> String -> String -> IO (ReplState, Int)
+compileWithGhci rst ghcCompile mainExp = do
+  comm <- refresh ghcCompile (rst -> verbose >= 2)
+  writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainExp
+  evalMainCmd comm (rst -> showTime)
+  return ({ ghcicomm := Just comm | rst }, 0)
+ where refresh = case rst -> ghcicomm of
+                    Nothing  -> initGhciComm
+                    Just old -> restartGhciComm old
+
+ghcCall :: ReplState -> Bool -> Bool -> String -> String
+ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
+  [ Inst.ghcExec
+  , if rst -> optim && not useGhci then "-O2"            else ""
+  , if useGhci                     then "--interactive"  else "--make"
+  , if rst -> verbose < 2          then "-v0"            else "-v1"
+  , if withGhcSupply               then "-package ghc"   else ""
+  , if isParSearch                 then "-threaded"      else ""
+  , if withRtsOpts                 then "-rtsopts"       else ""
+  , if recompile                   then "-fforce-recomp" else ""
+  , rst -> ghcOpts
+      -- XRelaxedPolyRec due to problem in FlatCurryShow
+  , "-XMultiParamTypeClasses", "-XFlexibleInstances", "-XRelaxedPolyRec"
+--   , "-cpp" -- use the C pre processor -- TODO WHY?
+  , "-i" ++ (intercalate ":" ghcImports)
+  , mainFile
+  ]
+ where
+  withGhcSupply = (rst -> idSupply) `elem` ["ghc", "ioref"]
+  withRtsOpts   = notNull (rst -> rtsOpts) || isParSearch
+  isParSearch   = case rst -> ndMode of
+    Par _ -> True
+    _     -> False
+  ghcImports
+    | Inst.installGlobal
+    = []
+    | otherwise
+    = [ rst -> kics2Home </> "runtime"
+      , rst -> kics2Home </> "runtime" </> "idsupply" ++ rst -> idSupply
+      ] ++ map (</> rst -> outputSubdir) (loadPaths rst)
+
+--- Mode of non-deterministic evaluation of main goal
+data NonDetMode  = DFS | BFS | IDS Int | Par Int | PrDFS | PrtChoices Int
+
+data EvalMode    = All | One | Interactive MoreDefault -- | Count
+
+data MoreDefault = MoreYes | MoreNo | MoreAll
 
 -- Create the Main.hs program containing the call to the initial expression:
-createHaskellMain :: ReplState -> MainGoalCompile -> Bool -> Bool -> IO ()
-createHaskellMain rst goalstate isdet isio
-  = writeFile ("." </> rst -> outputSubdir </> "Main.hs") $ unlines
-      [ "module Main where"
-      , "import MonadList"
-      , "import Basics"
-      , "import SafeExec"
-      , if printOperation == "print" then "" else "import Curry_Prelude"
-      , "import Curry_" ++ stripSuffix mainGoalFile
-      , ""
-      , "main = " ++ mainOperation ++ ' ' : mainPrefix ++ "kics2MainGoal"
-      ]
-  where
-  printOperation = case goalstate of
-    GoalWithBindings _ n _ -> printWithBindings n
-    _                      -> "print"
-  mainPrefix     = if isdet then "d_C_" else "nd_C_"
+mainModule :: ReplState -> Bool -> Bool -> Maybe Int -> String
+mainModule rst isdet isio bindings = unlines
+  [ "module Main where"
+--     , "import MonadList"
+  , "import Basics"
+  , "import SafeExec"
+--     , if printOperation == "print" then "" else "import Curry_Prelude"
+  , "import Curry_" ++ stripSuffix mainGoalFile
+  , ""
+  , "main :: IO ()"
+  , mainExpr "kics2MainGoal" isdet isio (rst -> ndMode) evalMode bindings
+  ]
+ where
+  evalMode
+    | rst -> interactive = Interactive moreDefault
+    | rst -> firstSol    = One
+    | otherwise          = All
+  moreDefault = case rcValue (rst -> rcvars) "moresolutions" of
+    "yes" -> MoreYes
+    "no"  -> MoreNo
+    "all" -> MoreAll
+    _     -> MoreYes
+
+mainExpr :: String -> Bool -> Bool -> NonDetMode -> EvalMode -> Maybe Int -> String
+mainExpr goal isdet isio ndMode evalMode mbBindings
+  = "main = " ++ mainOperation ++ ' ' : detPrefix ++ goal
+ where
+  detPrefix = if isdet then "d_C_" else "nd_C_"
   mainOperation
-    | isio && isdet                  = "evalDIO"
-    | isio                           = "evalIO"
-    | isdet                          = "evalD"
-    | otherwise                      = case rst -> ndMode of
+    | isio && isdet = "evalDIO"
+    | isdet         = "evalD"
+    | isio          = "evalIO"
+    | otherwise     = case ndMode of
       PrDFS        -> searchExpr $ "prdfs"
       DFS          -> searchExpr $ "printDFS" ++ searchSuffix
       BFS          -> searchExpr $ "printBFS" ++ searchSuffix
       IDS        d -> searchExpr $ "printIDS" ++ searchSuffix ++ ' ' : show d
       Par        _ -> searchExpr $ "printPar" ++ searchSuffix
       PrtChoices d -> "prtChoiceTree" ++ ' ' : show d
-  searchExpr search = search ++ ' ' : printOperation
-  searchSuffix
-    | rst -> interactive = "i " ++ moreDefault
-    | rst -> firstSol    = "1"
-    | otherwise          = ""
-  moreDefault = case rcValue (rst -> rcvars) "moresolutions" of
-    "yes" -> "MoreYes"
-    "no"  -> "MoreNo"
-    "all" -> "MoreAll"
-    _     -> "MoreYes"
+  searchExpr strat = strat ++ ' ' : printOperation
+  searchSuffix = case evalMode of
+    All            -> ""
+    One            -> "1"
+    Interactive md -> "i " ++ show md
+  printOperation = maybe "print" printWithBindings mbBindings
+
   -- Create the following Haskell expression for printing goals with bindings:
   -- (\ (OP_Tuple<n+2> result names v1 ... v<n>) ->
   --  printWithBindings (zip (fromCurry names) [show v1,..., show v<n>]) result)
   printWithBindings n =
-    "(\\ (OP_Tuple"++show (n+2)++" result names"++
-    concatMap (\i->' ':'v':show i) [1..n]++
-    " ) ->"++
-    " printWithBindings (zip (fromCurry names) ["++
-    (intercalate "," (map (\i->"show v"++show i) [1..n])) ++
+    "(\\ (OP_Tuple" ++ show (n + 2) ++ " result names" ++
+    concatMap ((" v" ++) . show) [1 .. n] ++
+    " ) ->" ++
+    " printWithBindings (zip (fromCurry names) [" ++
+    intercalate "," (map (("show v" ++) . show) [1..n]) ++
     "]) result)"
