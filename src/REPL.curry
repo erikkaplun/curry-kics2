@@ -203,7 +203,7 @@ compileProgramWithGoal rst createexecutable goal = do
     typeok <- makeMainGoalMonomorphic rst newprog newgoal
     if typeok
      then do
-      status <- compileCurryProgram rst mainGoalFile True
+      status <- compileCurryProgram rst mainGoalFile 
       exinfo <- doesFileExist infoFile
       if status == 0 && exinfo
        then createAndCompileMain rst createexecutable goal goalstate
@@ -291,18 +291,15 @@ insertFreeVarsInMainGoal rst goal = getAcyOfMainGoal rst >>=
                                  _               -> []
 
 -- Compile a Curry program with IDC compiler:
-compileCurryProgram :: ReplState -> String -> Bool -> IO Int
-compileCurryProgram rst curryprog ismain = do
+compileCurryProgram :: ReplState -> String -> IO Int
+compileCurryProgram rst curryprog = do
   let compileProg = rst -> kics2Home </> "bin" </> ".local" </> "kics2c"
       kics2options  = --(if rst->verbose < 2 then "-q " else "") ++
-                    "-v " ++ show (verbREPL2IDC (rst->verbose)) ++ " " ++
+                    "-v " ++ show (rst->verbose) ++ " " ++
                     (concatMap (\i -> " -i "++i) (rst->importPaths ++ rst->libPaths))
       compileCmd  = unwords [compileProg,kics2options,rst->cmpOpts,curryprog]
   writeVerboseInfo rst 3 $ "Executing: "++compileCmd
   system compileCmd
- where
-  verbREPL2IDC v | v==1 && not ismain = 2 -- to get frontend messages
-                 | otherwise          = v
 
 
 
@@ -427,7 +424,7 @@ processLoad rst args = do
           (\fn ->
               readAndProcessSourceFileOptions rst' fn >>=
               maybe (return Nothing)
-                (\rst'' -> compileCurryProgram rst'' modname False >>
+                (\rst'' -> compileCurryProgram rst'' modname >>
                 return (Just{mainMod := modname, addMods := [] | rst''}))
           )
           mbf
@@ -448,7 +445,7 @@ processReload rst args
   | rst -> mainMod == "Prelude"
   = skipCommand "no program loaded!"
   | null (stripSuffix args)
-  = compileCurryProgram rst (rst -> mainMod) False >> return (Just rst)
+  = compileCurryProgram rst (rst -> mainMod) >> return (Just rst)
   | otherwise
   = skipCommand "superfluous argument"
 
