@@ -1,9 +1,9 @@
--- ---------------------------------------------------------------------------
--- A collection of operations for dealing with file names
---
--- @author  Bjoern Peemoeller
--- @version June 2011
--- ---------------------------------------------------------------------------
+--- --------------------------------------------------------------------------
+--- A collection of operations for dealing with file names
+---
+--- @author  Björn Peemöller
+--- @version June 2012
+--- --------------------------------------------------------------------------
 module Files
   ( -- File name modification
     withComponents, withDirectory, withBaseName, withExtension
@@ -13,15 +13,20 @@ module Files
   , createDirectoryIfMissing
     -- file creation
   , writeFileInDir, writeQTermFileInDir
+    -- file deletion
+  , removeFileIfExists
   ) where
 
-import Directory (createDirectory, doesDirectoryExist)
+import Directory
+  ( createDirectory, doesDirectoryExist
+  , doesFileExist, removeFile
+  )
 import FileGoodies
 import List (last)
 import ReadShowTerm (writeQTermFile)
 import Utils
 
--- Apply functions to all parts of a file name
+--- Apply functions to all parts of a file name
 withComponents :: (String -> String) -- change path
                -> (String -> String) -- change base name
                -> (String -> String) -- change suffix
@@ -30,24 +35,24 @@ withComponents pf bf sf fn = pf path </> bf base <.> sf suffix
   where (path, bassfx) = splitDirectoryBaseName fn
         (base, suffix) = splitBaseName bassfx
 
--- Apply a function to the directory component of a file path
+--- Apply a function to the directory component of a file path
 withDirectory :: (String -> String) -> String -> String
 withDirectory f fn = withComponents f id id fn
 
--- Apply a function to the base name component of a file path
+--- Apply a function to the base name component of a file path
 withBaseName :: (String -> String) -> String -> String
 withBaseName f fn = withComponents id f id fn
 
--- Apply a function to the extension component of a file path
+--- Apply a function to the extension component of a file path
 withExtension :: (String -> String) -> String -> String
 withExtension f fn =withComponents id id f fn
 
--- Combine two paths
+--- Combine two paths
 (</>) :: String -> String -> String
 dir </> subdir =  dropTrailing separatorChar dir
                ++ separatorChar : dropLeading separatorChar subdir
 
--- Combine a file name and an extension
+--- Combine a file name and an extension
 (<.>) :: String -> String -> String
 file <.> ext =  dropTrailing suffixSeparatorChar file
              ++ suffixSeparatorChar : dropLeading suffixSeparatorChar ext
@@ -55,8 +60,8 @@ file <.> ext =  dropTrailing suffixSeparatorChar file
 dropTrailingPathSeparator :: String -> String
 dropTrailingPathSeparator fn = dropTrailing separatorChar fn
 
--- Split a path into the list of directories and the base name as the last
--- element
+--- Split a path into the list of directories and the base name as the last
+--- element
 splitDirectories :: String -> [String]
 splitDirectories [] = []
 splitDirectories (x:xs)
@@ -69,8 +74,8 @@ splitDirectories (x:xs)
       | otherwise = dir : splitDirs (tail dirs)
       where (dir, dirs) = break (== separatorChar) path
 
--- Create a directory if it does not exist. The flag signals if all missing
--- parent directories should also be created
+--- Create a directory if it does not exist. The flag signals if all missing
+--- parent directories should also be created
 createDirectoryIfMissing :: Bool -> String -> IO ()
 createDirectoryIfMissing createParents path
   | createParents = createDirs parents
@@ -84,20 +89,24 @@ createDirectoryIfMissing createParents path
       unless dde $ createDirectory dir
       createDirs dirs
 
--- write the 'String' into a file where the file name may contain a path.
--- The corresponding directories are created first if missing.
+--- write the 'String' into a file where the file name may contain a path.
+--- The corresponding directories are created first if missing.
 writeFileInDir :: String -> String -> IO ()
 writeFileInDir file content = do
   createDirectoryIfMissing True $ dirName file
   writeFile file content
 
--- write the 'String' into a file where the file name may contain a path.
--- The corresponding directories are created first if missing.
+--- write the 'String' into a file where the file name may contain a path.
+--- The corresponding directories are created first if missing.
 writeQTermFileInDir :: String -> a -> IO ()
 writeQTermFileInDir file content = do
   createDirectoryIfMissing True $ dirName file
   writeQTermFile file content
 
+removeFileIfExists :: String -> IO ()
+removeFileIfExists file = do
+  exists <- doesFileExist file
+  when exists $ removeFile file
 
 -- helper
 
