@@ -1,16 +1,25 @@
 ----------------------------------------------------------------------
 --- Some operations to handle the KiCS2 resource configuration file
 --- that is stored in $HOME/.kics2rc
+---
+--- @author  Michael Hanus
+--- @version June 2012
 ----------------------------------------------------------------------
 
-module RCFile(readRC,rcValue,setRCProperty,strip) where
+module RCFile (readRC, rcValue, setRCProperty) where
 
+import Char         (toLower, isSpace)
+import Directory    (doesFileExist, renameFile)
+import Installation (installDir)
 import PropertyFile
-import Directory(doesFileExist,renameFile)
-import Char(toLower,isSpace)
-import System(system,getEnviron)
-import Installation(installDir)
-import Sort(mergeSort)
+import Sort         (mergeSort)
+import System       (system, getEnviron)
+
+import Files        ((</>))
+import Utils        (liftIO, mapFst, strip, unless)
+
+defaultRC :: String
+defaultRC = installDir </> "kics2rc.default"
 
 --- Location of the rc file of a user.
 --- After bootstrapping, one can also use Distribution.rcFileName
@@ -18,52 +27,49 @@ import Sort(mergeSort)
 --- current distribution. This file must have the usual format of
 --- property files (see description in module PropertyFile).
 rcFileName :: IO String
-rcFileName = getEnviron "HOME" >>= return . (++"/.kics2rc")
+rcFileName = (</> ".kics2rc") `liftIO` getEnviron "HOME"
 
 --- Reads the rc file. If it is not present, the standard file
 --- from the distribution will be copied.
-readRC :: IO [(String,String)]
+readRC :: IO [(String, String)]
 readRC = do
-  rcname   <- rcFileName
-  rcexists <- doesFileExist rcname
-  if rcexists
-   then updateRC >> readPropertyFile rcname
-   else do system ("cp "++installDir++"/kics2rc.default "++rcname)
-           readPropertyFile rcname
+  rcName   <- rcFileName
+  rcExists <- doesFileExist rcName
+  if rcExists
+   then updateRC >> readPropertyFile rcName
+   else do system $ "cp " ++ defaultRC ++ ' ': rcName
+           readPropertyFile rcName
+
+rcKeys :: [(String, String)] -> [String]
+rcKeys = mergeSort (<=) . map fst
 
 --- Reads the rc file (which must be present) and compares the definitions
 --- with the distribution rc file. If the set of variables is different,
 --- update the rc file with the distribution but keep the user's definitions.
 updateRC :: IO ()
 updateRC = do
-  let distrcname = installDir++"/kics2rc.default"
-  rcname   <- rcFileName
-  userprops <- readPropertyFile rcname  
-  distprops <- readPropertyFile distrcname
-  if mergeSort (<=) (map fst userprops) == mergeSort (<=) (map fst distprops)
-   then done
-   else do putStrLn $ "Updating \""++rcname++"\"..."
-           renameFile rcname (rcname++".bak")
-           system ("cp "++installDir++"/kics2rc.default "++rcname)
-           mapIO_ (\ (n,v) -> maybe done
-                                    (\uv -> if uv==v then done else
-                                            updatePropertyFile rcname n uv)
-                                    (lookup n userprops))
-                  distprops
+  rcName    <- rcFileName
+  userprops <- readPropertyFile rcName
+  distprops <- readPropertyFile defaultRC
+  unless (rcKeys userprops == rcKeys distprops) $ do
+    putStrLn $ "Updating \"" ++ rcName ++ "\"..."
+    renameFile rcName $ rcName ++ ".bak"
+    system $ "cp " ++ defaultRC ++ ' ': rcName
+    mapIO_ (\ (n, v) -> maybe done
+              (\uv -> unless (uv == v) $ updatePropertyFile rcName n uv)
+              (lookup n userprops))
+           distprops
 
 --- Sets a property in the rc file.
 setRCProperty :: String -> String -> IO ()
 setRCProperty pname pval = do
   readRC -- just be to sure that rc file exists and is up-to-date
-  rcname   <- rcFileName
-  updatePropertyFile rcname pname pval
+  rcName <- rcFileName
+  updatePropertyFile rcName pname pval
 
 --- Look up a configuration variable in the list of variables from the rc file.
 --- Uppercase/lowercase is ignored for the variable names and the empty
 --- string is returned for an undefined variable.
-rcValue :: [(String,String)] -> String -> String
-rcValue rcdefs var = strip $
-   maybe "" id (lookup (map toLower var)
-                       (map (\ (x,y) -> (map toLower x,y)) rcdefs))
-
-strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+rcValue :: [(String, String)] -> String -> String
+rcValue rcdefs var = strip $ maybe "" id $
+  lookup (map toLower var) (map (mapFst (map toLower)) rcdefs)
