@@ -298,13 +298,15 @@ makeMainGoalMonomorphic rst (CurryProg _ _ _ [(CFunc _ _ _ ty _)] _) goal
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> IO Int
 compileCurryProgram rst curryprog = do
-  let compileProg = rst -> kics2Home </> "bin" </> ".local" </> "kics2c"
-      kics2options  = --(if rst->verbose < 2 then "-q " else "") ++
-                    "-v " ++ show (rst->verbose) ++ " " ++
-                    (concatMap (\i -> " -i "++i) (rst->importPaths ++ rst->libPaths))
-      compileCmd  = unwords [compileProg,kics2options,rst->cmpOpts,curryprog]
-  writeVerboseInfo rst 3 $ "Executing: "++compileCmd
-  system compileCmd
+  writeVerboseInfo rst 3 $ "Executing: " ++ kics2Cmd
+  system kics2Cmd
+ where
+  kics2Bin  = rst -> kics2Home </> "bin" </> ".local" </> "kics2c"
+  kics2Opts = unwords
+              [ "-v" ++ show (rst -> verbose)
+              , "-i" ++ intercalate ":" (loadPaths rst)
+              ]
+  kics2Cmd  = unwords [kics2Bin, kics2Opts, rst -> cmpOpts, curryprog]
 
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ()
@@ -314,26 +316,25 @@ execMain rst cmpstatus mainexp = do
                   Par n -> "-N" ++ (if n == 0 then "" else show n)
                   _     -> ""
       maincmd = ("." </> rst -> outputSubdir </> "Main") ++
-                (if null (rst->rtsOpts) && null paropts
+                (if null (rst -> rtsOpts) && null paropts
                  then " "
                  else " +RTS " ++ rst -> rtsOpts ++ " " ++ paropts ++ " -RTS ") ++
                 rst->rtsArgs
       tcmd    = timecmd ++ maincmd
-      icmd    = if rst->interactive && cmpstatus==MainNonDet
+      icmd    = if rst->interactive && cmpstatus == MainNonDet
                 then execInteractive rst tcmd
                 else tcmd
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
   writeVerboseInfo rst 3 $ "Executing: " ++ icmd
   system icmd >> done
  where
-  getTimeCmd = if rst -> showTime
-               then getDistribution >>= return . getTimeCmdForDist
-               else return ""
+  getTimeCmd | rst -> showTime = getTimeCmdForDist `liftIO` getDistribution
+             | otherwise       = return ""
 
   -- Interactive execution of a main search command: current, a new
   -- terminal is opened due to problematic interaction with readline
   execInteractive rst' cmd =
-    rcValue (rst'->rcvars) "interactivecommand" ++ ' ':cmd
+    rcValue (rst' -> rcvars) "interactivecommand" ++ ' ' : cmd
 
   -- Time command for specific distributions. It might be necessary
   -- to adapt this command.
@@ -345,7 +346,7 @@ execMain rst cmpstatus mainexp = do
     | otherwise = "time "
 
   getDistribution = do
-    (hin,hout,herr) <- execCmd "lsb_release -i"
+    (hin, hout, herr) <- execCmd "lsb_release -i"
     dist <- hGetContents hout
     hClose hin
     hClose hout
@@ -507,16 +508,14 @@ processSource rst args
 processShow :: ReplState -> String -> IO (Maybe ReplState)
 processShow rst args = do
   let modname = if null args then rst -> mainMod else stripSuffix args
-  mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                          (loadPaths rst)
-  maybe (skipCommand "source file not found")
-        (\fn -> do  let showcmd = rcValue (rst->rcvars) "showcommand"
-                    system $ (if null showcmd then "cat" else showcmd)
-                            ++' ':fn
-                    putStrLn ""
-                    return (Just rst)
-        )
-        mbf
+  mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
+  case mbf of
+    Nothing -> skipCommand "source file not found"
+    Just fn -> do
+      let showcmd = rcValue (rst -> rcvars) "showcommand"
+      system $ (if null showcmd then "cat" else showcmd) ++ ' ' : fn
+      putStrLn ""
+      return (Just rst)
 
 processInterface :: ReplState -> String -> IO (Maybe ReplState)
 processInterface rst args = do
@@ -756,7 +755,7 @@ showFunctionInModule rst mod fun = do
       spgui    = rst->kics2Home </> toolexec
   spgexists <- doesFileExist spgui
   if not spgexists
-   then errorMissingTool toolexec >> return Nothing
+   then errorMissingTool toolexec
    else do
     (rst',h') <- maybe (do h <- connectToCommand (spgui++" "++mod)
                            return ({sourceguis := (mod,(fun,h))
