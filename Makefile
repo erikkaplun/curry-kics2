@@ -62,12 +62,6 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
-	# compile all libraries if the installation is a global one:
-	@if [ ${GLOBALINSTALL} = yes ] ; \
-	 then cd runtime && ${MAKE} && \
-	      cd ../lib && ${MAKE} compilelibs && \
-	                   ${MAKE} installlibs && \
-	                   ${MAKE} acy ; fi
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
@@ -91,6 +85,13 @@ installscripts:
 kernel: ${INSTALLCURRY} installscripts installfrontend
 	${MAKE} Compile
 	${MAKE} REPL
+	# compile all libraries if the installation is a global one
+ifeq ($(GLOBALINSTALL),yes)
+	cd runtime && ${MAKE}
+	cd ../lib && ${MAKE} compilelibs
+	cd ../lib && ${MAKE} installlibs
+	cd ../lib && ${MAKE} acy
+endif
 
 #
 # Create documentation for system libraries:
@@ -161,9 +162,11 @@ ${INSTALLHS}: Makefile
 	echo 'ghcExec = "'${GHC}'" ++ " -package-conf '${PKGCONF}'"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
-	@if [ ${GLOBALINSTALL} = yes ] ; \
-	 then echo 'installGlobal = True' >> $@ ; \
-	 else echo 'installGlobal = False' >> $@ ; fi
+ifeq ($(GLOBALINSTALL),yes)
+	echo 'installGlobal = True' >> $@
+else
+	echo 'installGlobal = False' >> $@
+endif
 
 ${MANUALVERSION}: Makefile
 	echo '\\newcommand{\\kicsversiondate}{Version ${MAJORVERSION}.${MINORVERSION} of ${COMPILERDATE}}' > $@
