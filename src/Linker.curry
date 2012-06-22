@@ -180,7 +180,7 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
     _     -> False
   ghcImports
     | Inst.installGlobal
-    = []
+    = map (</> rst -> outputSubdir) ("." : rst -> importPaths)
     | otherwise
     = [ rst -> kics2Home </> "runtime"
       , rst -> kics2Home </> "runtime" </> "idsupply" ++ rst -> idSupply
