@@ -35,6 +35,7 @@ lib/dist
 lib/kics2-libraries.cabal
 runtime/dist
 runtime/kics2-runtime.cabal
+docs/src/version.tex
 
 # ignore front end since it is managed in another repository
 mccparser/
