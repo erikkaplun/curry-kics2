@@ -128,4 +128,4 @@ clean:
 	cd .. ; rm -f stage1 stage2 stage3
 	rm -f ${COMP}~ ${REPL}~
 	rm -f *.hi *.o
-	rm -rf .curry
+	@if [ -d .curry/kics2 ] ; then cd .curry/kics2 && rm -f *.hi *.o ; fi
