@@ -21,9 +21,9 @@ MANUALVERSION=docs/src/version.tex
 MAKELOG=make.log
 BOOTLOG=boot.log
 # The path to the Glasgow Haskell Compiler:
-GHC=`which ghc`
+GHC := $(shell which ghc)
 # The path to the package configuration file
-PKGCONF=`ghc-pkg --user -v0 list | head -1 | sed "s/://"`
+PKGCONF:= $(shell ghc-pkg --user -v0 list | head -1 | sed "s/://")
 # the root directory
 export ROOT = ${CURDIR}
 # binary directory and executables
@@ -117,8 +117,8 @@ installfrontend:
 # install local front end:
 .PHONY: installlocalfrontend
 installlocalfrontend:
-	cd frontend/curry-base && cabal install
-	cd frontend/curry-frontend && cabal install
+	cd frontend/curry-base     && cabal install --force-reinstalls
+	cd frontend/curry-frontend && cabal install --force-reinstalls
 	# copy cabal installation of front end into local directory
 	@if [ -f ${HOME}/.cabal/bin/cymake ] ; then cp -p ${HOME}/.cabal/bin/cymake ${LOCALBIN} ; fi
 
