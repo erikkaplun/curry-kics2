@@ -30,7 +30,7 @@ COMPILERSOURCES = Compile.curry \
 	          CompilerOpts.curry Utils.curry
 
 # Source modules of the REPL (without standard libraries):
-REPLSOURCES = REPL.curry RCFile.curry Files.curry Names.curry
+REPLSOURCES = REPL.curry RCFile.curry Linker.curry Files.curry Names.curry
 
 
 # binary directory and executables

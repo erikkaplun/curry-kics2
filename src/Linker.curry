@@ -195,16 +195,16 @@ data MoreDefault = MoreYes | MoreNo | MoreAll
 
 -- Create the Main.hs program containing the call to the initial expression:
 mainModule :: ReplState -> Bool -> Bool -> Maybe Int -> String
-mainModule rst isdet isio bindings = unlines
+mainModule rst isdet isio mbBindings = unlines
   [ "module Main where"
---     , "import MonadList"
+  , if rst -> interactive then "import MonadList" else ""
   , "import Basics"
   , "import SafeExec"
---     , if printOperation == "print" then "" else "import Curry_Prelude"
+  , if mbBindings==Nothing then "" else "import Curry_Prelude"
   , "import Curry_" ++ stripSuffix mainGoalFile
   , ""
   , "main :: IO ()"
-  , mainExpr "kics2MainGoal" isdet isio (rst -> ndMode) evalMode bindings
+  , mainExpr "kics2MainGoal" isdet isio (rst -> ndMode) evalMode mbBindings
   ]
  where
   evalMode
