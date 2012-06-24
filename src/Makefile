@@ -2,8 +2,8 @@
 # Makefile for ID compiler
 ########################################################################
 
-# The absolute path of the installation directory:
-IDIR=`pwd | sed 's|/src$$||'`
+# The absolute path of the installation directory
+IDIR := $(shell pwd | sed 's|/src$$||')
 
 # The Curry installation info
 INSTALLCURRY=Installation.curry
@@ -23,14 +23,16 @@ COMPILERSOURCES = Compile.curry \
 	          Message.curry ModuleDeps.curry \
 	          SimpleMake.curry Splits.curry \
 	          Dependency2.curry GetOpt.curry \
-	          AbstractHaskellGoodies.curry FlatCurry2AbstractHaskell.curry \
+	          AbstractHaskellGoodies.curry \
+		  FlatCurry2AbstractHaskell.curry \
 	          Names.curry Analysis.curry \
 	          SCC.curry Base.curry Files.curry \
 	          AbstractHaskell.curry \
 	          CompilerOpts.curry Utils.curry
 
 # Source modules of the REPL (without standard libraries):
-REPLSOURCES = REPL.curry RCFile.curry Linker.curry Files.curry Names.curry
+REPLSOURCES = AbstractCurryGoodies.curry Files.curry GhciComm.curry \
+              Names.curry RCFile.curry Linker.curry Utils.curry REPL.curry
 
 
 # binary directory and executables
@@ -128,4 +130,4 @@ clean:
 	cd .. ; rm -f stage1 stage2 stage3
 	rm -f ${COMP}~ ${REPL}~
 	rm -f *.hi *.o
-	rm -rf .curry
+	@if [ -d .curry/kics2 ] ; then cd .curry/kics2 && rm -f *.hi *.o ; fi
