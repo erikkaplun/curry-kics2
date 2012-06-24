@@ -2,8 +2,8 @@
 
 # Terminate the Curry Port Name Server demon, if it is not already terminated:
 
-PIDFILE="/tmp/KICS2_CPNSD_PID"
-LOCKFILE="/tmp/KICS2_CPNSD.LOCK" # for startup control
+PIDFILE="/tmp/PAKCS_CPNSD_PID"
+LOCKFILE="/tmp/PAKCS_CPNSD.LOCK" # for startup control
 CPNSPROG="`dirname $0`/CPNSD"
 
 if test ! -f $PIDFILE ; then
