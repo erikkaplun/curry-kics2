@@ -284,7 +284,8 @@ execTestFunctions prtmsg portnum modname fs@(_:_) = do
                         else " >>= exitWith")
       execCall = "echo ':l "++modname++"\n:add Assertion\n:add System\n"++
                  ":save "++testgoal++"\n:q\n' | \""++
-                 installDir++"/bin/kics2\" && ./"++modname++" 2>&1"
+                 installDir++"/bin/kics2\" && ./"++modname++
+                 " && rm "++modname++" 2>&1"
   --putStrLn testgoal
   if portnum==0 then system execCall
                 else system (execCall ++ " &") >> return 0
