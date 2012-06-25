@@ -9,7 +9,7 @@ export MAJORVERSION=0
 # The minor version number:
 export MINORVERSION=2
 # The version date:
-COMPILERDATE=21/06/12
+COMPILERDATE=25/06/12
 
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
@@ -88,9 +88,9 @@ kernel: ${INSTALLCURRY} installscripts installfrontend
 	# compile all libraries if the installation is a global one
 ifeq ($(GLOBALINSTALL),yes)
 	cd runtime && ${MAKE}
-	cd ../lib && ${MAKE} compilelibs
-	cd ../lib && ${MAKE} installlibs
-	cd ../lib && ${MAKE} acy
+	cd lib && ${MAKE} compilelibs
+	cd lib && ${MAKE} installlibs
+	cd lib && ${MAKE} acy
 endif
 
 #
