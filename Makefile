@@ -118,8 +118,8 @@ installfrontend:
 # install local front end:
 .PHONY: installlocalfrontend
 installlocalfrontend:
-	cd frontend/curry-base     && cabal install --force-reinstalls
-	cd frontend/curry-frontend && cabal install --force-reinstalls
+	cd frontend/curry-base     && cabal install # --force-reinstalls
+	cd frontend/curry-frontend && cabal install # --force-reinstalls
 	# copy cabal installation of front end into local directory
 	@if [ -f ${HOME}/.cabal/bin/cymake ] ; then cp -p ${HOME}/.cabal/bin/cymake ${LOCALBIN} ; fi
 
