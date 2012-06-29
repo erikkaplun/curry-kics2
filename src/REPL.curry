@@ -89,6 +89,7 @@ getBanner = do
   return (logo ++ version)
  where version = "Version "
               ++ show Inst.majorVersion ++ "." ++ show Inst.minorVersion
+              ++ "." ++ show Inst.revisionVersion
               ++ " of " ++ Inst.compilerDate
               ++ " (installed at " ++ Inst.installDate ++ ")"
 
@@ -339,7 +340,7 @@ execMain rst cmpstatus mainexp = do
   -- Time command for specific distributions. It might be necessary
   -- to adapt this command.
   getTimeCmdForDist dist
-    | "Ubuntu" `isInfixOf` dist
+    | True --"Ubuntu" `isInfixOf` dist
      = "time --format=\"Execution time: %Us / elapsed: %E\" "
     | "Debian" `isInfixOf` dist
       = "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "

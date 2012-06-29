@@ -6,7 +6,7 @@ module Linker
 import AbstractCurry
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
-import IO (Handle)
+import IO (Handle, hFlush, stdout)
 import Directory
 import System
 import FileGoodies
@@ -91,7 +91,8 @@ mainGoalFile = "Curry_Main_Goal.curry"
 
 --- Show an info message for a given verbosity level
 writeVerboseInfo :: ReplState -> Int -> String -> IO ()
-writeVerboseInfo rst lvl msg = unless (rst -> verbose < lvl) (putStrLn msg)
+writeVerboseInfo rst lvl msg =
+  unless (rst -> verbose < lvl) (putStrLn msg >> hFlush stdout)
 
 -- Reads the determinism infomation for the main goal file
 readInfoFile :: ReplState -> IO [((String,String),Bool)]
