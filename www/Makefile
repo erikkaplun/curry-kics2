@@ -3,7 +3,8 @@
 .PHONY: all
 all: submitform Registry
 
-submitform: SubmitForm.curry ../lib/HtmlCgi.curry ../lib/NamedSocket.curry ../lib/CPNS.curry
+submitform: SubmitForm.curry ../lib/HtmlCgi.curry ../lib/NamedSocket.curry \
+	    ../lib/CPNS.curry
 	../bin/kics2 :set v2 :l SubmitForm :save :q
 	mv SubmitForm submitform
 
@@ -42,5 +43,3 @@ kill:
 clean: 
 	rm -f submitform
 	../bin/cleancurry
-
-

@@ -34,7 +34,6 @@ COMPILERSOURCES = Compile.curry \
 REPLSOURCES = AbstractCurryGoodies.curry Files.curry GhciComm.curry \
               Names.curry RCFile.curry Linker.curry Utils.curry REPL.curry
 
-
 # binary directory and executables
 BINDIR=${IDIR}/bin
 LOCALBIN=${BINDIR}/.local
@@ -50,17 +49,17 @@ bootstrap:
 	# Create kics2 via PAKCS or other KiCS2 (stage 1)
 	@echo "Compiling stage 1"
 	${MAKE} CompileInitial
-	cp ${COMP} ../stage1
+	cp ${COMP} ${LOCALBIN}/stage1
 	cd .. && bin/cleancurry -r
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
 	${MAKE} CompileBoot
-	cp ${COMP} ../stage2
+	cp ${COMP} ${LOCALBIN}/stage2
 	# Create kics2 via kics2 (stage 3)
 	cd .. && bin/cleancurry -r
 	@echo "Compiling stage 3"
 	${MAKE} CompileBoot
-	cp ${COMP} ../stage3
+	cp ${COMP} ${LOCALBIN}/stage3
 	@echo "Compiling REPL"
 	${MAKE} REPLBoot
 
@@ -127,7 +126,7 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 # clean all intermediate files of the compiler bootstrapping
 .PHONY: clean
 clean:
-	cd .. ; rm -f stage1 stage2 stage3
-	rm -f ${COMP}~ ${REPL}~
+	rm -f ${LOCALBIN}/stage[1,2,3]
+	rm -f ${COMP}.bak ${REPL}.bak
 	rm -f *.hi *.o
 	@if [ -d .curry/kics2 ] ; then cd .curry/kics2 && rm -f *.hi *.o ; fi
