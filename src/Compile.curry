@@ -1,5 +1,5 @@
 --- --------------------------------------------------------------------------
---- ID based curry compiler
+--- The main module for KiCS2c the ID based Curry to Haskell compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version June 2011
@@ -33,20 +33,17 @@ import TransFunctions
 import TransTypes
 import Utils (when, foldIO, notNull)
 
--- parse the command-line arguments and build the specified files
+--- Parse the command-line arguments and build the specified files
 main :: IO ()
 main = do
   (opts, files) <- compilerOpts
   mapIO_ (build opts) files
 
--- Load the module, resolve the dependencies and compile the source files
--- if necessary
+--- Load the module, resolve the dependencies and compile the source files
+--- if necessary
 build :: Options -> String -> IO ()
 build opts fn = do
-  exists <- doesFileExist fn
-  mbFn <- if exists
-    then return (Just fn)
-    else lookupFileInPath fn [".curry", ".lcurry"] ["."]
+  mbFn <- locateCurryFile fn
   case mbFn of
     Nothing -> putErrLn $ "Could not find file " ++ fn
     Just f -> do
@@ -55,6 +52,19 @@ build opts fn = do
         then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
         else mapIO_ putErrLn errs
         where initState = { compOptions := opts | defaultState }
+
+
+--- Checks if the given string corresponds to a Curry-File and
+--- returns the actual file path
+--- @param fn - the (relative) path to the Curry file with or without extension
+--- @return `Just path` if the module was found, `Nothing` if not
+locateCurryFile :: String -> IO (Maybe String)
+locateCurryFile fn = do
+  exists <- doesFileExist fn
+  if exists
+    then return (Just fn)
+    else lookupFileInPath fn [".curry", ".lcurry"] ["."] 
+
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State

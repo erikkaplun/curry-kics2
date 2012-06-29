@@ -8,8 +8,10 @@ GLOBALINSTALL=yes
 export MAJORVERSION=0
 # The minor version number:
 export MINORVERSION=2
+# The revision version number:
+export REVISIONVERSION=1
 # The version date:
-COMPILERDATE=25/06/12
+COMPILERDATE=29/06/12
 
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
@@ -152,6 +154,9 @@ ${INSTALLHS}: Makefile
 	echo 'minorVersion :: Int' >> $@
 	echo 'minorVersion = ${MINORVERSION}' >> $@
 	echo "" >> $@
+	echo 'revisionVersion :: Int' >> $@
+	echo 'revisionVersion = ${REVISIONVERSION}' >> $@
+	echo "" >> $@
 	echo 'compilerDate :: String' >> $@
 	echo 'compilerDate = "'${COMPILERDATE}'"' >> $@
 	echo "" >> $@
@@ -169,7 +174,7 @@ else
 endif
 
 ${MANUALVERSION}: Makefile
-	echo '\\newcommand{\\kicsversiondate}{Version ${MAJORVERSION}.${MINORVERSION} of ${COMPILERDATE}}' > $@
+	echo '\\newcommand{\\kicsversiondate}{Version ${MAJORVERSION}.${MINORVERSION}.${REVISIONVERSION} of ${COMPILERDATE}}' > $@
 
 # install required cabal packages
 .PHONY: installhaskell

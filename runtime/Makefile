@@ -15,8 +15,9 @@ installpkg: ${CABAL}
 ${CABAL}: ../Makefile Makefile
  ifdef MAJORVERSION
   ifdef MINORVERSION
+    ifdef REVISIONVERSION
 	echo "Name:           ${PKGNAME}" > ${CABAL}
-	echo "Version:        ${MAJORVERSION}.${MINORVERSION}" >> ${CABAL}
+	echo "Version:        ${MAJORVERSION}.${MINORVERSION}.${REVISIONVERSION}" >> ${CABAL}
 	echo "Description:    The runtime environment for KiCS2" >> ${CABAL}
 	echo "License:        OtherLicense" >> ${CABAL}
 	echo "Author:         Fabian Reck" >> ${CABAL}
@@ -32,6 +33,11 @@ ${CABAL}: ../Makefile Makefile
 	echo "  Other-modules:   ConstStore, ID, Search, Solver," >> ${CABAL}
 	echo "                   Strategies, Types" >> ${CABAL}
 	echo "  hs-source-dirs: ., ${IDSUPPDIR}" >> ${CABAL}
+    else
+	@echo "Error: REVISIONVERSION is not defined"
+	@echo "This target should only be called from the toplevel makefile."
+	exit 1
+    endif
   else
 	@echo "Error: MINORVERSION is not defined"
 	@echo "This target should only be called from the toplevel makefile."
