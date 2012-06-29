@@ -78,7 +78,7 @@ CABAL=${PKGNAME}.cabal
 
 ${CABAL}:../Makefile Makefile
 	echo "Name:           ${PKGNAME}" > ${CABAL}
-	echo "Version:        ${MAJORVERSION}.${MINORVERSION}" >> ${CABAL}
+	echo "Version:        ${MAJORVERSION}.${MINORVERSION}.${REVISIONVERSION}" >> ${CABAL}
 	echo "Description:    The standard libraries for KiCS2" >> ${CABAL}
 	echo "License:        OtherLicense" >> ${CABAL}
 	echo "Author:         Fabian Reck" >> ${CABAL}
