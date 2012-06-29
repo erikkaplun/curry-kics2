@@ -229,7 +229,7 @@ frontend:
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
-	cd ${KICS2DIST} && git submodule update && git submodule update
+	cd ${KICS2DIST} && git submodule init && git submodule update
 	cd ${KICS2DIST} && ${MAKE} installscripts ; \
 	# copy or install front end sources in distribution:
 	if [ -d frontend ] ; then \
