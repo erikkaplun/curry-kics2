@@ -3,6 +3,11 @@
 KiCS2HOME=..
 KICS2BIN=$KiCS2HOME/bin
 
+TESTPARAMS="--window"
+if [ "$1" = "--nogui" ] ; then
+  TESTPARAMS=
+fi
+
 # test for basic language features
 TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonStrictUnif testFuncPattern"
 
@@ -23,4 +28,4 @@ export PATH
 
 # execute all unit tests:
 echo "Executing unit tests for back end $BACKEND..."
-$KICS2BIN/currytest --window $ALLTESTS
+$KICS2BIN/currytest $TESTPARAMS $ALLTESTS

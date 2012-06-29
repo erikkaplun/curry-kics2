@@ -4,11 +4,12 @@
 --- This module should be further divided if it contains too much unrelated
 --- things.
 ---
---- @author  Bjoen Peemoeller
---- @version April 2011
+--- @author  Björn Peemöller
+--- @version June 2012
 --- --------------------------------------------------------------------------
 module Utils where
 
+import Char (isSpace)
 import List (intersperse)
 
 foldIO :: (a -> b -> IO a) -> a -> [b] -> IO a
@@ -44,3 +45,7 @@ scanl f q ls =  q : (case ls of
 scanl1 :: (a -> a -> a) -> [a] -> [a]
 scanl1 f (x:xs) =  scanl f x xs
 scanl1 _ []     =  []
+
+--- Remove leading and trailing whitespace
+strip :: String -> String
+strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
