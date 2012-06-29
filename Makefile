@@ -260,7 +260,7 @@ dist:
 #
 .PHONY: cleandist
 cleandist:
-	rm -rf .git .gitignore bin/.gitignore
+	rm -rf .git .gitmodules lib/.git .gitignore bin/.gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf bin # clean executables
