@@ -215,25 +215,27 @@ KICS2DIST=/tmp/kics2
 FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
 
 # install the sources of the front end from its repository
-.PHONY: frontendsources
-frontendsources:
+.PHONY: frontend
+frontend:
 	if [ -d frontend ] ; then \
 	 cd frontend/curry-base && git pull && cd ../curry-frontend && git pull ; \
 	 else mkdir frontend && cd frontend && \
 	      git clone ${FRONTENDREPO}/curry-base.git && \
 	      git clone ${FRONTENDREPO}/curry-frontend.git ; fi
+	${MAKE} installfrontend
 
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
+	cd ${KICS2DIST} && git submodule update && git submodule update
 	cd ${KICS2DIST} && ${MAKE} installscripts ; \
 	# copy or install front end sources in distribution:
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
 	else \
-	  cd ${KICS2DIST} && ${MAKE} frontendsources ; \
+	  cd ${KICS2DIST} && ${MAKE} frontend ; \
 	fi
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution:

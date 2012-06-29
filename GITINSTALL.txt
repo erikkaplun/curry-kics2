@@ -23,9 +23,9 @@ Then, each future update can be obtained by the executing
 Since the front end used by KiCS2 is an independent development
 with its own repository, you should execute the command
 
-    make frontendsources
+    make frontend
 
-to obtain the up-to-date sources of the front end.
+to obtain the up-to-date sources of the front end and install it.
 
 Due to the fact that the KiCS2 compiler and interactive environment
 is implemented in Curry, you need an executable Curry compiler
