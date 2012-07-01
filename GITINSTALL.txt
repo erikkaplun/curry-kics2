@@ -16,9 +16,18 @@ Go into this directory by
 
     cd kics2
 
+and execute
+
+    git submodule init
+    git submodule update
+
+in order to obtain further files managed by git, i.e.,
+the Curry system libraries shared by KiCS2 and PAKCS.
+
 Then, each future update can be obtained by the executing
 
     git pull
+    git submodule update
 
 Since the front end used by KiCS2 is an independent development
 with its own repository, you should execute the command
