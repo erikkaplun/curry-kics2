@@ -167,7 +167,7 @@ ${INSTALLHS}: Makefile
 	echo 'installDate = "'`date`'"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "'${GHC}'" ++ " -package-conf '${PKGCONF}'"' >> $@
+	echo 'ghcExec = "'${GHC}'" ++ " -no-user-package-conf -package-conf '${PKGCONF}'"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
