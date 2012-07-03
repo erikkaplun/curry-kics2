@@ -4,22 +4,11 @@
 # The installation directory of KiCS2
 KICS2HOME=`echo KICS2HOME must be defined here!`
 
-# define appropriate 'cymake' executable:
-CYMAKE="$KICS2HOME/mccparser/bin/cymake"
-if [ ! -x "$CYMAKE" ] ; then
-  # try cymake of local installation
-  CYMAKE="$KICS2HOME/bin/.local/cymake"
-fi
-if [ ! -x "$CYMAKE" ] ; then
-  # try cymake of cabal installation
-  CYMAKE="$HOME/.cabal/bin/cymake"
-fi
-if [ ! -x "$CYMAKE" ] ; then
-  # try cymake of PAKCS
-  CYMAKE="$(dirname `which pakcs`)/../mccparser/bin/cymake"
-fi
+# Check 'cymake' executable:
+CYMAKE="$KICS2HOME/bin/.local/cymake"
 if [ ! -x "$CYMAKE" ] ; then
   echo "ERROR: Curry parser not found!" >&2
+  echo "Executable '$CYMAKE' missing!" >&2
   exit 1
 fi
 

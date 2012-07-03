@@ -37,7 +37,8 @@ export LIBDIR=${ROOT}/lib
 export COMP=${LOCALBIN}/kics2c
 export REPL=${LOCALBIN}/kics2i
 
-SCRIPTS=cleancurry cymake kics2 makecurrycgi
+SCRIPTS=${BINDIR}/cleancurry ${BINDIR}/cymake ${BINDIR}/kics2 \
+        ${BINDIR}/makecurrycgi
 
 .PHONY: all
 all:
@@ -45,7 +46,7 @@ all:
 
 # bootstrap the compiler using PAKCS
 .PHONY: bootstrap
-bootstrap: ${INSTALLCURRY} installscripts
+bootstrap: ${INSTALLCURRY} ${SCRIPTS}
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
 	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
@@ -75,16 +76,18 @@ install: kernel
 
 # install some scripts of KICS2 in the bin directory:
 .PHONY: installscripts
-installscripts:
+installscripts: ${SCRIPTS}
+	echo DONE
+
+# install some scripts of KICS2 in the bin directory:
+${BINDIR}/%: src/%.sh
 	@if [ ! -d ${BINDIR} ] ; then mkdir -p ${BINDIR} ; fi
-	for script in ${SCRIPTS}; do \
-          sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/$$script.sh       > ${BINDIR}/$$script ; \
-        done
-	cd ${BINDIR} && chmod 755 ${SCRIPTS}
+	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/$*.sh > $@
+	chmod 755 $@
 
 # install a kernel system without all tools
 .PHONY: kernel
-kernel: ${INSTALLCURRY} installscripts installfrontend
+kernel: ${INSTALLCURRY} ${SCRIPTS} installfrontend
 	${MAKE} Compile
 	${MAKE} REPL
 	# compile all libraries if the installation is a global one
@@ -230,7 +233,7 @@ dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
 	cd ${KICS2DIST} && git submodule init && git submodule update
-	cd ${KICS2DIST} && ${MAKE} installscripts ; \
+	cd ${KICS2DIST} && ${MAKE} ${SCRIPTS} ; \
 	# copy or install front end sources in distribution:
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
