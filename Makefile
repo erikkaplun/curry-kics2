@@ -11,7 +11,7 @@ export MINORVERSION=2
 # The revision version number:
 export REVISIONVERSION=1
 # The version date:
-COMPILERDATE=29/06/12
+COMPILERDATE=04/07/12
 
 # The Haskell installation info
 INSTALLHS=runtime/Installation.hs
