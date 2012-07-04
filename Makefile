@@ -129,12 +129,12 @@ installlocalfrontend:
 	@if [ -f ${HOME}/.cabal/bin/cymake ] ; then cp -p ${HOME}/.cabal/bin/cymake ${LOCALBIN} ; fi
 
 .PHONY: Compile
-Compile: ${INSTALLCURRY}
-	cd src ; ${MAKE} CompileBoot
+Compile: ${INSTALLCURRY} ${SCRIPTS}
+	cd src && ${MAKE} CompileBoot
 
 .PHONY: REPL
-REPL: ${INSTALLCURRY}
-	cd src ; ${MAKE} REPLBoot
+REPL: ${INSTALLCURRY} ${SCRIPTS}
+	cd src && ${MAKE} REPLBoot
 
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
@@ -196,6 +196,7 @@ clean:
 	cd benchmarks && ${MAKE} clean
 	cd cpns       && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
+	@if [ -d lib/meta/.curry/kics2 ] ; then cd lib/meta/.curry/kics2 && rm -f *.hi *.o ; fi
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
 	cd tools      && ${MAKE} clean
@@ -233,7 +234,6 @@ dist:
 	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
 	git clone . ${KICS2DIST}                   # create copy of git version
 	cd ${KICS2DIST} && git submodule init && git submodule update
-	cd ${KICS2DIST} && ${MAKE} ${SCRIPTS} ; \
 	# copy or install front end sources in distribution:
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
@@ -267,7 +267,7 @@ cleandist:
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf bin # clean executables
-	rm -rf docs/src
+	rm -rf docs/src docs/*
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
 
