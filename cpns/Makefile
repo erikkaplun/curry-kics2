@@ -1,7 +1,7 @@
 # Translate CPNS demon to support named ports in distributed Curry programs:
 
 CPNSD=CPNSD
-LOGFILE="/tmp/PAKCS_CPNSD_LOG"
+LOGFILE="/tmp/CurryPNSD.log"
 
 ${CPNSD}: ../lib/CPNS.curry
 	../bin/kics2 :set v2 :load CPNSD :save :q
