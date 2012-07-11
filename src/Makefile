@@ -28,11 +28,12 @@ COMPILERSOURCES = Compile.curry \
 	          Names.curry Analysis.curry \
 	          SCC.curry Base.curry Files.curry \
 	          AbstractHaskell.curry \
-	          CompilerOpts.curry Utils.curry
+	          CompilerOpts.curry Utils.curry ${INSTALLCURRY}
 
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = AbstractCurryGoodies.curry Files.curry GhciComm.curry \
-              Names.curry RCFile.curry Linker.curry Utils.curry REPL.curry
+              Names.curry RCFile.curry Linker.curry Utils.curry REPL.curry \
+	      ${INSTALLCURRY}
 
 # binary directory and executables
 BINDIR=${IDIR}/bin
