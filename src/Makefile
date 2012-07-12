@@ -28,7 +28,7 @@ COMPILERSOURCES = Compile.curry \
 	          Names.curry Analysis.curry \
 	          SCC.curry Base.curry Files.curry \
 	          AbstractHaskell.curry \
-	          CompilerOpts.curry Utils.curry ${INSTALLCURRY}
+	          CompilerOpts.curry Utils.curry
 
 # Source modules of the REPL (without standard libraries):
 REPLSOURCES = AbstractCurryGoodies.curry Files.curry GhciComm.curry \
