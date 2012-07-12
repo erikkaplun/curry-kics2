@@ -287,5 +287,5 @@ cleandist:
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf bin # clean executables
 	rm -rf docs/src docs/*
-	rm -rf benchmarks papers talks tests examples experiments
+	rm -rf benchmarks debug experiments papers talks
 	rm -f TODO compilerdoc.wiki testsuite/TODO
