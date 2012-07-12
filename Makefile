@@ -1,5 +1,5 @@
 ########################################################################
-# Makefile for ID compiler
+# Makefile for KiCS2 compiler
 ########################################################################
 
 # Is this a global installation (with restricted functionality)(yes/no)?
@@ -10,6 +10,8 @@ export MAJORVERSION=0
 export MINORVERSION=2
 # The revision version number:
 export REVISIONVERSION=1
+# Complete version:
+VERSION=$(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date:
 COMPILERDATE=04/07/12
 
@@ -19,7 +21,7 @@ INSTALLHS=runtime/Installation.hs
 INSTALLCURRY=src/Installation.curry
 # The version information for the manual:
 MANUALVERSION=docs/src/version.tex
-# Logfile for make:
+# Logfiles for make:
 MAKELOG=make.log
 BOOTLOG=boot.log
 # The path to the Glasgow Haskell Compiler:
@@ -27,24 +29,25 @@ GHC := $(shell which ghc)
 # The path to the package configuration file
 PKGCONF:= $(shell ghc-pkg --user -v0 list | head -1 | sed "s/://")
 # the root directory
-export ROOT = ${CURDIR}
+export ROOT=${CURDIR}
 # binary directory and executables
 export BINDIR=${ROOT}/bin
-# Directory where local executables are stored:
-export LOCALBIN=${BINDIR}/.local
 # Directory where the libraries are located:
 export LIBDIR=${ROOT}/lib
+# Directory where local executables are stored:
+export LOCALBIN=${BINDIR}/.local
 export COMP=${LOCALBIN}/kics2c
 export REPL=${LOCALBIN}/kics2i
 
 SCRIPTS=${BINDIR}/cleancurry ${BINDIR}/cymake ${BINDIR}/kics2 \
         ${BINDIR}/makecurrycgi
 
+# main (default) target: starts installation with logging
 .PHONY: all
 all:
 	${MAKE} installwithlogging
 
-# bootstrap the compiler using PAKCS
+# bootstrap the compiler
 .PHONY: bootstrap
 bootstrap: ${INSTALLCURRY} ${SCRIPTS}
 	@rm -f ${BOOTLOG}
@@ -209,12 +212,6 @@ cleanall: clean
 	rm -rf ${LOCALBIN}
 #	cd ${BINDIR} && rm -f ${SCRIPTS}
 
-
-###############################################################################
-# Create distribution versions of the complete system as tar file kics2.tar.gz:
-
-# temporary directory to create distribution version
-KICS2DIST=/tmp/kics2
 # repository with new front-end:
 FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
 
@@ -228,39 +225,61 @@ frontend:
 	      git clone ${FRONTENDREPO}/curry-frontend.git ; fi
 	${MAKE} installfrontend
 
+##############################################################################
+# Create distribution versions of the complete system as tar file kics2.tar.gz
+##############################################################################
+
+# temporary directory to create distribution version
+KICS2DIST=/tmp/kics2
+TARBALL=kics2-$(VERSION).tar.gz
+
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	rm -rf kics2.tar.gz ${KICS2DIST}           # remove old distribution
-	git clone . ${KICS2DIST}                   # create copy of git version
+	rm -rf kics2.tar.gz ${KICS2DIST} # remove old distribution
+	# initialise git repository
+	git clone . ${KICS2DIST}
 	cd ${KICS2DIST} && git submodule init && git submodule update
-	# copy or install front end sources in distribution:
+	# create local binary directory
+	mkdir -p ${KICS2DIST}/bin/.local
+	# copy or install frontend sources in distribution
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
+	  cp -pr bin/.local/cymake ${KICS2DIST}/bin/.local/ ; \
 	else \
 	  cd ${KICS2DIST} && ${MAKE} frontend ; \
 	fi
+	# copy bootstrap compiler
+	cp bin/.local/kics2c ${KICS2DIST}/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
-	# Haskell translations in the distribution:
-	mkdir -p ${KICS2DIST}/bin/.local
-	cp bin/.local/kics2c ${KICS2DIST}/bin/.local/ # copy bootstrap compiler
-	cd ${KICS2DIST} && ${MAKE} Compile            # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL               # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean              # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist          # delete unnessary files
-	# copy documentation:
-	@if [ -f docs/Manual.pdf ] ; then cp docs/Manual.pdf ${KICS2DIST}/docs ; fi
-	cat Makefile | sed -e "/distribution/,\$$d" | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' > ${KICS2DIST}/Makefile
+	# Haskell translations in the distribution
+	cd ${KICS2DIST} && ${MAKE} Compile       # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL          # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean         # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist     # delete unnessary files
+	# copy documentation
+	@if [ -f docs/Manual.pdf ] ; then \
+	  cp docs/Manual.pdf ${KICS2DIST}/docs ; \
+	fi
+	cat Makefile | sed -e "/distribution/,\$$d" | \
+	  sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
+	  > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
-	mv /tmp/kics2.tar.gz .
-	chmod 644 kics2.tar.gz
+	mv /tmp/kics2.tar.gz ./$(TARBALL)
+	chmod 644 $(TARBALL)
 	rm -rf ${KICS2DIST}
 	@echo "----------------------------------------------------------------"
-	@echo "Distribution kics2.tar.gz generated."
+	@echo "Distribution $(TARBALL) generated."
 
-#
+# publish the distribution files in the local web pages
+HTMLDIR=${HOME}/public_html/kics2/download
+.PHONY: publish
+publish:
+	cp $(TARBALL) docs/INSTALL.html ${HTMLDIR}
+	chmod -R go+rX ${HTMLDIR}
+	@echo "Don't forget to run 'update-kics2' to make the update visible!"
+
 # Clean all files that should not be included in a distribution
-#
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitmodules lib/.git .gitignore bin/.gitignore
@@ -270,11 +289,3 @@ cleandist:
 	rm -rf docs/src docs/*
 	rm -rf benchmarks papers talks tests examples experiments
 	rm -f TODO compilerdoc.wiki testsuite/TODO
-
-# publish the distribution files in the local web pages
-HTMLDIR=${HOME}/public_html/kics2/download
-.PHONY: publish
-publish:
-	cp kics2.tar.gz docs/INSTALL.html ${HTMLDIR}
-	chmod -R go+rX ${HTMLDIR}
-	@echo "Don't forget to run 'update-kics2' to make the update visible!"
