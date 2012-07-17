@@ -37,9 +37,6 @@ runtime/dist
 runtime/kics2-runtime.cabal
 docs/src/version.tex
 
-# ignore front end since it is managed in another repository
-mccparser/
-
 # binaries
 benchmarks/Benchmarks
 bin/
@@ -68,4 +65,4 @@ docs/markdown_syntax.html
 docs/src/markdown_syntax.tex
 
 # distribution
-kics2.tar.gz
+kics2*.tar.gz
