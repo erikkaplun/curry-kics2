@@ -2,9 +2,6 @@
 # Makefile for ID compiler
 ########################################################################
 
-# The absolute path of the installation directory
-IDIR := $(shell pwd | sed 's|/src$$||')
-
 # The Curry installation info
 INSTALLCURRY=Installation.curry
 # ghc options
@@ -12,7 +9,7 @@ GHCOPTIONS=-O2 --make -v1 -cpp
 # ghc language extensions for compiling translating Curry programs:
 GHCEXTS=-XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec -package ghc
 # ghc includes for compiling translating Curry programs:
-GHCINCLUDES=-i${IDIR}/runtime:${IDIR}/runtime/idsupplyghc:${IDIR}/src/.curry/kics2/:${IDIR}/lib/.curry/kics2/:${IDIR}/lib/meta/.curry/kics2/
+GHCINCLUDES=-i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/.curry/kics2/:$(ROOT)/lib/.curry/kics2/:$(ROOT)/lib/meta/.curry/kics2/
 
 # Source modules of the compiler (without standard libraries):
 COMPILERSOURCES = Compile.curry \
@@ -34,12 +31,6 @@ COMPILERSOURCES = Compile.curry \
 REPLSOURCES = AbstractCurryGoodies.curry Files.curry GhciComm.curry \
               Names.curry RCFile.curry Linker.curry Utils.curry REPL.curry \
 	      ${INSTALLCURRY}
-
-# binary directory and executables
-BINDIR=${IDIR}/bin
-LOCALBIN=${BINDIR}/.local
-COMP=${LOCALBIN}/kics2c
-REPL=${LOCALBIN}/kics2i
 
 .PHONY: all
 all: CompileBoot REPLBoot
@@ -95,7 +86,7 @@ CompileBoot: .curry/kics2/Curry_Compile.hs CompileBoot.hs
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Compile.hs: ${COMPILERSOURCES}
-	${COMP} -v2 -i${IDIR}/lib:${IDIR}/lib/meta Compile.curry
+	${COMP} -v2 -i$(ROOT)/lib:$(ROOT)/lib/meta Compile.curry
 
 ########################################################################
 # REPL
@@ -111,11 +102,11 @@ REPLBoot: .curry/kics2/Curry_REPL.hs \
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_REPL.hs: ${REPLSOURCES}
-	${COMP} -v2 -i${IDIR}/lib:${IDIR}/lib/meta REPL.curry
+	${COMP} -v2 -i$(ROOT)/lib:$(ROOT)/lib/meta REPL.curry
 
 # Translate Curry->Haskell compiler into Haskell:
 .curry/kics2/Curry_Installation.hs: Installation.curry
-	${COMP} -v2 -i${IDIR}/lib Installation.curry
+	${COMP} -v2 -i$(ROOT)/lib Installation.curry
 	# recompile compiler with new installation information:
 	rm ${COMP}
 	${MAKE} CompileBoot
