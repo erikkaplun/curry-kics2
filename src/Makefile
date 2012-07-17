@@ -26,7 +26,7 @@ COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
 REPL_DEPS = AbstractCurryGoodies Files GhciComm Linker Names RCFile Utils
 
 .PHONY: all
-all: CompileBoot REPLBoot
+all: CompileBoot REPLBoot update_comp
 
 .PHONY: bootstrap
 bootstrap:
@@ -95,7 +95,16 @@ CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 	$(GHC) -o $(COMP) $<
 #	${MAKE} backup_compiler
 
-$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMP_DEPS:=.curry) $(INSTALLCURRY)
+.PHONY: update_comp
+update_comp:
+	$(KICS2C) $(INSTALLCURRY)
+	# recompile compiler with new installation information
+	$(MAKE) CompileBoot
+
+# Although $(INSTALLCURRY) is used by the compiler it must not be included
+# in the dependencies because for the distribution installation it would
+# require a working KICS2 binary *during* installation.
+$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMP_DEPS:=.curry)
 	$(KICS2C) $<
 
 ########################################################################

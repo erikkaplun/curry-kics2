@@ -72,24 +72,23 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
-	cd cpns  && ${MAKE} # Curry Port Name Server demon
-	cd tools && ${MAKE} # various tools
-	cd www   && ${MAKE} # scripts for dynamic web pages
-	${MAKE} manual
+	cd cpns  && $(MAKE) # Curry Port Name Server demon
+	cd tools && $(MAKE) # various tools
+	cd www   && $(MAKE) # scripts for dynamic web pages
+	$(MAKE) manual
 	# make everything accessible:
 	chmod -R go+rX .
 
 # install a kernel system without all tools
 .PHONY: kernel
-kernel: ${INSTALLCURRY} frontend scripts
-	${MAKE} Compile
-	${MAKE} REPL
+kernel: $(INSTALLCURRY) frontend scripts
+	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
 	# compile all libraries for a global installation
-	cd runtime && ${MAKE}
-	cd lib     && ${MAKE} compilelibs
-	cd lib     && ${MAKE} installlibs
-	cd lib     && ${MAKE} acy
+	cd runtime && $(MAKE)
+	cd lib     && $(MAKE) compilelibs
+	cd lib     && $(MAKE) installlibs
+	cd lib     && $(MAKE) acy
 endif
 
 # install required cabal packages
@@ -130,14 +129,6 @@ cleanall: clean
 ##############################################################################
 # Building the compiler itself
 ##############################################################################
-
-.PHONY: Compile
-Compile: ${INSTALLCURRY} scripts
-	cd src && ${MAKE} CompileBoot
-
-.PHONY: REPL
-REPL: ${INSTALLCURRY} scripts
-	cd src && ${MAKE} REPLBoot
 
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
@@ -279,6 +270,8 @@ updatefrontend:
 	  $(MAKE) clonefrontend ; \
 	fi
 
+# SNIP FOR DISTRIBUTION - DO NOT REMOVE THIS COMMENT
+
 ##############################################################################
 # Create distribution versions of the complete system as tar file kics2.tar.gz
 ##############################################################################
@@ -316,14 +309,14 @@ dist:
 	@if [ -f docs/Manual.pdf ] ; then \
 	  cp docs/Manual.pdf ${KICS2DIST}/docs ; \
 	fi
-	cat Makefile | sed -e "/distribution/,\$$d"        \
-	  | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
-	  > ${KICS2DIST}/Makefile
+	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
+	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
+	             > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz ./$(TARBALL)
 	chmod 644 $(TARBALL)
 	rm -rf ${KICS2DIST}
-	@echo "----------------------------------------------------------------"
+	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
 # publish the distribution files in the local web pages
@@ -344,3 +337,17 @@ cleandist:
 	rm -rf bin # clean executables
 	rm -rf docs/src docs/*
 	rm -rf benchmarks debug experiments papers talks
+
+##############################################################################
+# Development only targets
+##############################################################################
+
+# TODO: Is this target still required?
+.PHONY: Compile
+Compile: ${INSTALLCURRY} scripts
+	cd src && ${MAKE} CompileBoot
+
+# TODO: Is this target still required?
+.PHONY: REPL
+REPL: ${INSTALLCURRY} scripts
+	cd src && ${MAKE} REPLBoot
