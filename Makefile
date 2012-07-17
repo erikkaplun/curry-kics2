@@ -38,9 +38,7 @@ export LIBDIR=${ROOT}/lib
 export LOCALBIN=${BINDIR}/.local
 export COMP=${LOCALBIN}/kics2c
 export REPL=${LOCALBIN}/kics2i
-
-SCRIPTS=${BINDIR}/cleancurry ${BINDIR}/cymake ${BINDIR}/kics2 \
-        ${BINDIR}/makecurrycgi
+export CYMAKE=$(LOCALBIN)/cymake
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -49,7 +47,7 @@ all:
 
 # bootstrap the compiler
 .PHONY: bootstrap
-bootstrap: ${INSTALLCURRY} ${SCRIPTS}
+bootstrap: ${INSTALLCURRY} frontend scripts
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
 	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
@@ -71,72 +69,67 @@ install: kernel
 	cd cpns  && ${MAKE} # Curry Port Name Server demon
 	cd tools && ${MAKE} # various tools
 	cd www   && ${MAKE} # scripts for dynamic web pages
-	# generate manual, if necessary:
-	@if [ -d docs/src ] ; \
-	 then ${MAKE} ${MANUALVERSION} && cd docs/src && ${MAKE} install ; fi
+	${MAKE} manual
 	# make everything accessible:
 	chmod -R go+rX .
 
-# install some scripts of KICS2 in the bin directory:
-.PHONY: installscripts
-installscripts: ${SCRIPTS}
-	echo DONE
-
-# install some scripts of KICS2 in the bin directory:
-${BINDIR}/%: src/%.sh
-	@if [ ! -d ${BINDIR} ] ; then mkdir -p ${BINDIR} ; fi
-	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < src/$*.sh > $@
-	chmod 755 $@
-
 # install a kernel system without all tools
 .PHONY: kernel
-kernel: ${INSTALLCURRY} ${SCRIPTS} installfrontend
+kernel: ${INSTALLCURRY} frontend scripts
 	${MAKE} Compile
 	${MAKE} REPL
-	# compile all libraries if the installation is a global one
 ifeq ($(GLOBALINSTALL),yes)
+	# compile all libraries for a global installation
 	cd runtime && ${MAKE}
-	cd lib && ${MAKE} compilelibs
-	cd lib && ${MAKE} installlibs
-	cd lib && ${MAKE} acy
+	cd lib     && ${MAKE} compilelibs
+	cd lib     && ${MAKE} installlibs
+	cd lib     && ${MAKE} acy
 endif
 
-#
-# Create documentation for system libraries:
-#
-.PHONY: libdoc
-libdoc:
-	@if [ ! -r bin/currydoc ] ; then \
-	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
-	@rm -f ${MAKELOG}
-	@echo "Make libdoc started at `date`" > ${MAKELOG}
-	@cd lib && ${MAKE} doc 2>&1 | tee -a ../${MAKELOG}
-	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
-	@echo "Make libdoc process logged in file ${MAKELOG}"
+# install required cabal packages
+.PHONY: installhaskell
+installhaskell:
+	cabal update
+	cabal install network
+	cabal install parallel
+	cabal install tree-monad
+	cabal install parallel-tree-search
+	cabal install mtl
 
-# install the front end if necessary:
-.PHONY: installfrontend
-installfrontend:
-	@if [ ! -d ${LOCALBIN} ] ; then mkdir -p ${LOCALBIN} ; fi
-	# install mcc front end if sources are present:
-	@if [ -f mccparser/Makefile ] ; then cd mccparser && ${MAKE} ; fi
-	# install local front end if sources are present:
-	@if [ -d frontend ] ; then ${MAKE} installlocalfrontend ; fi
+.PHONY: clean
+clean:
+	rm -f *.log
+	rm -f ${INSTALLHS} ${INSTALLCURRY}
+	cd benchmarks && ${MAKE} clean
+	cd cpns       && ${MAKE} clean
+	@if [ -d lib/.curry/kics2 ] ; then \
+	  cd lib/.curry/kics2 && rm -f *.hi *.o ; \
+	fi
+	@if [ -d lib/meta/.curry/kics2 ] ; then \
+	  cd lib/meta/.curry/kics2 && rm -f *.hi *.o ; \
+	fi
+	cd runtime    && ${MAKE} clean
+	cd src        && ${MAKE} clean
+	cd tools      && ${MAKE} clean
+	cd www        && ${MAKE} clean
 
-# install local front end:
-.PHONY: installlocalfrontend
-installlocalfrontend:
-	cd frontend/curry-base     && cabal install # --force-reinstalls
-	cd frontend/curry-frontend && cabal install # --force-reinstalls
-	# copy cabal installation of front end into local directory
-	@if [ -f ${HOME}/.cabal/bin/cymake ] ; then cp -p ${HOME}/.cabal/bin/cymake ${LOCALBIN} ; fi
+# clean everything (including compiler binaries)
+.PHONY: cleanall
+cleanall: clean
+	bin/cleancurry -r
+	rm -rf ${LOCALBIN}
+#	$(MAKE) cleanscripts
+
+##############################################################################
+# Building the compiler itself
+##############################################################################
 
 .PHONY: Compile
-Compile: ${INSTALLCURRY} ${SCRIPTS}
+Compile: ${INSTALLCURRY} installscripts
 	cd src && ${MAKE} CompileBoot
 
 .PHONY: REPL
-REPL: ${INSTALLCURRY} ${SCRIPTS}
+REPL: ${INSTALLCURRY} installscripts
 	cd src && ${MAKE} REPLBoot
 
 # generate module with basic installation information:
@@ -179,51 +172,93 @@ else
 	echo 'installGlobal = False' >> $@
 endif
 
+##############################################################################
+# Installation of shell scripts
+##############################################################################
+
+# install some scripts of KICS2 in the bin directory
+scripts=cleancurry cymake kics2 makecurrycgi
+
+.PHONY: scripts
+scripts: $(foreach script,$(scripts),$(BINDIR)/$(script))
+	@echo "Scripts generated."
+
+$(BINDIR)/%: src/%.sh
+	mkdir -p ${BINDIR}
+	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < $< > $@
+	chmod 755 $@
+
+.PHONY: cleanscripts
+cleanscripts: $(foreach script,$(scripts),$(BINDIR)/$(script))
+	rm -f $^
+
+##############################################################################
+# Create documentation for system libraries:
+##############################################################################
+
+.PHONY: libdoc
+libdoc:
+	@if [ ! -r bin/currydoc ] ; then \
+	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
+	@rm -f ${MAKELOG}
+	@echo "Make libdoc started at `date`" > ${MAKELOG}
+	@cd lib && ${MAKE} doc 2>&1 | tee -a ../${MAKELOG}
+	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
+	@echo "Make libdoc process logged in file ${MAKELOG}"
+
+##############################################################################
+# Create the KiCS2 manual
+##############################################################################
+
+.PHONY: manual
+manual:
+	# generate manual, if necessary:
+	@if [ -d docs/src ] ; then \
+	  ${MAKE} ${MANUALVERSION} && cd docs/src && ${MAKE} install ; \
+	fi
+
 ${MANUALVERSION}: Makefile
-	echo '\\newcommand{\\kicsversiondate}{Version ${MAJORVERSION}.${MINORVERSION}.${REVISIONVERSION} of ${COMPILERDATE}}' > $@
+	echo '\\newcommand{\\kicsversiondate}'         >  $@
+	echo '{Version $(VERSION) of ${COMPILERDATE}}' >> $@
 
-# install required cabal packages
-.PHONY: installhaskell
-installhaskell:
-	cabal update
-	cabal install network
-	cabal install parallel
-	cabal install tree-monad
-	cabal install parallel-tree-search
-	cabal install mtl
+.PHONY: cleanmanual
+cleanmanual:
+	if [ -d docs/src ] ; then \
+	  cd docs/src && $(MAKE) clean ; \
+	fi
 
-.PHONY: clean
-clean:
-	rm -f *.log
-	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd benchmarks && ${MAKE} clean
-	cd cpns       && ${MAKE} clean
-	@if [ -d lib/.curry/kics2 ] ; then cd lib/.curry/kics2 && rm -f *.hi *.o ; fi
-	@if [ -d lib/meta/.curry/kics2 ] ; then cd lib/meta/.curry/kics2 && rm -f *.hi *.o ; fi
-	cd runtime    && ${MAKE} clean
-	cd src        && ${MAKE} clean
-	cd tools      && ${MAKE} clean
-	cd www        && ${MAKE} clean
-
-# clean everything (including compiler binaries)
-.PHONY: cleanall
-cleanall: clean
-	bin/cleancurry -r
-	rm -rf ${LOCALBIN}
-#	cd ${BINDIR} && rm -f ${SCRIPTS}
+##############################################################################
+# Installation of frontend
+##############################################################################
 
 # repository with new front-end:
 FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
 
 # install the sources of the front end from its repository
 .PHONY: frontend
-frontend:
+frontend: $(CYMAKE)
+
+$(CYMAKE): $(HOME)/.cabal/bin/cymake
+	# copy cabal installation of front end into local directory
+	mkdir -p $(LOCALBIN)
+	cp -p $< $@
+
+$(HOME)/.cabal/bin/cymake:
+	# install local front end:
+	$(MAKE) updatefrontend
+	cd frontend/curry-base     && cabal install # --force-reinstalls
+	cd frontend/curry-frontend && cabal install # --force-reinstalls
+
+.PHONY: updatefrontend
+updatefrontend:
 	if [ -d frontend ] ; then \
-	 cd frontend/curry-base && git pull && cd ../curry-frontend && git pull ; \
-	 else mkdir frontend && cd frontend && \
-	      git clone ${FRONTENDREPO}/curry-base.git && \
-	      git clone ${FRONTENDREPO}/curry-frontend.git ; fi
-	${MAKE} installfrontend
+	  cd frontend/curry-base && git pull ; \
+	  cd ../curry-frontend   && git pull ; \
+	else \
+	  mkdir frontend && cd frontend                ; \
+	  git clone ${FRONTENDREPO}/curry-base.git     ; \
+	  git clone ${FRONTENDREPO}/curry-frontend.git ; \
+	fi
 
 ##############################################################################
 # Create distribution versions of the complete system as tar file kics2.tar.gz
@@ -236,7 +271,8 @@ TARBALL=kics2-$(VERSION).tar.gz
 # generate a source distribution of KICS2:
 .PHONY: dist
 dist:
-	rm -rf kics2.tar.gz ${KICS2DIST} # remove old distribution
+	# remove old distribution
+	rm -rf $(TARBALL) ${KICS2DIST}
 	# initialise git repository
 	git clone . ${KICS2DIST}
 	cd ${KICS2DIST} && git submodule init && git submodule update
@@ -245,7 +281,7 @@ dist:
 	# copy or install frontend sources in distribution
 	if [ -d frontend ] ; then \
 	  cp -pr frontend ${KICS2DIST} ; \
-	  cp -pr bin/.local/cymake ${KICS2DIST}/bin/.local/ ; \
+	  cp -pr $(CYMAKE) ${KICS2DIST}/bin/.local/ ; \
 	else \
 	  cd ${KICS2DIST} && ${MAKE} frontend ; \
 	fi
@@ -253,16 +289,16 @@ dist:
 	cp bin/.local/kics2c ${KICS2DIST}/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd ${KICS2DIST} && ${MAKE} Compile       # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL          # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean         # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist     # delete unnessary files
+	cd ${KICS2DIST} && ${MAKE} Compile   # translate compiler
+	cd ${KICS2DIST} && ${MAKE} REPL      # translate REPL
+	cd ${KICS2DIST} && ${MAKE} clean     # clean object files
+	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
 	  cp docs/Manual.pdf ${KICS2DIST}/docs ; \
 	fi
-	cat Makefile | sed -e "/distribution/,\$$d" | \
-	  sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
+	cat Makefile | sed -e "/distribution/,\$$d"        \
+	  | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
 	  > ${KICS2DIST}/Makefile
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz ./$(TARBALL)
@@ -282,10 +318,10 @@ publish:
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
 cleandist:
-	rm -rf .git .gitmodules lib/.git .gitignore bin/.gitignore
+	rm -rf .git .gitmodules .gitignore
+	rm -rf lib/.git
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf bin # clean executables
 	rm -rf docs/src docs/*
 	rm -rf benchmarks debug experiments papers talks
-	rm -f TODO compilerdoc.wiki testsuite/TODO
