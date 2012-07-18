@@ -1,57 +1,48 @@
-# Makefile to generate the kics2-runtime.cabal
-# and install the runtime environment as ghc package
+# Generate the kics2-runtime.cabal and install the package
 
-# The name of the ghc package
-PKGNAME=kics2-runtime
-# The name of the cabal file
-CABAL=${PKGNAME}.cabal
-# The name of the idsupplydirectory to use
-IDSUPPDIR=idsupplyioref
+# Name of the package
+PACKAGE     = kics2-runtime
+# Name of the cabal file
+CABAL_FILE  = $(PACKAGE).cabal
+# idsupply directory to use
+IDSUPPLYDIR = idsupplyioref
 
-.PHONY: installpkg
-installpkg: ${CABAL}
-	cabal install -O2 # --force-reinstalls
+.PHONY: install
+install: $(CABAL_FILE)
+	cabal install -O2
 
-${CABAL}: ../Makefile Makefile
- ifdef MAJORVERSION
-  ifdef MINORVERSION
-    ifdef REVISIONVERSION
-	echo "Name:           ${PKGNAME}" > ${CABAL}
-	echo "Version:        ${MAJORVERSION}.${MINORVERSION}.${REVISIONVERSION}" >> ${CABAL}
-	echo "Description:    The runtime environment for KiCS2" >> ${CABAL}
-	echo "License:        OtherLicense" >> ${CABAL}
-	echo "Author:         Fabian Reck" >> ${CABAL}
-	echo "Maintainer:     fre@informatik.uni-kiel.de" >> ${CABAL}
-	echo "Build-Type:     Simple" >> ${CABAL}
-	echo "Cabal-Version:  >= 1.9.2" >> ${CABAL}
-	echo "" >> ${CABAL}
-	echo "Library" >> ${CABAL}
-	echo "  Build-Depends: base, containers, ghc, mtl, parallel-tree-search" >> ${CABAL}
-	echo "                 , tree-monad" >> ${CABAL}
-	echo "  Exposed-modules: Basics, Debug, CurryException, PrimTypes, IDSupply," >> ${CABAL}
-	echo "                   SafeExec, MonadList, Installation, MonadSearch" >> ${CABAL}
-	echo "  Other-modules:   ConstStore, ID, Search, Solver," >> ${CABAL}
-	echo "                   Strategies, Types" >> ${CABAL}
-	echo "  hs-source-dirs: ., ${IDSUPPDIR}" >> ${CABAL}
-    else
-	@echo "Error: REVISIONVERSION is not defined"
-	@echo "This target should only be called from the toplevel makefile."
-	exit 1
-    endif
-  else
-	@echo "Error: MINORVERSION is not defined"
-	@echo "This target should only be called from the toplevel makefile."
-	exit 1
-  endif
- else
-	@echo "Error: MAJORVERSION is not defined"
-	@echo "This target should only be called from the toplevel makefile."
-	exit 1
- endif
+.PHONY: unregister
+unregister:
+	-ghc-pkg unregister $(PACKAGE)-$(VERSION)
 
 .PHONY: clean
 clean:
-	rm -f ${CABAL}
-	rm -rf dist
-	rm -f *.hi *.o *.hi-boot *.o-boot
-	rm -f ./idsupply*/*.hi ./idsupply*/*.o
+	-cabal clean
+	rm -f $(CABAL_FILE)
+
+
+$(CABAL_FILE): ../Makefile Makefile
+ifndef VERSION
+	$(error VERSION is not defined. Please use 'make' on top-level)
+endif
+	echo "Name:           $(PACKAGE)"                        >  $@
+	echo "Version:        $(VERSION)"                        >> $@
+	echo "Description:    The runtime environment for KiCS2" >> $@
+	echo "License:        OtherLicense"                      >> $@
+	echo "Author:         Fabian Reck"                       >> $@
+	echo "Maintainer:     fre@informatik.uni-kiel.de"        >> $@
+	echo "Build-Type:     Simple"                            >> $@
+	echo "Cabal-Version:  >= 1.9.2"                          >> $@
+	echo ""                                                  >> $@
+	echo "Library"                                           >> $@
+	echo "  Build-Depends:"                                  >> $@
+	echo "      base, containers, ghc, mtl"                  >> $@
+	echo "    , parallel-tree-search, tree-monad"            >> $@
+	echo "  Exposed-modules:"                                >> $@
+	echo "      Basics, CurryException, Debug, IDSupply"     >> $@
+	echo "    , Installation, MonadList, MonadSearch"        >> $@
+	echo "    , PrimTypes, SafeExec"                         >> $@
+	echo "  Other-modules:"                                  >> $@
+	echo "      ConstStore, ID, Search, Solver"              >> $@
+	echo "    , Strategies, Types"                           >> $@
+	echo "  hs-source-dirs: ., $(IDSUPPLYDIR)"               >> $@
