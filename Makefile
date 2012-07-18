@@ -20,15 +20,15 @@ INSTALLDATE := $(shell date)
 # the root directory
 export ROOT     = $(CURDIR)
 # binary directory and executables
-export BINDIR   = ${ROOT}/bin
+export BINDIR   = $(ROOT)/bin
 # Directory where the libraries are located:
-export LIBDIR   = ${ROOT}/lib
+export LIBDIR   = $(ROOT)/lib
 # Directory where local executables are stored:
-export LOCALBIN = ${BINDIR}/.local
+export LOCALBIN = $(BINDIR)/.local
 # The compiler binary
-export COMP     = ${LOCALBIN}/kics2c
+export COMP     = $(LOCALBIN)/kics2c
 # The REPL binary
-export REPL     = ${LOCALBIN}/kics2i
+export REPL     = $(LOCALBIN)/kics2i
 # The frontend binary
 export CYMAKE   = $(LOCALBIN)/cymake
 
@@ -91,6 +91,10 @@ ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) acy
 endif
 
+.PHONY: scripts
+scripts:
+	cd scripts && $(MAKE)
+
 # install required cabal packages
 .PHONY: installhaskell
 installhaskell:
@@ -124,7 +128,7 @@ cleanall: clean
 	cd src && $(MAKE) cleanall
 	$(BINDIR)/cleancurry -r
 	rm -rf ${LOCALBIN}
-#	$(MAKE) cleanscripts
+#	cd scripts && $(MAKE) clean
 
 ##############################################################################
 # Building the compiler itself
@@ -173,32 +177,12 @@ else
 endif
 
 ##############################################################################
-# Installation of shell scripts
-##############################################################################
-
-# install some scripts of KICS2 in the bin directory
-scripts=cleancurry cymake kics2 makecurrycgi
-
-.PHONY: scripts
-scripts: $(foreach script,$(scripts),$(BINDIR)/$(script))
-	@echo "Scripts generated."
-
-$(BINDIR)/%: src/%.sh
-	mkdir -p ${BINDIR}
-	sed "s|^KICS2HOME=.*$$|KICS2HOME=${ROOT}|" < $< > $@
-	chmod 755 $@
-
-.PHONY: cleanscripts
-cleanscripts: $(foreach script,$(scripts),$(BINDIR)/$(script))
-	rm -f $^
-
-##############################################################################
 # Create documentation for system libraries:
 ##############################################################################
 
 .PHONY: libdoc
 libdoc:
-	@if [ ! -r bin/currydoc ] ; then \
+	@if [ ! -r $(BINDIR)/currydoc ] ; then \
 	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
 	@rm -f ${MAKELOG}
 	@echo "Make libdoc started at `date`" > ${MAKELOG}
@@ -334,7 +318,7 @@ cleandist:
 	rm -rf lib/.git
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
-	rm -rf bin # clean executables
+	rm -rf $(BINDIR) # clean executables
 	rm -rf docs/src docs/*
 	rm -rf benchmarks debug experiments papers talks
 
@@ -342,12 +326,10 @@ cleandist:
 # Development only targets
 ##############################################################################
 
-# TODO: Is this target still required?
 .PHONY: Compile
 Compile: ${INSTALLCURRY} scripts
 	cd src && ${MAKE} CompileBoot
 
-# TODO: Is this target still required?
 .PHONY: REPL
 REPL: ${INSTALLCURRY} scripts
 	cd src && ${MAKE} REPLBoot
