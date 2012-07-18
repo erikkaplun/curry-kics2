@@ -5,13 +5,13 @@
 # Is this a global installation (with restricted functionality)(yes/no)?
 GLOBALINSTALL=yes
 # The major version number:
-export MAJORVERSION    = 0
+MAJORVERSION    = 0
 # The minor version number:
-export MINORVERSION    = 2
+MINORVERSION    = 2
 # The revision version number:
-export REVISIONVERSION = 1
+REVISIONVERSION = 1
 # Complete version:
-export VERSION         = $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
+export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
 COMPILERDATE = 04/07/12
 # The installation date
@@ -41,10 +41,14 @@ MANUALVERSION = $(ROOT)/docs/src/version.tex
 # Logfiles for make:
 MAKELOG = make.log
 BOOTLOG = boot.log
+
+# Bootstrap compiler
+KICS2   := $(shell which kics2)
 # The path to the Glasgow Haskell Compiler:
-GHC := $(shell which ghc)
+GHC     := $(shell which ghc)
+GHC-PKG := $(GHC)-pkg
 # The path to the package configuration file
-PKGCONF:= $(shell ghc-pkg --user -v0 list | head -1 | sed "s/://")
+PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/://")
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -85,6 +89,8 @@ kernel: $(INSTALLCURRY) frontend scripts
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
 	# compile all libraries for a global installation
+	cd lib     && $(MAKE) unregister
+	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
 	cd lib     && $(MAKE) compilelibs
 	cd lib     && $(MAKE) installlibs
@@ -333,3 +339,23 @@ Compile: ${INSTALLCURRY} scripts
 .PHONY: REPL
 REPL: ${INSTALLCURRY} scripts
 	cd src && ${MAKE} REPLBoot
+
+# Peform a full bootstrap - distribution - installation
+# lifecycle to test consistency of the whole process
+.PHONY: test
+test:
+	# clean up
+	$(MAKE) cleanall
+	rm -rf $(BINDIR)
+	# bootstrap!
+	$(MAKE) bootstrap
+	# make distribution
+	make dist
+	# test installation
+	cp $(TARBALL) /tmp
+	rm -rf /tmp/kics2/
+	cd /tmp && tar xzfv $(TARBALL)
+	cd /tmp/kics2/ && $(MAKE)
+	rm -rf /tmp/kics2/
+	rm -rf /tmp/$(TARBALL)
+	@echo "Integration test successfully completed."
