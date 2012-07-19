@@ -3,17 +3,18 @@
 ########################################################################
 
 # The kics2 subdirectory for compiled files
-SUBDIR=.curry/kics2
+SUBDIR   = .curry/kics2
 # ghc options
 GHC_OPTS = -O2 --make -v1 -cpp -package ghc
 # ghc language extensions for compiling translating Curry programs
 GHC_EXTS = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translating Curry programs:
 GHC_INCL = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)/:$(LIBDIR)/$(SUBDIR)/:$(LIBDIR)/meta/$(SUBDIR)/
-# The GHC call
-GHC    = ghc $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
+# Can be overwritten
+GHC      = ghc
+GHC_CALL = $(GHC) $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
-KICS2C = $(COMP) -v2 -i$(LIBDIR):$(LIBDIR)/meta
+KICS2C   = $(COMP) -v2 -i$(LIBDIR):$(LIBDIR)/meta
 
 # Source modules of the compiler (without standard libraries):
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
@@ -92,7 +93,7 @@ CompileInitial: Compile.curry
 .PHONY: CompileBoot
 CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 	mkdir -p $(LOCALBIN)
-	$(GHC) -o $(COMP) $<
+	$(GHC_CALL) -o $(COMP) $<
 #	${MAKE} backup_compiler
 
 .PHONY: update_comp
@@ -115,7 +116,7 @@ $(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMP_DEPS:=.curry)
 .PHONY: REPLBoot
 REPLBoot: REPLBoot.hs $(SUBDIR)/Curry_REPL.hs
 	mkdir -p $(LOCALBIN)
-	$(GHC) -o $(REPL) $<
+	$(GHC_CALL) -o $(REPL) $<
 #	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
 
 $(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY)
