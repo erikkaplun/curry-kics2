@@ -43,10 +43,10 @@ MAKELOG = make.log
 BOOTLOG = boot.log
 
 # Bootstrap compiler
-KICS2   := $(shell which kics2)
+export KICS2   := $(shell which kics2)
 # The path to the Glasgow Haskell Compiler:
-GHC     := $(shell which ghc)
-GHC-PKG := $(GHC)-pkg
+export GHC     := $(shell which ghc)
+export GHC-PKG := $(GHC)-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/://")
 
@@ -83,15 +83,26 @@ install: kernel
 	# make everything accessible:
 	chmod -R go+rX .
 
+# uninstall globally installed cabal packages
+.PHONY: uninstall
+uninstall:
+ifeq ($(GLOBALINSTALL),yes)
+	cd lib     && $(MAKE) unregister
+	cd runtime && $(MAKE) unregister
+	@echo "All globally installed cabal packages have been unregistered."
+endif
+	rm -rf $(HOME)/.kics2rc $(HOME)/.kics2rc.bak $(HOME)/.kics2i_history
+	@echo "Just remove this directory to finish uninstallation."
+
 # install a kernel system without all tools
 .PHONY: kernel
 kernel: $(INSTALLCURRY) frontend scripts
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
-	# compile all libraries for a global installation
 	cd lib     && $(MAKE) unregister
 	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
+	# compile all libraries for a global installation
 	cd lib     && $(MAKE) compilelibs
 	cd lib     && $(MAKE) installlibs
 	cd lib     && $(MAKE) acy
@@ -297,11 +308,14 @@ dist:
 	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
+	  mkdir -p ${KICS2DIST}/docs ; \
 	  cp docs/Manual.pdf ${KICS2DIST}/docs ; \
 	fi
+	# update Makefile
 	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
 	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
 	             > ${KICS2DIST}/Makefile
+	# Zip it!
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz ./$(TARBALL)
 	chmod 644 $(TARBALL)
@@ -317,6 +331,9 @@ publish:
 	chmod -R go+rX ${HTMLDIR}
 	@echo "Don't forget to run 'update-kics2' to make the update visible!"
 
+# Directories containing development stuff
+DEV_DIRS=benchmarks debug docs experiments papers talks
+
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
 cleandist:
@@ -325,8 +342,7 @@ cleandist:
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf $(BINDIR) # clean executables
-	rm -rf docs/src docs/*
-	rm -rf benchmarks debug experiments papers talks
+	rm -rf $(DEV_DIRS)
 
 ##############################################################################
 # Development only targets
@@ -342,6 +358,8 @@ REPL: ${INSTALLCURRY} scripts
 
 # Peform a full bootstrap - distribution - installation
 # lifecycle to test consistency of the whole process
+# WARNING: Make sure that your bootstrapping compiler has a different
+# version, otherwise the kics2-runtime and kics2-libraries will be erased.
 .PHONY: test
 test:
 	# clean up
@@ -356,6 +374,7 @@ test:
 	rm -rf /tmp/kics2/
 	cd /tmp && tar xzfv $(TARBALL)
 	cd /tmp/kics2/ && $(MAKE)
+	cd /tmp/kics2/ && $(MAKE) uninstall
 	rm -rf /tmp/kics2/
 	rm -rf /tmp/$(TARBALL)
 	@echo "Integration test successfully completed."
