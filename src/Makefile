@@ -13,6 +13,8 @@ GHC_INCL = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)/:
 # Can be overwritten
 GHC      = ghc
 GHC_CALL = $(GHC) $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
+# bootstrap compiler
+KICS2    = $(shell which kics2)
 # The kics2c call
 KICS2C   = $(COMP) -v2 -i$(LIBDIR):$(LIBDIR)/meta
 

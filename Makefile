@@ -42,8 +42,6 @@ MANUALVERSION = $(ROOT)/docs/src/version.tex
 MAKELOG = make.log
 BOOTLOG = boot.log
 
-# Bootstrap compiler
-export KICS2   := $(shell which kics2)
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
 export GHC-PKG := $(GHC)-pkg
