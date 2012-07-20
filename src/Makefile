@@ -107,7 +107,7 @@ update_comp:
 # Although $(INSTALLCURRY) is used by the compiler it must not be included
 # in the dependencies because for the distribution installation it would
 # require a working KICS2 binary *during* installation.
-$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMP_DEPS:=.curry)
+$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry)
 	$(KICS2C) $<
 
 ########################################################################
