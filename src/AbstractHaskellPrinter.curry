@@ -46,11 +46,12 @@ showProg (Prog m imports typedecls funcdecls opdecls) =
     ]
 
 showModuleHeader :: String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
-showModuleHeader m typedecls funcdecls imps
-  =  "module " ++ m
-  ++ if null exports then "" else "(" ++ exports ++ ")"
-  ++ " where"
-  ++ if null imports then "" else "\n\n" ++ imports
+showModuleHeader m typedecls funcdecls imps = concat
+  [ "module " ++ m
+  , " (" ++ exports ++ ")"
+  , " where"
+  , if null imports then "" else "\n\n" ++ imports
+  ]
   where exports = showExports typedecls funcdecls
         imports = showImports imps
 
