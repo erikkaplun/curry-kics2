@@ -237,48 +237,47 @@ cleanmanual:
 ##############################################################################
 
 # temporary directory to create distribution version
-KICS2DIST=/tmp/kics2
+TMPDIR=/tmp/kics2
 TARBALL=kics2-$(VERSION).tar.gz
 
 # generate a source distribution of KICS2:
 .PHONY: dist
-dist:
+dist: $(COMP)
 	# remove old distribution
-	rm -rf $(TARBALL) ${KICS2DIST}
+	rm -rf $(TARBALL) ${TMPDIR}
 	# initialise git repository
-	git clone . ${KICS2DIST}
-	cd ${KICS2DIST} && git submodule init && git submodule update
+	git clone . ${TMPDIR}
+	cd ${TMPDIR} && git submodule init && git submodule update
 	# create local binary directory
-	mkdir -p ${KICS2DIST}/bin/.local
-	# copy or install frontend sources in distribution
-	if [ -d frontend ] ; then \
-	  cp -pr frontend ${KICS2DIST} ; \
-	  cp -pr $(CYMAKE) ${KICS2DIST}/bin/.local/ ; \
+	mkdir -p ${TMPDIR}/bin/.local
+	# copy frontend binary into distribution
+	if [ -x $(CYMAKE) ] ; then \
+	  cp -pr $(CYMAKE) $(TMPDIR)/bin/.local/ ; \
 	else \
-	  cd ${KICS2DIST} && ${MAKE} frontend ; \
+	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
 	# copy bootstrap compiler
-	cp $(COMP) ${KICS2DIST}/bin/.local/
+	cp $(COMP) ${TMPDIR}/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd ${KICS2DIST} && ${MAKE} Compile   # translate compiler
-	cd ${KICS2DIST} && ${MAKE} REPL      # translate REPL
-	cd ${KICS2DIST} && ${MAKE} clean     # clean object files
-	cd ${KICS2DIST} && ${MAKE} cleandist # delete unnessary files
+	cd ${TMPDIR} && ${MAKE} Compile   # translate compiler
+	cd ${TMPDIR} && ${MAKE} REPL      # translate REPL
+	cd ${TMPDIR} && ${MAKE} clean     # clean object files
+	cd ${TMPDIR} && ${MAKE} cleandist # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
-	  mkdir -p ${KICS2DIST}/docs ; \
-	  cp docs/Manual.pdf ${KICS2DIST}/docs ; \
+	  mkdir -p ${TMPDIR}/docs ; \
+	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
 	fi
 	# update Makefile
 	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
 	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
-	             > ${KICS2DIST}/Makefile
+	             > ${TMPDIR}/Makefile
 	# Zip it!
 	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
 	mv /tmp/kics2.tar.gz ./$(TARBALL)
 	chmod 644 $(TARBALL)
-	rm -rf ${KICS2DIST}
+	rm -rf ${TMPDIR}
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
@@ -290,7 +289,7 @@ publish:
 	chmod -R go+rX ${HTMLDIR}
 	@echo "Don't forget to run 'update-kics2' to make the update visible!"
 
-# Directories containing development stuff
+# Directories containing development stuff only
 DEV_DIRS=benchmarks debug docs experiments papers talks
 
 # Clean all files that should not be included in a distribution
