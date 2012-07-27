@@ -151,7 +151,7 @@ cleanall: clean
 
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
-	cp ${INSTALLHS} ${INSTALLCURRY}
+	cp $< $@
 
 ${INSTALLHS}: Makefile
 	@if [ ! -x "${GHC}" ] ; then \
@@ -239,7 +239,7 @@ frontend: $(CYMAKE)
 
 $(CYMAKE): $(HOME)/.cabal/bin/cymake
 	# copy cabal installation of front end into local directory
-	mkdir -p $(LOCALBIN)
+	mkdir -p $(@D)
 	cp -p $< $@
 
 $(HOME)/.cabal/bin/cymake:
@@ -356,8 +356,10 @@ REPL: ${INSTALLCURRY} scripts
 
 # Peform a full bootstrap - distribution - installation
 # lifecycle to test consistency of the whole process
-# WARNING: Make sure that your bootstrapping compiler has a different
-# version, otherwise the kics2-runtime and kics2-libraries will be erased.
+# WARNING: This installation will corrupt any existing global KICS2
+# installation for the current user which shares the exact same version!
+# This is because the runtime and libraries cabal packages would be
+# reinstalled and, later on, unregistered.
 .PHONY: test
 test:
 	# clean up
