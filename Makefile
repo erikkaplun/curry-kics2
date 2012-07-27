@@ -46,9 +46,9 @@ BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
-export GHC-PKG := $(GHC)-pkg
+export GHC-PKG := $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
-PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/://")
+PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 
 # main (default) target: starts installation with logging
 .PHONY: all
