@@ -114,7 +114,7 @@ scripts:
 	cd scripts && $(MAKE)
 
 .PHONY: frontend
-frontend:
+frontend: utils/cabaldir
 	cd frontend && $(MAKE)
 
 # install required cabal packages
@@ -198,8 +198,8 @@ else
 	echo 'installGlobal = False' >> $@
 endif
 
-utils/pwd:
-	cd utils && $(MAKE)
+utils/%:
+	cd utils && $(MAKE) $(@F)
 
 ##############################################################################
 # Create documentation for system libraries:

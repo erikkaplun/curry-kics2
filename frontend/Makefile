@@ -4,6 +4,8 @@
 
 CYMAKE_VERSION=0.3.3
 CYMAKE_BIN    =$(LOCALBIN)/cymake
+# CABALDIR     := $(shell ../utils/cabaldir)
+# $(CYMAKE_BIN): $(CABALDIR)/bin/cymake
 
 # install the sources of the front end from its repository
 $(CYMAKE_BIN): unregister
