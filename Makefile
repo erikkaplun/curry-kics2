@@ -160,7 +160,7 @@ cleanall: clean
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
 
-${INSTALLHS}: Makefile
+${INSTALLHS}: Makefile utils/pwd
 	@if [ ! -x "${GHC}" ] ; then \
 	  echo "No executable 'ghc' found in path!" && exit 1; \
 	fi
@@ -171,7 +171,7 @@ ${INSTALLHS}: Makefile
 	echo 'compilerName = "KiCS2 Curry -> Haskell Compiler"' >> $@
 	echo "" >> $@
 	echo 'installDir :: String' >> $@
-	echo 'installDir = "$(ROOT)"' >> $@
+	echo 'installDir = "$(shell utils/pwd)"' >> $@
 	echo "" >> $@
 	echo 'majorVersion :: Int' >> $@
 	echo 'majorVersion = $(MAJORVERSION)' >> $@
@@ -197,6 +197,9 @@ ifeq ($(GLOBALINSTALL),yes)
 else
 	echo 'installGlobal = False' >> $@
 endif
+
+utils/pwd:
+	cd utils && $(MAKE)
 
 ##############################################################################
 # Create documentation for system libraries:
