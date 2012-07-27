@@ -307,6 +307,7 @@ cleandist:
 	rm -rf lib/.git
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
+	cd utils && make cleanall
 	rm -rf $(BINDIR) # clean executables
 	rm -rf $(DEV_DIRS)
 
