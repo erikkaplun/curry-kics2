@@ -29,7 +29,7 @@ COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
 REPL_DEPS = AbstractCurryGoodies Files GhciComm Linker Names RCFile Utils
 
 .PHONY: all
-all: CompileBoot REPLBoot update_comp
+all: CompileBoot updateInstallInfo REPLBoot
 
 .PHONY: bootstrap
 bootstrap:
@@ -98,10 +98,10 @@ CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 	$(GHC_CALL) -o $(COMP) $<
 #	${MAKE} backup_compiler
 
-.PHONY: update_comp
-update_comp:
+# recompile installation information and the compiler
+.PHONY: updateInstallInfo
+updateInstallInfo:
 	$(KICS2C) $(INSTALLCURRY)
-	# recompile compiler with new installation information
 	$(MAKE) CompileBoot
 
 # Although $(INSTALLCURRY) is used by the compiler it must not be included
