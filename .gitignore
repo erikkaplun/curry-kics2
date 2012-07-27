@@ -42,7 +42,6 @@ benchmarks/Benchmarks
 bin/
 cpns/CPNSD
 examples/comptest
-frontend
 tools/GenInt
 tools/ImportCalls
 tools/AddTypes

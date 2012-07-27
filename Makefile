@@ -110,6 +110,10 @@ endif
 scripts:
 	cd scripts && $(MAKE)
 
+.PHONY: frontend
+frontend:
+	cd frontend && $(MAKE)
+
 # install required cabal packages
 .PHONY: installhaskell
 installhaskell:
@@ -224,49 +228,6 @@ ${MANUALVERSION}: Makefile
 cleanmanual:
 	if [ -d docs/src ] ; then \
 	  cd docs/src && $(MAKE) clean ; \
-	fi
-
-##############################################################################
-# Installation of frontend
-##############################################################################
-
-# repository with new front-end:
-FRONTENDREPO=git://git-ps.informatik.uni-kiel.de/curry
-
-# install the sources of the front end from its repository
-.PHONY: frontend
-frontend: $(CYMAKE)
-
-$(CYMAKE): $(HOME)/.cabal/bin/cymake
-	# copy cabal installation of front end into local directory
-	mkdir -p $(@D)
-	cp -p $< $@
-
-$(HOME)/.cabal/bin/cymake:
-	$(MAKE) clonefrontend
-	cd frontend/curry-base     && cabal install # --force-reinstalls
-	cd frontend/curry-frontend && cabal install # --force-reinstalls
-
-# Retrieves a fresh clone of the frontend IF IT IS NOT ALREADY PRESENT.
-.PHONY: clonefrontend
-clonefrontend:
-	mkdir -p frontend # ensure frontend directory
-	if [ ! -d frontend/curry-base ] ; then \
-	  cd frontend ; \
-	  git clone ${FRONTENDREPO}/curry-base.git ; \
-	fi
-	if [ ! -d frontend/curry-frontend ] ; then \
-	  cd frontend ; \
-	  git clone ${FRONTENDREPO}/curry-frontend.git ; \
-	fi
-
-.PHONY: updatefrontend
-updatefrontend:
-	if [ -d frontend ] ; then \
-	  cd frontend/curry-base && git pull ; \
-	  cd ../curry-frontend   && git pull ; \
-	else \
-	  $(MAKE) clonefrontend ; \
 	fi
 
 # SNIP FOR DISTRIBUTION - DO NOT REMOVE THIS COMMENT
