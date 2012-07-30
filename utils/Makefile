@@ -1,12 +1,11 @@
 # Makefile for building installation utils
 
+utils=pwd cabaldir cleancurry
+
 .PHONY: all
-all: pwd cabaldir
+all: $(utils)
 
-pwd: pwd.hs
-	ghc --make -Wall -Werror -O2 -o $@ $<
-
-cabaldir: cabaldir.hs
+%: %.hs
 	ghc --make -Wall -Werror -O2 -o $@ $<
 
 .PHONY: clean
@@ -15,4 +14,4 @@ clean:
 
 .PHONY: cleanall
 cleanall: clean
-	rm -f pwd cabaldir
+	rm -f $(utils)

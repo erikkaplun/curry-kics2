@@ -110,8 +110,9 @@ ifeq ($(GLOBALINSTALL),yes)
 endif
 
 .PHONY: scripts
-scripts:
+scripts: utils/cleancurry
 	cd scripts && $(MAKE)
+	cp $< $(BINDIR)
 
 .PHONY: frontend
 frontend: utils/cabaldir
@@ -322,6 +323,11 @@ Compile: ${INSTALLCURRY} scripts
 .PHONY: REPL
 REPL: ${INSTALLCURRY} scripts
 	cd src && ${MAKE} REPLBoot
+
+.PHONY: testdist
+testdist: $(TARBALL)
+	
+
 
 # Peform a full bootstrap - distribution - installation
 # lifecycle to test consistency of the whole process
