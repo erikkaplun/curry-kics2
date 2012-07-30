@@ -8,7 +8,7 @@ ifeq ($(UNAME), Linux)
 BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
 BATS =
 else
-BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh kics2.sh)
+BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh)
 BATS = $(patsubst %, $(BINDIR)/%, $(wildcard *.bat))
 endif
 
