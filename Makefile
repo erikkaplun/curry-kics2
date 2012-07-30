@@ -106,7 +106,7 @@ ifeq ($(GLOBALINSTALL),yes)
 	# compile all libraries for a global installation
 	cd lib     && $(MAKE) compilelibs
 	cd lib     && $(MAKE) installlibs
-	cd lib     && $(MAKE) acy
+	cd lib     && $(MAKE) acy CYMAKE=$(CYMAKE)
 endif
 
 .PHONY: scripts
@@ -190,7 +190,7 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "${GHC} -no-user-package-conf -package-conf ${PKGCONF}"' >> $@
+	echo 'ghcExec = "\"${GHC}\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
