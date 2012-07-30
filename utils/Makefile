@@ -1,6 +1,6 @@
 # Makefile for building installation utils
 
-utils=pwd cabaldir cleancurry
+utils=pwd cabaldir cleancurry which
 
 .PHONY: all
 all: $(utils)

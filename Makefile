@@ -45,8 +45,8 @@ MAKELOG = make.log
 BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
-export GHC     := $(shell which ghc)
-export GHC-PKG := $(dirname $(GHC))ghc-pkg
+export GHC     = `utils/which ghc`
+export GHC-PKG = $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 
@@ -111,7 +111,7 @@ endif
 
 .PHONY: scripts
 scripts: utils/cleancurry
-	cd scripts && $(MAKE)
+	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
 	cp $< $(BINDIR)
 
 .PHONY: frontend
@@ -161,7 +161,7 @@ cleanall: clean
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
 
-${INSTALLHS}: Makefile utils/pwd
+${INSTALLHS}: Makefile utils/pwd utils/which
 	@if [ ! -x "${GHC}" ] ; then \
 	  echo "No executable 'ghc' found in path!" && exit 1; \
 	fi
