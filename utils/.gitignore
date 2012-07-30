@@ -2,6 +2,7 @@
 pwd
 cabaldir
 cleancurry
+which
 
 # intermediate
 *.hi
