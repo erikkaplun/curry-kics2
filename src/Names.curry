@@ -4,14 +4,15 @@
 -----------------------------------------------------------------------
 module Names where
 
-import Char (isAlphaNum)
-import List (intersperse)
-import Maybe (fromJust, isJust)
+import Char     (isAlphaNum)
+import FilePath ((</>))
+import List     (intersperse)
+import Maybe    (fromJust, isJust)
 
 import AbstractHaskell
 import Base
 import CompilerOpts
-import Files
+import Files    (withComponents)
 
 -- ---------------------------------------------------------------------------
 -- File names

@@ -15,13 +15,12 @@ module Linker
 import AbstractCurry
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
-import IO (Handle, hFlush, stdout)
+import IO            (Handle, hFlush, stdout)
 import Directory
+import FilePath      ((</>), dropExtension)
 import System
-import FileGoodies
 
 import qualified Installation as Inst
-import Files
 import GhciComm
 import Names         (funcInfoFile)
 import RCFile
@@ -211,7 +210,7 @@ mainModule rst isdet isio mbBindings = unlines
   , "import Basics"
   , "import SafeExec"
   , if mbBindings==Nothing then "" else "import Curry_Prelude"
-  , "import Curry_" ++ stripSuffix mainGoalFile
+  , "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"
   , mainExpr "kics2MainGoal" isdet isio (rst :> ndMode) evalMode mbBindings
