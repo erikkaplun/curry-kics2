@@ -45,8 +45,8 @@ MAKELOG = make.log
 BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
-export GHC     = `utils/which ghc`
-export GHC-PKG = $(dirname $(GHC))ghc-pkg
+export GHC     := $(shell which ghc)
+export GHC-PKG := $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 
@@ -190,7 +190,7 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"${GHC}\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
