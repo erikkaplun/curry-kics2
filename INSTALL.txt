@@ -23,7 +23,7 @@ these packages by
 After unpacking the distribution file, go into the main directory
 of the distribution (which is denoted by `kics2home` in the following):
 
-    tar xvzf kics2.tar.gz
+    tar xvzf kics2-<version>.tar.gz
     cd kics2
 
 If you install KiCS2 for the first time, you need to install

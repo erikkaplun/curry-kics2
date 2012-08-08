@@ -31,6 +31,10 @@ markdown_syntax.tex: markdown_syntax.txt
 ../INSTALL.html: ../../INSTALL.txt
 	${KICS2} :add Markdown :eval 'readFile "../../INSTALL.txt" >>= writeFile "../INSTALL.html" . markdownText2CompleteHTML' :q
 
+# format repository installation description as HTML page
+../GITINSTALL.html: ../../GITINSTALL.txt
+	${KICS2} :add Markdown :eval 'readFile "../../GITINSTALL.txt" >>= writeFile "../GITINSTALL.html" . markdownText2CompleteHTML' :q
+
 ../../lib/TEXDOC/LAST:
 	${MAKE} libdoc
 
@@ -44,6 +48,7 @@ libdoc:
 install:
 	${MAKE} ../markdown_syntax.html
 	${MAKE} ../INSTALL.html
+	${MAKE} ../GITINSTALL.html
 	${MAKE} libdoc
 	${MAKE} ../Manual.pdf
 
