@@ -4,7 +4,7 @@
 --- This module should be further divided if it contains too much unrelated
 --- things.
 ---
---- @author  Björn Peemöller
+--- @author  Bjoern Peemoeller
 --- @version June 2012
 --- --------------------------------------------------------------------------
 module Utils where
