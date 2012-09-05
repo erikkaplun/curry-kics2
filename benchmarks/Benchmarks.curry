@@ -4,7 +4,7 @@
 --- This program defines the execution of benchmarks and summarizes
 --- their results.
 ---
---- @author  Michael Hanus, Björn Peemöller, Fabian Reck
+--- @author  Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version January 2012
 --- --------------------------------------------------------------------------
 

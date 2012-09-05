@@ -1,7 +1,7 @@
 --- --------------------------------------------------------------------------
 --- Read-Eval-Print loop for KiCS2
 ---
---- @author Michael Hanus, Björn Peemöller
+--- @author Michael Hanus, Bjoern Peemoeller
 --- @version June 2012
 --- --------------------------------------------------------------------------
 module REPL where

@@ -1,7 +1,7 @@
 --- --------------------------------------------------------------------------
 --- Communication with the Glasgow Haskell Compiler (interactive)
 ---
---- @author  Michael Hanus, Björn Peemöller
+--- @author  Michael Hanus, Bjoern Peemoeller
 --- @version June 2012
 --- --------------------------------------------------------------------------
 module GhciComm

@@ -1,7 +1,7 @@
 --- --------------------------------------------------------------------------
 --- A collection of operations for dealing with file names
 ---
---- @author  Björn Peemöller
+--- @author  Bjoern Peemoeller
 --- @version June 2012
 --- --------------------------------------------------------------------------
 module Files
