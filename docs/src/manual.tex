@@ -135,12 +135,12 @@ graphical user interfaces and web services
 \cite{Hanus99PPDP,Hanus00PADL,Hanus01PADL,Hanus06PPDP}).
 
 We assume familiarity with the ideas and features
-of Curry as described in the Curry language definition \cite{Hanus06Curry}.
+of Curry as described in the Curry language definition \cite{Hanus12Curry}.
 Therefore, this document only explains the use of the different
 components of KiCS2
 and the differences and restrictions of KiCS2
 (see Section~\ref{sec-restrictions})
-compared with the language Curry (Version 0.8.2).
+compared with the language Curry (Version 0.8.3).
 The basic ideas of the implementation of KiCS2
 can be found in
 \cite{BrasselHanusPeemoellerReck11,BrasselHanusPeemoellerReck11WLP}.
@@ -232,8 +232,15 @@ also deletes the auxiliary files in all subdirectories.
 There are a few minor restrictions on Curry programs
 when they are processed with KiCS2:
 \begin{itemize}
-\item \index{singleton variables}\index{variables!singleton}
-\emph{Singleton variables}, i.e., variables that occur only once
+\item
+\code{fcase} expressions are not yet supported.
+\item
+The left-hand sides of program rules must be linear,
+i.e., multiple occurrences of a variable in a pattern
+are not allowed.
+\item
+\index{singleton variables}\index{variables!singleton}
+\emph{Singleton pattern variables}, i.e., variables that occur only once
 in a rule, should be denoted as an anonymous variable \ccode{_},
 otherwise the parser will print a warning since this is a
 typical source of programming errors.
