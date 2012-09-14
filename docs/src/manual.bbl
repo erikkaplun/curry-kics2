@@ -91,6 +91,11 @@ M.~Hanus~(ed.).
 \newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
 \newblock Available at \url{http://www.curry-language.org}, 2006.
 
+\bibitem{Hanus12Curry}
+M.~Hanus~(ed.).
+\newblock Curry: An integrated functional logic language (vers.\ 0.8.3).
+\newblock Available at \url{http://www.curry-language.org}, 2012.
+
 \bibitem{Johnsson85}
 T.~Johnsson.
 \newblock Lambda lifting: Transforming programs to recursive functions.
