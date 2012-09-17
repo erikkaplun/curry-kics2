@@ -1,5 +1,10 @@
 \begin{thebibliography}{10}
 
+\bibitem{Ait-Kaci91}
+H.~A{\"\i}t-Kaci.
+\newblock {\em Warren's Abstract Machine}.
+\newblock MIT Press, 1991.
+
 \bibitem{AntoyHanus00FROCOS}
 S.~Antoy and M.~Hanus.
 \newblock Compiling Multi-Paradigm Declarative Programs into {Prolog}.
@@ -50,30 +55,20 @@ L.~Augustsson, M.~Rittri, and D.~Synek.
 \newblock {\em Journal of Functional Programming}, Vol.~4, No.~1, pp. 117--123,
   1994.
 
-\bibitem{Brassel11Thesis}
-B.~Bra{\ss}el.
-\newblock {\em Implementing Functional Logic Programs by Translation into
-  Purely Functional Programs}.
-\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
-
 \bibitem{BrasselFischer08IFL}
 B.~Bra{\ss}el and S.~Fischer.
 \newblock From Functional Logic Programs to Purely Functional Programs
   Preserving Laziness.
-\newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
-  Application of Functional Languages (IFL 2008)}, 2008.
-
-\bibitem{BrasselHanusHuch04JFLP}
-B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
-\newblock Encapsulating Non-Determinism in Functional Logic Computations.
-\newblock {\em Journal of Functional and Logic Programming}, Vol.~2004, No.~6,
-  2004.
+\newblock In {\em Proceedings of the 20th International Symposium on
+  Implementation and Application of Functional Languages (IFL 2008)}, pp.
+  25--42. Springer LNCS 5836, 2008.
 
 \bibitem{BrasselHanusPeemoellerReck11}
 B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
-\newblock KiCS2: A New Compiler from Curry to Haskell.
+\newblock {KiCS2}: A New Compiler from {Curry} to {Haskell}.
 \newblock In {\em Proc. of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}. Springer LNCS 6816, 2011.
+  (Constraint) Logic Programming (WFLP 2011)}, pp. 1--18. Springer LNCS 6816,
+  2011.
 
 \bibitem{BrasselHuch07}
 B.~Bra{\ss}el and F.~Huch.
@@ -117,17 +112,23 @@ M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
 \newblock {PAKCS}: The {P}ortland {A}achen {K}iel {C}urry {S}ystem.
 \newblock Available at \url{http://www.informatik.uni-kiel.de/~pakcs/}, 2010.
 
+\bibitem{HanusPeemoellerReck12ATPS}
+M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
+\newblock Search Strategies for Functional Logic Programming.
+\newblock In {\em Proc. of the 5th Working Conference on Programming Languages
+  (ATPS'12)}, pp. 61--74. Springer LNI 199, 2012.
+
 \bibitem{HanusSadre99JFLP}
 M.~Hanus and R.~Sadre.
-\newblock An Abstract Machine for Curry and its Concurrent Implementation in
-  Java.
+\newblock An Abstract Machine for {Curry} and its Concurrent Implementation in
+  {Java}.
 \newblock {\em Journal of Functional and Logic Programming}, Vol.~1999, No.~6,
   1999.
 
-\bibitem{Hanus06Curry}
+\bibitem{Hanus12Curry}
 M.~Hanus~(ed.).
-\newblock Curry: An Integrated Functional Logic Language (Vers.\ 0.8.2).
-\newblock Available at \url{http://www.curry-language.org}, 2006.
+\newblock Curry: An Integrated Functional Logic Language (Vers.\ 0.8.3).
+\newblock Available at \url{http://www.curry-language.org}, 2012.
 
 \bibitem{Hussmann92}
 H.~Hussmann.
@@ -146,6 +147,12 @@ W.~Lux.
   Language.
 \newblock In {\em Proc. 4th Fuji International Symposium on Functional and
   Logic Programming (FLOPS'99)}, pp. 100--113. Springer LNCS 1722, 1999.
+
+\bibitem{Naish85SLP}
+L.~Naish.
+\newblock All Solutions Predicates in Prolog.
+\newblock In {\em Proc. IEEE Internat. Symposium on Logic Programming}, pp.
+  73--77, Boston, 1985.
 
 \bibitem{ODonnell85}
 M.J. O'Donnell.

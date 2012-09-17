@@ -7,6 +7,7 @@
 \usepackage{xspace}
 \usepackage{hyperref}
 \usepackage{color}
+\usepackage{times}
 
 \usepackage{listings}
 \lstset{aboveskip=1.0ex,
@@ -75,7 +76,11 @@ To overcome this drawback, we propose new techniques
 to implement equational constraints in this framework.
 In particular, we show how unification modulo function evaluation
 and functional patterns can be added without sacrificing
-the efficiency of the kernel implementation.
+the efficiency of the kernel implementation.\\[1ex]
+\textbf{Keywords:} functional logic programming,
+implementation,
+unification,
+functional patterns
 \end{abstract}
 
 
@@ -95,52 +100,50 @@ has led to new design patterns \cite{AntoyHanus02FLOPS,AntoyHanus11WFLP}
 and better abstractions for application programming, but it also gave rise
 to new implementation challenges.
 
-Previous implementations of functional logic languages
-can be classified into three categories:
-\begin{enumerate}
- \item designing new abstract machines appropriately supporting
-these operational features and implementing them in some (typically,
+In order to implement a functional logic language,
+one can develop a suitable abstract machine and
+implement it in some (typically,
 imperative) language, like C \cite{Lux99FLOPS}
-or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP},
-
- \item compilation into logic languages like Prolog and reusing
-the existing backtracking implementation for non-deterministic
+or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP}.
+One could also use compile into logic languages like Prolog
+and reuse existing backtracking implementations for non-deterministic
 search as well as logic variables and unification for computing with partial
-information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}, or
-
- \item compilation into non-strict functional languages like Haskell
-and reusing the implementation
-of lazy evaluation and higher-order functions
-\cite{BrasselHuch07,BrasselHuch09}.
-\end{enumerate}
-%
-The latter approach requires the implementation
-of non-deterministic computations in a deterministic language
-but has the advantage
+information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}.
+There are also more recent approaches
+\cite{BrasselHuch07,BrasselHuch09}
+where functional logic programs are compiled
+into non-strict functional programs
+to reuse the implementation
+of lazy evaluation and higher-order functions.
+Although this requires the implementation
+of non-deterministic computations in a deterministic language,
+it has the advantage
 that the explicit handling of non-determinism allows for
 various search strategies like depth-first, breadth-first, parallel,
 or iterative deepening instead of committing to a fixed (incomplete)
 strategy like backtracking \cite{BrasselHuch07}.
 
-In this paper we consider KiCS2 \cite{BrasselHanusPeemoellerReck11},
+This paper is related to the latter implementation approach.
+In particular, we consider KiCS2 \cite{BrasselHanusPeemoellerReck11},
 a new system that compiles functional logic programs of the
-source language Curry \cite{Hanus06Curry}
+source language Curry \cite{Hanus12Curry}
 into purely functional Haskell programs.
-We have shown in \cite{BrasselHanusPeemoellerReck11}
-that this implementation can compete with or outperform
-other existing implementations of Curry.
 KiCS2 is based on the idea to represent
 the search space, i.e., all non-deterministic results of a computation,
 as a data structure that can be traversed by operations
 implementing various strategies.
-Furthermore, logic variables are replaced by generators,
+In KICS2, logic variables are replaced by generators,
 i.e., operations that non-deterministically evaluate to
 all possible ground values of the type of the logic variable.
-It has been shown \cite{AntoyHanus06ICLP}
-that computing with logic variables by narrowing \cite{Reddy85,Slagle74}
+This is justified by the fact that
+computing with logic variables by narrowing \cite{Reddy85,Slagle74}
 and computing with generators by rewriting
-are equivalent, i.e., compute the same values.
-Although this implementation technique is correct \cite{Brassel11Thesis},
+is equivalent, i.e., yields the same values \cite{AntoyHanus06ICLP}.
+Although this implementation technique
+outperforms other existing implementations of Curry
+on deterministic programs and can compete with them on
+non-deterministic programs (see \cite{BrasselHanusPeemoellerReck11}
+for benchmarks),
 the generation of all values for logic variables
 might be inefficient for applications that
 exploit constraints on partial values.
@@ -148,11 +151,17 @@ For instance, in Prolog the equality constraint \ccode{X=c(a)}
 is solved by instantiating the variable \code{X} to \code{c(a)},
 but the equality constraint \ccode{X=Y} is solved by binding \code{X}
 to \code{Y} without enumerating any values for \code{X} or \code{Y}.
-Therefore, we propose in this paper new techniques
-to implement equational constraints in the framework of KiCS2
-(note that, in contrast to Prolog, unification is performed
-modulo function evaluation).
-Furthermore, we also show how functional patterns \cite{AntoyHanus05LOPSTR},
+In order to obtain a similar behavior in KiCS2,
+we propose in this paper new techniques
+to implement equational constraints
+(in contrast to Prolog, Curry performs unification
+modulo function evaluation)
+in a purely functional target language.
+A purely functional, i.e., side-effect free, implementation
+is reasonable in order to support different, in particular,
+parallel search strategies.
+Beyond equational constraints,
+we also show how functional patterns \cite{AntoyHanus05LOPSTR},
 i.e., patterns containing evaluable operations for more powerful pattern 
 matching than in logic or functional languages,
 can be implemented in this framework.
@@ -176,7 +185,7 @@ before we conclude in Sect.~\ref{sec:Conclusions}.
 \section{Curry Programs}
 \label{sec:Curry}
 
-The syntax of the functional logic language Curry \cite{Hanus06Curry}
+The syntax of the functional logic language Curry \cite{Hanus12Curry}
 is close to Haskell \cite{PeytonJones03Haskell},
 i.e., type variables and names of defined operations usually
 start with lowercase letters and the names of type and data constructors
@@ -248,8 +257,8 @@ programming with non-strict and non-deterministic operations.  This
 logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}%
 \label{ctc-semantics},
 where values of the arguments of an operation are determined before the
-operation is evaluated. This can be enforced in a lazy strategy
-by sharing actual arguments.
+operation is evaluated.
+In a lazy strategy, this can be enforced by sharing actual arguments.
 For instance, the expression above can be lazily evaluated
 provided that all occurrences of \code{aBool}
 are shared so that all of them reduce either to \code{True} or to \code{False}
@@ -303,11 +312,10 @@ or evolving formats \cite{Hanus11ICLP}.
 \label{sec:Compilation}
 
 To understand the extensions described in the subsequent sections,
-we sketch the translation of Curry programs
+we review the translation of Curry programs
 into Haskell programs as performed by KiCS2.
 More details about this translation scheme can be found in
 \cite{BrasselFischer08IFL,BrasselHanusPeemoellerReck11}.
-
 
 As mentioned in the introduction, the KiCS2 implementation
 is based on the explicit representation of non-deterministic results
@@ -334,7 +342,7 @@ the argument operation \code{aBool}, we have to ensure
 that both duplicates, which later evaluate to a non-deterministic
 choice between two values, yield either \code{True} or \code{False}.
 This is obtained by assigning a unique identifier (of type \code{ID})
-to each \code{Choice}. The difficulty is to get a unique identifier
+to each \code{Choice} constructor. The difficulty is to get a unique identifier
 on demand, i.e., when some operation evaluates to a \code{Choice}.
 Since we want to compile into \emph{purely} functional programs
 (in order to enable powerful program optimizations),
@@ -382,7 +390,7 @@ is translated into
   main s = xorSelf (aBool (leftSupply s)) (rightSupply s)
 \end{haskell}
 so that the set \code{s} is split into a set \code{(leftSupply s)}
-containing identifiers for the evaluation of \code{aBool}
+containing identifiers for the evaluation of the argument \code{aBool}
 and a set \code{(rightSupply s)} containing identifiers
 for the evaluation of the operation \code{xorSelf}.
 
@@ -402,10 +410,9 @@ and an operation to extract the first element of a non-empty list:
   head :: List a -> a
   head (Cons x xs) = x
 \end{curry}
-The type definition is then extended as follows:
+The type definition is then extended as described above:
 \begin{haskell}
-  data List a = Nil | Cons a (List a)
-              | Choice ID (List a) (List a) | Fail
+  data List a = Nil | Cons a (List a) | Choice ID (List a) (List a) | Fail
 \end{haskell}
 The operation \code{head} is extended by an identifier supply
 and further matching rules:
@@ -507,7 +514,7 @@ and the right alternative is used and stored.
 In general, this operation is applied to the normal form
 of the main expression (where \code{initSupply} is used to
 compute an initial identifier supply passed to this expression).
-The normal form computation is necessary for structured data like lists,
+The normal form computation is necessary for structured data, like lists,
 so that a failure or choice in some part of the data is moved to
 the root.
 
@@ -515,16 +522,36 @@ Other search strategies, like
 breadth-first search, iterative deepening, or parallel search,
 can be obtained by different implementations of this main operation
 to print all values.
-Furthermore, one can also collect all values in a tree-like data structure
+Instead of printing them, one can also collect
+the values in a tree-like data structure
 so that the programmer can implement his own search strategies
-(this corresponds to encapsulating search \cite{BrasselHanusHuch04JFLP}).
-Finally, instead of printing all values, one can easily define operations
-to print either the first solution only or one by one upon user request.
-Due to the lazy evaluation strategy of Haskell,
-such operations can also be applied to infinite choice structures.
+as tree traversals. Thus, KiCS2 supports a primitive
+\begin{curry}
+  getSearchTree :: a -> IO (SearchTree a)
+\end{curry}
+that returns the search tree corresponding to the evaluation
+of its argument, where the search tree is some computed value,
+a failure, or a choice between two trees:
+\begin{curry}
+  data SearchTree a = Value a | Fail | Or (SearchTree a) (SearchTree a)
+\end{curry}
+This primitive is useful to encapsulate non-deterministic
+operations and select some result value, e.g., the
+``first'' or the ``best'' one according to some ordering.
+Since the search tree is created in a demand-driven manner,
+the primitive is also applicable to infinite search spaces
+(in contrast to Prolog's \code{findall} primitive \cite{Naish85SLP}).
+Based on this representation, a Curry programmer
+can define his own search strategies
+as tree traversals (see \cite{HanusPeemoellerReck12ATPS}
+for detailed examples).
+Note that these kinds of applications demand for a side-effect
+free implementation of non-deterministic computations
+(in contrast to traditional Prolog implementations
+\cite{Ait-Kaci91})---which is the challenge addressed in this paper.
 
 To avoid an unnecessary growth of the search space represented by
-\code{Choice} constructors, our compiler performs an optimization for
+\code{Choice} constructors, KiCS2 performs an optimization for
 deterministic operations. If an operation is defined by non-overlapping
 rules and does not call, neither directly nor indirectly through
 other operations, a function defined by overlapping rules,
@@ -541,8 +568,8 @@ and, for non-deterministic operations, outperforms Prolog-based
 implementations of Curry and can compete with MCC \cite{Lux99FLOPS},
 a Curry implementation that compiles to C.
 
-As mentioned in the introduction, occurrences of logic variables are
-translated into generators.
+As mentioned in the introduction, KiCS2 translates
+occurrences of logic variables into generators.
 For instance, the expression \ccode{not x}, where \code{x} is a logic variable,
 is translated into \ccode{not (aBool s)}, where \code{s} is an \code{IDSupply}
 provided by the context of the expression. The latter expression is 
@@ -854,8 +881,8 @@ Due to this slight change, failures or infinite structures
 in actual arguments do not cause problems in the matching
 of functional patterns.
 
-The general structure of the implementation of functional patterns in KiCS2
-is quite similar to that of equational constraints,
+Our proposed implementation of functional patterns in KiCS2
+has a structure that is quite similar to that of equational constraints,
 with the exception that variables could be also bound
 to unevaluated expressions. 
 Only if such variables are later
@@ -1058,11 +1085,15 @@ of more than 30 minutes).
 
 We have presented an implementation of equational constraints
 and functional patterns in KiCS2, a purely functional implementation
-of Curry. Our implementation is based on adding binding constraints
-to computed values and processing them when values are extracted
+of Curry.
+In addition to the kernel implementation described in
+\cite{BrasselHanusPeemoellerReck11},
+we add binding constraints
+to computed values which are processed when values are extracted
 at the top level of a computation.
-Since we only have added new constructors and pattern matching rules 
-for them in our implementation, no overhead is introduced for programs
+Since only new constructors and pattern matching rules 
+for them are added in our implementation,
+no overhead is introduced for programs
 without equational constraints, i.e.,
 our implementation does not sacrifice the high efficiency
 of the kernel implementation shown in
@@ -1079,7 +1110,9 @@ MCC \cite{Lux99FLOPS} compiles into C where a specific
 abstract machine implements the handling of logic variables.
 We have shown that our implementation is competitive to those.
 In contrast to those systems, our implementation supports
-a variety of search strategies, like breadth-first or parallel search,
+a variety of ``top-level'' search strategies,
+like iterative deepening, breadth-first or parallel search,
+as well as user-programmable search strategies,
 where the avoidance of side effects is important.
 
 For future work it might be interesting to add
@@ -1090,185 +1123,8 @@ of our implementation and solving them by
 functional approaches like \cite{SchrijversStuckeyWadler09}.
 
 
-\begin{thebibliography}{10}
-
-\bibitem{AntoyHanus00FROCOS}
-S.~Antoy and M.~Hanus.
-\newblock Compiling multi-paradigm declarative programs into {Prolog}.
-\newblock In {\em Proc. International Workshop on Frontiers of Combining
-  Systems (FroCoS'2000)}, pages 171--185. Springer LNCS 1794, 2000.
-
-\bibitem{AntoyHanus02FLOPS}
-S.~Antoy and M.~Hanus.
-\newblock Functional logic design patterns.
-\newblock In {\em Proc.\ of the 6th International Symposium on Functional and
-  Logic Programming (FLOPS 2002)}, pages 67--87. Springer LNCS 2441, 2002.
-
-\bibitem{AntoyHanus05LOPSTR}
-S.~Antoy and M.~Hanus.
-\newblock Declarative programming with function patterns.
-\newblock In {\em Proceedings of the International Symposium on Logic-based
-  Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
-  3901, 2005.
-
-\bibitem{AntoyHanus06ICLP}
-S.~Antoy and M.~Hanus.
-\newblock Overlapping rules and logic variables in functional logic programs.
-\newblock In {\em Proceedings of the 22nd International Conference on Logic
-  Programming (ICLP 2006)}, pages 87--101. Springer LNCS 4079, 2006.
-
-\bibitem{AntoyHanus10CACM}
-S.~Antoy and M.~Hanus.
-\newblock Functional logic programming.
-\newblock {\em Communications of the ACM}, 53(4):74--85, 2010.
-
-\bibitem{AntoyHanus11WFLP}
-S.~Antoy and M.~Hanus.
-\newblock New functional logic design patterns.
-\newblock In {\em Proc.\ of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}, pages 19--34. Springer LNCS
-  6816, 2011.
-
-\bibitem{AntoyHanusLiuTolmach05}
-S.~Antoy, M.~Hanus, J.~Liu, and A.~Tolmach.
-\newblock A virtual machine for functional logic computations.
-\newblock In {\em Proc.\ of the 16th International Workshop on Implementation
-  and Application of Functional Languages (IFL 2004)}, pages 108--125. Springer
-  LNCS 3474, 2005.
-
-\bibitem{AugustssonRittriSynek94}
-L.~Augustsson, M.~Rittri, and D.~Synek.
-\newblock On generating unique names.
-\newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
-
-\bibitem{Brassel11Thesis}
-B.~Bra{\ss}el.
-\newblock {\em Implementing Functional Logic Programs by Translation into
-  Purely Functional Programs}.
-\newblock PhD thesis, Christian-Albrechts-Universit{\"a}t zu Kiel, 2011.
-
-\bibitem{BrasselFischer08IFL}
-B.~Bra{\ss}el and S.~Fischer.
-\newblock From functional logic programs to purely functional programs
-  preserving laziness.
-\newblock In {\em Pre-Proceedings of the 20th Workshop on Implementation and
-  Application of Functional Languages (IFL 2008)}, 2008.
-
-\bibitem{BrasselHanusHuch04JFLP}
-B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
-\newblock Encapsulating non-determinism in functional logic computations.
-\newblock {\em Journal of Functional and Logic Programming}, 2004(6), 2004.
-
-\bibitem{BrasselHanusPeemoellerReck11}
-B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
-\newblock {KiCS2}: A new compiler from {Curry} to {Haskell}.
-\newblock In {\em Proc. of the 20th International Workshop on Functional and
-  (Constraint) Logic Programming (WFLP 2011)}, pages 1--18. Springer LNCS 6816,
-  2011.
-
-\bibitem{BrasselHuch07}
-B.~Bra{\ss}el and F.~Huch.
-\newblock On a tighter integration of functional and logic programming.
-\newblock In {\em Proc. APLAS 2007}, pages 122--138. Springer LNCS 4807, 2007.
-
-\bibitem{BrasselHuch09}
-B.~Bra{\ss}el and F.~Huch.
-\newblock The {Kiel} {Curry} {System} {KiCS}.
-\newblock In {\em Applications of Declarative Programming and Knowledge
-  Management}, pages 195--205. Springer LNAI 5437, 2009.
-
-\bibitem{GiovannettiLeviMoisoPalamidessi91}
-E.~Giovannetti, G.~Levi, C.~Moiso, and C.~Palamidessi.
-\newblock Kernel leaf: A logic plus functional language.
-\newblock {\em Journal of Computer and System Sciences}, 42(2):139--185, 1991.
-
-\bibitem{GonzalezEtAl99}
-J.C. Gonz{\'a}lez-Moreno, M.T. Hortal{\'a}-Gonz{\'a}lez, F.J.
-  L{\'o}pez-Fraguas, and M.~Rodr{\'\i}guez-Artalejo.
-\newblock An approach to declarative programming based on a rewriting logic.
-\newblock {\em Journal of Logic Programming}, 40:47--87, 1999.
-
-\bibitem{Hanus07ICLP}
-M.~Hanus.
-\newblock Multi-paradigm declarative languages.
-\newblock In {\em Proceedings of the International Conference on Logic
-  Programming (ICLP 2007)}, pages 45--75. Springer LNCS 4670, 2007.
-
-\bibitem{Hanus11ICLP}
-M.~Hanus.
-\newblock Declarative processing of semistructured web data.
-\newblock In {\em Technical Communications of the 27th International Conference
-  on Logic Programming}, volume~11, pages 198--208. Leibniz International
-  Proceedings in Informatics (LIPIcs), 2011.
-
-\bibitem{Hanus10PAKCS}
-M.~Hanus, S.~Antoy, B.~Bra{\ss}el, M.~Engelke, K.~H{\"o}ppner, J.~Koj,
-  P.~Niederau, R.~Sadre, and F.~Steiner.
-\newblock {PAKCS}: The {P}ortland {A}achen {K}iel {C}urry {S}ystem.
-\newblock Available at \url{http://www.informatik.uni-kiel.de/~pakcs/}, 2010.
-
-\bibitem{HanusSadre99JFLP}
-M.~Hanus and R.~Sadre.
-\newblock An abstract machine for curry and its concurrent implementation in
-  java.
-\newblock {\em Journal of Functional and Logic Programming}, 1999(6), 1999.
-
-\bibitem{Hanus06Curry}
-M.~Hanus~(ed.).
-\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
-\newblock Available at \url{http://www.curry-language.org}, 2006.
-
-\bibitem{Hussmann92}
-H.~Hussmann.
-\newblock Nondeterministic algebraic specifications and nonconfluent term
-  rewriting.
-\newblock {\em Journal of Logic Programming}, 12:237--255, 1992.
-
-\bibitem{Lopez-FraguasSanchez-Hernandez99}
-F.~L\'opez-Fraguas and J.~S\'anchez-Hern\'andez.
-\newblock {TOY}: A multiparadigm declarative system.
-\newblock In {\em Proc. of RTA'99}, pages 244--247. Springer LNCS 1631, 1999.
-
-\bibitem{Lux99FLOPS}
-W.~Lux.
-\newblock Implementing encapsulated search for a lazy functional logic
-  language.
-\newblock In {\em Proc. 4th Fuji International Symposium on Functional and
-  Logic Programming (FLOPS'99)}, pages 100--113. Springer LNCS 1722, 1999.
-
-\bibitem{ODonnell85}
-M.J. O'Donnell.
-\newblock {\em Equational Logic as a Programming Language}.
-\newblock MIT Press, 1985.
-
-\bibitem{PeytonJones03Haskell}
-S.~Peyton~Jones, editor.
-\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
-\newblock Cambridge University Press, 2003.
-
-\bibitem{Reddy85}
-U.S. Reddy.
-\newblock Narrowing as the operational semantics of functional languages.
-\newblock In {\em Proc. IEEE Internat. Symposium on Logic Programming}, pages
-  138--151, Boston, 1985.
-
-\bibitem{Robinson65}
-J.A. Robinson.
-\newblock A machine-oriented logic based on the resolution principle.
-\newblock {\em Journal of the ACM}, 12(1):23--41, 1965.
-
-\bibitem{SchrijversStuckeyWadler09}
-T.~Schrijvers, P.~Stuckey, and P.~Wadler.
-\newblock Monadic constraint programming.
-\newblock {\em Journal of Functional Programming}, 19(6):663--697, 2009.
-
-\bibitem{Slagle74}
-J.R. Slagle.
-\newblock Automated theorem-proving for theories with simplifiers,
-  commutativity, and associativity.
-\newblock {\em Journal of the ACM}, 21(4):622--642, 1974.
-
-\end{thebibliography}
+\bibliographystyle{mhnumber}
+\bibliography{mh}
 
 \end{document}
 
