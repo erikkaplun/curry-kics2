@@ -1,9 +1,11 @@
 --- --------------------------------------------------------------------------
---- Read-Eval-Print loop for KiCS2
+--- This is the main module of the interactice system.
+--- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version June 2012
+--- @version September 2012
 --- --------------------------------------------------------------------------
+
 module REPL where
 
 import AbstractCurry
@@ -322,20 +324,12 @@ execMain rst cmpstatus mainexp = do
                  else " +RTS " ++ rst -> rtsOpts ++ " " ++ paropts ++ " -RTS ") ++
                 rst->rtsArgs
       tcmd    = timecmd ++ maincmd
-      icmd    = if rst->interactive && cmpstatus == MainNonDet
-                then execInteractive rst tcmd
-                else tcmd
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
-  writeVerboseInfo rst 3 $ "Executing: " ++ icmd
-  system icmd >> done
+  writeVerboseInfo rst 3 $ "Executing: " ++ tcmd
+  system tcmd >> done
  where
   getTimeCmd | rst -> showTime = getTimeCmdForDist `liftIO` getDistribution
              | otherwise       = return ""
-
-  -- Interactive execution of a main search command: current, a new
-  -- terminal is opened due to problematic interaction with readline
-  execInteractive rst' cmd =
-    rcValue (rst' -> rcvars) "interactivecommand" ++ ' ' : cmd
 
   -- Time command for specific distributions. It might be necessary
   -- to adapt this command.
