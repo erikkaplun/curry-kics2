@@ -7,7 +7,8 @@ CYMAKE = ../bin/.local/cymake
 # copy cabal installation of front end into local directory
 $(CYMAKE): $(HOME)/.cabal/bin/cymake
 	mkdir -p $(@D)
-	cp -p $< $@
+	#cp -p $< $@
+	mv $< $@ # move cymake away to avoid problems with different architectures
 
 # install the sources of the front end from its repository
 $(HOME)/.cabal/bin/cymake:
