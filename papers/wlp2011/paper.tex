@@ -1017,7 +1017,9 @@ presented approach with variable bindings.
 In addition, the example \code{last} shows that the lazy 
 unification operator (\ccode{=:<=}) improves the performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
-all elements of the list are (unnecessarily) evaluated.
+all elements of the list are (unnecessarily) evaluated. On the other
+hand, lazy unification causes some unnecessary overhead when all elements are
+evaluated anyway.
 
 \begin{figure}[t]
 \centering
