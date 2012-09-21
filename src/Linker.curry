@@ -1,3 +1,12 @@
+--- --------------------------------------------------------------------------
+--- This module implements the "linker" of KiCS2.
+--- It provides operations to write the main goal as a Haskell file
+--- and compiling this main file together with all compiled Curry modules.
+---
+--- @author Michael Hanus, Bjoern Peemoeller
+--- @version June 2012
+--- --------------------------------------------------------------------------
+
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain

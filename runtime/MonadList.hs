@@ -11,7 +11,8 @@ module MonadList
   ) where
 
 import Data.Char (toLower)
-import System.IO (hFlush, stdin, stdout, hSetBuffering, BufferMode (..))
+import System.IO (hFlush, stdin, stdout, hGetEcho, hSetEcho,
+                  hGetBuffering, hSetBuffering, BufferMode (..))
 
 -- |Monadic lists as a general representation of values obtained in a
 -- monadic manner.
@@ -126,19 +127,21 @@ printAllValues prt (Reset    l _) = l >>= printAllValues prt
 
 -- Print all values of a IO monad list on request by the user:
 printValsOnDemand :: Show a => MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
-printValsOnDemand = printInteractive True
+printValsOnDemand md prt rs = do
+  te <- hGetEcho stdin
+  tb <- hGetBuffering stdin
+  printInteractive True md prt rs
+  hSetEcho stdin te
+  hSetBuffering stdin tb
 
 warnAbort :: IO ()
 warnAbort = putStrLn "Warning: Search aborted (maximum depth reached)"
 
 printInteractive :: Show a => Bool -> MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
 printInteractive _        _  _   Abort          = warnAbort
-printInteractive _        _  _   Nil            = putStrLn "No more values" >> askAnyKey
+printInteractive _        _  _   Nil            = putStrLn "No more values"
 printInteractive stepWise md prt (Cons x getXs) = prt x >> askMore stepWise md prt getXs
 printInteractive stepWise md prt (Reset    l _) = l >>= printInteractive stepWise md prt
-
-askAnyKey :: IO ()
-askAnyKey = askUserKey "Hit any key to terminate ..." >> return ()
 
 -- ask the user for more values
 askMore :: Show a => Bool -> MoreDefault -> (a -> IO ()) -> IO (IOList a) -> IO ()
@@ -166,6 +169,9 @@ askMore stepWise md prt getrest
 askUserKey :: String -> IO Char
 askUserKey prompt = do
   putStr prompt >> hFlush stdout
-  c <- hSetBuffering stdin NoBuffering >> getChar
+  hSetEcho stdin False  -- to avoid interference with rlwrap
+  hSetBuffering stdin NoBuffering
+  c <- getChar
+  putChar c
   if c == '\n' then return () else putChar '\n'
   return c
