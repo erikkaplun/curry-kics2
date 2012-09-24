@@ -10,8 +10,8 @@
 \usepackage{times}
 
 \usepackage{listings}
-\lstset{aboveskip=1.0ex,
-        belowskip=1.0ex,
+\lstset{aboveskip=0.9ex,
+        belowskip=0.9ex,
         showstringspaces=false, % no special string space
         mathescape=true,
         flexiblecolumns=false,
@@ -68,7 +68,8 @@ The implementation is based on the idea to represent
 the search space as a data structure and logic variables
 as operations that generate their values.
 This has the advantage that one can apply various,
-and in particular, complete search strategies to compute solutions.
+in particular, complete search strategies
+or even user-defined strategies to compute solutions.
 However, the generation of all values for logic variables
 might be inefficient for applications that
 exploit constraints on partially known values.
@@ -110,7 +111,7 @@ and reuse existing backtracking implementations for non-deterministic
 search as well as logic variables and unification for computing with partial
 information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}.
 More recent approaches
-\cite{BrasselHuch07,BrasselHuch09}
+\cite{BrasselFischer08IFL,BrasselHuch07,BrasselHuch09}
 compile functional logic programs
 into non-strict functional programs
 to reuse the implementation
@@ -119,8 +120,8 @@ Although this requires the implementation
 of non-deterministic computations in a deterministic language,
 it has the advantage
 that the explicit handling of non-determinism allows for
-various search strategies like depth-first, breadth-first, parallel,
-or iterative deepening instead of committing to a fixed (incomplete)
+various search strategies, like depth-first, breadth-first, parallel,
+or iterative deepening, instead of committing to a fixed (incomplete)
 strategy like backtracking \cite{BrasselHuch07}.
 
 This paper is related to the latter implementation approach.
@@ -132,23 +133,23 @@ KiCS2 is based on the idea to represent
 the search space, i.e., all non-deterministic results of a computation,
 as a data structure that can be traversed by operations
 implementing various strategies.
-In KICS2, logic variables are replaced by generators,
+Logic variables are replaced by generators,
 i.e., operations that non-deterministically evaluate to
 all possible ground values of the type of the logic variable.
 This is justified by the fact that
 computing with logic variables by narrowing \cite{Reddy85,Slagle74}
 and computing with generators by rewriting
-is equivalent, i.e., yields the same values \cite{AntoyHanus06ICLP}.
+are equivalent, i.e., yield the same values \cite{AntoyHanus06ICLP}.
 Although this implementation technique
-outperforms other existing implementations of Curry
+outperforms other implementations of Curry
 on deterministic programs and can compete with them on
 non-deterministic programs (see \cite{BrasselHanusPeemoellerReck11}
 for benchmarks),
 the generation of all values for logic variables
 might be inefficient for applications that
-exploit constraints on partial values.
-For instance, in Prolog the equality constraint \ccode{X=c(a)}
-is solved by instantiating the variable \code{X} to \code{c(a)},
+exploit constraints on partially known values.
+For instance, the equality constraint \ccode{X=c(a)}
+is solved in Prolog by instantiating the variable \code{X} to \code{c(a)},
 but the equality constraint \ccode{X=Y} is solved by binding \code{X}
 to \code{Y} without enumerating any values for \code{X} or \code{Y}.
 In order to obtain a similar behavior in KiCS2,
@@ -159,7 +160,7 @@ modulo function evaluation)
 in a purely functional target language.
 A purely functional, i.e., side-effect free, implementation
 is reasonable in order to support different, in particular,
-parallel search strategies.
+parallel or user-defined search strategies.
 Beyond equational constraints,
 we also show how functional patterns \cite{AntoyHanus05LOPSTR},
 i.e., patterns containing evaluable operations for more powerful pattern 
@@ -229,11 +230,8 @@ If non-deterministic operations are used as arguments in other operations,
 a semantical ambiguity might occur. Consider the operations
 %
 \begin{curry}
-  not True  = False
-  not False = True
-
-  xor True  x = not x
-  xor False x = x
+  not True  = False            xor True  x = not x
+  not False = True             xor False x = x
 
   xorSelf x = xor x x
 \end{curry}
@@ -250,8 +248,7 @@ Note that this result cannot be obtained if we use a strict strategy
 where arguments are evaluated prior to the function calls.
 In order to avoid dependencies on the evaluation strategies
 and exclude such unintended results,
-Gonz\'alez-Moreno et al.\ \cite{GonzalezEtAl99} proposed
-the rewriting logic CRWL as a logical
+the rewriting logic CRWL is proposed in \cite{GonzalezEtAl99} as a logical
 (execution- and strategy-independent) foundation for declarative
 programming with non-strict and non-deterministic operations.  This
 logic specifies the \emph{call-time choice} semantics \cite{Hussmann92}%
@@ -334,7 +331,11 @@ to resolve overloaded symbols like \code{Choice} and \code{Fail}.}
 \begin{haskell}
   data Bool = False | True | Choice ID Bool Bool | Fail
 \end{haskell}
-The first argument of type \code{ID} of each \code{Choice} constructor
+where \code{Fail} represents a failure and \code{(Choice i t1 t2)}
+a non-deterministic value, i.e.,
+a selection of two values \code{t1} and \code{t2}
+that can be chosen by some search strategy.
+The first argument \code{i} of type \code{ID} of a \code{Choice} constructor
 is used to implement the call-time choice semantics
 discussed in Sect.~\ref{sec:Curry}.
 Since the evaluation of \code{xorSelf aBool} duplicates
@@ -368,7 +369,7 @@ the operation \code{thisID} takes some identifier from this set, and
 into two disjoint subsets without the identifier
 obtained by \code{thisID}.
 There are different implementations available \cite{AugustssonRittriSynek94}
-(see below for a simple implementation) and our system
+(see below for a simple one) and our system
 is parametric over concrete implementations of \code{IDSupply}.
 
 When translating Curry to Haskell, KiCS2 adds to each operation
@@ -461,7 +462,7 @@ Similarly, if we select the right branch as the value of the outermost
 \code{Choice}, we also have to select the right branch in
 its selected argument \code{(Choice 2 True False)}, which again yields 
 \code{False} as the only possible value. In consequence, 
-the unintended value \code{True} is not produced.
+the unintended value \code{True} is not extracted as a result.
 
 The requirement to make consistent decisions can be implemented by storing
 the decisions already made for some choices during the traversal.
@@ -487,8 +488,8 @@ since the type system of Haskell does not
 allow this direct definition.}
 \label{sec:printValsDFS}
 \begin{haskell}
-  printValsDFS :: a -> IO ()
-  printValsDFS Fail             = return ()
+  printValsDFS :: a -> IO ()$\listline$
+  printValsDFS Fail             = return ()$\listline$
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
     where
       follow ChooseLeft  = printValsDFS x1
@@ -497,7 +498,7 @@ allow this direct definition.}
                               newDecision ChooseRight x2$\listline$
       newDecision d x = do setDecision i d
                            printValsDFS x
-                           setDecision i NoDecision
+                           setDecision i NoDecision$\listline$
   printValsDFS v = print v
 \end{haskell}
 This operation ignores failures and prints values that are not rooted by a
@@ -883,7 +884,7 @@ in actual arguments do not cause problems in the matching
 of functional patterns.
 
 Our proposed implementation of functional patterns in KiCS2
-has a structure that is quite similar to that of equational constraints,
+has a structure that is quite similar to that of equational constraints
 with the exception that variables could be also bound
 to unevaluated expressions. 
 Only if such variables are later
@@ -929,9 +930,9 @@ In order to demonstrate the operational behavior of our implementation,
 we sketch the evaluation of the lazy unification constraint
 \code{xs++[e] =:<= [failed,True]} that occurs when the expression
 \code{last' [failed,True]} is evaluated (we omit failed branches
-and some other details; note that logic variables are replaced
+and some other details). Note that logic variables are replaced
 by generators, i.e., we assume that \code{xs} is replaced by
-\code{aBoolList 2} and \code{e} is replaced by \code{aBool 3}):
+\code{aBoolList 2} and \code{e} is replaced by \code{aBool 3}:
 \begin{haskell}
      aBoolList 2 ++ [aBool 3] =:<= [failed, True]
   $\leadsto$ [aBool 4, aBool 3] =:<= [failed, True]
@@ -945,7 +946,7 @@ required.
 Thus, \code{(lazyBind 3 True)} is evaluated to \code{[3 :=: ChooseLeft]}
 which corresponds to the value \code{True} of the generator \code{(aBool 3)}.
 Note that the variable with identifier \code{4} does not occur
-anywhere else, so that the binding \code{(lazyBind 4 failed)}
+anywhere else so that the binding \code{(lazyBind 4 failed)}
 will never be evaluated, as intended.
 
 
@@ -988,13 +989,13 @@ specification of regular expressions \cite{AntoyHanus10CACM}).
 \hline
 Expression                              & \code{==~}& \code{=:=}& \code{=:<=} \\
 \hline
-\code{last (map (inc 0) [1..10000])}   &  2.91   &    0.05   &    0.01   \\
-\code{simplify}                         & 10.30      & 6.77      & 7.07        \\
-\code{varInExp}                         & 2.34    & 0.24      & 0.21        \\
-\code{fromPeano (half (toPeano 10000))} & 26.67     & 5.95      & 11.19       \\
-\code{palindrome}                       & 30.86     & 14.05     & 20.26       \\
-\code{horseman}                         & 3.24      & 3.31      & n/a         \\
-\code{grep}                             & 1.06      & 0.10      & n/a         \\
+\code{last (map (inc 0) [1..10000])}    &  2.91   & 0.05   & 0.01   \\
+\code{simplify}                         & 10.30   & 6.77   & 7.07   \\
+\code{varInExp}                         & 2.34    & 0.24   & 0.21   \\
+\code{fromPeano (half (toPeano 10000))} & 26.67   & 5.95   & 11.19  \\
+\code{palindrome}                       & 30.86   & 14.05  & 20.26  \\
+\code{horseman}                         & 3.24    & 3.31   & n/a    \\
+\code{grep}                             & 1.06    & 0.10   & n/a    \\
 \hline
 \end{tabular}
 \caption{Benchmarks: comparing different representations for equations}
@@ -1018,10 +1019,12 @@ presented approach with variable bindings.
 In addition, the example \code{last} shows that the lazy 
 unification operator (\ccode{=:<=}) improves the performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
-all elements of the list are (unnecessarily) evaluated. On the other
-hand, lazy unification causes some unnecessary overhead when all elements are
-evaluated anyway, which is shown by the \code{fromPeano} and 
-\code{palindrome} examples.
+all elements of the list are (unnecessarily) evaluated.
+On the other hand, lazy unification causes some overhead
+when the expressions are fully evaluated,
+which is shown by the \code{fromPeano} and \code{palindrome} examples.
+Thus, it is reasonable to use it only if its improved computational
+power is really required, as intended by its design.
 
 \begin{figure}[t]
 \centering
@@ -1029,7 +1032,7 @@ evaluated anyway, which is shown by the \code{fromPeano} and
 \hline
 Expression                              & KiCS2 & PAKCS  & MCC  \\
 \hline
-\code{last (map (inc 0) [1..10000])}   & 0.05  & 0.40   &  0.01\\
+\code{last (map (inc 0) [1..10000])}    & 0.05  & 0.40   & 0.01 \\
 \code{simplify}                         & 6.77  & 0.15   & 0.00 \\
 \code{varInExp}                         & 0.24  & 0.89   & 0.07 \\
 \code{fromPeano (half (toPeano 10000))} & 5.95  & 108.88 & 3.22 \\
