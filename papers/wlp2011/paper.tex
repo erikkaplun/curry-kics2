@@ -1107,9 +1107,17 @@ of the kernel implementation shown in
 \cite{BrasselHanusPeemoellerReck11}.
 However, if these features are used, they usually lead
 to a comparably efficient execution, as demonstrated by our benchmarks.
+Although the benchmarks were small in order to evaluate
+our unification implementation,
+it should be noted that KiCS2 is used in larger applications,
+like the curricula and module information system of our department%
+\footnote{\url{http://www-ps.informatik.uni-kiel.de/~mh/studiengaenge/}}.
+In these and similar applications, where large parts are
+purely functional computations,
+KiCS2 is 15-20 times faster than PAKCS \cite{Hanus10PAKCS}.
 
 Other implementations of equational constraints in functional logic
-languages use side effects for their implementation.
+languages are based on side effects.
 For instance, PAKCS \cite{Hanus10PAKCS}
 exploits the implementation of logic variables in Prolog,
 which are implemented on the primitive level by side effects.
