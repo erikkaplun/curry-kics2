@@ -7,16 +7,21 @@ CYMAKE = ../bin/.local/cymake
 # copy cabal installation of front end into local directory
 $(CYMAKE): $(HOME)/.cabal/bin/cymake
 	mkdir -p $(@D)
-	#cp -p $< $@
 	mv $< $@ # move cymake away to avoid problems with different architectures
 
 # install the sources of the front end from its repository
-$(HOME)/.cabal/bin/cymake:
-	cd curry-base     && cabal install # --force-reinstalls
-	cd curry-frontend && cabal install # --force-reinstalls
+$(HOME)/.cabal/bin/cymake: unregister
+	cd curry-base     && cabal install
+	cd curry-frontend && cabal install
+
+# unregister previous version to avoid cabal install failures
+.PHONY: unregister
+unregister:
+	-ghc-pkg unregister curry-frontend
+	-ghc-pkg unregister curry-base
 
 .PHONY: update
-update: clone
+update:
 	cd curry-base     && git pull
 	cd curry-frontend && git pull
 
