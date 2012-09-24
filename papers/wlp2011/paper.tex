@@ -105,13 +105,13 @@ one can develop a suitable abstract machine and
 implement it in some (typically,
 imperative) language, like C \cite{Lux99FLOPS}
 or Java \cite{AntoyHanusLiuTolmach05,HanusSadre99JFLP}.
-One could also use compile into logic languages like Prolog
+One could also compile into logic languages like Prolog
 and reuse existing backtracking implementations for non-deterministic
 search as well as logic variables and unification for computing with partial
 information \cite{AntoyHanus00FROCOS,Lopez-FraguasSanchez-Hernandez99}.
-There are also more recent approaches
+More recent approaches
 \cite{BrasselHuch07,BrasselHuch09}
-where functional logic programs are compiled
+compile functional logic programs
 into non-strict functional programs
 to reuse the implementation
 of lazy evaluation and higher-order functions.
@@ -487,8 +487,8 @@ since the type system of Haskell does not
 allow this direct definition.}
 \label{sec:printValsDFS}
 \begin{haskell}
-  printValsDFS :: a -> IO ()$\listline$
-  printValsDFS Fail             = return ()$\listline$
+  printValsDFS :: a -> IO ()
+  printValsDFS Fail             = return ()
   printValsDFS (Choice i x1 x2) = lookupDecision i >>= follow
     where
       follow ChooseLeft  = printValsDFS x1
@@ -497,7 +497,7 @@ allow this direct definition.}
                               newDecision ChooseRight x2$\listline$
       newDecision d x = do setDecision i d
                            printValsDFS x
-                           setDecision i NoDecision$\listline$
+                           setDecision i NoDecision
   printValsDFS v = print v
 \end{haskell}
 This operation ignores failures and prints values that are not rooted by a
@@ -543,7 +543,8 @@ the primitive is also applicable to infinite search spaces
 (in contrast to Prolog's \code{findall} primitive \cite{Naish85SLP}).
 Based on this representation, a Curry programmer
 can define his own search strategies
-as tree traversals (see \cite{HanusPeemoellerReck12ATPS}
+as tree traversals in his source program without any modification
+of the Curry compiler (see \cite{HanusPeemoellerReck12ATPS}
 for detailed examples).
 Note that these kinds of applications demand for a side-effect
 free implementation of non-deterministic computations
@@ -837,7 +838,7 @@ Using equational constraints, we can define it as follows:
 The first equational constraint is used to split the input list \code{xs}
 into three sublists.
 The last equational constraint ensures that the first sublist
-\code{ys} does not contain duplicated elements
+\code{ys} does not contain duplicate elements
 (the library operation \code{nub} removes all duplicates from a list)
 and the second equational constraint ensures that the first element
 after \code{ys} occurs in \code{ys}.
@@ -1019,7 +1020,8 @@ unification operator (\ccode{=:<=}) improves the performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
 all elements of the list are (unnecessarily) evaluated. On the other
 hand, lazy unification causes some unnecessary overhead when all elements are
-evaluated anyway.
+evaluated anyway, which is shown by the \code{fromPeano} and 
+\code{palindrome} examples.
 
 \begin{figure}[t]
 \centering
