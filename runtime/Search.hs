@@ -436,7 +436,7 @@ searchBFS act goal = do
 -- A function to increase the depth for the iterative deepening strategy
 -- (here: double the depth after reaching the depth bound)
 incrDepth4IDFS :: Int -> Int
-incrDepth4IDFS n = n + 1 -- * 2
+incrDepth4IDFS n = n * 2
 
 -- Print all values of an expression with iterative deepening where
 -- the first argument is the initial depth size which will be increased
@@ -475,12 +475,13 @@ startIDS olddepth newdepth act goal = do
   trace $ "Corresponding search tree:\n" ++ showChoiceTree' goal
   ids newdepth act goal
   where
+  ids :: NormalForm a => Int -> (a -> IO (IOList b)) -> a -> IO (IOList b)
   ids n cont x = do
     trace $ "ids: " ++ take 200 (show x)
     match idsChoice idsNarrowed idsFree idsFail idsGuard idsVal x
     where
     idsFail _ _ = mnil
-    idsVal v | n <= newdepth - olddepth = searchNF (startIDS olddepth n) cont v
+    idsVal v | n <= newdepth - olddepth = searchNF (ids n) cont v
              | otherwise                = mnil
 
     idsChoice _ i x1 x2 = lookupDecision i >>= follow
