@@ -12,7 +12,7 @@ BrowserGUI: BrowserGUI.curry ShowFlatCurry.curry Imports.curry \
 	    ${LIB}/GUI.curry ${LIB}/IOExts.curry  ${LIB}/System.curry \
 	    ${META}/FlatCurry.curry ${META}/FlatCurryShow.curry \
 	    analysis/*.curry
-	../../bin/kics2 :set v2 :set path analysis:${TOOLS}:../../src \
+	../../bin/kics2 ${REPL_OPTS} :set path analysis:${TOOLS}:../../src \
 	                :l BrowserGUI :save :eval "patchReadmeVersion" :q
 	(cd ../../bin ; rm -f currybrowse ; \
 	                ln -s ../tools/browser/BrowserGUI currybrowse)

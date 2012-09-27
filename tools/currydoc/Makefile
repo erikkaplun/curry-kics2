@@ -16,7 +16,7 @@ CurryDoc: CurryDoc.curry CurryDocRead.curry CurryDocHtml.curry \
 	        ${ANADIR}/AnaOverlapping.curry ${ANADIR}/AnaIndeterminism.curry \
 	        ${ANADIR}/AnaCompleteness.curry ${ANADIR}/AnaOpComplete.curry \
 	        ${ANADIR}/AnaDependency.curry 
-	../../bin/kics2 :set path ${ANADIR} :l CurryDoc :save :q
+	../../bin/kics2 ${REPL_OPTS} :set path ${ANADIR} :l CurryDoc :save :q
 	(cd ../../bin ; rm -f currydoc ; \
 	                ln -s ../tools/currydoc/CurryDoc currydoc)
 

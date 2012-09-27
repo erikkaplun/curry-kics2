@@ -9,13 +9,13 @@ all: AddTypes GenInt ImportCalls CreateMakefile CurryTest SourceProgGUI
 
 # generate executable for addtypes program:
 AddTypes: AddTypes.curry
-	../bin/kics2 :set v2 :l AddTypes :save :q
+	../bin/kics2 ${REPL_OPTS} :l AddTypes :save :q
 	(cd ../bin ; rm -f addtypes ; \
 	             ln -s ../tools/AddTypes addtypes)
 
 # generate executable for interface generator:
 GenInt: GenInt.curry
-	../bin/kics2 :set v2 :l GenInt :save :q
+	../bin/kics2 ${REPL_OPTS} :l GenInt :save :q
 
 # generate executable for ImportCalls tool:
 ImportCalls: ImportCalls.curry
@@ -23,19 +23,19 @@ ImportCalls: ImportCalls.curry
 
 # generate executable for currycreatemake program:
 CreateMakefile: CreateMakefile.curry ../lib/meta/FlatCurryRead.curry
-	../bin/kics2 :set v2 :l CreateMakefile :save :q
+	../bin/kics2 ${REPL_OPTS} :l CreateMakefile :save :q
 	(cd ../bin ; rm -f currycreatemake ; \
 	             ln -s ../tools/CreateMakefile currycreatemake)
 
 # generate executable for currytest program:
 CurryTest: CurryTest.curry
-	../bin/kics2 :set v2 :l CurryTest :save :q
+	../bin/kics2 ${REPL_OPTS} :l CurryTest :save :q
 	(cd ../bin ; rm -f currytest ; \
 	             ln -s ../tools/CurryTest currytest)
 
 # generate executable for interface generator:
 SourceProgGUI: SourceProgGUI.curry
-	../bin/kics2 :set v2 :l SourceProgGUI :save :q
+	../bin/kics2 ${REPL_OPTS} :l SourceProgGUI :save :q
 
 .PHONY: clean
 clean: 
