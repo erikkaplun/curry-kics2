@@ -157,7 +157,7 @@ createAndCompileMain rst createExecutable mainExp bindings = do
 
 compileWithGhci :: ReplState -> String -> String -> IO (ReplState, Int)
 compileWithGhci rst ghcCompile mainExp = do
-  comm <- refresh ghcCompile (rst -> verbose >= 2)
+  comm <- refresh ghcCompile (rst -> verbose > 2)
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainExp
   evalMainCmd comm (rst -> showTime)
   return ({ ghcicomm := Just comm | rst }, 0)
