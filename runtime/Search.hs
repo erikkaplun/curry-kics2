@@ -481,7 +481,7 @@ startIDS olddepth newdepth act goal = do
     match idsChoice idsNarrowed idsFree idsFail idsGuard idsVal x
     where
     idsFail _ _ = mnil
-    idsVal v | n <= newdepth - olddepth = searchNF (ids n) cont v
+    idsVal v | n < newdepth - olddepth = searchNF (ids n) cont v
              | otherwise                = mnil
 
     idsChoice _ i x1 x2 = lookupDecision i >>= follow
