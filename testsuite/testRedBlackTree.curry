@@ -14,7 +14,7 @@ import RedBlackTree
 
 intList2Tree = foldr update (empty (\ _ _ -> False) (==) (<))
 
-rndTree n = getRandomSeed >>= return . take n . (flip nextIntRange 1000000) >>=
+rndTree n = getRandomSeed >>= return . take n . (flip nextIntRange 100000) >>=
               \is -> return (intList2Tree is,is)
 
 sorted [] = True
