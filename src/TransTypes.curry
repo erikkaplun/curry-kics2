@@ -36,7 +36,7 @@ genTypeDeclarations :: HOResult -> FC.TypeDecl -> [TypeDecl]
 genTypeDeclarations _        (FC.TypeSyn qf vis tnums texp)
   = [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
 genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
-  | null cdecls = Type qf acvis  targs []    : []
+  | null cdecls = Type qf Public  targs []   : []
   | otherwise   = Type qf Public targs decls : instanceDecls
     -- type names are always exported to avoid ghc type errors
   where

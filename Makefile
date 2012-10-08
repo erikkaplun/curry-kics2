@@ -13,7 +13,7 @@ REVISIONVERSION = 1
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE = 20/09/12
+COMPILERDATE = 26/09/12
 # The installation date
 INSTALLDATE := $(shell date)
 
@@ -29,6 +29,8 @@ export LOCALBIN = $(BINDIR)/.local
 export COMP     = $(LOCALBIN)/kics2c
 # The REPL binary
 export REPL     = $(LOCALBIN)/kics2i
+# The default options for the REPL
+export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
 export CYMAKE   = $(LOCALBIN)/cymake
 
@@ -85,8 +87,9 @@ install: kernel
 .PHONY: uninstall
 uninstall:
 ifeq ($(GLOBALINSTALL),yes)
-	cd lib     && $(MAKE) unregister
-	cd runtime && $(MAKE) unregister
+	cd frontend && $(MAKE) unregister
+	cd lib      && $(MAKE) unregister
+	cd runtime  && $(MAKE) unregister
 	@echo "All globally installed cabal packages have been unregistered."
 endif
 	rm -rf $(HOME)/.kics2rc $(HOME)/.kics2rc.bak $(HOME)/.kics2i_history
