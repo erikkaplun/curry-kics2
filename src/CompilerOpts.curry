@@ -67,15 +67,15 @@ allDumps = [ DumpFlat, DumpLifted, DumpEliminated, DumpRenamed
 
 defaultOptions :: Options
 defaultOptions =
-  { optHelp         = False
-  , optVersion      = False
-  , optVerbosity    = VerbStatus
-  , optForce        = False
-  , optImportPaths  = []
-  , optOutputSubdir = "/.curry/kics2/"
-  , optOptimization = OptimStrictSupply
-  , optDump         = []
-  , optExtensions   = []
+  { optHelp         := False
+  , optVersion      := False
+  , optVerbosity    := VerbStatus
+  , optForce        := False
+  , optImportPaths  := []
+  , optOutputSubdir := "/.curry/kics2/"
+  , optOptimization := OptimStrictSupply
+  , optDump         := []
+  , optExtensions   := []
   }
 
 debugOptions = { optVerbosity := VerbDetails
@@ -112,7 +112,7 @@ options =
       "show version number"
   , Option ['v'] ["verbosity"]
       (ReqArg (\arg opts -> { optVerbosity :=
-        parseVerbosity arg (opts -> optVerbosity) | opts }) "<n>")
+        parseVerbosity arg (opts :> optVerbosity) | opts }) "<n>")
       ("set verbosity (0 = quiet, 1 = + status, 2 = + frontend" ++
        ", 3 = + nd-analysis, 4 = + dump-all)")
   , Option ['q'] ["quiet"]
@@ -123,52 +123,52 @@ options =
       "force recompilation"
   , Option ['i'] ["import-dir"]
       (ReqArg (\arg opts -> { optImportPaths :=
-        nub (opts -> optImportPaths ++ splitPath arg) | opts }) "DIR")
+        nub (opts :> optImportPaths ++ splitPath arg) | opts }) "DIR")
       "search for imports in DIR"
   , Option ['o'] ["output-subdir"]
       (ReqArg (\arg opts -> { optOutputSubdir := arg | opts }) "SUBDIR")
       "output compiled modules to SUBDIR"
   , Option ['O'] ["optimization"]
       (ReqArg (\arg opts -> { optOptimization :=
-        parseOptimization arg (opts -> optOptimization) | opts }) "<n>")
+        parseOptimization arg (opts :> optOptimization) | opts }) "<n>")
       "set optimization level (0 = none, 1 = higher order, 2 = strict supply evaluation (default))"
   , Option [] ["no-opt"]
       (NoArg (\opts -> { optOptimization := OptimNone | opts } ))
       "disable optimization"
   , Option [] ["dump-flat"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpFlat : opts -> optDump) | opts }))
+        nub (DumpFlat : opts :> optDump) | opts }))
       "dump flat curry representation"
   , Option [] ["dump-lifted"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpLifted : opts -> optDump) | opts }))
+        nub (DumpLifted : opts :> optDump) | opts }))
       "dump flat curry after case lifting"
   , Option [] ["dump-elim"]
       (NoArg (\opts -> { optDump := 
-        nub (DumpEliminated : opts -> optDump) | opts}))
+        nub (DumpEliminated : opts :> optDump) | opts}))
       "dump flat curry after cond elimination"
   , Option [] ["dump-abstract-hs"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpAbstractHs : opts -> optDump) | opts }))
+        nub (DumpAbstractHs : opts :> optDump) | opts }))
       "dump abstract Haskell representation"
   , Option [] ["dump-fun-decls"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpFunDecls : opts -> optDump) | opts }))
+        nub (DumpFunDecls : opts :> optDump) | opts }))
       "dump transformed function declarations"
   , Option [] ["dump-type-decls"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpTypeDecls : opts -> optDump) | opts }))
+        nub (DumpTypeDecls : opts :> optDump) | opts }))
       "dump transformed type declarations"
   , Option [] ["dump-renamed"]
       (NoArg (\opts -> { optDump :=
-        nub (DumpRenamed : opts -> optDump) | opts }))
+        nub (DumpRenamed : opts :> optDump) | opts }))
       "dump renamed abstract Haskell representation"
   , Option [] ["dump-all"]
       (NoArg (\opts -> { optDump := allDumps | opts }))
       "dump all intermediate results"
   , Option ['X'] []
       (ReqArg (\arg opts -> { optExtensions :=
-        nub (parseExtension arg : opts -> optExtensions) | opts }) "EXT")
+        nub (parseExtension arg : opts :> optExtensions) | opts }) "EXT")
       "enable language extension EXT"
   ]
 
@@ -213,8 +213,8 @@ compilerOpts = do
 processOpts :: String -> (Options, [String], [String])
             -> IO (Options, [String])
 processOpts prog (opts, files, errs)
-  | opts -> optHelp    = printUsage prog
-  | opts -> optVersion = printVersion
+  | opts :> optHelp    = printUsage prog
+  | opts :> optVersion = printVersion
   | not (null errs')   = badUsage prog errs'
   | otherwise          = return (opts, files)
     where errs' = errs ++ checkOpts opts files

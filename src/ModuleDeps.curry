@@ -63,7 +63,7 @@ moduleDeps opts mEnv m = case lookupFM mEnv m of
 lookupModule :: Options -> String -> IO (Maybe String)
 lookupModule opts mod = lookupFileInPath mod [".curry", ".lcurry"]
                         (map dropTrailingPathSeparator importPaths)
-  where importPaths = "." : opts -> optImportPaths
+  where importPaths = "." : opts :> optImportPaths
 
 sourceDeps ::Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts m fn mEnv = do
@@ -72,8 +72,8 @@ sourceDeps opts m fn mEnv = do
                              setQuiet quiet defaultParams
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
     where
-      importPaths = "." : opts -> optImportPaths
-      quiet       = (opts -> optVerbosity) < VerbFrontend
+      importPaths = "." : opts :> optImportPaths
+      quiet       = (opts :> optVerbosity) < VerbFrontend
 
 filterMissing :: SourceEnv -> ([(ModuleIdent, Source)], [String])
 filterMissing env = (map (mapSnd fromJust) present, errs) where

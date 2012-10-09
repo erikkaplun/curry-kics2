@@ -26,7 +26,7 @@ import Names (isHaskellModule, prelude, curryPrelude)
 type Options = { currentModule :: String }
 
 defaultOptions :: Options
-defaultOptions = { currentModule = "" }
+defaultOptions = { currentModule := "" }
 
 -- ---------------------------------------------------------------------------
 -- Functions to print an AbstractHaskell program in standard Curry syntax
@@ -62,7 +62,7 @@ showDecls m opdecls typedecls funcdecls
     , showTypeDecls opts typedecls
     , showFuncDecls opts funcdecls
     ]
-    where opts = { currentModule = m }
+    where opts = { currentModule := m }
 
 -- ---------------------------------------------------------------------------
 -- Module Header
@@ -303,7 +303,7 @@ showSymbol opts (modName, symName)
     -- all Haskell modules are imported unqualified
   | isHaskellModule modName           = symName
     -- the current module isn't imported at all
-  | modName == (opts -> currentModule) = symName
+  | modName == (opts :> currentModule) = symName
     -- all Curry modules are imported qualified
   | otherwise                          = modName ++ "." ++ symName
 --   | isJust (lookupFM fm symName) = thatModule++"."++symName

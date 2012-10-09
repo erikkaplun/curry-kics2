@@ -75,14 +75,14 @@ type State =
 
 defaultState :: State
 defaultState =
-  { typeMap      = listToFM (<) primTypes
-  , ndResult     = initNDResult
-  , hoResultFun  = initHOResult
-  , hoResultCons = emptyFM (<)
-  , nextID       = idVar
-  , detMode      = False
+  { typeMap      := listToFM (<) primTypes
+  , ndResult     := initNDResult
+  , hoResultFun  := initHOResult
+  , hoResultCons := emptyFM (<)
+  , nextID       := idVar
+  , detMode      := False
 --   , report      = []
-  , compOptions  = defaultOptions
+  , compOptions  := defaultOptions
   }
 
 type M a = Mo State a
@@ -91,47 +91,47 @@ type M a = Mo State a
 
 addTypeMap :: TypeMap -> M ()
 addTypeMap newTypes =
- updState (\st -> { typeMap :=  st -> typeMap `plusFM` newTypes  | st })
+ updState (\st -> { typeMap :=  st :> typeMap `plusFM` newTypes  | st })
 
 
 getType :: QName -> M QName
 getType qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not in type map" )
-  $ (flip lookupFM) qn $ (st -> typeMap)
+  $ (flip lookupFM) qn $ (st :> typeMap)
 
 -- NDResult
 
 addNDAnalysis :: NDResult -> M ()
-addNDAnalysis newRes = updState $ \s -> { ndResult := newRes `plusFM` s -> ndResult | s }
+addNDAnalysis newRes = updState $ \s -> { ndResult := newRes `plusFM` s :> ndResult | s }
 
 getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
-  $ (flip lookupFM) qn $ (st -> ndResult)
+  $ (flip lookupFM) qn $ (st :> ndResult)
 -- HOFunResult
 
 addHOFunAnalysis :: HOResult -> M ()
-addHOFunAnalysis newRes = updState$ \s -> { hoResultFun := newRes `plusFM` s -> hoResultFun | s }
+addHOFunAnalysis newRes = updState$ \s -> { hoResultFun := newRes `plusFM` s :> hoResultFun | s }
 
 getFunHOClass :: QName -> M HOClass
 getFunHOClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
-  $ (flip lookupFM) qn $ (st -> hoResultFun)
+  $ (flip lookupFM) qn $ (st :> hoResultFun)
 
 -- HOConsResult
 
 addHOConsAnalysis :: HOResult -> M ()
-addHOConsAnalysis newRes = updState$ \s -> { hoResultCons := (newRes `plusFM` s -> hoResultCons) | s }
+addHOConsAnalysis newRes = updState$ \s -> { hoResultCons := (newRes `plusFM` s :> hoResultCons) | s }
 
 getConsHOClass :: QName -> M HOClass
 getConsHOClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
-  $ (flip lookupFM) qn $ (st -> hoResultCons)
+  $ (flip lookupFM) qn $ (st :> hoResultCons)
 
 -- IDs
 
 getNextID :: M Int
-getNextID = getState `bindM` \st -> returnM (st -> nextID)
+getNextID = getState `bindM` \st -> returnM (st :> nextID)
 
 setNextID :: Int -> M ()
 setNextID i = updState (\st -> { nextID := i | st })
@@ -139,21 +139,21 @@ setNextID i = updState (\st -> { nextID := i | st })
 takeNextID :: M Int
 takeNextID =
   getState `bindM` \st ->
-  let i = st -> nextID in
+  let i = st :> nextID in
   putState ({ nextID := (i + 1) | st }) `bindM_`
   returnM i
 
 takeNextIDs :: Int -> M [Int]
 takeNextIDs n =
   getState `bindM` \st ->
-  let i = st -> nextID in
+  let i = st :> nextID in
   putState ({ nextID := (i + n) | st }) `bindM_`
   returnM [i .. i+n-1]
 
 -- DetMode
 
 isDetMode :: M Bool
-isDetMode = getState `bindM` \st -> returnM (st -> detMode)
+isDetMode = getState `bindM` \st -> returnM (st :> detMode)
 
 setDetMode :: Bool -> M ()
 setDetMode dm = updState (\st -> { detMode := dm | st})
@@ -174,13 +174,13 @@ doInDetMode dm action =
 
 -- Compiler options
 getCompOptions :: M Options
-getCompOptions = getState `bindM` \ st -> returnM (st -> compOptions)
+getCompOptions = getState `bindM` \ st -> returnM (st :> compOptions)
 
 getCompOption :: (Options -> a) -> M a
 getCompOption select = getCompOptions `bindM` (returnM . select)
 
 strictSupply :: M Bool
-strictSupply = getCompOption $ \opts -> (opts -> optOptimization >= OptimStrictSupply)
+strictSupply = getCompOption $ \opts -> (opts :> optOptimization >= OptimStrictSupply)
 
 -- ---------------------------------------------------------------------------
 -- Program transformation
@@ -188,17 +188,17 @@ strictSupply = getCompOption $ \opts -> (opts -> optOptimization >= OptimStrictS
 transProg :: Prog -> M (Prog, AnalysisResult)
 transProg p@(Prog m is ts fs _) =
   getState `bindM` \st ->
-  let modNDRes     = analyseND     p (st -> ndResult)
-      modHOResFun  = analyseHOFunc p (st -> hoResultFun)
+  let modNDRes     = analyseND     p (st :> ndResult)
+      modHOResFun  = analyseHOFunc p (st :> hoResultFun)
       modHOResCons = analyseHOCons p
-      modTypeMap   = getConsMap ts 
-      visInfo      = analyzeVisibility p  
+      modTypeMap   = getConsMap ts
+      visInfo      = analyzeVisibility p
       visNDRes     = modNDRes     `delListFromFM` getPrivateFunc visInfo
       visHOFun     = modHOResFun  `delListFromFM` getPrivateFunc visInfo
       visHOCons    = modHOResCons `delListFromFM` getPrivateCons visInfo
       visType      = modTypeMap   `delListFromFM` getPrivateCons visInfo
   in
-  addNDAnalysis     modNDRes      `bindM_`
+  addNDAnalysis     modNDRes     `bindM_`
   addHOFunAnalysis  modHOResFun  `bindM_`
   addHOConsAnalysis modHOResCons `bindM_`
   addTypeMap        modTypeMap   `bindM_`
@@ -223,7 +223,7 @@ getConsMap ts = listToFM (<)
 transFunc :: FuncDecl -> M [FuncDecl]
 transFunc f@(Func qn _ _ _ _) =
   getCompOptions `bindM` \opts ->
-  let opt = (opts -> optOptimization > OptimNone) in
+  let opt = (opts :> optOptimization > OptimNone) in
   case opt of
     -- translate all functions as non-deterministic by default
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
@@ -495,7 +495,7 @@ transExpr (Comb (ConsPartCall i) qn es) =
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
-  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
+  getCompOption (\opts -> opts :> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
@@ -508,7 +508,7 @@ transExpr (Comb FuncCall qn es) =
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
-  getCompOption (\opts -> opts -> optOptimization > OptimNone) `bindM` \opt ->
+  getCompOption (\opts -> opts :> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
