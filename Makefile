@@ -240,8 +240,10 @@ cleanmanual:
 ##############################################################################
 
 # temporary directory to create distribution version
-TMPDIR=/tmp/kics2
-TARBALL=kics2-$(VERSION).tar.gz
+TMP     =/tmp
+FULLNAME=kics2-$(VERSION)
+TMPDIR  =$(TMP)/$(FULLNAME)
+TARBALL =$(FULLNAME).tar.gz
 
 # generate a source distribution of KICS2:
 .PHONY: dist
@@ -277,9 +279,9 @@ dist: $(COMP)
 	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!
-	cd /tmp && tar cf kics2.tar kics2 && gzip kics2.tar
-	mv /tmp/kics2.tar.gz ./$(TARBALL)
-	chmod 644 $(TARBALL)
+	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
+	mv $(TMP)/$(TARBALL) ./$(TARBALL)
+	chmod 644 ./$(TARBALL)
 	rm -rf ${TMPDIR}
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
@@ -333,11 +335,11 @@ test:
 	# make distribution
 	make dist
 	# test installation
-	cp $(TARBALL) /tmp
-	rm -rf /tmp/kics2/
-	cd /tmp && tar xzfv $(TARBALL)
-	cd /tmp/kics2/ && $(MAKE)
-	cd /tmp/kics2/ && $(MAKE) uninstall
-	rm -rf /tmp/kics2/
-	rm -rf /tmp/$(TARBALL)
+	cp $(TARBALL) $(TMP)
+	rm -rf $(TMPDIR)
+	cd $(TMP) && tar xzfv $(TARBALL)
+	cd $(TMPDIR) && $(MAKE)
+	cd $(TMPDIR) && $(MAKE) uninstall
+	rm -rf $(TMPDIR)
+	rm -rf $(TMP)/$(TARBALL)
 	@echo "Integration test successfully completed."
