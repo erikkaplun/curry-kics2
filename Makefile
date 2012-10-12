@@ -328,7 +328,6 @@ REPL: ${INSTALLCURRY} scripts
 testdist: $(TARBALL)
 	
 
-
 # Peform a full bootstrap - distribution - installation
 # lifecycle to test consistency of the whole process
 # WARNING: This installation will corrupt any existing global KICS2
