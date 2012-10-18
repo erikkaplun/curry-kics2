@@ -162,8 +162,8 @@ getAcyOfMainGoal rst = do
       acyMainGoalFile = inCurrySubdir $ mainGoalProg <.> "acy"
       frontendParams  = setQuiet    (rst :> verbose < 2)
                       $ setFullPath    (loadPaths rst)
-                      $ setExtended    (rcValue (rst :> rcvars) "curryextensions" != "no")
-                      $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" != "no")
+                      $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
+                      $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
                         defaultParams
   callFrontendWithParams ACY frontendParams mainGoalProg
   prog <- tryReadACYFile acyMainGoalFile
