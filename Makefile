@@ -13,9 +13,9 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE = 15/10/12
+COMPILERDATE    = 15/10/12
 # The installation date
-INSTALLDATE := $(shell date)
+INSTALLDATE    := $(shell date)
 
 # the root directory
 export ROOT     = $(CURDIR)
@@ -42,7 +42,6 @@ export INSTALLCURRY  = $(ROOT)/src/Installation.curry
 MANUALVERSION = $(ROOT)/docs/src/version.tex
 # Logfiles for make:
 MAKELOG = make.log
-BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
@@ -97,7 +96,7 @@ ifeq ($(GLOBALINSTALL),yes)
 	# compile all libraries for a global installation
 	cd lib     && $(MAKE) compilelibs
 	cd lib     && $(MAKE) installlibs
-	cd lib     && $(MAKE) acy CYMAKE=$(CYMAKE)
+	cd lib     && $(MAKE) acy
 endif
 
 .PHONY: scripts
@@ -190,6 +189,7 @@ else
 endif
 
 $(BINDIR)/cleancurry: utils/cleancurry
+	mkdir -p $(@D)
 	cp $< $@
 
 utils/%:
@@ -291,7 +291,7 @@ $(TARBALL): $(COMP)
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
 	if [ -x $(CYMAKE) ] ; then \
-	  cp -pr $(CYMAKE) $(TMPDIR)/bin/.local/ ; \
+	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
@@ -323,6 +323,8 @@ $(TARBALL): $(COMP)
 ##############################################################################
 # Development targets
 ##############################################################################
+
+BOOTLOG = boot.log
 
 # bootstrap the compiler with logging
 .PHONY: bootstrapwithlogging
