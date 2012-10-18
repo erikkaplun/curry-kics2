@@ -1,19 +1,28 @@
+{- |
+    Module      :  $Header$
+    Description :  cleancurry binary
+    Copyright   :  2012 Björn Peemöller
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  stable
+    Portability :  portable
+
+    Command line tool for cleaning up Curry directories.
+-}
+
 module Main where
 
-import Control.Monad
-import Data.List (intercalate)
+import Control.Monad         (filterM, liftM, when)
 import System.Console.GetOpt
 import System.Directory
 import System.FilePath
-import System.IO     (hPutStrLn, stderr)
-import System.Environment (getArgs, getProgName)
-import System.Exit
+import System.IO             (hPutStrLn, stderr)
+import System.Environment    (getArgs, getProgName)
+import System.Exit           (exitFailure, exitSuccess)
 
 version :: String
 version = "0.1"
-
-debug :: Bool
-debug = False
 
 -- |cleancurry options
 data Options = Options
@@ -85,21 +94,22 @@ main = do
   dir <- getCurrentDirectory
   cleancurry (optRecursive opts) (map dropExtension files) dir
 
-cleancurry :: Bool -> [String] -> String -> IO ()
-cleancurry False []   dir = cleanAll dir
-cleancurry False mdls dir = mapM_ (cleanModule dir) mdls
-cleancurry True  []   dir = do
-  cleanAll dir
-  getSubDirs dir >>= mapM_ (cleancurry True [])
-cleancurry True  mdls dir = do
+cleancurry :: Bool     -- clean recursively?
+           -> [String] -- Modules to clean for ([] means all modules)
+           -> FilePath -- directory to clean
+           -> IO ()
+cleancurry rec []   dir = do
+  mapM_ (cleanModule dir) =<< allModules dir
+  when rec $ getSubDirs dir >>= mapM_ (cleancurry rec [])
+cleancurry rec mdls dir = do
   mapM_ (cleanModule dir) mdls
   let filtered = filter hasNoPath mdls
-  unless (null filtered) $ getSubDirs dir >>= mapM_ (cleancurry True filtered)
+  when (rec && not (null filtered)) $
+    getSubDirs dir >>= mapM_ (cleancurry rec filtered)
 
-cleanAll :: String -> IO ()
-cleanAll dir = do
-  cyModules <- findCurryModules dir
-  mapM_ (cleanModule dir) (map dropExtension cyModules)
+-- Retrieve all Curry modules in the given directory
+allModules :: String -> IO [String]
+allModules dir = map dropExtension `liftM` findCurryModules dir
 
 cleanModule :: String -> String -> IO ()
 cleanModule dir mdl = do
@@ -122,6 +132,9 @@ mainFiles = ["Main", "Main.hs", "Main.hi", "Main.o"]
 kics2Exts :: [String]
 kics2Exts = ["hs", "hi", "o", "nda", "info"]
 
+srcExts :: [String]
+srcExts = [".curry", ".lcurry"]
+
 cyExts :: [String]
 cyExts = ["fcy", "fint", "acy", "uacy"]
 
@@ -129,21 +142,14 @@ hasNoPath :: String -> Bool
 hasNoPath = (== ".") . takeDirectory
 
 removeFiles :: [String] -> IO ()
-removeFiles files | debug     = putStrLn $ "Would remove files " ++ intercalate " " files
-                  | otherwise = mapM_ tryRemove files
-  where
-  tryRemove f = do
-    exists <- doesFileExist f
-    when exists $ removeFile f
+removeFiles files = filterM doesFileExist files >>= mapM_ removeFile
 
 rmdirIfEmpty :: String -> IO ()
 rmdirIfEmpty dir = do
   exists <- doesDirectoryExist dir
   when exists $ do
     cnts <- getUsefulContents dir
-    when (null cnts) $ if debug
-      then putStrLn $ "Would remove directory " ++ dir
-      else removeDirectory dir
+    when (null cnts) $ removeDirectory dir
 
 getSubDirs :: String -> IO [String]
 getSubDirs curdir = do
@@ -151,14 +157,12 @@ getSubDirs curdir = do
   filterM isDirectory $ map (curdir </>) cnts
 
 findCurryModules :: String -> IO [String]
-findCurryModules dir = do
-  cnts <- getUsefulContents dir
-  return $ filter ((`elem` [".curry", ".lcurry"]) . takeExtension) cnts
+findCurryModules dir = filter ((`elem` srcExts) . takeExtension)
+                       `liftM` getUsefulContents dir
 
 isDirectory :: FilePath -> IO Bool
 isDirectory = liftM searchable . getPermissions
 
 getUsefulContents :: FilePath -> IO [String]
-getUsefulContents path = do
-    names <- getDirectoryContents path
-    return (filter (`notElem` [".", ".."]) names)
+getUsefulContents dir = filter (`notElem` [".", ".."])
+                        `liftM` getDirectoryContents dir
