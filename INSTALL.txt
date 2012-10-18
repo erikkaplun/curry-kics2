@@ -24,7 +24,7 @@ After unpacking the distribution file, go into the main directory
 of the distribution (which is denoted by `kics2home` in the following):
 
     tar xvzf kics2-<version>.tar.gz
-    cd kics2
+    cd kics2-<version>
 
 If you install KiCS2 for the first time, you need to install
 some Haskell packages via Cabal, i.e., run the command
@@ -42,8 +42,10 @@ you can install this kernel system by
 
     make kernel
 
-This installs the compiler and the interactive environment
-to execute Curry programs.
+This installs only the compiler and the interactive environment
+to execute Curry programs but no additional tools (like the
+Curry browser, unit tester, etc).
+
 When the installation is finished,
 the commands to use KiCS2 are installed in the local
 directory `bin`.
@@ -52,26 +54,28 @@ add the directory "`kics2home/bin`"
 to your path, e.g., by the command
 "`export PATH=$PATH:kics2home/bin`"
 in the `bash`.
-Now you can start KiCS2 via the command `kics2`.
+Now you can start KiCS2 via the command "`kics2`".
+If you do no want to have the specific version number of KiCS2
+included in your path, you can set a symbolic link like
+
+    ln -s kics2-<version> kics2
+
+and put the directory `kics2/bin` into your path.
 
 
 Notes
 -----
 
-1. The current distribution is designed as a local user installation
-   since some system libraries are re-compiled according to the current options.
-   Thus, it is not a good idea to install this distribution globally
-   where users have no write permission.
-2. You can configure the behavior of KiCS2 by various settings
+1. You can configure the behavior of KiCS2 by various settings
    in the file `~/.kics2rc` which is created when you use
    KiCS2 for the first time.
-3. If you like to have support for _line editing or history functionality_
+2. If you like to have support for _line editing or history functionality_
    in the KiCS2 interactive environment (as supported by the readline
    library), you should have the Unix/Linux command "rlwrap" installed
    on your local machine (e.g., by "`sudo apt-get install rlwrap`").
    KiCS2 uses "rlwrap" if called on a terminal
    without the parameter "`--noreadline`".
-4. If you want to use the **library for GUI programming in Curry**
+3. If you want to use the **library for GUI programming in Curry**
    (`kics2home/lib/GUI.curry`), you need also a
    Tcl/Tk implementation (including the windowing shell `wish`)
    which can be downloaded
