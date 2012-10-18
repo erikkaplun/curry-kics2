@@ -105,7 +105,7 @@ scripts: $(BINDIR)/cleancurry
 	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
 
 .PHONY: frontend
-frontend: utils/cabaldir
+frontend:
 	cd frontend && $(MAKE)
 
 # install required cabal packages
