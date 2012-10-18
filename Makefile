@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE = 15/10/12
+COMPILERDATE = 18/10/12
 # The installation date
 INSTALLDATE := $(shell date)
 
@@ -288,7 +288,7 @@ $(TARBALL): $(COMP)
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
 	if [ -x $(CYMAKE) ] ; then \
-	  cp -pr $(CYMAKE) $(TMPDIR)/bin/.local/ ; \
+	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
