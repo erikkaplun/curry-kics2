@@ -132,6 +132,7 @@ clean: $(BINDIR)/cleancurry
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
 	cd tools      && ${MAKE} clean
+	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
 
 # clean everything (including compiler binaries)
@@ -279,7 +280,8 @@ cleandist:
 	rm -rf lib/.git
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
-	rm -rf $(BINDIR) # clean executables
+	rm -rf $(BINDIR)
+	cd utils && $(MAKE) cleanall
 	rm -rf $(DEV_DIRS)
 
 $(TARBALL): $(COMP)
