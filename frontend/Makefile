@@ -2,7 +2,7 @@
 # Installation of frontend
 ##############################################################################
 
-CYMAKE_VERSION=0.3.3
+CYMAKE_VERSION=0.3.4
 CYMAKE_BIN    =$(LOCALBIN)/cymake
 
 # install the sources of the front end from its repository
