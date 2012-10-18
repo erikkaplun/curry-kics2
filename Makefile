@@ -331,7 +331,7 @@ test:
 	$(MAKE) cleanall
 	rm -rf $(BINDIR)
 	# bootstrap!
-	$(MAKE) bootstrap
+	cd src && $(MAKE) bootstrap
 	# make distribution
 	make dist
 	# test installation
