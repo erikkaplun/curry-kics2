@@ -119,7 +119,7 @@ installhaskell:
 	cabal install mtl
 
 .PHONY: clean
-clean:
+clean: $(BINDIR)/cleancurry
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd benchmarks && ${MAKE} clean
@@ -188,6 +188,9 @@ ifeq ($(GLOBALINSTALL),yes)
 else
 	echo 'installGlobal = False' >> $@
 endif
+
+$(BINDIR)/cleancurry:
+	cd scripts && $(MAKE) $@
 
 ##############################################################################
 # Create documentation for system libraries:
