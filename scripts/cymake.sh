@@ -12,31 +12,32 @@ if [ ! -x "$CYMAKE" ] ; then
   exit 1
 fi
 
-# define KICS2RC
-KICS2RC=$HOME/.kics2rc
-
 # Prepare flags for MCC parser:
 MCCEXTENDED=
 MCCOVERLAPWARN=
-if [ -f "$KICS2RC" ] ; then
-  # check flag "curryextensions" in kics2rc:
-  for i in `sed -n '/^curryextensions=/p' < "$KICS2RC"`
-  do 
-    if [ xx`expr $i : '.*=\(.*\)'` = xxyes ] ; then
-      MCCEXTENDED="--extended"
-    fi
-  done
-  # check flag "warnoverlapping" in kics2rc:
-  for i in `sed -n '/^warnoverlapping=/p' < "$KICS2RC"`
-  do 
-    if [ xx`expr $i : '.*=\(.*\)'` = xxno ] ; then
-      MCCOVERLAPWARN="--no-overlap-warn"
-    fi
-  done
-else
-  # if there is no rc file, we use the extensions since they
-  # are necessary for bootstrapping the system
-  MCCEXTENDED="--extended"
-fi
+
+# # define KICS2RC
+# KICS2RC=$HOME/.kics2rc
+#
+# if [ -f "$KICS2RC" ] ; then
+#   # check flag "curryextensions" in kics2rc:
+#   for i in `sed -n '/^curryextensions=/p' < "$KICS2RC"`
+#   do
+#     if [ xx`expr $i : '.*=\(.*\)'` = xxyes ] ; then
+#       MCCEXTENDED="--extended"
+#     fi
+#   done
+#   # check flag "warnoverlapping" in kics2rc:
+#   for i in `sed -n '/^warnoverlapping=/p' < "$KICS2RC"`
+#   do
+#     if [ xx`expr $i : '.*=\(.*\)'` = xxno ] ; then
+#       MCCOVERLAPWARN="--no-overlap-warn"
+#     fi
+#   done
+# else
+#   # if there is no rc file, we use the extensions since they
+#   # are necessary for bootstrapping the system
+#   MCCEXTENDED="--extended"
+# fi
 
 "$CYMAKE" $MCCEXTENDED $MCCOVERLAPWARN ${1+"$@"}
