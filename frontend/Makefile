@@ -2,11 +2,11 @@
 # Installation of frontend
 ##############################################################################
 
-CYMAKE_VERSION=0.3.4
-CYMAKE_BIN    =$(LOCALBIN)/cymake
+BASE_VERSION     := $(shell sed -n 's/^Version *: *\(.*\)$$/\1/p' curry-base/curry-base.cabal)
+FRONTEND_VERSION := $(shell sed -n 's/^Version *: *\(.*\)$$/\1/p' curry-frontend/curry-frontend.cabal)
 
 # install the sources of the front end from its repository
-$(CYMAKE_BIN): unregister
+$(CYMAKE): unregister
 	mkdir -p $(@D)
 	cd curry-base     && cabal install
 	cd curry-frontend && cabal install --bindir=$(@D)
@@ -14,8 +14,8 @@ $(CYMAKE_BIN): unregister
 # unregister previous version to avoid cabal install failures
 .PHONY: unregister
 unregister:
-	-ghc-pkg unregister curry-frontend-$(CYMAKE_VERSION)
-	-ghc-pkg unregister curry-base-$(CYMAKE_VERSION)
+	-ghc-pkg unregister curry-frontend-$(FRONTEND_VERSION)
+	-ghc-pkg unregister curry-base-$(BASE_VERSION)
 
 .PHONY: update
 update:

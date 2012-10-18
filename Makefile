@@ -32,7 +32,7 @@ export REPL     = $(LOCALBIN)/kics2i
 # The default options for the REPL
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE   = $(LOCALBIN)/cymake
+export CYMAKE   = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
