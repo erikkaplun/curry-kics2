@@ -21,36 +21,36 @@ manual.pdf: manual.tex version.tex currydoc.tex markdown_syntax.tex \
 
 # format markdown syntax description as LaTeX
 markdown_syntax.tex: markdown_syntax.txt
-	${KICS2} :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "markdown_syntax.tex" . markdownText2LaTeX' :q
+	$(KICS2) :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "markdown_syntax.tex" . markdownText2LaTeX' :q
 
 # format markdown syntax description as HTML page
 ../markdown_syntax.html: markdown_syntax.txt
-	${KICS2} :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "../markdown_syntax.html" . markdownText2CompleteHTML' :q
+	$(KICS2) :add Markdown :eval 'readFile "markdown_syntax.txt" >>= writeFile "../markdown_syntax.html" . markdownText2CompleteHTML "Markdown Syntax"' :q
 
 # format installation description as HTML page
 ../INSTALL.html: ../../INSTALL.txt
-	${KICS2} :add Markdown :eval 'readFile "../../INSTALL.txt" >>= writeFile "../INSTALL.html" . markdownText2CompleteHTML' :q
+	$(KICS2) :add Markdown :eval 'readFile "../../INSTALL.txt" >>= writeFile "../INSTALL.html" . markdownText2CompleteHTML "KiCS2 Installation"' :q
 
 # format repository installation description as HTML page
 ../GITINSTALL.html: ../../GITINSTALL.txt
-	${KICS2} :add Markdown :eval 'readFile "../../GITINSTALL.txt" >>= writeFile "../GITINSTALL.html" . markdownText2CompleteHTML' :q
+	$(KICS2) :add Markdown :eval 'readFile "../../GITINSTALL.txt" >>= writeFile "../GITINSTALL.html" . markdownText2CompleteHTML "KiCS2 Repository"' :q
 
 ../../lib/TEXDOC/LAST:
-	${MAKE} libdoc
+	$(MAKE) libdoc
 
 # generate documentation for all libraries
 .PHONY: libdoc
 libdoc:
-	@cd ../../lib && ${MAKE} texdoc
+	@cd ../../lib && $(MAKE) texdoc
 	@rm -f lib && ln -s ../../lib/TEXDOC lib
 
 .PHONY: install
 install:
-	${MAKE} ../markdown_syntax.html
-	${MAKE} ../INSTALL.html
-	${MAKE} ../GITINSTALL.html
-	${MAKE} libdoc
-	${MAKE} ../Manual.pdf
+	$(MAKE) ../markdown_syntax.html
+	$(MAKE) ../INSTALL.html
+	$(MAKE) ../GITINSTALL.html
+	$(MAKE) libdoc
+	$(MAKE) ../Manual.pdf
 
 .PHONY: clean
 clean:
