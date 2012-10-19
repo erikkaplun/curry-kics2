@@ -2,25 +2,29 @@
 --- The main module for KiCS2c the ID based Curry to Haskell compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version June 2011
+--- @version July 2012
 --- --------------------------------------------------------------------------
 module Compile where
 
 import FiniteMap
-import Char (isSpace)
-import Maybe (fromJust)
-import List (isPrefixOf)
-import Directory (doesFileExist)
-import FileGoodies
+import Char             (isSpace)
+import Maybe            (fromJust)
+import List             (isPrefixOf)
+import Directory        (doesFileExist)
+import FilePath         ((</>), dropExtension, normalise)
+import FileGoodies      (lookupFileInPath)
 import FlatCurry
 import FlatCurryGoodies (updQNamesInProg)
-import ReadShowTerm (readQTermFile)
+import ReadShowTerm     (readQTermFile)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
 import AbstractHaskellPrinter (showModuleHeader, showDecls)
 import CompilerOpts
 import Files
+  ( withBaseName, withDirectory, withExtension
+  , writeFileInDir, writeQTermFileInDir
+  )
 import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase (liftCases)
 import EliminateCond (eliminateCond)
@@ -198,7 +202,7 @@ patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
 compMessage :: Int -> Int -> String -> String -> String -> String
 compMessage curNum maxNum msg fn dest
   =  '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
-  ++ ' ' : msg  ++ " ( " ++ fn ++ ", " ++ dest ++ " )"
+  ++ ' ' : msg  ++ " ( " ++ normalise fn ++ ", " ++ normalise dest ++ " )"
     where
       sCurNum = show curNum
       sMaxNum = show maxNum
@@ -214,7 +218,7 @@ filterPrelude opts p@(Prog m imps td fd od)
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
-  exts <- lookupExternals opts (stripSuffix fn)
+  exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
   return $ unlines $ filter notNull
     [ unlines (defaultPragmas : pragmas)

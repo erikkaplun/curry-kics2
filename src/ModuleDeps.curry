@@ -13,7 +13,8 @@
 module ModuleDeps (ModuleIdent, Source, deps) where
 
 import CompilerOpts
-import FileGoodies
+import FilePath    (dropExtension, dropTrailingPathSeparator, takeBaseName)
+import FileGoodies (lookupFileInPath)
 import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
 import Distribution
@@ -32,7 +33,7 @@ type SourceEnv = FM ModuleIdent (Maybe Source)
 
 deps :: Options -> String -> IO ([(ModuleIdent, Source)], [String])
 deps opts fn = do
-  mEnv <- sourceDeps opts (stripSuffix $ baseName fn) fn (emptyFM (<))
+  mEnv <- sourceDeps opts (dropExtension $ takeBaseName fn) fn (emptyFM (<))
   fcyvalid <- isFlatCurryValid fn
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports and sort topologically
@@ -67,7 +68,7 @@ lookupModule opts mod = lookupFileInPath mod [".curry", ".lcurry"]
 
 sourceDeps ::Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts m fn mEnv = do
-  fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (stripSuffix fn) $
+  fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn) $
                              setFullPath importPaths $
                              setQuiet quiet defaultParams
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps

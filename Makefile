@@ -13,9 +13,9 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE = 18/10/12
+COMPILERDATE    = 18/10/12
 # The installation date
-INSTALLDATE := $(shell date)
+INSTALLDATE    := $(shell date)
 
 # the root directory
 export ROOT     = $(CURDIR)
@@ -42,13 +42,12 @@ export INSTALLCURRY  = $(ROOT)/src/Installation.curry
 MANUALVERSION = $(ROOT)/docs/src/version.tex
 # Logfiles for make:
 MAKELOG = make.log
-BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
-export GHC-PKG := $(GHC)-pkg
+export GHC-PKG := $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
-PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/://")
+PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -101,8 +100,8 @@ ifeq ($(GLOBALINSTALL),yes)
 endif
 
 .PHONY: scripts
-scripts:
-	cd scripts && $(MAKE)
+scripts: $(BINDIR)/cleancurry
+	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
 
 .PHONY: frontend
 frontend:
@@ -133,6 +132,7 @@ clean: $(BINDIR)/cleancurry
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
 	cd tools      && ${MAKE} clean
+	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
 
 # clean everything (including compiler binaries)
@@ -151,7 +151,7 @@ cleanall: clean
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
 
-${INSTALLHS}: Makefile
+${INSTALLHS}: Makefile utils/pwd utils/which
 	@if [ ! -x "${GHC}" ] ; then \
 	  echo "No executable 'ghc' found in path!" && exit 1; \
 	fi
@@ -162,7 +162,7 @@ ${INSTALLHS}: Makefile
 	echo 'compilerName = "KiCS2 Curry -> Haskell Compiler"' >> $@
 	echo "" >> $@
 	echo 'installDir :: String' >> $@
-	echo 'installDir = "$(ROOT)"' >> $@
+	echo 'installDir = "$(shell utils/pwd)"' >> $@
 	echo "" >> $@
 	echo 'majorVersion :: Int' >> $@
 	echo 'majorVersion = $(MAJORVERSION)' >> $@
@@ -180,7 +180,7 @@ ${INSTALLHS}: Makefile
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "${GHC} -no-user-package-conf -package-conf ${PKGCONF}"' >> $@
+	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
@@ -189,8 +189,12 @@ else
 	echo 'installGlobal = False' >> $@
 endif
 
-$(BINDIR)/cleancurry:
-	cd scripts && $(MAKE) $@
+$(BINDIR)/cleancurry: utils/cleancurry
+	mkdir -p $(@D)
+	cp $< $@
+
+utils/%:
+	cd utils && $(MAKE) $(@F)
 
 ##############################################################################
 # Create documentation for system libraries:
@@ -276,7 +280,8 @@ cleandist:
 	rm -rf lib/.git
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
-	rm -rf $(BINDIR) # clean executables
+	rm -rf $(BINDIR)
+	cd utils && $(MAKE) cleanall
 	rm -rf $(DEV_DIRS)
 
 $(TARBALL): $(COMP)
@@ -320,6 +325,8 @@ $(TARBALL): $(COMP)
 ##############################################################################
 # Development targets
 ##############################################################################
+
+BOOTLOG = boot.log
 
 # bootstrap the compiler with logging
 .PHONY: bootstrapwithlogging
