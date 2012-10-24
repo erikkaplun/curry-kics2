@@ -17,6 +17,9 @@ This directory contains:
 `INSTALL.txt`:
 Instructions how to install the system.
 
+`GITINSTALL.txt`:
+Instructions how to install the system fro the GIT repository.
+
 `bin`:
 A directory containing various executables
 to execute the components of KiCS2.
@@ -54,6 +57,9 @@ and interactive environment. Note that both are implemented
 in Curry so that some bootstrapping is necessary to generate
 the complete system.
 
+`scripts`:
+This directory contains some templates for scripts used by KiCS2.
+
 `testsuite`:
 This directory contains a collection of Curry programs
 implementing unit tests to check the functionality of the system using
@@ -62,6 +68,10 @@ the currytest tool. All tests can be executed by the shell script
 
 `tools`:
 This directory contains various tools for the KiCS2 system.
+
+`utils`:
+This directory contains some utilities, in particular,
+for installing KiCS2 on Windows operating systems.
 
 `www`:
 This directory contains scripts and executables for the
