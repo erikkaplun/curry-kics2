@@ -18,21 +18,21 @@ COMPILERDATE    = 24/10/12
 INSTALLDATE    := $(shell date)
 
 # the root directory
-export ROOT     = $(CURDIR)
+export ROOT      = $(CURDIR)
 # binary directory and executables
-export BINDIR   = $(ROOT)/bin
+export BINDIR    = $(ROOT)/bin
 # Directory where the libraries are located:
-export LIBDIR   = $(ROOT)/lib
+export LIBDIR    = $(ROOT)/lib
 # Directory where local executables are stored:
-export LOCALBIN = $(BINDIR)/.local
+export LOCALBIN  = $(BINDIR)/.local
 # The compiler binary
-export COMP     = $(LOCALBIN)/kics2c
+export COMP      = $(LOCALBIN)/kics2c
 # The REPL binary
-export REPL     = $(LOCALBIN)/kics2i
+export REPL      = $(LOCALBIN)/kics2i
 # The default options for the REPL
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE   = $(BINDIR)/cymake
+export CYMAKE    = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
@@ -247,7 +247,7 @@ TARBALL =$(FULLNAME).tar.gz
 .PHONY: dist
 dist:
 	# remove old distribution
-	rm -rf $(TARBALL)
+	rm -f $(TARBALL)
 	$(MAKE) $(TARBALL)
 
 # publish the distribution files in the local web pages
