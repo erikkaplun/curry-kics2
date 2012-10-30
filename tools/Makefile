@@ -1,7 +1,7 @@
 # generate various tools for handling Curry programs:
 
 .PHONY: all
-all: AddTypes GenInt ImportCalls CreateMakefile CurryTest SourceProgGUI
+all: AddTypes ImportCalls CreateMakefile CurryTest SourceProgGUI
 	@cd browser   ; ${MAKE}
 	@cd curry2js  ; ${MAKE}
 	@cd erd2curry ; ${MAKE}
@@ -11,10 +11,6 @@ AddTypes: AddTypes.curry
 	../bin/kics2 ${REPL_OPTS} :l AddTypes :save :q
 	(cd ../bin ; rm -f addtypes ; \
 	             ln -s ../tools/AddTypes addtypes)
-
-# generate executable for interface generator:
-GenInt: GenInt.curry
-	../bin/kics2 ${REPL_OPTS} :l GenInt :save :q
 
 # generate executable for ImportCalls tool:
 ImportCalls: ImportCalls.curry

@@ -521,7 +521,7 @@ processShow rst args = do
 processInterface :: ReplState -> String -> IO (Maybe ReplState)
 processInterface rst args = do
   let modname  = if null args then rst :> mainMod else dropExtension args
-      toolexec = "tools" </> "GenInt"
+      toolexec = "currytools" </> "genint" </> "GenInt"
   callTool rst toolexec ("-int " ++ modname)
 
 processBrowse :: ReplState -> String -> IO (Maybe ReplState)

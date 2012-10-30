@@ -30,6 +30,10 @@ Curry Port Name Server (CPNS) which is responsible for managing the
 symbolic names assigned to the named sockets on a local machine
 (see library `NamedSocket` for more details).
 
+`currytools`:
+This directory contains various tools for Curry
+(see the README there for a more detailed description).
+
 `docs`:
 This directory contains some documentation, in particular,
 the KiCS2 User Manual.

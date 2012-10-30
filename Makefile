@@ -18,7 +18,7 @@ COMPILERDATE    = 30/10/12
 INSTALLDATE    := $(shell date)
 
 # The name of the Curry system
-export CURRYSYSTEM = KiCS2
+export CURRYSYSTEM = kics2
 # the root directory
 export ROOT      = $(CURDIR)
 # binary directory and executables
