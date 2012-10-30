@@ -534,7 +534,7 @@ processBrowse rst args
 processUsedImports :: ReplState -> String -> IO (Maybe ReplState)
 processUsedImports rst args = do
   let modname  = if null args then rst :> mainMod else dropExtension args
-      toolexec = "tools" </> "ImportCalls"
+      toolexec = "currytools" </> "importcalls" </> "ImportCalls"
   callTool rst toolexec modname
 
 processSave :: ReplState -> String -> IO (Maybe ReplState)
