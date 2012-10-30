@@ -3,7 +3,6 @@
 .PHONY: all
 all: AddTypes GenInt ImportCalls CreateMakefile CurryTest SourceProgGUI
 	@cd browser   ; ${MAKE}
-	@cd currydoc  ; ${MAKE}
 	@cd curry2js  ; ${MAKE}
 	@cd erd2curry ; ${MAKE}
 
@@ -41,8 +40,6 @@ SourceProgGUI: SourceProgGUI.curry
 clean: 
 	../bin/cleancurry
 	(cd ../bin ; rm -f addtypes currycreatemake currytest)
-	cd analysis  ; ../../bin/cleancurry
 	cd browser   ; ${MAKE} clean
-	cd currydoc  ; ${MAKE} clean
 	cd curry2js  ; ${MAKE} clean
 	cd erd2curry ; ${MAKE} clean

@@ -13,10 +13,12 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 24/10/12
+COMPILERDATE    = 30/10/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
+# The name of the Curry system
+export CURRYSYSTEM = KiCS2
 # the root directory
 export ROOT      = $(CURDIR)
 # binary directory and executables
@@ -66,12 +68,16 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
-	cd cpns  && $(MAKE) # Curry Port Name Server demon
-	cd tools && $(MAKE) # various tools
-	cd www   && $(MAKE) # scripts for dynamic web pages
+	cd cpns       && $(MAKE) # Curry Port Name Server demon
+	cd currytools && $(MAKE) # various tools
+	cd tools      && $(MAKE) # various tools
+	cd www        && $(MAKE) # scripts for dynamic web pages
 	$(MAKE) manual
 	# make everything accessible:
 	chmod -R go+rX .
+
+ctools:
+	cd currytools && $(MAKE) # various tools
 
 # uninstall globally installed cabal packages
 .PHONY: uninstall
@@ -131,6 +137,7 @@ clean: $(BINDIR)/cleancurry
 	fi
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
+	cd currytools && ${MAKE} clean
 	cd tools      && ${MAKE} clean
 	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
