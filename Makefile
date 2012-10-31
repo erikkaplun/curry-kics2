@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 30/10/12
+COMPILERDATE    = 31/10/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -76,8 +76,10 @@ install: kernel
 	# make everything accessible:
 	chmod -R go+rX .
 
-ctools:
+.PHONY: alltools
+alltools:
 	cd currytools && $(MAKE) # various tools
+	cd tools      && $(MAKE) # various tools
 
 # uninstall globally installed cabal packages
 .PHONY: uninstall

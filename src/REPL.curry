@@ -528,7 +528,7 @@ processBrowse :: ReplState -> String -> IO (Maybe ReplState)
 processBrowse rst args
   | notNull $ dropExtension args = skipCommand "superfluous argument"
   | otherwise                  = do
-      let toolexec = "tools" </> "browser" </> "BrowserGUI"
+      let toolexec = "currytools" </> "browser" </> "BrowserGUI"
       callTool rst toolexec (rst :> mainMod)
 
 processUsedImports :: ReplState -> String -> IO (Maybe ReplState)
@@ -752,7 +752,7 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms (loadPaths rst)
 showFunctionInModule :: ReplState -> String -> String -> IO (Maybe ReplState)
 showFunctionInModule rst mod fun = do
   let mbh      = lookup mod (rst :> sourceguis)
-      toolexec = "tools/SourceProgGUI"
+      toolexec = "currytools" </> "browser" </> "SourceProgGUI"
       spgui    = rst:>kics2Home </> toolexec
   spgexists <- doesFileExist spgui
   if not spgexists

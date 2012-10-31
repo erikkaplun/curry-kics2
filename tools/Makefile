@@ -1,8 +1,7 @@
 # generate various tools for handling Curry programs:
 
 .PHONY: all
-all: AddTypes CreateMakefile CurryTest SourceProgGUI
-	@cd browser   ; ${MAKE}
+all: AddTypes
 	@cd curry2js  ; ${MAKE}
 	@cd erd2curry ; ${MAKE}
 
@@ -12,26 +11,9 @@ AddTypes: AddTypes.curry
 	(cd ../bin ; rm -f addtypes ; \
 	             ln -s ../tools/AddTypes addtypes)
 
-# generate executable for currycreatemake program:
-CreateMakefile: CreateMakefile.curry ../lib/meta/FlatCurryRead.curry
-	../bin/kics2 ${REPL_OPTS} :l CreateMakefile :save :q
-	(cd ../bin ; rm -f currycreatemake ; \
-	             ln -s ../tools/CreateMakefile currycreatemake)
-
-# generate executable for currytest program:
-CurryTest: CurryTest.curry
-	../bin/kics2 ${REPL_OPTS} :l CurryTest :save :q
-	(cd ../bin ; rm -f currytest ; \
-	             ln -s ../tools/CurryTest currytest)
-
-# generate executable for interface generator:
-SourceProgGUI: SourceProgGUI.curry
-	../bin/kics2 ${REPL_OPTS} :l SourceProgGUI :save :q
-
 .PHONY: clean
 clean: 
 	../bin/cleancurry
-	(cd ../bin ; rm -f addtypes currycreatemake currytest)
-	cd browser   ; ${MAKE} clean
+	(cd ../bin ; rm -f addtypes)
 	cd curry2js  ; ${MAKE} clean
 	cd erd2curry ; ${MAKE} clean
