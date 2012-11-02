@@ -286,7 +286,8 @@ DEV_DIRS=benchmarks debug docs experiments papers talks
 .PHONY: cleandist
 cleandist:
 	rm -rf .git .gitmodules .gitignore
-	rm -rf lib/.git
+	cd lib        && rm -rf .git .gitignore
+	cd currytools && rm -rf .git .gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf $(BINDIR)
