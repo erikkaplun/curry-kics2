@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 31/10/12
+COMPILERDATE    = 06/11/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -120,6 +120,7 @@ frontend:
 installhaskell:
 	cabal update
 	cabal install network
+	cabal install unbounded-delays
 	cabal install parallel
 	cabal install tree-monad
 	cabal install parallel-tree-search
