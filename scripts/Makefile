@@ -5,11 +5,19 @@
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
+# Linux
 BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
 BATS =
-else
+else ifeq ($(UNAME), Darwin)
+# Mac OS
+BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
+BATS =
+else ifeq ($(findstring MINGW, $(UNAME)), MINGW)
+# Windows
 BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh)
 BATS = $(patsubst %, $(BINDIR)/%, $(wildcard *.bat))
+else
+$(error "Unknown system '$(UNAME)')
 endif
 
 .PHONY: all
