@@ -171,12 +171,12 @@ without sacrificing the efficiency of the kernel implementation.
 
 In the next section, we review the source language Curry
 and the features considered in this paper.
-Section~\ref{sec:Compilation} sketches the implementation scheme
-of KiCS2.
+Section~\ref{sec:Compilation} recapitulates the implementation scheme
+of KiCS2 originaly presented in \cite{BrasselHanusPeemoellerReck11}.
 Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
-discuss the extensions to implement unification modulo
+discuss our new extensions to implement unification modulo
 functional evaluation and functional patterns, respectively.
-Benchmarks demonstrating the usefulness of this scheme
+Benchmarks demonstrating the usefulness of these extensions
 are presented in Sect.~\ref{sec:Benchmarks}
 before we conclude in Sect.~\ref{sec:Conclusions}.
 
@@ -345,11 +345,14 @@ choice between two values, yield either \code{True} or \code{False}.
 This is obtained by assigning a unique identifier (of type \code{ID})
 to each \code{Choice} constructor. The difficulty is to get a unique identifier
 on demand, i.e., when some operation evaluates to a \code{Choice}.
+We cannot thread an identifier supply, e.g. a counter,
+through the search tree without fixing an evaluation order.
 Since we want to compile into \emph{purely} functional programs
 (in order to enable powerful program optimizations),
-we cannot use unsafe features with side effects to generate
-such identifiers.
-Hence, we pass a (conceptually infinite) set of identifiers,
+we can neither use unsafe features with side effects to generate
+such identifiers. 
+Hence, we follow the idea presented in \cite{AugustssonRittriSynek94} and
+pass a (conceptually infinite) set of identifiers,
 also called \emph{identifier supply},
 to each operation so that a \code{Choice} can pick its unique identifier from
 this set.
@@ -368,7 +371,7 @@ the operation \code{thisID} takes some identifier from this set, and
 \code{leftSupply} and \code{rightSupply} split this set
 into two disjoint subsets without the identifier
 obtained by \code{thisID}.
-There are different implementations available \cite{AugustssonRittriSynek94}
+There are different implementations available
 (see below for a simple one) and our system
 is parametric over concrete implementations of \code{IDSupply}.
 
@@ -430,6 +433,8 @@ the final rule returns \code{Fail} in all other cases,
 i.e., if \code{head} is
 applied to the empty list as well as if the matching argument
 is already a failed computation (failure propagation).
+Since \code{head} is a deterministic operation, it does
+not use the identifier supply \code{s}.
 
 To show a concrete example, we use the following implementation
 of \code{IDSupply} based on unbounded integers:
@@ -475,14 +480,15 @@ not been decided yet. Furthermore, we assume operations to lookup the
 current decision for a given identifier or change it
 (depending on the implementation
 of \code{IDSupply}, KiCS2 supports several implementations
-based on memory cells or finite maps):
+based on memory cells or finite maps).
+For a top level operation that prints all values contained in a choice structure
+in a depth-first manner, these operations would be of the following types:
 \begin{haskell}
   lookupDecision :: ID -> IO Decision
   setDecision    :: ID -> Decision -> IO ()
 \end{haskell}
 %
-Now we can print all values contained in a choice structure
-in a depth-first manner by the following I/O operation:\footnote{%
+Now the search operation can be defined by the I/O operation below:\footnote{%
 Note that this code has been simplified for readability
 since the type system of Haskell does not
 allow this direct definition.}
@@ -525,8 +531,7 @@ can be obtained by different implementations of this main operation
 to print all values.
 Instead of printing them, one can also collect
 the values in a tree-like data structure
-so that the programmer can implement his own search strategies
-as tree traversals. Thus, KiCS2 supports a primitive
+for further processing. Thus, KiCS2 supports a primitive
 \begin{curry}
   getSearchTree :: a -> IO (SearchTree a)
 \end{curry}
@@ -557,7 +562,7 @@ To avoid an unnecessary growth of the search space represented by
 deterministic operations. If an operation is defined by non-overlapping
 rules and does not call, neither directly nor indirectly through
 other operations, a function defined by overlapping rules,
-the evaluation of such an operation (like \code{xor} or \code{not})
+the evaluation of such an operation (like \code{head})
 cannot introduce non-deterministic values.
 Thus, it is not necessary to pass an identifier supply to the operation.
 In consequence, only the matching rules are extended by additional cases
@@ -617,7 +622,7 @@ standard notation for lists, i.e., \code{[]} denotes the empty list
 and \code{(x:xs)} denotes a list with head element \code{x}
 and tail \code{xs}.}
 
-Due to this constructive definition, \ccode{=:=}
+Due to this definition, \ccode{=:=}
 can be considered as a binary function defined by the
 following rules (we only present the rules for the Boolean
 and list types, where \code{Success} denotes the only constructor
@@ -709,7 +714,7 @@ this transformation:
   narrow (FreeID i) = ChoiceID i
   narrow x          = x
 \end{haskell}
-Furthermore, we use this operation in narrowing steps,
+We use this operation in narrowing steps,
 i.e., in all rules operating on \code{Choice} constructors.
 For instance, in the implementation of the operation \code{not}
 we replace the rule
@@ -720,7 +725,8 @@ by the rule
 \begin{haskell}
   not (Choice i x1 x2) s = Choice (narrow i) (not x1 s) (not x2 s)
 \end{haskell}
-%
+to ensure that the resulting choice is not considered a free variable.
+
 As mentioned above, the consideration of free variables
 is relevant in equational constraints where \emph{binding constraints} are
 generated. For this purpose, we introduce a type to represent
@@ -916,7 +922,8 @@ The use of the additional \code{LazyBind} constructor allows the argument
 \code{x} to be stored in a binding constraint without evaluation 
 (due to the lazy evaluation strategy of the
 target language Haskell).
-However, it is evaluated by \code{lazyBind} when its binding
+However, it is evaluated by \code{lazyBind} 
+as far as necessary when its binding
 is required by another part of the computation.
 Similarly to equational constraints,
 lazy bindings are processed by a solver when values are extracted.
