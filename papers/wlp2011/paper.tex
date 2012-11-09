@@ -172,7 +172,7 @@ without sacrificing the efficiency of the kernel implementation.
 In the next section, we review the source language Curry
 and the features considered in this paper.
 Section~\ref{sec:Compilation} recapitulates the implementation scheme
-of KiCS2 originaly presented in \cite{BrasselHanusPeemoellerReck11}.
+of KiCS2 originally presented in \cite{BrasselHanusPeemoellerReck11}.
 Sections~\ref{sec:Unification} and~\ref{sec:FuncPatterns}
 discuss our new extensions to implement unification modulo
 functional evaluation and functional patterns, respectively.
@@ -922,9 +922,11 @@ The use of the additional \code{LazyBind} constructor allows the argument
 \code{x} to be stored in a binding constraint without evaluation 
 (due to the lazy evaluation strategy of the
 target language Haskell).
-However, it is evaluated by \code{lazyBind} 
-as far as necessary when its binding
-is required by another part of the computation.
+However, it is evaluated by \code{lazyBind} to head normal form
+when its binding is required by another part of the computation,
+whereas the binding constraints for any sub-expression
+are in turn lazily computed using `LazyBind`.
+
 Similarly to equational constraints,
 lazy bindings are processed by a solver when values are extracted.
 In particular, if a variable has more than one lazy binding constraint
