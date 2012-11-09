@@ -30,7 +30,7 @@
 \newcommand{\bs}{\char92\xspace} % backslash
 \newcommand{\us}{\char95\xspace} % underscore
 
-\pagestyle{plain} % remove for camera ready version
+% \pagestyle{plain} % remove for camera ready version
 \sloppy
 
 % Metadata
@@ -433,8 +433,9 @@ the final rule returns \code{Fail} in all other cases,
 i.e., if \code{head} is
 applied to the empty list as well as if the matching argument
 is already a failed computation (failure propagation).
-Since \code{head} is a deterministic operation, it does
-not use the identifier supply \code{s}.
+Since deterministic operations do not introduce new
+\code{Choice} constructors, \code{head} does not use the
+ identifier supply \code{s}.
 
 To show a concrete example, we use the following implementation
 of \code{IDSupply} based on unbounded integers:
@@ -489,8 +490,9 @@ in a depth-first manner, these operations would be of the following types:
 \end{haskell}
 %
 Now the search operation can be defined by the I/O operation below:\footnote{%
-Note that this code has been simplified for readability
-since the type system of Haskell does not
+Note that this code has been simplified and slightly renamed 
+compared to \cite{BrasselHanusPeemoellerReck11}
+for readability. The type system of Haskell does not
 allow this direct definition.}
 \label{sec:printValsDFS}
 \begin{haskell}
@@ -622,7 +624,7 @@ standard notation for lists, i.e., \code{[]} denotes the empty list
 and \code{(x:xs)} denotes a list with head element \code{x}
 and tail \code{xs}.}
 
-Due to this definition, \ccode{=:=}
+According to this definition, \ccode{=:=}
 can be considered as a binary function defined by the
 following rules (we only present the rules for the Boolean
 and list types, where \code{Success} denotes the only constructor
@@ -833,36 +835,39 @@ On the other hand, the evaluation of \code{last' [failed,True]} yields
 the value \code{True}, i.e., the definition of \code{last'} is less strict
 thanks to the use of functional patterns.
 
-As another example for the advantage of the reduced strictness
-implied by functional patterns,
-consider an operation that returns the first duplicate element in
-a list.
-Using equational constraints, we can define it as follows:
-\begin{curry}
-  fstDup xs | xs =:= ys++[e]++zs & elem e ys =:= True & nub ys =:= ys
-            = e    where ys, zs, e free
-\end{curry}
-The first equational constraint is used to split the input list \code{xs}
-into three sublists.
-The last equational constraint ensures that the first sublist
-\code{ys} does not contain duplicate elements
-(the library operation \code{nub} removes all duplicates from a list)
-and the second equational constraint ensures that the first element
-after \code{ys} occurs in \code{ys}.
-Although this implementation is concise, it cannot be applied
-to infinite lists due to the strict interpretation of \ccode{=:=}.
-This is not the case if we define this operation by a functional pattern:
-\begin{curry}
-  fstDup' (ys++[e]++zs) | elem e ys =:= True & nub ys =:= ys
-                        = e
-\end{curry}
-%
-Because of the reduced strictness, the logic variable \code{zs} (matching
-the tail list after the first duplicate) is never evaluated.
-This is due to the fact that a functional pattern like
+TODO fuer mh: Weitere Beispiele \cite{AntoyHanus05LOPSTR,Hanus11ICLP}
+
+% As another example for the advantage of the reduced strictness
+% implied by functional patterns,
+% consider an operation that returns the first duplicate element in
+% a list.
+% Using equational constraints, we can define it as follows:
+% \begin{curry}
+%   fstDup xs | xs =:= ys++[e]++zs & elem e ys =:= True & nub ys =:= ys
+%             = e    where ys, zs, e free
+% \end{curry}
+% The first equational constraint is used to split the input list \code{xs}
+% into three sublists.
+% The last equational constraint ensures that the first sublist
+% \code{ys} does not contain duplicate elements
+% (the library operation \code{nub} removes all duplicates from a list)
+% and the second equational constraint ensures that the first element
+% after \code{ys} occurs in \code{ys}.
+% Although this implementation is concise, it cannot be applied
+% to infinite lists due to the strict interpretation of \ccode{=:=}.
+% This is not the case if we define this operation by a functional pattern:
+% \begin{curry}
+%   fstDup' (ys++[e]++zs) | elem e ys =:= True & nub ys =:= ys
+%                         = e
+% \end{curry}
+% %
+% Because of the reduced strictness, the logic variable \code{zs} (matching
+% the tail list after the first duplicate) is never evaluated.
+
+Conceptually, a functional pattern like
 \code{(xs++[e])} abbreviates all values to which it can be evaluated
-(by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]} etc.
-Conceptually, the rule defining \code{last'}
+(by narrowing), like \code{[e]}, \code{[x1,e]}, \code{[x1,x2,e]}, and so on.
+In consequence, the rule defining \code{last'}
 abbreviates the following (infinite) set of rules:
 \begin{curry}
   last' [e] = e
@@ -1026,7 +1031,7 @@ As expected, in most cases the creation and traversal of a large
 search space introduced by \code{==} is much slower than our
 presented approach with variable bindings.
 In addition, the example \code{last} shows that the lazy 
-unification operator (\ccode{=:<=}) improves the performance when unifying an
+unification operator (\code{=:<=}) improves the performance when unifying an
 expression which has to be evaluted only partially. Using strict unification,
 all elements of the list are (unnecessarily) evaluated.
 On the other hand, lazy unification causes some overhead
