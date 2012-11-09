@@ -7,19 +7,18 @@ array = listToErrorArray
 
 allEntries n a = map (a!) [0 .. n]
 
-maxEntry = lenRnds-1
-
-rndEntries = allEntries maxEntry
-
-test1 = eq "initialize and retrieve from array" id (rndEntries . array) 
+test1 = eq "initialize and retrieve from array"
+           id
+           (\xs -> allEntries (length xs - 1) (array xs))
 
 test2 = test "update already initialized positions" upTest
 
 upTest nums = 
-  let startArray = array (map Just nums)
-      rndChanges = map (abs . flip mod maxEntry) (take (div lenRnds 3) nums)
+  let maxidx = length nums - 1
+      startArray = array (map Just nums)
+      rndChanges = map (abs . flip mod maxidx) (take (div (maxidx+1) 3) nums)
       newArray   =  startArray // zip rndChanges (repeat Nothing)
-   in compare rndChanges 0 nums (rndEntries newArray)
+   in compare rndChanges 0 nums (allEntries maxidx newArray)
 
 compare _ _ [] [] = True
 compare nos n (_:xs) (Nothing:ys) = elem n nos && compare nos (n+1) xs ys
