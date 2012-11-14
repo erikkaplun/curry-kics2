@@ -51,7 +51,7 @@ export GHC-PKG := $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
-export GHC_OPTIONS = '-no-user-package-conf -package-conf \\\"${PKGCONF}\\\"'
+export GHC_OPTIONS =
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -192,7 +192,7 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"$(shell utils/which ghc)\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
