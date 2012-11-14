@@ -12,6 +12,10 @@ else ifeq ($(UNAME), Darwin)
 # Mac OS
 BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
 BATS =
+else ifeq ($(UNAME), SunOS)
+# Sun OS
+BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
+BATS =
 else ifeq ($(findstring MINGW, $(UNAME)), MINGW)
 # Windows
 BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh)
