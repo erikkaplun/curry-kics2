@@ -281,7 +281,7 @@ testdist: $(TARBALL)
 	@echo "Integration test successfully completed."
 
 # Directories containing development stuff only
-DEV_DIRS=benchmarks debug docs experiments papers talks
+DEV_DIRS=benchmarks debug docs experiments talks
 
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
