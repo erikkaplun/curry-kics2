@@ -291,6 +291,9 @@ DEV_DIRS=benchmarks debug docs experiments talks
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
 cleandist:
+ifneq ($(CURDIR), $(TMPDIR))
+	$(error cleandist target called outside TMPDIR. Don't shoot yourself in the foot)
+endif
 	rm -rf .git .gitmodules .gitignore
 	cd lib        && rm -rf .git .gitignore
 	cd currytools && rm -rf .git .gitignore
