@@ -95,7 +95,7 @@ if [ $# != 1 -a $# != 3 ] ; then
 fi
 
 # Definitions for WUI/JavaScript generation:
-WUIJS_PREPROCESSOR=$KICS2HOME/tools/curry2js/Curry2JS
+WUIJS_PREPROCESSOR=$KICS2HOME/currytools/curry2js/Curry2JS
 WUIJS_DEFAULT_JS=$KICS2HOME/include/wui_prims.js
 
 # remove possible suffix:

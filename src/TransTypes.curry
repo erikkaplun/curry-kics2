@@ -53,7 +53,7 @@ genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
                              , normalformInstance hoResult
                              , unifiableInstance  hoResult
                              , curryInstance      hoResult
-                             , coverableInstance
+                             , coverableInstance  hoResult
                              ]
     acvis     = (fcy2absVis vis)
     targs     = map fcy2absTVar tnums
@@ -756,17 +756,17 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
 --  Generate instance of Coverable class
 ------------------------------------------------------------------------------------------
 
-coverableInstance :: FC.TypeDecl -> TypeDecl
-coverableInstance (FC.Type qf _ tnums cdecls) =
-  mkInstance (basics "Coverable") [] ctype targs $ coverRules qf cdecls
+coverableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+coverableInstance hoResult (FC.Type qf _ tnums cdecls) =
+  mkInstance (basics "Coverable") [] ctype targs $ coverRules hoResult qf cdecls
   where
     targs = map fcy2absTVar tnums
     ctype = TCons qf (map TVar targs)
 
-coverRules :: QName -> [FC.ConsDecl] -> [(QName,Rule)]
-coverRules qn decls =
+coverRules :: HOResult -> QName -> [FC.ConsDecl] -> [(QName,Rule)]
+coverRules hoResult qn decls =
   map (\ r -> (cover,r))
-   (map  mkCoverConsRule decls
+   (concatMap  (mkCoverConsRule hoResult) decls
     ++ [ simpleRule [mkChoicePattern qn "i"] (applyF (mkChoiceName qn) [ applyF incCover [cd]
                                                                    , i
                                                                    , applyF cover [x]
@@ -780,12 +780,18 @@ coverRules qn decls =
        , simpleRule [mkGuardPattern qn] (applyF (mkGuardName qn)
                                                 [applyF incCover [cd], c, applyF cover [e]])
        ])
-                  
  where
-  mkCoverConsRule (FC.Cons conName carity _ _)
-    =  simpleRule [consPattern conName "x" carity] 
-                  (applyF conName (map (\n -> applyF cover [Var (n,"x" ++ show n)]) [1..carity]))
-  [i,x,y,xs,c,e,cd,info] = map Var $ newVars ["i","x","y","xs","c","e","cd","info"]  
+  [i,x,y,xs,c,e,cd,info] = map Var $ newVars ["i","x","y","xs","c","e","cd","info"]
+
+         
+mkCoverConsRule :: HOResult -> FC.ConsDecl -> [Rule] 
+mkCoverConsRule hoResult (FC.Cons conName carity _ _)
+    | isHoCons conName = map rule [conName, mkHoConsName conName]
+    | otherwise     = [rule conName]
+ where  
+  isHoCons name = lookupFM hoResult name == Just HO
+  rule name = simpleRule [consPattern name "x" carity] 
+                  (applyF  name (map (\n -> applyF cover [Var (n,"x" ++ show n)]) [1..carity]))
 
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions

@@ -12,7 +12,11 @@ import AbstractCurry
 import Char          (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
 import Directory
 import Distribution
-import FileGoodies
+import FilePath
+  ( (</>), (<.>), dropExtension
+  , splitSearchPath, splitFileName, splitExtension
+  )
+import FileGoodies   (lookupFileInPath, splitPath)
 import FlatCurry     (flatCurryFileName)
 import IO
 import IOExts
@@ -23,7 +27,7 @@ import System        (system, getArgs, getEnviron, setEnviron, getPID)
 import Time
 
 import AbstractCurryGoodies
-import Files
+import Files         (removeFileIfExists)
 import GhciComm      (stopGhciComm)
 import qualified Installation as Inst
 import Names         (funcInfoFile)
@@ -158,10 +162,12 @@ cleanMainGoalFile rst = unless keepfiles $ do
 -- Return Nothing if some error occurred during parsing.
 getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
 getAcyOfMainGoal rst = do
-  let mainGoalProg    = stripSuffix mainGoalFile
+  let mainGoalProg    = dropExtension mainGoalFile
       acyMainGoalFile = inCurrySubdir $ mainGoalProg <.> "acy"
       frontendParams  = setQuiet    (rst :> verbose < 2)
-                      $ setFullPath (loadPaths rst)
+                      $ setFullPath    (loadPaths rst)
+                      $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
+                      $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
                         defaultParams
   callFrontendWithParams ACY frontendParams mainGoalProg
   prog <- tryReadACYFile acyMainGoalFile
@@ -414,12 +420,12 @@ processHelp rst _ = do
 processLoad :: ReplState -> String -> IO (Maybe ReplState)
 processLoad rst args = do
   rst' <- terminateSourceProgGUIs rst
-  let dirmodname = stripSuffix args
+  let dirmodname = dropExtension args
   if null dirmodname
     then skipCommand "missing module name"
     else do
-    let (dirname, modname) = splitDirectoryBaseName dirmodname
-    unless (dirname == ".") $ setCurrentDirectory dirname
+    let (dirname, modname) = splitFileName dirmodname
+    unless (dirname == "./") $ setCurrentDirectory dirname
     mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
     maybe (skipCommand $ "source file of module " ++ dirmodname ++ " not found")
           (\fn ->
@@ -435,7 +441,7 @@ processReload :: ReplState -> String -> IO (Maybe ReplState)
 processReload rst args
   | rst :> mainMod == "Prelude"
   = skipCommand "no program loaded!"
-  | null (stripSuffix args)
+  | null (dropExtension args)
   = compileCurryProgram rst (rst :> mainMod) >> return (Just rst)
   | otherwise
   = skipCommand "superfluous argument"
@@ -443,7 +449,7 @@ processReload rst args
 --- Process :add command
 processAdd :: ReplState -> String -> IO (Maybe ReplState)
 processAdd rst args = do
-  let modname = stripSuffix args
+  let modname = dropExtension args
   if null modname
     then skipCommand "missing module name"
     else do
@@ -476,7 +482,7 @@ processPrograms rst _ = printAllLoadPathPrograms rst >> return (Just rst)
 --- Process :edit command
 processEdit :: ReplState -> String -> IO (Maybe ReplState)
 processEdit rst args = do
-  let modname = if null args then rst :> mainMod else stripSuffix args
+  let modname = if null args then rst :> mainMod else dropExtension args
   mbf <- lookupFileInPath modname [".curry", ".lcurry"]
                           ("." : rst :> importPaths)
   editenv <- getEnviron "EDITOR"
@@ -502,7 +508,7 @@ processSource rst args
 --- Process :show command
 processShow :: ReplState -> String -> IO (Maybe ReplState)
 processShow rst args = do
-  let modname = if null args then rst :> mainMod else stripSuffix args
+  let modname = if null args then rst :> mainMod else dropExtension args
   mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
   case mbf of
     Nothing -> skipCommand "source file not found"
@@ -514,21 +520,21 @@ processShow rst args = do
 
 processInterface :: ReplState -> String -> IO (Maybe ReplState)
 processInterface rst args = do
-  let modname  = if null args then rst :> mainMod else stripSuffix args
-      toolexec = "tools" </> "GenInt"
+  let modname  = if null args then rst :> mainMod else dropExtension args
+      toolexec = "currytools" </> "genint" </> "GenInt"
   callTool rst toolexec ("-int " ++ modname)
 
 processBrowse :: ReplState -> String -> IO (Maybe ReplState)
 processBrowse rst args
-  | notNull $ stripSuffix args = skipCommand "superfluous argument"
+  | notNull $ dropExtension args = skipCommand "superfluous argument"
   | otherwise                  = do
-      let toolexec = "tools" </> "browser" </> "BrowserGUI"
+      let toolexec = "currytools" </> "browser" </> "BrowserGUI"
       callTool rst toolexec (rst :> mainMod)
 
 processUsedImports :: ReplState -> String -> IO (Maybe ReplState)
 processUsedImports rst args = do
-  let modname  = if null args then rst :> mainMod else stripSuffix args
-      toolexec = "tools" </> "ImportCalls"
+  let modname  = if null args then rst :> mainMod else dropExtension args
+      toolexec = "currytools" </> "importcalls" </> "ImportCalls"
   callTool rst toolexec modname
 
 processSave :: ReplState -> String -> IO (Maybe ReplState)
@@ -735,7 +741,7 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms (loadPaths rst)
     putStrLn $ "Curry programs in directory " ++ dir ++ ":"
     files <- getDirectoryContents dir
     putStrLn $ concat $ mergeSort (<=) $
-      map (\f -> let (base, sfx) = splitBaseName f
+      map (\f -> let (base, sfx) = splitExtension f
                   in if sfx `elem` ["curry", "lcurry"] && notNull base
                        then f ++ " "
                        else "") files
@@ -746,7 +752,7 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms (loadPaths rst)
 showFunctionInModule :: ReplState -> String -> String -> IO (Maybe ReplState)
 showFunctionInModule rst mod fun = do
   let mbh      = lookup mod (rst :> sourceguis)
-      toolexec = "tools/SourceProgGUI"
+      toolexec = "currytools" </> "browser" </> "SourceProgGUI"
       spgui    = rst:>kics2Home </> toolexec
   spgexists <- doesFileExist spgui
   if not spgexists

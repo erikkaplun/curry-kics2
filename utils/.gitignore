@@ -1,0 +1,8 @@
+# binaries
+pwd
+cleancurry
+which
+
+# intermediate
+*.hi
+*.o

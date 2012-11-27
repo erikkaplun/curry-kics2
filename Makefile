@@ -13,26 +13,28 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE = 08/10/12
+COMPILERDATE    = 14/11/12
 # The installation date
-INSTALLDATE := $(shell date)
+INSTALLDATE    := $(shell date)
 
+# The name of the Curry system
+export CURRYSYSTEM = kics2
 # the root directory
-export ROOT     = $(CURDIR)
+export ROOT      = $(CURDIR)
 # binary directory and executables
-export BINDIR   = $(ROOT)/bin
+export BINDIR    = $(ROOT)/bin
 # Directory where the libraries are located:
-export LIBDIR   = $(ROOT)/lib
+export LIBDIR    = $(ROOT)/lib
 # Directory where local executables are stored:
-export LOCALBIN = $(BINDIR)/.local
+export LOCALBIN  = $(BINDIR)/.local
 # The compiler binary
-export COMP     = $(LOCALBIN)/kics2c
+export COMP      = $(LOCALBIN)/kics2c
 # The REPL binary
-export REPL     = $(LOCALBIN)/kics2i
+export REPL      = $(LOCALBIN)/kics2i
 # The default options for the REPL
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE   = $(LOCALBIN)/cymake
+export CYMAKE    = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
@@ -42,27 +44,19 @@ export INSTALLCURRY  = $(ROOT)/src/Installation.curry
 MANUALVERSION = $(ROOT)/docs/src/version.tex
 # Logfiles for make:
 MAKELOG = make.log
-BOOTLOG = boot.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
-export GHC-PKG := $(GHC)-pkg
+export GHC-PKG := $(dirname $(GHC))ghc-pkg
 # The path to the package configuration file
-PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/://")
+PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
+# Standard options for compiling target programs with ghc:
+export GHC_OPTIONS =
 
 # main (default) target: starts installation with logging
 .PHONY: all
 all:
 	${MAKE} installwithlogging
-
-# bootstrap the compiler
-.PHONY: bootstrap
-bootstrap: ${INSTALLCURRY} frontend scripts
-	@rm -f ${BOOTLOG}
-	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
-	cd src && ${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
-	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
-	@echo "Bootstrap process logged in file ${BOOTLOG}"
 
 # install the complete system and log the installation process
 .PHONY: installwithlogging
@@ -76,12 +70,18 @@ installwithlogging:
 # install the complete system if the kics2 compiler is present
 .PHONY: install
 install: kernel
-	cd cpns  && $(MAKE) # Curry Port Name Server demon
-	cd tools && $(MAKE) # various tools
-	cd www   && $(MAKE) # scripts for dynamic web pages
+	cd cpns       && $(MAKE) # Curry Port Name Server demon
+	cd currytools && $(MAKE) # various tools
+	cd tools      && $(MAKE) # various tools
+	cd www        && $(MAKE) # scripts for dynamic web pages
 	$(MAKE) manual
 	# make everything accessible:
 	chmod -R go+rX .
+
+.PHONY: alltools
+alltools:
+	cd currytools && $(MAKE) # various tools
+	cd tools      && $(MAKE) # various tools
 
 # uninstall globally installed cabal packages
 .PHONY: uninstall
@@ -110,8 +110,8 @@ ifeq ($(GLOBALINSTALL),yes)
 endif
 
 .PHONY: scripts
-scripts:
-	cd scripts && $(MAKE)
+scripts: $(BINDIR)/cleancurry
+	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
 
 .PHONY: frontend
 frontend:
@@ -122,13 +122,14 @@ frontend:
 installhaskell:
 	cabal update
 	cabal install network
+	cabal install unbounded-delays
 	cabal install parallel
 	cabal install tree-monad
 	cabal install parallel-tree-search
 	cabal install mtl
 
 .PHONY: clean
-clean:
+clean: $(BINDIR)/cleancurry
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
 	cd benchmarks && ${MAKE} clean
@@ -141,7 +142,9 @@ clean:
 	fi
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
+	cd currytools && ${MAKE} clean
 	cd tools      && ${MAKE} clean
+	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
 
 # clean everything (including compiler binaries)
@@ -160,7 +163,7 @@ cleanall: clean
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
 
-${INSTALLHS}: Makefile
+${INSTALLHS}: Makefile utils/pwd utils/which
 	@if [ ! -x "${GHC}" ] ; then \
 	  echo "No executable 'ghc' found in path!" && exit 1; \
 	fi
@@ -171,7 +174,7 @@ ${INSTALLHS}: Makefile
 	echo 'compilerName = "KiCS2 Curry -> Haskell Compiler"' >> $@
 	echo "" >> $@
 	echo 'installDir :: String' >> $@
-	echo 'installDir = "$(ROOT)"' >> $@
+	echo 'installDir = "$(shell utils/pwd)"' >> $@
 	echo "" >> $@
 	echo 'majorVersion :: Int' >> $@
 	echo 'majorVersion = $(MAJORVERSION)' >> $@
@@ -189,7 +192,10 @@ ${INSTALLHS}: Makefile
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "${GHC} -no-user-package-conf -package-conf ${PKGCONF}"' >> $@
+	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+	echo "" >> $@
+	echo 'ghcOptions :: String' >> $@
+	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
@@ -197,6 +203,13 @@ ifeq ($(GLOBALINSTALL),yes)
 else
 	echo 'installGlobal = False' >> $@
 endif
+
+$(BINDIR)/cleancurry: utils/cleancurry
+	mkdir -p $(@D)
+	cp $< $@
+
+utils/%:
+	cd utils && $(MAKE) $(@F)
 
 ##############################################################################
 # Create documentation for system libraries:
@@ -236,7 +249,7 @@ cleanmanual:
 # SNIP FOR DISTRIBUTION - DO NOT REMOVE THIS COMMENT
 
 ##############################################################################
-# Create distribution versions of the complete system as tar file kics2.tar.gz
+# Distribution targets
 ##############################################################################
 
 # temporary directory to create distribution version
@@ -247,9 +260,51 @@ TARBALL =$(FULLNAME).tar.gz
 
 # generate a source distribution of KICS2:
 .PHONY: dist
-dist: $(COMP)
+dist:
 	# remove old distribution
-	rm -rf $(TARBALL) ${TMPDIR}
+	rm -f $(TARBALL)
+	$(MAKE) $(TARBALL)
+
+# publish the distribution files in the local web pages
+HTMLDIR=${HOME}/public_html/kics2/download
+.PHONY: publish
+publish: $(TARBALL)
+	cp $(TARBALL) docs/INSTALL.html ${HTMLDIR}
+	chmod -R go+rX ${HTMLDIR}
+	@echo "Don't forget to run 'update-kics2' to make the update visible!"
+
+# test distribution installation
+.PHONY: testdist
+testdist: $(TARBALL)
+	cp $(TARBALL) $(TMP)
+	rm -rf $(TMPDIR)
+	cd $(TMP) && tar xzfv $(TARBALL)
+	cd $(TMPDIR) && $(MAKE)
+	cd $(TMPDIR) && $(MAKE) uninstall
+	rm -rf $(TMPDIR)
+	rm -rf $(TMP)/$(TARBALL)
+	@echo "Integration test successfully completed."
+
+# Directories containing development stuff only
+DEV_DIRS=benchmarks debug docs experiments talks
+
+# Clean all files that should not be included in a distribution
+.PHONY: cleandist
+cleandist:
+ifneq ($(CURDIR), $(TMPDIR))
+	$(error cleandist target called outside TMPDIR. Don't shoot yourself in the foot)
+endif
+	rm -rf .git .gitmodules .gitignore
+	cd lib        && rm -rf .git .gitignore
+	cd currytools && rm -rf .git .gitignore
+	cd frontend/curry-base     && rm -rf .git .gitignore dist
+	cd frontend/curry-frontend && rm -rf .git .gitignore dist
+	rm -rf $(BINDIR)
+	cd utils && $(MAKE) cleanall
+	rm -rf $(DEV_DIRS)
+
+$(TARBALL): $(COMP)
+	rm -rf $(TMPDIR)
 	# initialise git repository
 	git clone . ${TMPDIR}
 	cd ${TMPDIR} && git submodule init && git submodule update
@@ -257,7 +312,7 @@ dist: $(COMP)
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
 	if [ -x $(CYMAKE) ] ; then \
-	  cp -pr $(CYMAKE) $(TMPDIR)/bin/.local/ ; \
+	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
@@ -286,30 +341,25 @@ dist: $(COMP)
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
-# publish the distribution files in the local web pages
-HTMLDIR=${HOME}/public_html/kics2/download
-.PHONY: publish
-publish:
-	cp $(TARBALL) docs/INSTALL.html ${HTMLDIR}
-	chmod -R go+rX ${HTMLDIR}
-	@echo "Don't forget to run 'update-kics2' to make the update visible!"
-
-# Directories containing development stuff only
-DEV_DIRS=benchmarks debug docs experiments papers talks
-
-# Clean all files that should not be included in a distribution
-.PHONY: cleandist
-cleandist:
-	rm -rf .git .gitmodules .gitignore
-	rm -rf lib/.git
-	cd frontend/curry-base     && rm -rf .git .gitignore dist
-	cd frontend/curry-frontend && rm -rf .git .gitignore dist
-	rm -rf $(BINDIR) # clean executables
-	rm -rf $(DEV_DIRS)
-
 ##############################################################################
-# Development only targets
+# Development targets
 ##############################################################################
+
+BOOTLOG = boot.log
+
+# bootstrap the compiler with logging
+.PHONY: bootstrapwithlogging
+bootstrapwithlogging:
+	@rm -f ${BOOTLOG}
+	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
+	${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
+	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
+	@echo "Bootstrap process logged in file ${BOOTLOG}"
+
+# bootstrap the compiler
+.PHONY: bootstrap
+bootstrap: ${INSTALLCURRY} frontend scripts
+	cd src && $(MAKE) bootstrap
 
 .PHONY: Compile
 Compile: ${INSTALLCURRY} scripts
@@ -319,27 +369,16 @@ Compile: ${INSTALLCURRY} scripts
 REPL: ${INSTALLCURRY} scripts
 	cd src && ${MAKE} REPLBoot
 
-# Peform a full bootstrap - distribution - installation
-# lifecycle to test consistency of the whole process
+# Peform a full bootstrap - distribution - installation - uninstallation
+# lifecycle to test consistency of the whole process.
 # WARNING: This installation will corrupt any existing global KICS2
 # installation for the current user which shares the exact same version!
 # This is because the runtime and libraries cabal packages would be
 # reinstalled and, later on, unregistered.
-.PHONY: test
-test:
-	# clean up
+.PHONY: roundtrip
+roundtrip:
 	$(MAKE) cleanall
 	rm -rf $(BINDIR)
-	# bootstrap!
 	$(MAKE) bootstrap
-	# make distribution
-	make dist
-	# test installation
-	cp $(TARBALL) $(TMP)
-	rm -rf $(TMPDIR)
-	cd $(TMP) && tar xzfv $(TARBALL)
-	cd $(TMPDIR) && $(MAKE)
-	cd $(TMPDIR) && $(MAKE) uninstall
-	rm -rf $(TMPDIR)
-	rm -rf $(TMP)/$(TARBALL)
-	@echo "Integration test successfully completed."
+	$(MAKE) dist
+	$(MAKE) testdist

@@ -9,3 +9,6 @@
 [submodule "curry-frontend"]
   path = frontend/curry-frontend
   url = git://git-ps.informatik.uni-kiel.de/curry/curry-frontend.git
+[submodule "currytools"]
+	path = currytools
+	url = git://git-ps.informatik.uni-kiel.de/curry/curry-tools.git

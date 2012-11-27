@@ -15,13 +15,12 @@ module Linker
 import AbstractCurry
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
-import IO (Handle, hFlush, stdout)
+import IO            (Handle, hFlush, stdout)
 import Directory
+import FilePath      ((</>), dropExtension)
 import System
-import FileGoodies
 
 import qualified Installation as Inst
-import Files
 import GhciComm
 import Names         (funcInfoFile)
 import RCFile
@@ -91,6 +90,8 @@ loadPaths rst = "." : rst :> importPaths ++ rst :> libPaths
 -- ---------------------------------------------------------------------------
 
 --- Location of the system configuration file.
+--- Currently, user-defined ghc options are stored here in order
+--- to force the recompilation of target programs if ghc options are changed.
 scFileName :: String
 scFileName = Inst.installDir </> ".kics2sc"
 
@@ -122,6 +123,7 @@ getGoalInfo rst = do
                 (if isio  then "" else "not ") ++ "of IO type..."
   return (isdet, isio)
 
+-- Checks whether user-defined ghc options have been changed.
 updateGhcOptions :: String -> IO Bool
 updateGhcOptions newOpts = do
   oldOpts <- readPropertyFile scFileName >>= return . flip rcValue key
@@ -168,6 +170,7 @@ compileWithGhci rst ghcCompile mainExp = do
 ghcCall :: ReplState -> Bool -> Bool -> String -> String
 ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
   [ Inst.ghcExec
+  , Inst.ghcOptions
   , if rst :> optim && not useGhci then "-O2"            else ""
   , if useGhci                     then "--interactive"  else "--make"
   , if rst :> verbose < 2          then "-v0"            else "-v1"
@@ -211,7 +214,7 @@ mainModule rst isdet isio mbBindings = unlines
   , "import Basics"
   , "import SafeExec"
   , if mbBindings==Nothing then "" else "import Curry_Prelude"
-  , "import Curry_" ++ stripSuffix mainGoalFile
+  , "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"
   , mainExpr "kics2MainGoal" isdet isio (rst :> ndMode) evalMode mbBindings

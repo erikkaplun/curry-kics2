@@ -3,19 +3,19 @@
 --- that is stored in $HOME/.kics2rc
 ---
 --- @author  Michael Hanus
---- @version June 2012
+--- @version July 2012
 ----------------------------------------------------------------------
 
 module RCFile (readRC, rcValue, setRCProperty) where
 
 import Char         (toLower, isSpace)
 import Directory    (doesFileExist, renameFile)
+import FilePath     ((</>))
 import Installation (installDir)
 import PropertyFile
 import Sort         (mergeSort)
 import System       (system, getEnviron)
 
-import Files        ((</>))
 import Utils        (liftIO, mapFst, strip, unless)
 
 defaultRC :: String

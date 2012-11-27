@@ -2,17 +2,18 @@
 --- This module contains operations to change names of the original program
 --- into names used in the target program and vice versa.
 --- 
---- @author Michael Hanus, Björn Peemöller, Fabian Reck
---- @version June 2012
+--- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
+--- @version November 2012
 --- --------------------------------------------------------------------------
 module Names where
 
-import Char (isAlphaNum)
-import List (intersperse)
+import Char            (isAlphaNum)
+import FilePath        ((</>))
+import List            (intersperse)
 
+import Base            (NDClass (..), HOClass (..))
 import AbstractHaskell (QName)
-import Base (NDClass (..), HOClass (..))
-import Files ((</>), withComponents)
+import Files           (withComponents)
 
 -- ---------------------------------------------------------------------------
 -- Renaming file names
@@ -245,48 +246,3 @@ spanAll p xs = (if null pfx then id else (pfx:)) $ case rest of
   []     -> []
   (x:ys) -> [x] : spanAll p ys
  where (pfx, rest) = span p xs
-
--- OLD STUFF -----------------------------------------------------------------
--- 
--- -- rename type constructors
--- mkTypeName :: String -> String
--- mkTypeName n
---   | n == "[]"     = "OP_List"
---   | n == "()"     = "OP_Unit"
---   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
---   | otherwise     = replaceNonIdChars "C_" "OP_" n
--- 
--- -- rename modules
--- mkModName :: String -> String
--- mkModName = ("Curry_" ++)
--- 
--- -- Rename qualified type constructor.
--- renType (mn,fn) = (mkModName mn, mkTypeName fn)
--- 
--- -- Rename qualified data constructor.
--- renCons (mn,fn) = (mkModName mn, mkConName fn)
--- 
--- -- Rename qualified defined function.
--- renFunc (mn,fn) = (mkModName mn, mkFunName fn)
--- 
--- -- rename defined functions
--- mkFunName :: String -> String
--- mkFunName = replaceNonIdChars "c_" "op_"
--- 
--- -- rename data constructors
--- mkConName :: String -> String
--- mkConName n
---   | n == "[]"     = "OP_Nil"
---   | n == ":"      = "OP_Cons"
---   | n == "()"     = "OP_Unit"
---   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
---   | otherwise     = replaceNonIdChars "C_" "OP_" n
--- 
--- -- unrename data constructors
--- umkConName :: String -> String
--- umkConName n | mkConName oldCon =:= n = oldCon where oldCon free
---  | n == "OP_Nil"    = "[]"
---  | n == "OP_Cons"   = ":"
---  | n == "OP_Unit"   = "()"
---  | take 2 n == "C_" = drop 2 n
---  | otherwise        = n
