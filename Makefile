@@ -47,7 +47,7 @@ MAKELOG = make.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
-export GHC-PKG := $(dirname $(GHC))ghc-pkg
+export GHC-PKG := $(dir $(GHC))ghc-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
@@ -192,7 +192,7 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
