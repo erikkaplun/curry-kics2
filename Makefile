@@ -382,3 +382,10 @@ roundtrip:
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
+
+.PHONY: config
+config:
+	@$(foreach V, \
+          $(sort $(.VARIABLES)), \
+	  $(if $(filter-out environment% default automatic, \
+          $(origin $V)),$(info $V = $($V))))
