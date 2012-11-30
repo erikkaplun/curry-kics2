@@ -146,6 +146,9 @@ class (NonDet a, Show a) => NormalForm a where
   ($##) :: NonDet b => (a -> ConstStore -> b) -> a -> ConstStore -> b
   -- |TODO: We are not perfectly sure what this does (or at least should do)
   ($!<) :: (a -> IO b) -> a -> IO b
+  -- show of constructor
+  showCons :: a -> String
+  showCons = show
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 

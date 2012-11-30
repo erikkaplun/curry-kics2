@@ -17,6 +17,11 @@ import PrimTypes
 import Search
 import Types
 
+failCheck :: NonDet a => String -> [String] -> a -> a
+failCheck fun args x = case try x of
+  Fail cd info -> failCons cd (traceFail fun args info)
+  _            -> x
+
 -- ---------------------------------------------------------------------------
 -- Auxiliaries for non-determinism and higher order
 -- ---------------------------------------------------------------------------

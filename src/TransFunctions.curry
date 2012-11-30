@@ -11,6 +11,7 @@ import Analysis
 import CompilerOpts
 import FlatCurry
 import FlatCurryGoodies
+import LiftCase
 import Message
 import Names
 import Splits
@@ -352,11 +353,12 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) ++ [constStoreVarIdx]) e'
+  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) ++ [constStoreVarIdx]) (failCheck qn vs e')
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) ++ [constStoreVarIdx] in
-  returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
+  let vs      = [1 .. a]
+      vsExtra = vs ++ (if dm then [] else [suppVarIdx]) ++ [constStoreVarIdx] in
+  returnM $ Rule vsExtra $ failCheck qn vs $ funcCall (externalFunc qn) (map Var vsExtra)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
 transBody qn vs exp = case exp of
@@ -450,7 +452,7 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
              (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
-             (traceFail (Var 1000) qn' (map Var vs) (Var 1001))
+             (liftFail [Var 1000, Var 1001])
     , Branch (Pattern ("", "_") [])
              (consFail qn' (Var i))
     ] -- TODO Magic numbers?
@@ -699,20 +701,19 @@ char c = funcCall curryChar charExpr
 float :: Float -> Expr
 float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
 
-traceFail cd qn args fail = liftFail
-  [ cd
-  , funcCall (basics, "traceFail")
-    [ showQName qn
-    , list2FCList (map (\a -> funcCall (prelude, "show") [a]) args)
-    , fail
+failCheck qn vars e
+  | isCaseAuxFuncName (snd $ unRenamePrefixedFunc qn) = e
+  | otherwise                   = funcCall (basics, "failCheck")
+    [ showQName $ unRenameQName qn
+    , list2FCList (map (\v -> funcCall (prelude, "show") [Var v]) vars)
+    , e
     ]
-  ]
 
 consFail qn arg = liftFail
   [ defCover
   , funcCall (basics, "consFail")
     [ showQName $ unRenameQName qn
-    , list2FCList [funcCall (prelude, "show") [arg]]
+    , funcCall (basics, "showCons") [arg]
     ]
   ]
 

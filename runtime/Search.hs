@@ -123,8 +123,11 @@ getNormalForm goal = do
   return $ const $!! goal s emptyCs $ emptyCs
 
  -- |Evaluate a deterministic expression without search
-evalD :: Show a => DetExpr a -> IO ()
-evalD goal = print (goal emptyCs)
+evalD :: NormalForm a => DetExpr a -> IO ()
+evalD goal = case try (goal emptyCs) of
+  Val v       -> print v
+  Fail _ info -> print info
+  _           -> return ()
 
  -- |Evaluate a non-deterministic expression without search
 eval :: Show a => NonDetExpr a -> IO ()
@@ -171,7 +174,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
     | d <= 0    = indent l k . showChar '_' . nl
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
-      Fail _ info     -> showChar '!' . nl . shows info . nl
+      Fail _ _        -> showChar '!'
       Choice  _ i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
       Narrowed _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
       Free     _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))

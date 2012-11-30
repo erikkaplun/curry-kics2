@@ -19,7 +19,7 @@ import List (intersperse)
 import Names
   ( mkChoiceName, mkChoicesName, mkFailName, mkGuardName, mkFoConsName
   , mkHoConsName, renameModule, unGenRename, unRenameModule, renameQName
-  , unRenameQName)
+  , unRenameQName, curryPrelude, funcPrefix, genRename)
 import Analysis
 
 -- ---------------------------------------------------------------------------
@@ -490,10 +490,10 @@ unifiableInstance hoResult (FC.Type qf _ tnums cdecls) =
   mkInstance (basics "Unifiable") [] ctype targs $ concat
     -- unification
   [ concatMap (unifiableConsRule hoResult (basics "=.=") (basics "=:=")) cdecls
-  , catchAllCase (basics "=.=") newFail
+  , [newFail (basics "=.=")]
     -- lazy unification (functional patterns)
   , concatMap (unifiableConsRule hoResult (basics "=.<=") (basics "=:<=")) cdecls
-  , catchAllCase (basics "=.<=") newFail
+  , [newFail (basics "=.<=")]
     -- bind
   , concatMap (bindConsRule hoResult (basics "bind") (\ident arg -> applyF (basics "bind") [ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
   , [ bindChoiceRule   qf (basics "bind")
@@ -515,7 +515,9 @@ unifiableInstance hoResult (FC.Type qf _ tnums cdecls) =
   ]
   where targs = map fcy2absTVar tnums
         ctype = TCons qf (map TVar targs)
-        newFail = applyF (basics "Fail_C_Success") [defCover, applyF (basics "defFailInfo")[]]
+        newFail qn = (qn, simpleRule [PVar (1,"a"), PVar (2,"b"), PVar (3, "_")]
+                          (applyF (basics "Fail_C_Success") [defCover, applyF (basics "unificationFail") [applyF (basics "showCons") [Var (1,"a")], applyF (basics "showCons") [Var (2,"b")]]])
+                     )
 
 -- Generate Unifiable instance rule for a data constructor
 unifiableConsRule :: HOResult -> QName -> QName -> FC.ConsDecl -> [(QName, Rule)]
