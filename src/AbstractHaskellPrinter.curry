@@ -398,7 +398,8 @@ showBranchExpr opts (Branch pattern expr)
 showLiteral :: Literal -> String
 showLiteral (Intc i)   = showInt i
 showLiteral (Floatc f) = showFloat f
-showLiteral (Charc c)  = "'" ++ showCharc (Charc c) ++ "'"
+showLiteral (Charc c)  = show c
+-- showLiteral (Charc c)  = "'" ++ showCharc (Charc c) ++ "'"
 
 -- Show an integer (no brackets around negative numbers):
 showInt :: Int -> String
