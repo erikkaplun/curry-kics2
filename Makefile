@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 14/11/12
+COMPILERDATE    = 02/02/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -132,7 +132,6 @@ installhaskell:
 clean: $(BINDIR)/cleancurry
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd benchmarks && ${MAKE} clean
 	cd cpns       && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then \
 	  cd lib/.curry/kics2 && rm -f *.hi *.o ; \
@@ -146,6 +145,9 @@ clean: $(BINDIR)/cleancurry
 	cd tools      && ${MAKE} clean
 	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
+	@if [ -d benchmarks ] ; then \
+	  cd benchmarks && ${MAKE} clean ; \
+	fi
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
