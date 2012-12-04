@@ -15,6 +15,7 @@ import Solver
 import Strategies
 import Types
 import MonadSearch
+import FailTrace
 
 -- ---------------------------------------------------------------------------
 -- Search combinators for top-level search in the IO monad
@@ -122,12 +123,24 @@ getNormalForm goal = do
   s <- initSupply
   return $ const $!! goal s emptyCs $ emptyCs
 
+-- |Evaluate a deterministic expression without search, but trace failures
+failtraceD :: NormalForm a => DetExpr a -> IO ()
+failtraceD goal = case try (goal emptyCs) of
+  Val v       -> print v
+  Fail _ info -> failTrace info
+  x           -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
+
+-- |Evaluate a deterministic expression without search, but trace failures
+failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
+failtraceDIO goal = case try (goal emptyCs) of
+  Val (C_IO io) -> io >> return ()
+  Fail _ info   -> failTrace info
+  x             -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
+
  -- |Evaluate a deterministic expression without search
 evalD :: NormalForm a => DetExpr a -> IO ()
-evalD goal = case try (goal emptyCs) of
-  Val v       -> print v
-  Fail _ info -> print info
-  _           -> return ()
+evalD = failtraceD
+-- evalD goal = print (goal emptyCs)
 
  -- |Evaluate a non-deterministic expression without search
 eval :: Show a => NonDetExpr a -> IO ()
