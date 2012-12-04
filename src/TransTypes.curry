@@ -15,7 +15,7 @@ import AbstractHaskell
 import AbstractHaskellGoodies
 import FlatCurry2AbstractHaskell
 import FiniteMap
-import List (intersperse)
+import List (intercalate, intersperse)
 import Names
   ( mkChoiceName, mkChoicesName, mkFailName, mkGuardName, mkFoConsName
   , mkHoConsName, renameModule, unGenRename, unRenameModule, renameQName
@@ -398,7 +398,10 @@ normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
     , (basics "$!<", simpleRule [PVar cont, PVar x]
         (applyV cont [Var x]))
     ]
-  -- searchNF
+    -- showCons
+  , concatMap (showConsConsRule hoResult) cdecls
+  , [showConsCatchRule qf]
+    -- searchNF
   , concatMap (searchNFConsRule hoResult) cdecls
   , [searchNFCatchRule qf]
   ]
@@ -447,6 +450,33 @@ normalFormExtConsRules qf funcName choiceFunc choicesFunc =
 
  where [info, c, cs, cd, cont,i,x,y,e,xs ,us] 
           = newVars ["info", "c", "cs", "cd", "cont","i","x","y","e","xs", "_"]
+
+-- Generate searchNF instance rule for a data constructor
+showConsConsRule :: HOResult -> FC.ConsDecl -> [(QName, Rule)]
+showConsConsRule hoResult (FC.Cons qn carity _ _)
+  | isHoCons  = map rule [qn, mkHoConsName qn]
+  | otherwise = [rule qn]
+
+  where
+    isHoCons  = lookupFM hoResult qn == Just HO
+    rule name = ( basics "showCons"
+                , simpleRule [consPattern name "_" carity]
+                  (string2ac $ intercalate " " $
+                    showQName (unRenameQName name) : replicate carity "_")
+                )
+
+showConsCatchRule :: QName -> (QName, Rule)
+showConsCatchRule qf
+  = ( basics "showCons"
+    , simpleRule [PVar x]
+      ( applyF (pre "error")
+          [ applyF (pre "++")
+            [ string2ac (showQName (unRenameQName qf) ++ ".showCons: no constructor: ")
+            , applyF (pre "show") [Var x]
+            ]
+          ])
+    )
+  where [x] = newVars ["x"]
 
 -- Generate searchNF instance rule for a data constructor
 searchNFConsRule :: HOResult -> FC.ConsDecl -> [(QName, Rule)]
