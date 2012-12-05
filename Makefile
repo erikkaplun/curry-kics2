@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 04/02/12
+COMPILERDATE    = 04/12/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
