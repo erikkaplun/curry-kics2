@@ -576,10 +576,12 @@ processSetOption rst option
  where (opt, args)  = break (==' ') option
        matched      = filter (isPrefixOf (map toLower opt) . fst) availOptions
 
+-- In a global installation, the option for setting the identifier supply
+-- is not available:
 availOptions :: [(String, ReplState -> String -> IO (Maybe ReplState))]
 availOptions = filter installOpts replOptions
   where installOpts (opt, _) = not Inst.installGlobal
-                               || opt `notElem` ["supply","ghc"]
+                               || opt `notElem` ["supply"]
 
 replOptions :: [(String, ReplState -> String -> IO (Maybe ReplState))]
 replOptions =
@@ -664,9 +666,7 @@ printOptions rst = putStrLn $
   "+/-time        - show execution time\n"++
   "+/-ghci        - use ghci instead of ghc to evaluate main expression\n"++
   "cmp <opts>     - additional options passed to KiCS2 compiler\n" ++
-  ifLocal
-   ("ghc <opts>     - additional options passed to GHC\n"++
-    "                 (e.g., -DDISABLE_CS, -DSTRICT_VAL_BIND)\n") ++
+  "ghc <opts>     - additional options passed to GHC\n"++
   "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
   "args <args>    - run-time arguments passed to main program\n" ++
   showCurrentOptions rst
@@ -690,7 +690,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
       ) ++ "\n" ++
   "idsupply          : " ++ rst :> idSupply ++ "\n" ++
   "compiler options  : " ++ rst :> cmpOpts ++ "\n" ++
-  ifLocal ("ghc options       : " ++ rst:>ghcOpts ++ "\n") ++
+  "ghc options       : " ++ rst:>ghcOpts ++ "\n" ++
   "run-time options  : " ++ rst :> rtsOpts ++ "\n" ++
   "run-time arguments: " ++ rst :> rtsArgs ++ "\n" ++
   "verbosity         : " ++ show (rst :> verbose) ++ "\n" ++
