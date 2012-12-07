@@ -297,6 +297,8 @@ showExprOpt opts (ListComp expr stmts) =
 showExprOpt opts (Case expr branches)  =
   "case " ++ (showBoxedExpr opts expr) ++ " of\n"
           ++ showBlock (combineMap (showBranchExpr opts) branches "\n")
+showExprOpt opts (Typed e ty) = '(' : showExprOpt opts e ++ " :: "
+                                ++ showTypeExpr opts False ty ++ ")"
 
 showSymbol :: Options -> QName -> String
 showSymbol opts (modName, symName)

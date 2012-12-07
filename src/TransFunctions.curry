@@ -540,6 +540,10 @@ transExpr (Free vs e) =
 -- case -- TODO give reasonable implementation
 transExpr e@(Case _ _ _) = returnM ([], e)
 
+transExpr (Typed e ty) =
+  transExpr e `bindM` \(g, e') ->
+  genIds g (Typed e' (check42 (transTypeExpr 0) ty))
+
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
 genIds ns@(_:_) expr =
