@@ -11,7 +11,6 @@ GHC_EXTS = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translating Curry programs:
 GHC_INCL = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)/:$(LIBDIR)/$(SUBDIR)/:$(LIBDIR)/meta/$(SUBDIR)/
 # Can be overwritten
-GHC      = ghc
 GHC_CALL = $(GHC) $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
 # bootstrap compiler
 KICS2    = $(shell which kics2)

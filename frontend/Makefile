@@ -8,14 +8,14 @@ FRONTEND_VERSION := $(shell sed -n 's/^Version *: *\(.*\)$$/\1/p' curry-frontend
 # install the sources of the front end from its repository
 $(CYMAKE): unregister
 	mkdir -p $(@D)
-	cd curry-base     && cabal install
-	cd curry-frontend && cabal install --bindir=$(@D)
+	cd curry-base     && $(CABAL_INSTALL)
+	cd curry-frontend && $(CABAL_INSTALL) --bindir=$(@D)
 
 # unregister previous version to avoid cabal install failures
 .PHONY: unregister
 unregister:
-	-ghc-pkg unregister curry-frontend-$(FRONTEND_VERSION)
-	-ghc-pkg unregister curry-base-$(BASE_VERSION)
+	-$(GHC-PKG) unregister curry-frontend-$(FRONTEND_VERSION)
+	-$(GHC-PKG) unregister curry-base-$(BASE_VERSION)
 
 .PHONY: update
 update:
@@ -24,5 +24,5 @@ update:
 
 .PHONY: clean
 clean:
-	cd curry-base     && cabal clean
-	cd curry-frontend && cabal clean
+	cd curry-base     && $(CABAL) clean
+	cd curry-frontend && $(CABAL) clean

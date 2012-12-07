@@ -13,7 +13,7 @@ REVISIONVERSION = 2
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 14/11/12
+COMPILERDATE    = 04/12/12
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -47,11 +47,13 @@ MAKELOG = make.log
 
 # The path to the Glasgow Haskell Compiler:
 export GHC     := $(shell which ghc)
-export GHC-PKG := $(dirname $(GHC))ghc-pkg
+export GHC-PKG := $(dir $(GHC))ghc-pkg
 # The path to the package configuration file
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
 export GHC_OPTIONS =
+export CABAL         = cabal
+export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -120,19 +122,18 @@ frontend:
 # install required cabal packages
 .PHONY: installhaskell
 installhaskell:
-	cabal update
-	cabal install network
-	cabal install unbounded-delays
-	cabal install parallel
-	cabal install tree-monad
-	cabal install parallel-tree-search
-	cabal install mtl
+	$(CABAL) update
+	$(CABAL_INSTALL) network
+	$(CABAL_INSTALL) unbounded-delays
+	$(CABAL_INSTALL) parallel
+	$(CABAL_INSTALL) tree-monad
+	$(CABAL_INSTALL) parallel-tree-search
+	$(CABAL_INSTALL) mtl
 
 .PHONY: clean
 clean: $(BINDIR)/cleancurry
 	rm -f *.log
 	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd benchmarks && ${MAKE} clean
 	cd cpns       && ${MAKE} clean
 	@if [ -d lib/.curry/kics2 ] ; then \
 	  cd lib/.curry/kics2 && rm -f *.hi *.o ; \
@@ -146,6 +147,9 @@ clean: $(BINDIR)/cleancurry
 	cd tools      && ${MAKE} clean
 	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
+	@if [ -d benchmarks ] ; then \
+	  cd benchmarks && ${MAKE} clean ; \
+	fi
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -192,7 +196,7 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"$(shell utils/which ghc)\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
@@ -382,3 +386,10 @@ roundtrip:
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
+
+.PHONY: config
+config:
+	@$(foreach V, \
+          $(sort $(.VARIABLES)), \
+	  $(if $(filter-out environment% default automatic, \
+          $(origin $V)),$(info $V = $($V))))
