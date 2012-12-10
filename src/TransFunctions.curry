@@ -312,8 +312,10 @@ check42 f t = case t of
 
 -- translate a type expressen by inserting an additional ConstStore type
 
-transExprType :: TypeExpr -> TypeExpr
-transExprType = transHOTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
+transExprType :: Bool -> TypeExpr -> TypeExpr
+transExprType deterministic
+  | deterministic = transHOTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
+  | otherwise     = transHOTypeExprWith funcType
 
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
 transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
@@ -544,8 +546,9 @@ transExpr (Free vs e) =
 transExpr e@(Case _ _ _) = returnM ([], e)
 
 transExpr (Typed e ty) =
+  isDetMode `bindM` \dm ->
   transExpr e `bindM` \(g, e') ->
-  genIds g (Typed e' (check42 transExprType ty))
+  genIds g (Typed e' (check42 (transExprType dm) ty))
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
