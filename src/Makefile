@@ -6,14 +6,12 @@
 SUBDIR   = .curry/kics2
 # ghc options
 GHC_OPTS = -O2 --make -v1 -cpp -package ghc
-# ghc language extensions for compiling translating Curry programs
+# ghc language extensions for compiling translated Curry programs
 GHC_EXTS = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
-# ghc includes for compiling translating Curry programs:
+# ghc includes for compiling translated Curry programs
 GHC_INCL = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)/:$(LIBDIR)/$(SUBDIR)/:$(LIBDIR)/meta/$(SUBDIR)/
-# Can be overwritten
+# Call to ghc binary
 GHC_CALL = $(GHC) $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
-# bootstrap compiler
-KICS2    = $(shell which kics2)
 # The kics2c call
 KICS2C   = $(COMP) -v2 -i$(LIBDIR) -i$(LIBDIR)/meta
 
@@ -58,7 +56,6 @@ bootstrap:
 .PHONY: clean
 clean:
 	rm -f $(LOCALBIN)/stage[1,2,3]
-#	rm -f ${COMP}.bak ${REPL}.bak
 	rm -f *.hi *.o
 	@if [ -d $(SUBDIR) ] ; then \
 	  cd $(SUBDIR) && rm -f *.hi *.o ; \
@@ -78,24 +75,17 @@ CompileInitial: Compile.curry
 	mkdir -p $(LOCALBIN)
 	@if [ -x "$(KICS2)" ] ; then \
 	  $(KICS2) :l Compile :save :quit ; \
-#	  $(MAKE) backup_compiler ; \
 	  mv Compile $(COMP) ; \
 	else \
 	  pakcs -s Compile ; \
-#	  ${MAKE} backup_compiler ; \
 	  mv Compile.state $(COMP) ; \
 	fi
-
-#.PHONY: backup_compiler
-#backup_compiler:
-#	if [ -f ${COMP} ] ; then mv ${COMP} ${COMP}.bak ; fi
 
 # generate executable for Curry -> Haskell compiler kics2c:
 .PHONY: CompileBoot
 CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 	mkdir -p $(LOCALBIN)
 	$(GHC_CALL) -o $(COMP) $<
-#	${MAKE} backup_compiler
 
 # recompile installation information and the compiler
 .PHONY: updateInstallInfo
@@ -118,7 +108,6 @@ $(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry)
 REPLBoot: REPLBoot.hs $(SUBDIR)/Curry_REPL.hs
 	mkdir -p $(LOCALBIN)
 	$(GHC_CALL) -o $(REPL) $<
-#	if [ -f ${REPL} ] ; then mv ${REPL} ${REPL}.bak ; fi
 
 $(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY)
 	$(KICS2C) $<
