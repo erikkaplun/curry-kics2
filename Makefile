@@ -167,6 +167,12 @@ cleanall: clean
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
 
+GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
+GHC_MINOR := $(shell $(GHC) --numeric-version | cut -d. -f2)
+
+GHC_GEQ_76 = $(shell test $(GHC_MAJOR) -gt 7 -o \( $(GHC_MAJOR) -eq 7 \
+              -a $(GHC_MINOR) -ge 6 \) && echo $$?)
+
 ${INSTALLHS}: Makefile utils/pwd utils/which
 	@if [ ! -x "${GHC}" ] ; then \
 	  echo "No executable 'ghc' found in path!" && exit 1; \
@@ -195,8 +201,21 @@ ${INSTALLHS}: Makefile utils/pwd utils/which
 	echo 'installDate :: String' >> $@
 	echo 'installDate = "$(INSTALLDATE)"' >> $@
 	echo "" >> $@
+	echo 'runtime :: String' >> $@
+	echo 'runtime = "ghc"' >> $@
+	echo "" >> $@
+	echo 'runtimeMajor :: Int' >> $@
+	echo 'runtimeMajor = $(GHC_MAJOR)' >> $@
+	echo "" >> $@
+	echo 'runtimeMinor :: Int' >> $@
+	echo 'runtimeMinor = $(GHC_MINOR)' >> $@
+	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
+ifeq ($(GHC_GEQ_76),0)
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-db \"${PKGCONF}\""' >> $@
+else
 	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+endif
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
