@@ -134,6 +134,7 @@ funcSetOfExpr (Let bs e) = unionRBT (unionMap (funcSetOfExpr . snd) bs) (funcSet
 funcSetOfExpr (Or e1 e2) = unionRBT (funcSetOfExpr e1) (funcSetOfExpr e2)
 funcSetOfExpr (Case _ e bs) = unionRBT (funcSetOfExpr e) (unionMap funcSetOfBranch bs)
                      where funcSetOfBranch (Branch _ be) = funcSetOfExpr be
+funcSetOfExpr (Typed e _) = funcSetOfExpr e
 
 isConstructorComb ct = case ct of
   ConsCall       -> True
