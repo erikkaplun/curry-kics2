@@ -5,6 +5,7 @@
 *.o-boot
 *.icurry
 .curry
+Curry_Main_Goal.curry
 
 # tex temporary files
 *.aux
