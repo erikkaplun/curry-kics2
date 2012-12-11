@@ -310,17 +310,20 @@ check42 f t = case t of
   (TVar (-42)) -> t
   _            -> f t
 
--- translate a type expressen by inserting an additional ConstStore type
+-- translate a type expressen by inserting an additional ConstStore and
+-- EncapsulationDepth type
 
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
-transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
-                                  (FuncType storeType)
+transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1
+                                               (FuncType nestingType 
+                                                  (FuncType storeType t2)))
+                                  (FuncType nestingType .FuncType storeType)
 
 -- translate a type expression by replacing (->) with Funcs and inserting
--- additional IDSupply and ConstStore types
+-- additional IDSupply, ConstStore and EncapsulationDepth types
 transNDTypeExpr :: Int -> TypeExpr -> TypeExpr
 transNDTypeExpr  = transTypeExprWith funcType
-                                     (FuncType supplyType . FuncType storeType)
+                   (FuncType supplyType . FuncType nestingType. FuncType storeType)
 
 transTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr)
                     -> (TypeExpr -> TypeExpr)
@@ -352,10 +355,12 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) ++ [constStoreVarIdx]) e'
+  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) 
+                  ++ [nestingVarIdx,constStoreVarIdx]) e'
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) ++ [constStoreVarIdx] in
+  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) 
+                       ++ [nextingVarIdx,constStoreVarIdx] in
   returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
@@ -387,7 +392,9 @@ addUnifIntCharRule bs bs' =
       -- TODO: magic number
       _ -> Branch (Pattern (constr isInt) [5000])
                   (funcCall (matchFun isInt)
-                    [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000,Var constStoreVarIdx ])
+                    [list2FCList $ map pair2FCPair 
+                                 $ reverse rules 
+                    ,Var 5000, Var nestingIdx, Var constStoreVarIdx ])
           : bs2
     matchFun True  = (basics,"matchInteger")
     matchFun False = (basics,"matchChar")
@@ -428,7 +435,10 @@ newBranches qn' vs i pConsName =
   let Just pos = find (==i) vs
       suppVar = if dm then [] else [suppVarIdx]
       (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ suppVar ++ [constStoreVarIdx])
+      call v = funcCall qn' $ 
+                map Var (vs1 ++ v : vs2 
+                             ++ suppVar 
+                             ++ [nestingIdx, constStoreVarIdx])
       -- pattern matching on guards will combine the new constraints with the given
       -- constraint store
       guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar))
@@ -441,7 +451,8 @@ newBranches qn' vs i pConsName =
       -- the expression (\z -> f x1 x2 z x3) in the module
       -- FlatCurry2AbstractHaskell.
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      lCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++  [constStoreVarIdx]) in
+      lCall = lambdaCall qn' 
+            $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++ [nestingIdx,constStoreVarIdx]) in
   returnM $
     [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002, 1003])
              (liftOr [Var 1000, Var 1001, call 1002, call 1003])
@@ -452,7 +463,7 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
              (liftFail [Var 1000, Var 1001])
     , Branch (Pattern ("", "_") [])
-             (liftFail [defCover, defFailInfo])
+             (liftFail [Var nestingIdx, defFailInfo])
     ] -- TODO Magic numbers?
 
 -- Complete translation of an expression where all newly introduced supply
@@ -502,9 +513,9 @@ transExpr (Comb FuncCall qn es) =
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
-    then genIds g (Comb FuncCall qn' (es' ++ [Var constStoreVarIdx]))
+    then genIds g (Comb FuncCall qn' (es' ++ [Var, nestingIdx, Var constStoreVarIdx]))
     else takeNextID `bindM` \i ->
-         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var constStoreVarIdx]))
+         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
@@ -569,6 +580,9 @@ idVar      = 2000
 
 -- Variable index for supply variable
 suppVarIdx = 3000
+
+-- Variable index for nesting level
+nestingIdx = 3250
 
 -- Variable index for constraint store
 constStoreVarIdx = 3500
@@ -648,6 +662,9 @@ tConstraint = TCons (basics, "Constraint") []
 supplyType :: TypeExpr
 supplyType  = TCons (basics, "IDSupply") []
 
+nestingType :: TypeExpr
+nestingType = TCons (basics, "Cover") []
+
 storeType :: TypeExpr
 storeType = TCons (basics, "ConstStore") []
 
@@ -712,7 +729,6 @@ rightSupply = funcCall (basics, "rightSupply")
 generate i  = funcCall (basics, "generate") [i]
 
 defFailInfo = funcCall (basics, "defFailInfo") []
-defCover    = funcCall (basics, "defCover") []
 
 -- ---------------------------------------------------------------------------
 -- Helper functions

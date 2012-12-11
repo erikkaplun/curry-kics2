@@ -355,25 +355,26 @@ matchRules qf = map nameRule
 generableInstance :: FC.TypeDecl -> TypeDecl
 generableInstance (FC.Type qf _ tnums cdecls) =
   mkInstance (basics "Generable") [] ctype targs
-    [(basics "generate", simpleRule [PVar s] (genBody (Var s)))]
+    [(basics "generate", simpleRule [PVar s,PVar c]  genBody)]
   where
     targs = map fcy2absTVar tnums
     ctype = TCons qf (map TVar targs)
-    [s] = newVars ["s"]
+    [s,c] = newVars ["s","c"]
+    idSupply = Var s
 
-    genBody idSupp =
+    genBody =
       applyF (mkChoicesName qf)
-      [ defCover
-      , applyF (basics "freeID") [arities, idSupp]
-      , list2ac $ map (genCons idSupp) cdecls
+      [ Var c
+      , applyF (basics "freeID") [arities, idSupply]
+      , list2ac $ map genCons cdecls
       ]
 
-    genCons idSupp (FC.Cons qn arity _ _) = applyF qn (consArgs2gen idSupp arity)
+    genCons (FC.Cons qn arity _ _) = applyF qn (consArgs2gen idSupply arity)
 
     arities = list2ac $ map (intc . consArity) cdecls
 
     consArgs2gen idSupp n = map (applyF (basics "generate") . (:[]))
-                          $ mkSuppList n idSupp
+                          $ mkSuppList n idSupply
 
 -- ---------------------------------------------------------------------------
 -- Generate instance of NormalForm class:
@@ -515,7 +516,7 @@ unifiableInstance hoResult (FC.Type qf _ tnums cdecls) =
   ]
   where targs = map fcy2absTVar tnums
         ctype = TCons qf (map TVar targs)
-        newFail = applyF (basics "Fail_C_Success") [defCover, applyF (basics "defFailInfo")[]]
+        newFail = applyF (basics "Fail_C_Success") [Var (3,"d"), applyF (basics "defFailInfo")[]]
 
 -- Generate Unifiable instance rule for a data constructor
 unifiableConsRule :: HOResult -> QName -> QName -> FC.ConsDecl -> [(QName, Rule)]
@@ -525,16 +526,22 @@ unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
 
   where
     isHoCons = lookupFM hoResult qn == Just HO
-    rule name = ( consFunc, simpleRule [consPattern name "x" carity, consPattern name "y" carity, PVar cs]
+    rule name = ( consFunc, simpleRule [consPattern name "x" carity
+                                       , consPattern name "y" carity
+                                       , PVar nestingDepth
+                                       , PVar cs]
               (unifBody genFunc) )
     unifBody funcName
       | carity == 0 = constF (basics "C_Success")
-      | otherwise   = foldr1 (\x xs -> applyF (basics "&") [x, xs, Var cs])
+      | otherwise   = foldr1 (\x xs -> applyF (basics "&") 
+                             [x, xs, Var nestingDepth, Var cs])
                         (map (\i -> applyF funcName
-                          [Var (i,'x':show i), Var (i,'y':show i), Var cs])
+                               [Var (i,'x':show i), Var (i,'y':show i)
+                               , Var nestingDepth, Var cs])
                         [1 .. carity])
     carity = length texps
-    cs = (carity +1, "cs")
+    cs = (carity + 2, "cs")
+    nestingDepth = (carity + 1, "d")
 
 -- Generate bindRules for a data constructor:
 --  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
@@ -833,7 +840,7 @@ consPattern qn varName carity
   = PComb qn $ map (PVar . mkVarName varName) [1 .. carity]
 
 catchAllCase qn retVal
-  = [(qn, simpleRule [PVar (1,"_"), PVar (2,"_"), PVar (3, "_")] retVal)]
+  = [(qn, simpleRule [PVar (1,"_"), PVar (2,"_"), PVar (3, "d"), PVar (4,"_")] retVal)]
 
 simpleRule patterns body = Rule patterns [noGuard body] []
 
@@ -891,9 +898,6 @@ idType = baseType (basics "ID")
 
 coverType :: TypeExpr
 coverType = baseType (basics "Cover")
-
-defCover :: Expr
-defCover = applyF (basics "defCover") []
 
 failInfoType :: TypeExpr
 failInfoType = baseType (basics "FailInfo")

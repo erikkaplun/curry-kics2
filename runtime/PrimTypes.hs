@@ -55,21 +55,21 @@ instance Generable BinInt where
 
 
 instance NormalForm BinInt where
-  ($!!) cont (Neg x1) cs = ((\y1 cs1 -> cont (Neg y1) cs1) $!! x1) cs
-  ($!!) cont Zero cs = cont Zero cs
-  ($!!) cont (Pos x1) cs = ((\y1 cs1 -> cont (Pos y1) cs1) $!! x1) cs
-  ($!!) cont (Choice_BinInt cd i x y) cs = nfChoice cont cd i x y cs
-  ($!!) cont (Choices_BinInt cd i xs) cs = nfChoices cont cd i xs cs
-  ($!!) cont (Guard_BinInt cd c x) cs = guardCons cd c ((cont $!! x) $! addCs c cs)
-  ($!!) _ (Fail_BinInt cd info) _ = failCons cd info
-  ($##) cont (Neg x1) cs = ((\y1 cs1 -> cont (Neg y1) cs1) $## x1) cs
-  ($##) cont Zero cs = cont Zero cs
-  ($##) cont (Pos x1) cs = ((\y1 cs1 -> cont (Pos y1) cs1) $## x1) cs
-  ($##) cont (Choice_BinInt cd i x y) cs = gnfChoice cont cd i x y cs
-  ($##) cont (Choices_BinInt cd i xs) cs = gnfChoices cont cd i xs cs
-  ($##) cont (Guard_BinInt cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
-  ($##) _ (Fail_BinInt cd info) _ = failCons cd info
-  ($!<) cont (Neg x1) = (\y1 -> cont (Neg y1)) $!< x1
+  ($!!) cont (Neg x1) cd cs = ((\y1 cd1 cs1 -> cont (Neg y1) cd1 cs1) $!! x1) cd cs
+  ($!!) cont Zero cd cs = cont Zero cd cs
+  ($!!) cont (Pos x1) cd cs = ((\y1 cd1 cs1 -> cont (Pos y1) cd1 cs1) $!! x1) cd cs
+  ($!!) cont (Choice_BinInt d i x y) cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choices_BinInt d i xs) cd cs = nfChoices cont d i xs cd cs
+  ($!!) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
+  ($!!) _ (Fail_BinInt d info) _ _ = failCons d info
+  ($##) cont (Neg x1) cd cs = ((\y1 cd1 cs1 -> cont (Neg y1) cd1 cs1) $## x1) cd cs
+  ($##) cont Zero cd cs = cont Zero cd cs
+  ($##) cont (Pos x1) cd cs = ((\y1 cd1 cs1 -> cont (Pos y1) cd1 cs1) $## x1)cd  cs
+  ($##) cont (Choice_BinInt d i x y) cd cs = gnfChoice cont d i x y cd cs
+  ($##) cont (Choices_BinInt d i xs) cd cs = gnfChoices cont d i xs cd cs
+  ($##) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
+  ($##) _ (Fail_BinInt d info) _ _ = failCons d info
+  ($!<) cont (Neg x1) cd = (\y1 -> cont (Neg y1)) $!< x1
   ($!<) cont Zero = cont Zero
   ($!<) cont (Pos x1) = (\y1 -> cont (Pos y1)) $!< x1
   ($!<) cont (Choice_BinInt cd i x y) = nfChoiceIO cont cd i x y
