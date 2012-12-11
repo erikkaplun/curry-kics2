@@ -353,8 +353,8 @@ $(TARBALL): $(COMP)
 	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
 	fi
 	# update Makefile
-	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
-	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
+	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"         \
+	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!
 	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
