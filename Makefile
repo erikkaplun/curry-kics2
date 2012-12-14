@@ -330,6 +330,7 @@ $(TARBALL): $(COMP)
 	rm -rf $(TMPDIR)
 	# initialise git repository
 	git clone . ${TMPDIR}
+	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(TMPDIR)/.gitmodules
 	cd ${TMPDIR} && git submodule init && git submodule update
 	# create local binary directory
 	mkdir -p ${TMPDIR}/bin/.local
