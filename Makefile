@@ -3,7 +3,7 @@
 ########################################################################
 
 # Is this a global installation (with restricted functionality)(yes/no)?
-GLOBALINSTALL=yes
+GLOBALINSTALL   = yes
 # The major version number:
 MAJORVERSION    = 0
 # The minor version number:
@@ -355,7 +355,7 @@ $(TARBALL): $(COMP)
 	fi
 	# update Makefile
 	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
-	             | sed 's|^GLOBALINSTALL=.*$$|GLOBALINSTALL=yes|' \
+	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!
 	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
