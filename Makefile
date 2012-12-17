@@ -34,7 +34,7 @@ export REPL      = $(LOCALBIN)/kics2i
 # The default options for the REPL
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE    = $(BINDIR)/cymake
+export FRONTEND    = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
@@ -52,6 +52,7 @@ export GHC-PKG := $(dir $(GHC))ghc-pkg
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
 export GHC_OPTIONS =
+export CYMAKE       := $(shell which cymake)
 export CABAL         = cabal
 export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
 
@@ -144,6 +145,7 @@ clean: $(BINDIR)/cleancurry
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
 	cd currytools && ${MAKE} clean
+	cd frontend   && ${MAKE} clean
 	cd tools      && ${MAKE} clean
 	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
@@ -335,8 +337,8 @@ $(TARBALL): $(COMP)
 	# create local binary directory
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
-	if [ -x $(CYMAKE) ] ; then \
-	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
+	if [ -x $(FRONTEND) ] ; then \
+	  cp -pr $(FRONTEND) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
