@@ -18,7 +18,7 @@ KICS2C   = $(COMP) -v2 -i$(LIBDIR) -i$(LIBDIR)/meta
 # Source modules of the compiler (without standard libraries):
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Analysis Base CompilerOpts Dependency2 EliminateCond Files    \
-               FlatCurry2AbstractHaskell GetOpt LiftCase Message ModuleDeps  \
+               FlatCurry2AbstractHaskell LiftCase Message ModuleDeps         \
                Names SCC SimpleMake Splits State TransFunctions TransTypes   \
                Utils
 
