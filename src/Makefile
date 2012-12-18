@@ -56,6 +56,7 @@ bootstrap:
 .PHONY: clean
 clean:
 	rm -f $(LOCALBIN)/stage[1,2,3]
+	rm -f Compile
 	rm -f *.hi *.o
 	@if [ -d $(SUBDIR) ] ; then \
 	  cd $(SUBDIR) && rm -f *.hi *.o ; \
@@ -78,6 +79,7 @@ CompileInitial: Compile.curry
 	  mv Compile $(COMP) ; \
 	else \
 	  pakcs -s Compile ; \
+	  rm -f Compile    ; \
 	  mv Compile.state $(COMP) ; \
 	fi
 

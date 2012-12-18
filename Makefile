@@ -156,7 +156,8 @@ clean: $(BINDIR)/cleancurry
 # clean everything (including compiler binaries)
 .PHONY: cleanall
 cleanall: clean
-	cd src && $(MAKE) cleanall
+	cd src   && $(MAKE) cleanall
+	cd utils && $(MAKE) cleanall
 	$(BINDIR)/cleancurry -r
 	rm -rf ${LOCALBIN}
 #	cd scripts && $(MAKE) clean
