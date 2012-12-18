@@ -3,7 +3,7 @@
 ########################################################################
 
 # Is this a global installation (with restricted functionality)(yes/no)?
-GLOBALINSTALL   = no
+GLOBALINSTALL   = yes
 # The major version number:
 MAJORVERSION    = 0
 # The minor version number:
@@ -34,7 +34,7 @@ export REPL      = $(LOCALBIN)/kics2i
 # The default options for the REPL
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE    = $(BINDIR)/cymake
+export FRONTEND    = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
@@ -52,6 +52,7 @@ export GHC-PKG := $(dir $(GHC))ghc-pkg
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
 export GHC_OPTIONS =
+export CYMAKE       := $(shell which cymake)
 export CABAL         = cabal
 export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
 
@@ -144,6 +145,7 @@ clean: $(BINDIR)/cleancurry
 	cd runtime    && ${MAKE} clean
 	cd src        && ${MAKE} clean
 	cd currytools && ${MAKE} clean
+	cd frontend   && ${MAKE} clean
 	cd tools      && ${MAKE} clean
 	cd utils      && ${MAKE} clean
 	cd www        && ${MAKE} clean
@@ -154,7 +156,8 @@ clean: $(BINDIR)/cleancurry
 # clean everything (including compiler binaries)
 .PHONY: cleanall
 cleanall: clean
-	cd src && $(MAKE) cleanall
+	cd src   && $(MAKE) cleanall
+	cd utils && $(MAKE) cleanall
 	$(BINDIR)/cleancurry -r
 	rm -rf ${LOCALBIN}
 #	cd scripts && $(MAKE) clean
@@ -330,12 +333,13 @@ $(TARBALL): $(COMP)
 	rm -rf $(TMPDIR)
 	# initialise git repository
 	git clone . ${TMPDIR}
+	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(TMPDIR)/.gitmodules
 	cd ${TMPDIR} && git submodule init && git submodule update
 	# create local binary directory
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
-	if [ -x $(CYMAKE) ] ; then \
-	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
+	if [ -x $(FRONTEND) ] ; then \
+	  cp -pr $(FRONTEND) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
@@ -353,7 +357,7 @@ $(TARBALL): $(COMP)
 	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
 	fi
 	# update Makefile
-	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"         \
+	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
 	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!

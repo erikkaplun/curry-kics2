@@ -20,7 +20,7 @@ KICS2_OPTS =
 # Source modules of the compiler (without standard libraries):
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Analysis Base CompilerOpts Dependency2 EliminateCond Files    \
-               FlatCurry2AbstractHaskell GetOpt LiftCase Message ModuleDeps  \
+               FlatCurry2AbstractHaskell LiftCase Message ModuleDeps         \
                Names SCC SimpleMake Splits State TransFunctions TransTypes   \
                Utils
 
@@ -58,6 +58,7 @@ bootstrap:
 .PHONY: clean
 clean:
 	rm -f $(LOCALBIN)/stage[1,2,3]
+	rm -f Compile
 	rm -f *.hi *.o
 	rm -f $(SUBDIR)/*.hi $(SUBDIR)/*.o
 
@@ -78,6 +79,7 @@ ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 	mv Compile $(COMP)
 else
 	pakcs -s Compile
+	rm -f Compile
 	mv Compile.state $(COMP)
 endif
 

@@ -23,9 +23,9 @@ import FilePath
   ( extSeparator, pathSeparator, (</>), (<.>)
   , splitFileName, splitExtension, splitDirectories, takeDirectory
   )
-import List         (last)
+import List         (last, scanl1)
 import ReadShowTerm (writeQTermFile)
-import Utils
+import Utils        (unless, when)
 
 --- Apply functions to all parts of a file name
 withComponents :: (String -> String) -- change path

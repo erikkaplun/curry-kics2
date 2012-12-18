@@ -69,12 +69,6 @@ instance NormalForm BinInt where
   ($##) cont (Choices_BinInt cd i xs) cs = gnfChoices cont cd i xs cs
   ($##) cont (Guard_BinInt cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
   ($##) _ (Fail_BinInt cd info) _ = failCons cd info
-  ($!<) cont (Neg x1) = (\y1 -> cont (Neg y1)) $!< x1
-  ($!<) cont Zero = cont Zero
-  ($!<) cont (Pos x1) = (\y1 -> cont (Pos y1)) $!< x1
-  ($!<) cont (Choice_BinInt cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_BinInt cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF search cont (Neg x1) = search (\y1 -> cont (Neg y1)) x1
   searchNF _ cont Zero = cont Zero
   searchNF search cont (Pos x1) = search (\y1 -> cont (Pos y1)) x1
@@ -181,12 +175,6 @@ instance NormalForm Nat where
   ($##) cont (Choices_Nat cd i xs) cs = gnfChoices cont cd i xs cs
   ($##) cont (Guard_Nat cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
   ($##) _ (Fail_Nat cd info) _ = failCons cd info
-  ($!<) cont IHi = cont IHi
-  ($!<) cont (O x1) = (\y1 -> cont (O y1)) $!< x1
-  ($!<) cont (I x1) = (\y1 -> cont (I y1)) $!< x1
-  ($!<) cont (Choice_Nat cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_Nat cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF _ cont IHi = cont IHi
   searchNF search cont (O x1) = search (\y1 -> cont (O y1)) x1
   searchNF search cont (I x1) = search (\y1 -> cont (I y1)) x1
@@ -274,9 +262,6 @@ instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
   ($##) cont (Choices_Func cd i xs) cs = gnfChoices cont cd i xs cs
   ($##) cont (Guard_Func cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
   ($##) _ (Fail_Func cd info) _ = failCons cd info
-  ($!<) cont (Choice_Func cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_Func cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF search cont (Func x1) = search (\y1 -> cont (Func y1)) x1
   searchNF _ _ x = internalError ("Prelude.Func.searchNF: no constructor: " ++ (show x))
 
@@ -349,9 +334,6 @@ instance (NormalForm t0) => NormalForm (C_IO t0) where
   ($##) cont (Choices_C_IO cd i xs) cs = gnfChoices cont cd i xs cs
   ($##) cont (Guard_C_IO cd c x) cs = guardCons cd c ((cont $## x)$! addCs c cs)
   ($##) _ (Fail_C_IO cd info) _ = failCons cd info
-  ($!<) cont (Choice_C_IO cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_C_IO cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF _ cont io@(C_IO _) = cont io
   searchNF _ _ x = internalError ("Prelude.IO.searchNF: no constructor: " ++ (show x))
 
@@ -433,9 +415,6 @@ instance NormalForm (PrimData a) where
   ($##) cont (Choices_PrimData cd i xs) cs = gnfChoices cont cd i xs cs
   ($##) cont (Guard_PrimData cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
   ($##) _ (Fail_PrimData cd info) _ = failCons cd info
-  ($!<) cont (Choice_PrimData cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_PrimData cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   -- no search inside argument of PrimData since it is primitive:
   searchNF _ cont (PrimData x) = cont (PrimData x)
   searchNF _ _ x = internalError ("Prelude.PrimData.searchNF: no constructor: " ++ (show x))

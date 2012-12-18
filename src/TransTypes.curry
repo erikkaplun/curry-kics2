@@ -389,15 +389,6 @@ normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
   , concatMap (normalformConsRule hoResult (basics "$##") True) cdecls
   , normalFormExtConsRules qf (basics "$##")
       (basics "gnfChoice") (basics "gnfChoices")
-    -- $!<
-  , concatMap (normalformConsRule hoResult (basics "$!<") False) cdecls
-  , [ ( basics "$!<", simpleRule [PVar cont, mkChoicePattern qf "i"]
-        (applyF (basics "nfChoiceIO")  [Var cont, Var cd, Var i, Var x, Var y]))
-    , ( basics "$!<", simpleRule [PVar cont, mkChoicesPattern qf]
-        (applyF (basics "nfChoicesIO") [Var cont, Var cd, Var i, Var xs]))
-    , (basics "$!<", simpleRule [PVar cont, PVar x]
-        (applyV cont [Var x]))
-    ]
   -- searchNF
   , concatMap (searchNFConsRule hoResult) cdecls
   , [searchNFCatchRule qf]
