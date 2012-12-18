@@ -184,6 +184,7 @@ renameSymbolInExpr ren exp = case exp of
                                  (map (renameSymbolInStat ren) stats)
   Case e branches  -> Case (renameSymbolInExpr ren e)
                              (map (renameSymbolInBranch ren) branches)
+  Typed e ty       -> Typed (renameSymbolInExpr ren e) ty
   _ -> exp -- Var or Lit
 
 renameSymbolInPat :: (QName -> QName) -> Pattern -> Pattern

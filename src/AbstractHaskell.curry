@@ -166,6 +166,7 @@ data Expr
   | DoExpr   [Statement]       -- do expression
   | ListComp Expr [Statement]  -- list comprehension
   | Case     Expr [BranchExpr] -- case expression
+  | Typed    Expr TypeExpr     -- typed expression
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
