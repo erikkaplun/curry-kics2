@@ -47,6 +47,7 @@ incCover :: Cover -> Cover
 incCover = (+ 1)
 decCover :: Cover -> Cover
 decCover = flip (-) 1
+initCover = 0
 
 
 -- ---------------------------------------------------------------------------

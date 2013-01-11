@@ -69,12 +69,6 @@ instance NormalForm BinInt where
   ($##) cont (Choices_BinInt d i xs) cd cs = gnfChoices cont d i xs cd cs
   ($##) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
   ($##) _ (Fail_BinInt d info) _ _ = failCons d info
-  ($!<) cont (Neg x1) cd = (\y1 -> cont (Neg y1)) $!< x1
-  ($!<) cont Zero = cont Zero
-  ($!<) cont (Pos x1) = (\y1 -> cont (Pos y1)) $!< x1
-  ($!<) cont (Choice_BinInt cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_BinInt cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF search cont (Neg x1) = search (\y1 -> cont (Neg y1)) x1
   searchNF _ cont Zero = cont Zero
   searchNF search cont (Pos x1) = search (\y1 -> cont (Pos y1)) x1
@@ -82,20 +76,20 @@ instance NormalForm BinInt where
 
 
 instance Unifiable BinInt where
-  (=.=) (Neg x1) (Neg y1) cs = (x1 =:= y1) cs
-  (=.=) Zero Zero _ = C_Success
-  (=.=) (Pos x1) (Pos y1) cs = (x1 =:= y1) cs
-  (=.=) _ _ _ = Fail_C_Success 0 defFailInfo
-  (=.<=) (Neg x1) (Neg y1) cs = (x1 =:<= y1) cs
-  (=.<=) Zero Zero _ = C_Success
-  (=.<=) (Pos x1) (Pos y1) cs = (x1 =:<= y1) cs
-  (=.<=) _ _ _= Fail_C_Success 0 defFailInfo
+  (=.=) (Neg x1) (Neg y1) cd cs = (x1 =:= y1) cd cs
+  (=.=) Zero Zero _ _ = C_Success
+  (=.=) (Pos x1) (Pos y1) cd cs = (x1 =:= y1) cd cs
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) (Neg x1) (Neg y1) cd cs = (x1 =:<= y1) cd cs
+  (=.<=) Zero Zero _ _ = C_Success
+  (=.<=) (Pos x1) (Pos y1) cd cs = (x1 =:<= y1) cd cs
+  (=.<=) _ _ cd _= Fail_C_Success cd  defFailInfo
   bind i (Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind (leftID i) x2)]))
   bind i Zero = ((i :=: (ChooseN 1 0)):(concat []))
   bind i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
-  bind i (Choice_BinInt cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_BinInt cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs 
-  bind i (Choices_BinInt cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
+  bind i (Choice_BinInt d j l r) = [(ConstraintChoice d j (bind i l) (bind i r))]
+  bind i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow i d j xs 
+  bind i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind i) xs))]
   bind _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
   bind _ (Fail_BinInt cd info) = [Unsolvable info]
   bind i (Guard_BinInt _ cs e) = (getConstrList cs) ++ (bind i e)
@@ -108,15 +102,6 @@ instance Unifiable BinInt where
   lazyBind _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ (Fail_BinInt _ info) = [Unsolvable info]
   lazyBind i (Guard_BinInt _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
-
-instance Coverable BinInt where
-  cover (Neg x)                  = Neg (cover x)
-  cover z@Zero                   = z
-  cover (Pos x)                  = Pos (cover x)
-  cover (Choice_BinInt cd i x y) = Choice_BinInt (incCover cd) i (cover x) (cover y)
-  cover (Choices_BinInt cd i xs) = Choices_BinInt(incCover cd) i (map cover xs)
-  cover (Fail_BinInt cd info)    = Fail_BinInt (incCover cd) info
-  cover (Guard_BinInt cd cs x)   = Guard_BinInt (incCover cd) cs (cover x)
 
 -- Nats
 
@@ -163,30 +148,24 @@ instance NonDet Nat where
 
 
 instance Generable Nat where
-  generate s = Choices_Nat defCover (freeID [0,1,1] s) [IHi,(O (generate (leftSupply s))),(I (generate (leftSupply s)))]
+  generate s cd = Choices_Nat cd (freeID [0,1,1] s) [IHi,O (generate (leftSupply s) cd),I (generate (leftSupply s)cd )]
 
 
 instance NormalForm Nat where
-  ($!!) cont IHi cs = cont IHi cs
-  ($!!) cont (O x1) cs = ((\y1 cs1 -> cont (O y1) cs1) $!! x1) cs
-  ($!!) cont (I x1) cs = ((\y1 cs1 -> cont (I y1) cs1) $!! x1) cs
-  ($!!) cont (Choice_Nat cd i x y) cs = nfChoice cont cd i x y cs
-  ($!!) cont (Choices_Nat cd i xs) cs = nfChoices cont cd i xs cs
-  ($!!) cont (Guard_Nat cd c x) cs = guardCons cd c ((cont $!! x) $! addCs c cs)
-  ($!!) _ (Fail_Nat cd info) _ = failCons cd info
-  ($##) cont IHi cs = cont IHi cs
-  ($##) cont (O x1) cs = ((\y1 cs1 -> cont (O y1) cs1) $## x1) cs
-  ($##) cont (I x1) cs = ((\y1 cs1 -> cont (I y1) cs1) $## x1) cs
-  ($##) cont (Choice_Nat cd i x y) cs = gnfChoice cont cd i x y cs
-  ($##) cont (Choices_Nat cd i xs) cs = gnfChoices cont cd i xs cs
-  ($##) cont (Guard_Nat cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
-  ($##) _ (Fail_Nat cd info) _ = failCons cd info
-  ($!<) cont IHi = cont IHi
-  ($!<) cont (O x1) = (\y1 -> cont (O y1)) $!< x1
-  ($!<) cont (I x1) = (\y1 -> cont (I y1)) $!< x1
-  ($!<) cont (Choice_Nat cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_Nat cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
+  ($!!) cont IHi cd cs = cont IHi cd cs
+  ($!!) cont (O x1) cd cs = ((\y1 cd1 cs1 -> cont (O y1) cd1 cs1) $!! x1) cd cs
+  ($!!) cont (I x1) cd cs = ((\y1 cd1 cs1 -> cont (I y1) cd1 cs1) $!! x1) cd cs
+  ($!!) cont (Choice_Nat d i x y) cd cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choices_Nat d i xs) cd cs = nfChoices cont d i xs cd cs
+  ($!!) cont (Guard_Nat d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
+  ($!!) _ (Fail_Nat d info) _ _ = failCons d info
+  ($##) cont IHi cd  cs = cont IHi cd cs
+  ($##) cont (O x1) cd cs = ((\y1 cd1 cs1 -> cont (O y1) cd1 cs1) $## x1) cd cs
+  ($##) cont (I x1) cd cs = ((\y1 cd1 cs1 -> cont (I y1) cd1 cs1) $## x1) cd cs
+  ($##) cont (Choice_Nat d i x y) cd cs = gnfChoice cont d i x y cd cs
+  ($##) cont (Choices_Nat d i xs) cd cs = gnfChoices cont d i xs cd cs
+  ($##) cont (Guard_Nat d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
+  ($##) _ (Fail_Nat d info) _ _ = failCons d info
   searchNF _ cont IHi = cont IHi
   searchNF search cont (O x1) = search (\y1 -> cont (O y1)) x1
   searchNF search cont (I x1) = search (\y1 -> cont (I y1)) x1
@@ -194,14 +173,14 @@ instance NormalForm Nat where
 
 
 instance Unifiable Nat where
-  (=.=) IHi IHi _ = C_Success
-  (=.=) (O x1) (O y1) cs = (x1 =:= y1) cs
-  (=.=) (I x1) (I y1) cs = (x1 =:= y1) cs
-  (=.=) _ _ _ = Fail_C_Success defCover defFailInfo
-  (=.<=) IHi IHi _ = C_Success
-  (=.<=) (O x1) (O y1) cs = (x1 =:<= y1) cs
-  (=.<=) (I x1) (I y1) cs = (x1 =:<= y1) cs
-  (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
+  (=.=) IHi IHi _ _ = C_Success
+  (=.=) (O x1) (O y1) cd cs = (x1 =:= y1) cd cs
+  (=.=) (I x1) (I y1) cd cs = (x1 =:= y1) cd cs
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) IHi IHi _ _ = C_Success
+  (=.<=) (O x1) (O y1) cd cs = (x1 =:<= y1) cd cs
+  (=.<=) (I x1) (I y1) cd cs = (x1 =:<= y1) cd cs
+  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind i IHi = ((i :=: (ChooseN 0 0)):(concat []))
   bind i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
   bind i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
@@ -221,19 +200,11 @@ instance Unifiable Nat where
   lazyBind _ (Fail_Nat _ info) = [Unsolvable info]
   lazyBind i (Guard_Nat _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
-instance Coverable Nat where
-  cover n@IHi = n
-  cover (O x)              = O (cover x)
-  cover (I x)              = I (cover x)
-  cover (Choice_Nat cd i x y) = Choice_Nat (incCover cd) i (cover x) (cover y)
-  cover (Choices_Nat cd i xs) = Choices_Nat (incCover cd) i (map cover xs)
-  cover (Fail_Nat cd info) = Fail_Nat (incCover cd) info
-  cover (Guard_Nat cd c e)    = Guard_Nat (incCover cd) c (cover e)
 -- Higher Order Funcs
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 data Func t0 t1
-     = Func (t0 -> IDSupply -> ConstStore -> t1)
+     = Func (t0 -> IDSupply -> Cover -> ConstStore -> t1)
      | Choice_Func Cover ID (Func t0 t1) (Func t0 t1)
      | Choices_Func Cover ID ([Func t0 t1])
      | Fail_Func Cover FailInfo
@@ -264,25 +235,22 @@ instance NonDet (Func t0 t1) where
 instance Generable (Func a b) where generate _ = internalError "generate for Func"
 
 instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
-  ($!!) cont f@(Func _) cs = cont f cs
-  ($!!) cont (Choice_Func cd i x y) cs = nfChoice cont cd i x y cs
-  ($!!) cont (Choices_Func cd i xs) cs = nfChoices cont cd i xs cs
-  ($!!) cont (Guard_Func cd c x) cs = guardCons cd c ((cont $!! x) $! addCs c cs)
-  ($!!) _ (Fail_Func cd info) _ = failCons cd info
-  ($##) cont f@(Func _) cs = cont f cs
-  ($##) cont (Choice_Func cd i x y) cs = gnfChoice cont cd i x y cs
-  ($##) cont (Choices_Func cd i xs) cs = gnfChoices cont cd i xs cs
-  ($##) cont (Guard_Func cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
-  ($##) _ (Fail_Func cd info) _ = failCons cd info
-  ($!<) cont (Choice_Func cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_Func cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
+  ($!!) cont f@(Func _) cd cs = cont f cd cs
+  ($!!) cont (Choice_Func d i x y) cd cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choices_Func d i xs) cd cs = nfChoices cont d i xs cd cs
+  ($!!) cont (Guard_Func d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
+  ($!!) _ (Fail_Func d info) _ _ = failCons d info
+  ($##) cont f@(Func _) cd cs = cont f cd cs
+  ($##) cont (Choice_Func d i x y) cd cs = gnfChoice cont d i x y cd cs
+  ($##) cont (Choices_Func d i xs) cd cs = gnfChoices cont d i xs cd cs
+  ($##) cont (Guard_Func d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
+  ($##) _ (Fail_Func d info) _ _ = failCons d info
   searchNF search cont (Func x1) = search (\y1 -> cont (Func y1)) x1
   searchNF _ _ x = internalError ("Prelude.Func.searchNF: no constructor: " ++ (show x))
 
 instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
-  (=.=) _ _ _ = Fail_C_Success defCover defFailInfo
-  (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind _ (Func _) = internalError "can not bind a Func"
   bind i (Choice_Func cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
   bind i (Choices_Func cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs 
@@ -296,14 +264,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   lazyBind i (Choices_Func cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
   lazyBind _ (Choices_Func _ i _) = internalError ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ (Fail_Func _ info) = [Unsolvable info]
-  lazyBind i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
-
-instance Coverable (Func t0 t1) where
-  cover f@(Func _)             = f
-  cover (Choice_Func cd i x y) = Choice_Func  (incCover cd) i (cover x) (cover y)
-  cover (Choices_Func cd i cs) = Choices_Func (incCover cd) i (map cover cs)
-  cover (Fail_Func cd info)    = Fail_Func (incCover cd) info
-  cover (Guard_Func cd cs f)   = Guard_Func (incCover cd) cs (cover f)   
+  lazyBind i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]  
 -- END GENERATED FROM PrimTypes.curry
 
 -- BEGIN GENERATED FROM PrimTypes.curry
@@ -336,28 +297,25 @@ instance NonDet (C_IO t0) where
   match _ _ _ _ f _ (Guard_C_IO cd cs e) = f cd cs e
   match _ _ _ _ _ f x = f x
 
-instance Generable (C_IO a) where generate _ = internalError "generate for C_IO"
+instance Generable (C_IO a) where generate _ _ = internalError "generate for C_IO"
 
 instance (NormalForm t0) => NormalForm (C_IO t0) where
-  ($!!) cont io@(C_IO _) cs = cont io cs
-  ($!!) cont (Choice_C_IO cd i x y) cs = nfChoice cont cd i x y cs
-  ($!!) cont (Choices_C_IO cd i xs) cs = nfChoices cont cd i xs cs
-  ($!!) cont (Guard_C_IO cd c x) cs = guardCons cd c ((cont $!! x)$! addCs c cs)
-  ($!!) _ (Fail_C_IO cd info)_= failCons cd info
-  ($##) cont io@(C_IO _) cs = cont io cs
-  ($##) cont (Choice_C_IO cd i x y) cs = gnfChoice cont cd i x y cs
-  ($##) cont (Choices_C_IO cd i xs) cs = gnfChoices cont cd i xs cs
-  ($##) cont (Guard_C_IO cd c x) cs = guardCons cd c ((cont $## x)$! addCs c cs)
-  ($##) _ (Fail_C_IO cd info) _ = failCons cd info
-  ($!<) cont (Choice_C_IO cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_C_IO cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
+  ($!!) cont io@(C_IO _) cd cs = cont io cd cs
+  ($!!) cont (Choice_C_IO d i x y) cd cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choices_C_IO d i xs) cd cs = nfChoices cont d i xs cd cs
+  ($!!) cont (Guard_C_IO d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
+  ($!!) _ (Fail_C_IO d info) _ _ = failCons d info
+  ($##) cont io@(C_IO _) cd cs = cont io cd cs
+  ($##) cont (Choice_C_IO d i x y) cd cs = gnfChoice cont d i x y cd cs
+  ($##) cont (Choices_C_IO d i xs) cd cs = gnfChoices cont d i xs cd cs
+  ($##) cont (Guard_C_IO d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
+  ($##) _ (Fail_C_IO d info) _ _ = failCons d info
   searchNF _ cont io@(C_IO _) = cont io
   searchNF _ _ x = internalError ("Prelude.IO.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable t0 => Unifiable (C_IO t0) where
-  (=.=) _ _ _ = Fail_C_Success defCover defFailInfo
-  (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind _ (C_IO _) = internalError "can not bind IO"
   bind i (Choice_C_IO cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
   bind i (Choices_C_IO cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
@@ -372,13 +330,6 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind _ (Choices_C_IO _ i@(ChoiceID _) _) = internalError ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ (Fail_C_IO cd info) = [Unsolvable info]
   lazyBind i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
-
-instance Coverable (C_IO t0) where
-  cover io@(C_IO _)         = io
-  cover (Choice_C_IO cd i x y) = Choice_C_IO  (incCover cd) i (cover x) (cover y)
-  cover (Choices_C_IO cd i cs) = Choices_C_IO (incCover cd) i (map cover cs)
-  cover (Fail_C_IO cd info) = Fail_C_IO (incCover cd) info
-  cover (Guard_C_IO cd cs cio) = Guard_C_IO (incCover cd) cs (cover cio)
 -- END GENERATED FROM PrimTypes.curry
 
 instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
@@ -420,29 +371,26 @@ instance NonDet (PrimData t0) where
   match _ _ _ _ f _ (Guard_PrimData cd cs e) = f cd cs e
   match _ _ _ _ _ f x = f x
 
-instance Generable (PrimData a) where generate _ = internalError "generate for PrimData"
+instance Generable (PrimData a) where generate _ _ = internalError "generate for PrimData"
 
 instance NormalForm (PrimData a) where
-  ($!!) cont p@(PrimData _) cs = cont p cs
-  ($!!) cont (Choice_PrimData cd i x y) cs = nfChoice cont cd i x y cs
-  ($!!) cont (Choices_PrimData cd i xs) cs = nfChoices cont cd i xs cs
-  ($!!) cont (Guard_PrimData cd c x) cs = guardCons cd c ((cont $!! x)$! addCs c cs)
-  ($!!) _ (Fail_PrimData cd info) _ = failCons cd info
-  ($##) cont p@(PrimData _) cs = cont p cs
-  ($##) cont (Choice_PrimData cd i x y) cs = gnfChoice cont cd i x y cs
-  ($##) cont (Choices_PrimData cd i xs) cs = gnfChoices cont cd i xs cs
-  ($##) cont (Guard_PrimData cd c x) cs = guardCons cd c ((cont $## x) $! addCs c cs)
-  ($##) _ (Fail_PrimData cd info) _ = failCons cd info
-  ($!<) cont (Choice_PrimData cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_PrimData cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
+  ($!!) cont p@(PrimData _) cd cs = cont p cd cs
+  ($!!) cont (Choice_PrimData d i x y) cd cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choices_PrimData d i xs) cd cs = nfChoices cont d i xs cd cs
+  ($!!) cont (Guard_PrimData d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
+  ($!!) _ (Fail_PrimData d info) _ _ = failCons d info
+  ($##) cont p@(PrimData _) cd cs = cont p cd cs
+  ($##) cont (Choice_PrimData d i x y) cd cs = gnfChoice cont d i x y cd cs
+  ($##) cont (Choices_PrimData d i xs) cd cs = gnfChoices cont d i xs cd cs
+  ($##) cont (Guard_PrimData d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
+  ($##) _ (Fail_PrimData d info) _ _ = failCons d info
   -- no search inside argument of PrimData since it is primitive:
   searchNF _ cont (PrimData x) = cont (PrimData x)
   searchNF _ _ x = internalError ("Prelude.PrimData.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable (PrimData t0) where
-  (=.=) _ _ _ = Fail_C_Success defCover defFailInfo
-  (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Success cd  defFailInfo
   bind _ (PrimData _) = internalError "can not bind PrimData"
   bind i (Choice_PrimData cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
   bind i (Choices_PrimData cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
@@ -458,12 +406,6 @@ instance Unifiable (PrimData t0) where
   lazyBind _ (Fail_PrimData _ info) = [Unsolvable info]
   lazyBind i (Guard_PrimData _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
-instance Coverable (PrimData a) where
-  cover p@(PrimData _)             = p
-  cover (Choice_PrimData cd i l r) = Choice_PrimData (incCover cd) i (cover l) (cover r)
-  cover (Choices_PrimData cd i cs) = Choices_PrimData (incCover cd) i (map cover cs)
-  cover (Fail_PrimData cd info)    = Fail_PrimData (incCover cd) info
-  cover (Guard_PrimData cd cs x)   = Guard_PrimData (incCover cd) cs (cover x)
 
 -- END GENERATED FROM PrimTypes.curry
 

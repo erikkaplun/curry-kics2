@@ -13,13 +13,15 @@
 
 module Main where
 
-import Control.Monad         (filterM, liftM, when)
+import Control.Exception as E (catch, throwIO)
+import Control.Monad          (filterM, liftM, when)
 import System.Console.GetOpt
 import System.Directory
 import System.FilePath
-import System.IO             (hPutStrLn, stderr)
-import System.Environment    (getArgs, getProgName)
-import System.Exit           (exitFailure, exitSuccess)
+import System.IO              (hPutStrLn, stderr)
+import System.IO.Error        (isDoesNotExistError, isPermissionError)
+import System.Environment     (getArgs, getProgName)
+import System.Exit            (exitFailure, exitSuccess)
 
 version :: String
 version = "0.1"
@@ -161,7 +163,13 @@ findCurryModules dir = filter ((`elem` srcExts) . takeExtension)
                        `liftM` getUsefulContents dir
 
 isDirectory :: FilePath -> IO Bool
-isDirectory = liftM searchable . getPermissions
+isDirectory f = E.catch (searchable `liftM` getPermissions f) handler
+  where
+  handler :: IOError -> IO Bool
+  handler e | isDoesNotExistError e = return False
+            | isPermissionError   e = return False
+            | otherwise             = E.throwIO e
+  
 
 getUsefulContents :: FilePath -> IO [String]
 getUsefulContents dir = filter (`notElem` [".", ".."])

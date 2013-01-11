@@ -143,8 +143,6 @@ class (NonDet a, Show a) => NormalForm a where
   ($!!) :: NonDet b => (a -> ConstStore -> b) -> a -> ConstStore -> b
   -- |Apply a continuation to the ground normal form
   ($##) :: NonDet b => (a -> ConstStore -> b) -> a -> ConstStore -> b
-  -- |TODO: We are not perfectly sure what this does (or at least should do)
-  ($!<) :: (a -> IO b) -> a -> IO b
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
@@ -178,30 +176,6 @@ gnfChoice cont cd i x1 x2 cs = case i of
 gnfChoices :: (NormalForm a, NonDet b) 
            => (a -> ConstStore -> b) -> Cover -> ID -> [a] -> ConstStore -> b
 gnfChoices cont cd i xs cs = narrows cs cd i (\x -> (cont $## x) cs) xs
-
-nfChoiceIO :: (NormalForm a) => (a -> IO b) -> Cover -> ID -> a -> a -> IO b
-nfChoiceIO cont cd i x1 x2 = case i of
-  ChoiceID _ -> cont $ choiceCons cd i x1 x2
-  _          -> internalError "Basics.nfChoiceIO: no ChoiceID"
--- nfChoiceIO cont i@(ID _) x1 x2 = do
---   x1' <- return $!< x1
---   x2' <- return $!< x2
---   cont (choiceCons i x1' x2')
-
-nfChoicesIO :: (NormalForm a) => (a -> IO b) -> Cover -> ID -> [a] -> IO b
-nfChoicesIO _    _  (ChoiceID _)   _  = internalError "Basics.nfChoicesIO: ChoiceID"
-nfChoicesIO cont cd i@(FreeID _ _) xs = lookupDecisionID i >>= follow
-  where
-  follow (ChooseN c _, _) = cont $!< (xs !! c)
-  follow (LazyBind cs, _) = do
-    setDecision i NoDecision
-    cont (guardCons cd (StructConstr cs) (choicesCons cd i xs))
-  follow (NoDecision,  _) = cont (choicesCons cd i xs) -- TODO replace i with j?
-  follow c                = internalError $ "Basics.nfChoicesIO.follow: " ++ show c
-nfChoicesIO cont cd i@(NarrowedID  _ _) xs = cont (choicesCons cd i xs)
--- nfChoicesIO cont i xs = do
--- --   ys <- mapM (return $!<) xs
---   cont (choicesCons i xs)
 
 -- ---------------------------------------------------------------------------
 -- Generator function for free variables
@@ -452,10 +426,6 @@ instance NormalForm C_Success where
   ($##) cont (Choices_C_Success cd i xs) = gnfChoices cont cd i xs
   ($##) cont (Guard_C_Success cd c x) = guardCons cd c (cont $## x)
   ($##) _    (Fail_C_Success cd info) = failCons cd info
-  ($!<) cont C_Success = cont C_Success
-  ($!<) cont (Choice_C_Success cd i x y) = nfChoiceIO cont cd i x y
-  ($!<) cont (Choices_C_Success cd i xs) = nfChoicesIO cont cd i xs
-  ($!<) cont x = cont x
   searchNF _ cont C_Success = cont C_Success
   searchNF _ _ x = internalError ("Prelude.Success.searchNF: no constructor: " ++ (show x))
 
@@ -513,7 +483,6 @@ instance NonDet b => Generable (a -> b) where
 instance NonDet b => NormalForm (a -> b) where
   cont $!! f = cont f
   cont $## f = cont f
-  cont $!< f = cont f
   searchNF _ cont f = cont f
 
 instance NonDet b => Unifiable (a -> b) where

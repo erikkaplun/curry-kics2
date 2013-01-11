@@ -701,10 +701,27 @@ has the effect that all optimizations performed by the KiCS2 compiler
 are turned off.
 
 \item[\fbox{\code{ghc $opts$}}]\pindex{ghc}
-(not available in global installations, see Section~\ref{sec-install})
-Define additional options passed to the Glasgow Haskell Compiler
+Define additional options passed to the Glasgow Haskell Compiler (GHC)
 when the generated Haskell programs are compiled.
-Usually, such options are useful only for experimental purposes.
+One has to be careful when using such options.
+For instance, in a global installation of KiCS2
+(see Section~\ref{sec-install}), libraries are pre-compiled
+so that inconsistencies might occur if compilation options
+might be changed.
+
+It is safe to pass specific GHC linking options.
+For instance, to enforce the static linking of libraries
+in order to generate an executable (see command \ccode{:save})
+that can be executed in another environment, one could set the
+options
+\begin{curry}
+:set ghc -static -optl-static -optl-pthread
+\end{curry}
+
+Other options are useful for experimental purposes,
+but those should be used only in local installations
+(see Section~\ref{sec-install}) to avoid inconsistent
+target codes for different libraries.
 For instance, setting the option
 \begin{curry}
 :set ghc -DDISABLE_CS

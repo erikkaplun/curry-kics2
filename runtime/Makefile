@@ -1,9 +1,5 @@
 # Generate the kics2-runtime.cabal and install the package
 
-# Tools
-CABAL   = cabal
-GHC_PKG = ghc-pkg
-
 # Name of the package
 PACKAGE     = kics2-runtime
 # Name of the cabal file
@@ -13,11 +9,11 @@ IDSUPPLYDIR = idsupplyioref
 
 .PHONY: install
 install: $(CABAL_FILE)
-	$(CABAL) install -O2
+	$(CABAL_INSTALL) -O2
 
 .PHONY: unregister
 unregister:
-	-$(GHC_PKG) unregister $(PACKAGE)-$(VERSION)
+	-$(GHC-PKG) unregister $(PACKAGE)-$(VERSION)
 
 .PHONY: clean
 clean:

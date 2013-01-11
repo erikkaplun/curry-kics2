@@ -53,7 +53,6 @@ genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
                              , normalformInstance hoResult
                              , unifiableInstance  hoResult
                              , curryInstance      hoResult
-                             , coverableInstance  hoResult
                              ]
     acvis     = (fcy2absVis vis)
     targs     = map fcy2absTVar tnums
@@ -390,15 +389,6 @@ normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
   , concatMap (normalformConsRule hoResult (basics "$##") True) cdecls
   , normalFormExtConsRules qf (basics "$##")
       (basics "gnfChoice") (basics "gnfChoices")
-    -- $!<
-  , concatMap (normalformConsRule hoResult (basics "$!<") False) cdecls
-  , [ ( basics "$!<", simpleRule [PVar cont, mkChoicePattern qf "i"]
-        (applyF (basics "nfChoiceIO")  [Var cont, Var cd, Var i, Var x, Var y]))
-    , ( basics "$!<", simpleRule [PVar cont, mkChoicesPattern qf]
-        (applyF (basics "nfChoicesIO") [Var cont, Var cd, Var i, Var xs]))
-    , (basics "$!<", simpleRule [PVar cont, PVar x]
-        (applyV cont [Var x]))
-    ]
   -- searchNF
   , concatMap (searchNFConsRule hoResult) cdecls
   , [searchNFCatchRule qf]
@@ -757,48 +747,6 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
     rule name = (curryPre "<?=", simpleRule
                     [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_")]
                     (constF $ curryPre "C_True"))
-
-
-------------------------------------------------------------------------------------------
---  Generate instance of Coverable class
-------------------------------------------------------------------------------------------
-
-coverableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-coverableInstance hoResult (FC.Type qf _ tnums cdecls) =
-  mkInstance (basics "Coverable") [] ctype targs $ coverRules hoResult qf cdecls
-  where
-    targs = map fcy2absTVar tnums
-    ctype = TCons qf (map TVar targs)
-
-coverRules :: HOResult -> QName -> [FC.ConsDecl] -> [(QName,Rule)]
-coverRules hoResult qn decls =
-  map (\ r -> (cover,r))
-   (concatMap  (mkCoverConsRule hoResult) decls
-    ++ [ simpleRule [mkChoicePattern qn "i"] (applyF (mkChoiceName qn) [ applyF incCover [cd]
-                                                                   , i
-                                                                   , applyF cover [x]
-                                                                   , applyF cover [y]])  
-       , simpleRule [mkChoicesPattern qn] (applyF (mkChoicesName qn) 
-                                                  [ applyF incCover [cd]
-                                                  , i
-                                                  , applyF (pre "map") [constF cover, xs]])
-       , simpleRule [mkFailPattern qn] (applyF (mkFailName qn) 
-                                               [applyF incCover [cd],info])
-       , simpleRule [mkGuardPattern qn] (applyF (mkGuardName qn)
-                                                [applyF incCover [cd], c, applyF cover [e]])
-       ])
- where
-  [i,x,y,xs,c,e,cd,info] = map Var $ newVars ["i","x","y","xs","c","e","cd","info"]
-
-         
-mkCoverConsRule :: HOResult -> FC.ConsDecl -> [Rule] 
-mkCoverConsRule hoResult (FC.Cons conName carity _ _)
-    | isHoCons conName = map rule [conName, mkHoConsName conName]
-    | otherwise     = [rule conName]
- where  
-  isHoCons name = lookupFM hoResult name == Just HO
-  rule name = simpleRule [consPattern name "x" carity] 
-                  (applyF  name (map (\n -> applyF cover [Var (n,"x" ++ show n)]) [1..carity]))
 
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions
