@@ -7,9 +7,9 @@ FRONTEND_VERSION := $(shell sed -n 's/^Version *: *\(.*\)$$/\1/p' curry-frontend
 
 # install the sources of the front end from its repository
 
-INSTALLED     := $(shell test -x "$(CYMAKE)" && echo $$?)
+INSTALLED      := $(shell test -x $(CYMAKE) && echo $$?)
 ifeq ($(INSTALLED), 0)
-CYMAKE_VERSION := $(shell "$(CYMAKE)" --numeric-version)
+CYMAKE_VERSION := $(shell $(CYMAKE) --numeric-version)
 endif
 
 $(FRONTEND):
@@ -20,7 +20,7 @@ ifneq ($(INSTALLED), 0)
 else
 ifeq ($(CYMAKE_VERSION), $(FRONTEND_VERSION))
 	@echo "Copying cymake"
-	cp $(CYMAKE) $@
+	cp $(CYMAKE) $(@D) # prevent executable suffix
 else
 	@echo "cymake versions do not match (found: $(CYMAKE_VERSION), required: $(FRONTEND_VERSION))"
 	$(MAKE) install
@@ -29,7 +29,7 @@ endif
 
 .PHONY: install
 install: build getcymake
-	cp `./getcymake` $(FRONTEND)
+	cp `./getcymake` $(shell dirname $(FRONTEND)) # prevent executable suffix
 
 .PHONY: build
 build: unregister

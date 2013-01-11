@@ -6,7 +6,7 @@ utils=pwd cleancurry which
 all: $(utils)
 
 %: %.hs
-	$(GHC) --make -Wall -Werror -O2 -o $@ $<
+	$(GHC) --make -Wall -O2 -o $@ $<
 
 .PHONY: clean
 clean:
