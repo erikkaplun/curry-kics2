@@ -13,18 +13,19 @@ module Linker
   ) where
 
 import AbstractCurry
-import PropertyFile
-import ReadShowTerm  (readQTermFile)
-import IO            (Handle, hFlush, stdout)
 import Directory
 import FilePath      ((</>), dropExtension)
+import IO            (Handle, hFlush, stdout)
+import List          (intercalate)
+import PropertyFile
+import ReadShowTerm  (readQTermFile)
 import System
 
 import qualified Installation as Inst
 import GhciComm
 import Names         (funcInfoFile)
 import RCFile
-import Utils
+import Utils         (notNull, strip, unless)
 
 type ReplState =
   { kics2Home    :: String     -- installation directory of the system

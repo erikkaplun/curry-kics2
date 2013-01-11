@@ -68,7 +68,7 @@ liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
       _            -> trans body i0)
      else trans body i0
            
-    trans = trExpr var lit comb leT freE or casE branch
+    trans = trExpr var lit comb leT freE or casE branch typed
 
     var :: VarIndex -> M Expr
     var v i = (Var v,i,id,[v])
@@ -115,6 +115,9 @@ liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
     branch p e i = 
       let (e',i',ff,ve) = e i
        in (Branch p e',i',ff,removePVars ve p)
+
+    typed :: M Expr -> TypeExpr -> M Expr
+    typed e ty i = let (e',i',ff,ve) = e i in (Typed e' ty,i',ff,ve)
 
 sequence :: [M c] -> M [c]
 sequence l i = foldr once ([],i,id,[]) l

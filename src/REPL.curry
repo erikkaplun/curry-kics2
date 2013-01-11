@@ -20,7 +20,7 @@ import FileGoodies   (lookupFileInPath, splitPath)
 import FlatCurry     (flatCurryFileName)
 import IO
 import IOExts
-import List          (isPrefixOf, isInfixOf, intersperse, nub)
+import List          (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
 import ReadNumeric   (readNat)
 import Sort          (mergeSort)
 import System        (system, getArgs, getEnviron, setEnviron, getPID)
@@ -32,7 +32,7 @@ import GhciComm      (stopGhciComm)
 import qualified Installation as Inst
 import Names         (funcInfoFile)
 import RCFile
-import Utils
+import Utils         (liftIO, notNull, strip, unless)
 
 import Linker
 

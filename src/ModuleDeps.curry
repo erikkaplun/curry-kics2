@@ -12,19 +12,19 @@
 
 module ModuleDeps (ModuleIdent, Source, deps) where
 
-import CompilerOpts
-import FilePath    (dropExtension, dropTrailingPathSeparator, takeBaseName)
-import FileGoodies (lookupFileInPath)
-import FiniteMap (FM, emptyFM, addToFM, fmToList, lookupFM)
-import FlatCurry (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
-import Distribution
-import List (partition)
-import Maybe (fromJust, isJust)
 import Directory
+import Distribution
+import FileGoodies (lookupFileInPath)
+import FilePath    (dropExtension, dropTrailingPathSeparator, takeBaseName)
+import FiniteMap   (FM, emptyFM, addToFM, fmToList, lookupFM)
+import FlatCurry   (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
+import List        (intercalate, partition)
+import Maybe       (fromJust, isJust)
 
+import CompilerOpts
 import Files
 import SCC
-import Utils (foldIO, intercalate, mapSnd)
+import Utils (foldIO, mapSnd)
 
 type ModuleIdent = String
 type FilePath = String

@@ -35,6 +35,10 @@ markdown_syntax.tex: markdown_syntax.txt
 ../GITINSTALL.html: ../../GITINSTALL.txt
 	$(KICS2) :add Markdown :eval 'readFile "../../GITINSTALL.txt" >>= writeFile "../GITINSTALL.html" . markdownText2CompleteHTML "KiCS2 Repository"' :q
 
+# format release notes as HTML page
+../RELNOTES.html: ../../RELNOTES.txt
+	$(KICS2) :add Markdown :eval 'readFile "../../RELNOTES.txt" >>= writeFile "../RELNOTES.html" . markdownText2CompleteHTML "KiCS2 Release Notes"' :q
+
 ../../lib/TEXDOC/LAST:
 	$(MAKE) libdoc
 
@@ -49,6 +53,7 @@ install:
 	$(MAKE) ../markdown_syntax.html
 	$(MAKE) ../INSTALL.html
 	$(MAKE) ../GITINSTALL.html
+	$(MAKE) ../RELNOTES.html
 	$(MAKE) libdoc
 	$(MAKE) ../Manual.pdf
 

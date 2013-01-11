@@ -53,7 +53,7 @@ transFunc (Func name k v t (Rule vars exp)) =
 -- a counter for name generation
 transExpr :: (String,String) -> Expr -> State Expr ([FuncDecl],Int)
 transExpr n e = trExpr (returnS. Var) (returnS . Lit) transComb 
-                        transLet transFree transOr transCase transBranch e
+                transLet transFree transOr transCase transBranch transTyped e
  where 
   -- This is where the interesting stuff happens, if a call to
   -- cond is found, the call to an auxiliary function is generated
@@ -85,6 +85,7 @@ transExpr n e = trExpr (returnS. Var) (returnS . Lit) transComb
     returnS (Case ct nExp nBexps)
   transBranch pat exp = exp `bindS` \ newExp -> 
                         returnS (Branch pat newExp)
+  transTyped exp ty = exp `bindS` \e' -> returnS (Typed e' ty)
 
 
 -- This function creates a new function for a call to cond
@@ -120,12 +121,13 @@ makeAuxFuncCall name succExpr newBody =
 
 -- returns all Variables in an expression that are not bound in the expression
 unboundVars :: Expr -> [Int]
-unboundVars e = nub (trExpr (:[]) (const []) comb leT freE oR casE branch e)
+unboundVars e = nub (trExpr (:[]) (const []) comb leT freE oR casE branch typed e)
  where
- comb _ _ = foldr (++) []
+ comb _ _ = concat
  leT bindings vars = let (bound,varsRHS) = unzip bindings
-                     in filter (not . (`elem` bound)) (concat (vars:varsRHS))
- freE frees = filter (not . (`elem` frees))
+                     in filter (`notElem` bound) (concat (vars:varsRHS))
+ freE frees = filter (`notElem` frees)
  oR         = (++)
  casE _ vars  bVars  = concat (vars:bVars)
- branch (Pattern _ bound) vars = filter (not . (`elem` bound)) vars
+ branch (Pattern _ bound) vars = filter (`notElem` bound) vars
+ typed vs _ = vs

@@ -395,7 +395,7 @@ normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
   ]
   where targs = map fcy2absTVar tnums
         ctype = TCons qf (map TVar targs)
-        [cd, cont,i,x,y,xs] = newVars ["cd", "cont","i","x","y","xs"]
+        --[cd, cont,i,x,y,xs] = newVars ["cd", "cont","i","x","y","xs"]
 
 -- Generate NormalForm instance rule for a data constructor
 normalformConsRule :: HOResult -> QName -> Bool -> FC.ConsDecl -> [(QName, Rule)]

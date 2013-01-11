@@ -14,11 +14,13 @@ GHC_INCL = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)/:
 GHC_CALL = $(GHC) $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
 KICS2C   = $(COMP) -v2 -i$(LIBDIR) -i$(LIBDIR)/meta
+# options for the bootstrapping compiler
+KICS2_OPTS =
 
 # Source modules of the compiler (without standard libraries):
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Analysis Base CompilerOpts Dependency2 EliminateCond Files    \
-               FlatCurry2AbstractHaskell GetOpt LiftCase Message ModuleDeps  \
+               FlatCurry2AbstractHaskell LiftCase Message ModuleDeps         \
                Names SCC SimpleMake Splits State TransFunctions TransTypes   \
                Utils
 
@@ -56,10 +58,9 @@ bootstrap:
 .PHONY: clean
 clean:
 	rm -f $(LOCALBIN)/stage[1,2,3]
+	rm -f Compile
 	rm -f *.hi *.o
-	@if [ -d $(SUBDIR) ] ; then \
-	  cd $(SUBDIR) && rm -f *.hi *.o ; \
-	fi
+	rm -f $(SUBDIR)/*.hi $(SUBDIR)/*.o
 
 .PHONY: cleanall
 cleanall: clean
@@ -73,13 +74,14 @@ cleanall: clean
 .PHONY: CompileInitial
 CompileInitial: Compile.curry
 	mkdir -p $(LOCALBIN)
-	@if [ -x "$(KICS2)" ] ; then \
-	  $(KICS2) :l Compile :save :quit ; \
-	  mv Compile $(COMP) ; \
-	else \
-	  pakcs -s Compile ; \
-	  mv Compile.state $(COMP) ; \
-	fi
+ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
+	$(KICS2) $(KICS2_OPTS) :l Compile :save :quit
+	mv Compile $(COMP)
+else
+	pakcs -s Compile
+	rm -f Compile
+	mv Compile.state $(COMP)
+endif
 
 # generate executable for Curry -> Haskell compiler kics2c:
 .PHONY: CompileBoot

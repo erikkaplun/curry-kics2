@@ -85,6 +85,7 @@ fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . fcy2absVar) vs)
 fcy2absExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2absExpr [e1, e2])
 --fcy2absExpr (FC.Case FC.Flex _ _) = error "fcy2absExpr: Flex Case occurred!"
 fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map fcy2absBranch brs)
+fcy2absExpr (FC.Typed e ty)   = Typed (fcy2absExpr e) (fcy2absTExp ty)
 
 applyLambdaHack :: QName -> [FC.Expr] -> Expr
 applyLambdaHack (q, fn) es = Lambda [PVar (1003, "z")]

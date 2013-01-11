@@ -70,7 +70,7 @@ ndFunc ndmap (f, called)
 -- Check whether an expression is non-deterministic, i.e. whether it uses
 -- an OR or FREE
 isNDExpr :: Expr -> Bool
-isNDExpr = trExpr cf cf combf letf freef orf casef branchf
+isNDExpr = trExpr cf cf combf letf freef orf casef branchf typedf
   where
     cf x = const False x
     combf _ _ isNDs = or isNDs
@@ -79,6 +79,7 @@ isNDExpr = trExpr cf cf combf letf freef orf casef branchf
     orf _ _ = True
     casef _ e bs = or (e:bs)
     branchf _ e = e
+    typedf e _ = e
 
 qmark :: QName
 qmark = renameQName (prelude, "?")

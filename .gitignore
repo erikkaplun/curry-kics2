@@ -61,6 +61,7 @@ lib/CDOC
 lib/TEXDOC
 docs/INSTALL.html
 docs/GITINSTALL.html
+docs/RELNOTES.html
 docs/src/lib
 docs/markdown_syntax.html
 docs/src/markdown_syntax.tex

@@ -52,6 +52,8 @@
        }
 
 \lstnewenvironment{curry}{}{}
+\lstnewenvironment{currynomath}{\lstset{mathescape=false}}{} % Curry w/o math
+
 \newcommand{\listline}{\vrule width0pt depth1.75ex}
 
 % program text in normal text
@@ -1832,13 +1834,13 @@ which evaluates the argument only to head-normal form.
 This is a bit more efficient and can be used for unstructured
 types like \code{Bool}.}
 Thus, we define \code{sconc} by
-\begin{curry}
+\begin{currynomath}
 sconc :: String -> String -> String
-sconc s1 s2 = (prim_sconc $\$$## s1) $\$$## s2
+sconc s1 s2 = (prim_sconc $## s1) $## s2
 
 prim_sconc :: String -> String -> String
 prim_sconc external
-\end{curry}
+\end{currynomath}
 so that it is ensured that the external operation \code{prim_sconc}
 is always called with complete evaluated arguments.
 
@@ -1931,13 +1933,13 @@ Haskell I/O actions.
 For instance, if we want to implement
 an external operation to print some string as an output line,
 we start by declaring the external operations in the Curry module \code{String}:
-\begin{curry}
+\begin{currynomath}
 printString :: String -> IO ()
-printString s = prim_printString $\$$## s
+printString s = prim_printString $## s
 
 prim_printString :: String -> IO ()
 prim_printString external
-\end{curry}
+\end{currynomath} % $
 Next we add the corresponding implementation in the file
 \code{External_String.hs} (where \code{C_IO} and \code{OP_Unit} are the names
 of the Haskell representation of the Curry type constructor \code{IO}
