@@ -320,7 +320,7 @@ cleandist:
 ifneq ($(CURDIR), $(TMPDIR))
 	$(error cleandist target called outside TMPDIR. Don't shoot yourself in the foot)
 endif
-	rm -rf .git .gitmodules .gitignore
+	rm -rf .dist-modules .git .gitmodules .gitignore
 	cd lib        && rm -rf .git .gitignore
 	cd currytools && rm -rf .git .gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
@@ -334,7 +334,6 @@ $(TARBALL): $(COMP)
 	# initialise git repository
 	git clone . ${TMPDIR}
 	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(TMPDIR)/.gitmodules
-	rm -f .dist-modules
 	cd ${TMPDIR} && git submodule init && git submodule update
 	# create local binary directory
 	mkdir -p ${TMPDIR}/bin/.local
@@ -369,6 +368,8 @@ $(TARBALL): $(COMP)
 	rm -rf ${TMPDIR}
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
+
+$(COMP): bootstrap
 
 ##############################################################################
 # Development targets
@@ -418,3 +419,4 @@ config:
           $(sort $(.VARIABLES)), \
 	  $(if $(filter-out environment% default automatic, \
           $(origin $V)),$(info $V = $($V))))
+	@true
