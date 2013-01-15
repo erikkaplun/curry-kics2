@@ -79,7 +79,7 @@ ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 	mv Compile $(COMP)
 else
 	pakcs -s Compile
-	rm -f Compile
+	rm -f Compile # delete symbolic link
 	mv Compile.state $(COMP)
 endif
 
@@ -89,17 +89,17 @@ CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 	mkdir -p $(LOCALBIN)
 	$(GHC_CALL) -o $(COMP) $<
 
-# recompile installation information and the compiler
-.PHONY: updateInstallInfo
-updateInstallInfo:
-	$(KICS2C) $(INSTALLCURRY)
-	$(MAKE) CompileBoot
-
 # Although $(INSTALLCURRY) is used by the compiler it must not be included
 # in the dependencies because for the distribution installation it would
 # require a working KICS2 binary *during* installation.
 $(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry)
 	$(KICS2C) $<
+
+# recompile installation information and the compiler
+.PHONY: updateInstallInfo
+updateInstallInfo:
+	$(KICS2C) $(INSTALLCURRY)
+	$(MAKE) CompileBoot
 
 ########################################################################
 # REPL
