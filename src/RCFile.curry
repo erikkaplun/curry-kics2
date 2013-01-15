@@ -3,13 +3,13 @@
 --- that is stored in $HOME/.kics2rc
 ---
 --- @author  Michael Hanus
---- @version July 2012
+--- @version January 2013
 ----------------------------------------------------------------------
 
 module RCFile (readRC, rcValue, setRCProperty) where
 
 import Char         (toLower, isSpace)
-import Directory    (doesFileExist, renameFile)
+import Directory    (doesFileExist, copyFile, renameFile)
 import FilePath     ((</>))
 import Installation (installDir)
 import PropertyFile
@@ -37,7 +37,7 @@ readRC = do
   rcExists <- doesFileExist rcName
   if rcExists
    then updateRC >> readPropertyFile rcName
-   else do system $ "cp " ++ defaultRC ++ ' ': rcName
+   else do copyFile defaultRC rcName
            readPropertyFile rcName
 
 rcKeys :: [(String, String)] -> [String]
@@ -54,7 +54,7 @@ updateRC = do
   unless (rcKeys userprops == rcKeys distprops) $ do
     putStrLn $ "Updating \"" ++ rcName ++ "\"..."
     renameFile rcName $ rcName ++ ".bak"
-    system $ "cp " ++ defaultRC ++ ' ': rcName
+    copyFile defaultRC rcName
     mapIO_ (\ (n, v) -> maybe done
               (\uv -> unless (uv == v) $ updatePropertyFile rcName n uv)
               (lookup n userprops))
