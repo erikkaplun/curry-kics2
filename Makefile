@@ -13,7 +13,7 @@ REVISIONVERSION = 3
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 21/12/12
+COMPILERDATE   := $(shell git log -1 --format="%ci" | cut -c-10)
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -358,8 +358,9 @@ $(TARBALL): $(COMP)
 	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
 	fi
 	# update Makefile
-	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
+	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"         \
 	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
+	             | sed 's|^COMPILERDATE *:=.*$$|COMPILERDATE =$(COMPILERDATE)|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!
 	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
