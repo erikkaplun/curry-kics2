@@ -1,6 +1,19 @@
 Release Notes for KiCS2
 =======================
 
+Release notes for KiCS2 Version 0.2.4 (under development)
+---------------------------------------------------------
+
+Changes to version 0.2.3:
+
+* Library module `Directory` updated and extended.
+
+  - Replacement of `String` by `FilePath`
+  - Added new function `createDirectoryIfMissing :: Bool -> FilePath -> IO ()`
+  - Added new function `getHomeDirectory :: IO FilePath`
+  - Added new function `getTemporaryDirectory :: IO FilePath`
+  - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
+
 Release notes for KiCS2 Version 0.2.3 (December 21, 2012)
 ---------------------------------------------------------
 

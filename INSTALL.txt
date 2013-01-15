@@ -9,6 +9,10 @@ into [Haskell programs](http://www.haskell.org/).
 This distribution runs on Unix-based platforms
 and has been developed and tested under Linux (Ubuntu).
 However, it should also run under similar platforms like SunOS or Mac OS X.
+Furthermore, the installation of the KiCS2 kernel
+has been successfully tested on a Windows 7 together with
+[MinGW](http://www.mingw.org/) (see below for detailed instructions).
+
 If you want to install and run the complete system
 on your computer, you need a Haskell implementation,
 in particular the
@@ -61,6 +65,32 @@ included in your path, you can set a symbolic link like
     ln -s kics2-<version> kics2
 
 and put the directory `kics2/bin` into your path.
+
+
+Windows Installation
+--------------------
+
+To install the KiCS2 kernel system (the full system currently needs some
+Unix-specific mechanisms), you need the following software installed:
+
+  - [MinGW](http://www.mingw.org/), providing tools like `make`, `cp`, ...
+  - the [Glasgow Haskell Compiler](http://www.haskell.org/ghc/)
+  - the [Cabal](http://www.haskell.org/cabal/) system.
+
+Then, open the MinGW shell and follow the installation commands like
+for a Linux installation, i.e., for unpacking:
+
+    tar xvzf kics2-<version>.tar.gz
+    cd kics2-<version>
+
+If you install KiCS2 for the first time, you need to install
+some Haskell packages via Cabal, i.e., run the command
+
+    make installhaskell
+
+Now you are ready to install the KiCS2 kernel by
+
+    make kernel
 
 
 Notes
