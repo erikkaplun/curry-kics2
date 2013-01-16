@@ -192,7 +192,7 @@ class NonDet a => Generable a where
 -- ---------------------------------------------------------------------------
 
 -- Class for data that supports unification
-class (NormalForm a, Coverable a) => Unifiable a where
+class (NormalForm a) => Unifiable a where
   -- |Unification on constructor-rooted terms
   (=.=)    :: a -> a -> ConstStore -> C_Success
   -- |Lazy unification on constructor-rooted terms,
@@ -449,13 +449,6 @@ instance Unifiable C_Success where
   lazyBind _ (Fail_C_Success cd info) = [Unsolvable info]
   lazyBind i (Guard_C_Success cd cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
 
-
-instance Coverable C_Success where
-  cover s@C_Success               = s
-  cover (Choice_C_Success cd i x y)  = Choice_C_Success (incCover cd) i (cover x) (cover y)
-  cover (Choices_C_Success cd i xs)  = Choices_C_Success (incCover cd) i (map cover xs)
-  cover (Fail_C_Success cd info)  = Fail_C_Success (incCover cd) info
-  cover (Guard_C_Success cd cs x)    = Guard_C_Success (incCover cd) cs (cover x)
 -- END GENERATED FROM PrimTypes.curry
 
 -- ---------------------------------------------------------------------------
@@ -490,6 +483,3 @@ instance NonDet b => Unifiable (a -> b) where
   (=.<=)   = internalError "(=.<=) for function is undefined"
   bind     = internalError "bind for function is undefined"
   lazyBind = internalError "lazyBind for function is undefined"
-
-instance Coverable (a -> b) where
-  cover f = f

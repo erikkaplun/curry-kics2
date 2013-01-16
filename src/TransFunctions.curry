@@ -361,11 +361,11 @@ transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
   returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) 
-                  ++ [nestingVarIdx,constStoreVarIdx]) e'
+                  ++ [nestingIdx,constStoreVarIdx]) e'
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
   let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) 
-                       ++ [nextingVarIdx,constStoreVarIdx] in
+                       ++ [nestingIdx,constStoreVarIdx] in
   returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
@@ -518,7 +518,7 @@ transExpr (Comb FuncCall qn es) =
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
-    then genIds g (Comb FuncCall qn' (es' ++ [Var, nestingIdx, Var constStoreVarIdx]))
+    then genIds g (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
     else takeNextID `bindM` \i ->
          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
 

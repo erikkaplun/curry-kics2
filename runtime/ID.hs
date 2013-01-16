@@ -6,7 +6,7 @@ module ID
   ( -- * FailInfo
     FailInfo, defFailInfo
     -- * Cover
-  , Cover, incCover, decCover,
+  , Cover, incCover, decCover
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList
     -- * Decisions
@@ -17,7 +17,7 @@ module ID
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
-  , nextNIDs, Store (..), Coverable (..)
+  , nextNIDs, Store (..)
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)

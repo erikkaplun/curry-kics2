@@ -74,9 +74,10 @@ fcy2absCDecl hoResult (FC.Cons qf ar vis texps)
 fcy2absTExp :: FC.TypeExpr -> TypeExpr
 fcy2absTExp (FC.TVar i)         = TVar (fcy2absTVar i)
 fcy2absTExp (FC.TCons qf texps) = TCons qf (map fcy2absTExp texps)
-fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (FuncType cStoreT (fcy2absTExp t2))
+fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (FuncType coverT (FuncType cStoreT (fcy2absTExp t2)))
   where
  cStoreT = TCons (basics "ConstStore") []
+ coverT  = TCons (basics "Cover") []
 
 fcy2absHOTExp :: FC.TypeExpr -> TypeExpr
 fcy2absHOTExp (FC.TVar i)         = TVar (fcy2absTVar i)
