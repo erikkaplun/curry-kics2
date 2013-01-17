@@ -11,13 +11,11 @@ and has been developed and tested under Linux (Ubuntu).
 However, it should also run under similar platforms like SunOS or Mac OS X.
 Furthermore, the installation of the KiCS2 kernel
 has been successfully tested on a Windows 7 together with
-[MinGW](http://www.mingw.org/) (see below for detailed instructions).
+[MinGW] (see below for detailed instructions).
 
 If you want to install and run the complete system
 on your computer, you need a Haskell implementation,
-in particular the
-[Glasgow Haskell Compiler](http://www.haskell.org/ghc/) and
-[Cabal](http://www.haskell.org/cabal/),
+in particular the [Glasgow Haskell Compiler] and [Cabal],
 a Haskell package management system.
 For instance, if you run Ubuntu Linux, you can easily install
 these packages by
@@ -73,12 +71,12 @@ Windows Installation
 To install the KiCS2 kernel system (the full system currently needs some
 Unix-specific mechanisms), you need the following software installed:
 
-  - [MinGW](http://www.mingw.org/), providing tools like `make`, `cp`, ...
-  - the [Glasgow Haskell Compiler](http://www.haskell.org/ghc/)
-  - the [Cabal](http://www.haskell.org/cabal/) system.
+  - [MinGW], providing tools like `make`, `cp`, ...
+  - the [Glasgow Haskell Compiler]
+  - the [Cabal] system.
 
-Then, open the MinGW shell and follow the installation commands like
-for a Linux installation, i.e., for unpacking:
+If you have these tools installed, open the MinGW shell and follow
+the installation commands like for a Linux installation, i.e., for unpacking:
 
     tar xvzf kics2-<version>.tar.gz
     cd kics2-<version>
@@ -92,13 +90,15 @@ Now you are ready to install the KiCS2 kernel by
 
     make kernel
 
+Please note that the compiler binaries do not rely on the MinGW shell, i.e.,
+you can use `kics2` like other Windows binaries in a standard command line.
 
 Notes
 -----
 
 1. You can configure the behavior of KiCS2 by various settings
-   in the file `~/.kics2rc` which is created when you use
-   KiCS2 for the first time.
+   in the file `.kics2rc` located in your user directory,
+    which is created when you use KiCS2 for the first time.
 2. If you like to have support for _line editing or history functionality_
    in the KiCS2 interactive environment (as supported by the readline
    library), you should have the Unix/Linux command "rlwrap" installed
@@ -138,3 +138,7 @@ two system files and install your system as follows:
 -------------------------------------------------------------
 
 Contact: [Michael Hanus](http://www.informatik.uni-kiel.de/~mh/)
+
+[Glasgow Haskell Compiler]: http://www.haskell.org/ghc/
+[Cabal]: http://www.haskell.org/cabal/
+[MinGW]: http://www.mingw.org/

@@ -6,6 +6,12 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
+* Windows support for kernel installation.
+
+  The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
+  now be installed under Windows using MinGW. See the installation
+  instructions for details.
+
 * Library module `Directory` updated and extended.
 
   - Replacement of `String` by `FilePath`
