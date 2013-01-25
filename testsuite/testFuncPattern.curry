@@ -6,7 +6,8 @@
 -- and Transformation (LOPSTR'05), appeared in Springer LNCS 3901, 2006
 -- http://www-ps.informatik.uni-kiel.de/~mh/papers/LOPSTR05.html
 --
--- Note: this requires the setting "pakcsextensions=yes" in ~/.pakcsrc
+-- Note: this requires the setting "curryextensions=yes" in
+--  ~/.kics2rc or ~/.pakcsrc
 --------------------------------------------------------------------------------
 
 import Assertion
@@ -30,8 +31,8 @@ pali :: [a] -> Success
 pali (xs ++ reverse xs) = success
 --pali l | xs ++ reverse xs =:<= l = success      where xs free
 
-test3 = assertEqual "palindrome1" (pali "otto") success
-test4 = assertValues "palindrome2" (pali "toto") []
+--test3 = assertEqual "palindrome1" (pali "otto") success
+--test4 = assertValues "palindrome2" (pali "toto") []
 
 --------------------------------------------------------------------------------
 -- define tree transformations and search by function patterns:
