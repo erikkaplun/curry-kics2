@@ -20,6 +20,9 @@ Changes to version 0.2.3:
   - Added new function `getTemporaryDirectory :: IO FilePath`
   - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
 
+* Library `SetFunctions`: Operations `choose` and `select` added.
+
+
 Release notes for KiCS2 Version 0.2.3 (December 21, 2012)
 ---------------------------------------------------------
 
