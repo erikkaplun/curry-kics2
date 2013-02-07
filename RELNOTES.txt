@@ -1,10 +1,10 @@
 Release Notes for KiCS2
 =======================
 
-Release notes for KiCS2 Version 0.2.4 (under development)
+Release notes for KiCS2 Version 0.2.3 (under development)
 ---------------------------------------------------------
 
-Changes to version 0.2.3:
+Changes to version 0.2.2:
 
 * Windows support for kernel installation.
 
@@ -22,14 +22,10 @@ Changes to version 0.2.3:
 
 * Library `SetFunctions`: Operations `choose` and `select` added.
 
-
-Release notes for KiCS2 Version 0.2.3 (December 21, 2012)
----------------------------------------------------------
-
-Changes to version 0.2.2:
 * The front end accepts typed expressions of the form "Expr :: TypeExpr".
   Such type annotations are considered by the compiler.
   For instance, `(unknown :: Bool)` evaluates to `False` or `True`.
+
 * Library `FlatCurry` extended to represent typed expressions
   by a new constructor `Typed`.
 
