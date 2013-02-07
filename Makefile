@@ -318,7 +318,7 @@ DEV_DIRS=benchmarks debug docs experiments talks
 .PHONY: cleandist
 cleandist:
 ifneq ($(CURDIR), $(TMPDIR))
-	$(error cleandist target called outside TMPDIR. Don't shoot yourself in the foot)
+	$(error cleandist target called outside $(TMPDIR). Don't shoot yourself in the foot) # ') fix highlighting
 endif
 	rm -rf .dist-modules .git .gitmodules .gitignore
 	cd lib        && rm -rf .git .gitignore
@@ -369,7 +369,8 @@ $(TARBALL): $(COMP)
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
-$(COMP): bootstrap
+$(COMP):
+	$(MAKE) bootstrap
 
 ##############################################################################
 # Development targets
