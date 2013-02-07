@@ -7,7 +7,7 @@ FRONTEND_VERSION := $(shell sed -n 's/^Version *: *\(.*\)$$/\1/p' curry-frontend
 
 # install the sources of the front end from its repository
 
-INSTALLED      := $(shell test -x $(CYMAKE) && echo $$?)
+INSTALLED      := $(shell test -n $(CYMAKE) -a -x $(CYMAKE) && echo $$?)
 ifeq ($(INSTALLED), 0)
 CYMAKE_VERSION := $(shell $(CYMAKE) --numeric-version)
 endif
@@ -20,7 +20,7 @@ ifneq ($(INSTALLED), 0)
 else
 ifeq ($(CYMAKE_VERSION), $(FRONTEND_VERSION))
 	@echo "Copying cymake"
-	cp $(CYMAKE) $(@D) # prevent executable suffix
+	cp $(CYMAKE) $(@D)
 else
 	@echo "cymake versions do not match (found: $(CYMAKE_VERSION), required: $(FRONTEND_VERSION))"
 	$(MAKE) install
@@ -28,18 +28,9 @@ endif
 endif
 
 .PHONY: install
-install: build getcymake
-	cp `./getcymake` $(shell dirname $(FRONTEND)) # prevent executable suffix
-
-.PHONY: build
-build: unregister
+install: unregister
 	cd curry-base     && $(CABAL_INSTALL)
-	cd curry-frontend && $(CABAL_INSTALL)
-
-	cp `runghc getcymake.hs` $(FRONTEND)
-
-getcymake: getcymake.hs
-	$(GHC) --make $< -o $@
+	cd curry-frontend && $(CABAL_INSTALL) --bindir=$(shell dirname $(FRONTEND))
 
 # unregister previous version to avoid cabal install failures
 .PHONY: unregister
@@ -56,4 +47,3 @@ update:
 clean:
 	cd curry-base     && $(CABAL) clean
 	cd curry-frontend && $(CABAL) clean
-	rm -f *.hi *.o getcymake

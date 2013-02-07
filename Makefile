@@ -52,7 +52,7 @@ export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
 export GHC_OPTIONS =
-export CYMAKE       := "$(shell which cymake)"
+export CYMAKE        = ""
 export CABAL         = cabal
 export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
 
