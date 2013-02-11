@@ -6,6 +6,9 @@ Release notes for KiCS2 Version 0.2.3 (under development)
 
 Changes to version 0.2.2:
 
+* Syntax highlighting for KDE's editor component `katepart` added,
+  supporting Curry and Literate Curry.
+
 * A frontend bug leading to an internal erroe when using as patterns
   inside functional patterns is fixed.
 
