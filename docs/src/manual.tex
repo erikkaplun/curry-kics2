@@ -898,7 +898,7 @@ Consider the definition of an operation to compute the last element
 of a list \code{xs} based on the prelude operation \ccode{++}
 for list concatenation:
 \begin{curry}
-last xs | ys++[y] =:= xs  = y   where y,ys free
+last xs | _++[y] =:= xs  = y   where y free
 \end{curry}
 Since the equality constraint \ccode{=:=} evaluates both sides
 to a constructor term, all elements of the list \code{xs} are
@@ -929,6 +929,46 @@ by the functional pattern.
 In general, a pattern of the form \code{($f$ $t_1$\ldots$t_n$)} ($n>0$)
 is interpreted as a functional pattern if $f$ is not a visible constructor
 but a defined function that is visible in the scope of the pattern.
+
+\subsection{Order of Pattern Matching}
+
+Curry allows multiple occurrences of pattern variables
+in standard patterns. These are an abbreviation of equational constraints
+between pattern variables.
+Functional patterns might also contain multiple occurrences of
+pattern variables.
+For instance, the operation
+\begin{curry}
+f (_++[x]++_++[x]++_) = x
+\end{curry}
+returns all elements with at least two occurrences in a list.
+
+If functional patterns as well as multiple occurrences of
+pattern variables occur in a pattern defining an operation,
+there are various orders to match an expression against such
+an operation. In the current implementation, the order
+is as follows:
+\begin{enumerate}
+\item Standard pattern matching: First, it is checked whether
+the constructor patterns match. Thus, functional patterns
+and multiple occurrences of pattern variables are ignored.
+\item Functional pattern matching: In the next phase,
+functional patterns are matched but occurrences of standard
+pattern variables in the functional patterns are ignored.
+\item Non-linear patterns: If standard and functional pattern matching
+is successful, the equational constraints which correspond
+to multiple occurrences pattern variables are solved.
+\item Guards: Finally, the guards supplied by the programmer
+are checked.
+\end{enumerate}
+The order of pattern matching should not influence the computed
+result. However, it might have some influence on the termination
+behavior of programs, i.e., a program might not terminate
+instead of finitely failing.
+In such cases, it could be necessary to consider the influence
+of the order of pattern matching. Note that other orders of pattern matching
+can be obtained using auxiliary operations.
+
 
 
 \subsection {Records}

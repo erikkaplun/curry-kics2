@@ -13,7 +13,7 @@ REVISIONVERSION = 3
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
-COMPILERDATE    = 21/12/12
+COMPILERDATE   := $(shell git log -1 --format="%ci" | cut -c-10)
 # The installation date
 INSTALLDATE    := $(shell date)
 
@@ -52,7 +52,7 @@ export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
 PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
 # Standard options for compiling target programs with ghc:
 export GHC_OPTIONS =
-export CYMAKE       := "$(shell which cymake)"
+export CYMAKE        = ""
 export CABAL         = cabal
 export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
 
@@ -318,9 +318,9 @@ DEV_DIRS=benchmarks debug docs experiments talks
 .PHONY: cleandist
 cleandist:
 ifneq ($(CURDIR), $(TMPDIR))
-	$(error cleandist target called outside TMPDIR. Don't shoot yourself in the foot)
+	$(error cleandist target called outside $(TMPDIR). Don't shoot yourself in the foot) # ') fix highlighting
 endif
-	rm -rf .git .gitmodules .gitignore
+	rm -rf .dist-modules .git .gitmodules .gitignore
 	cd lib        && rm -rf .git .gitignore
 	cd currytools && rm -rf .git .gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
@@ -357,8 +357,9 @@ $(TARBALL): $(COMP)
 	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
 	fi
 	# update Makefile
-	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"       \
+	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"         \
 	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
+	             | sed 's|^COMPILERDATE *:=.*$$|COMPILERDATE =$(COMPILERDATE)|' \
 	             > ${TMPDIR}/Makefile
 	# Zip it!
 	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
@@ -367,6 +368,9 @@ $(TARBALL): $(COMP)
 	rm -rf ${TMPDIR}
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
+
+$(COMP):
+	$(MAKE) bootstrap
 
 ##############################################################################
 # Development targets
@@ -416,3 +420,4 @@ config:
           $(sort $(.VARIABLES)), \
 	  $(if $(filter-out environment% default automatic, \
           $(origin $V)),$(info $V = $($V))))
+	@true

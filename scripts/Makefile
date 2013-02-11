@@ -18,7 +18,7 @@ BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
 BATS =
 else ifeq ($(findstring MINGW, $(UNAME)), MINGW)
 # Windows
-BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh)
+BINS =
 BATS = $(patsubst %, $(BINDIR)/%, $(wildcard *.bat))
 else
 $(error "Unknown system '$(UNAME)')
@@ -30,7 +30,7 @@ all: $(BINS) $(BATS)
 
 .PHONY: clean
 clean:
-	rm -f $(BINS)
+	rm -f $(BINS) $(BATS)
 
 $(BINDIR)/%: %.sh
 	mkdir -p $(@D)

@@ -1,13 +1,43 @@
 Release Notes for KiCS2
 =======================
 
-Release notes for KiCS2 Version 0.2.3 (December 21, 2012)
+Release notes for KiCS2 Version 0.2.3 (under development)
 ---------------------------------------------------------
 
 Changes to version 0.2.2:
+
+* Syntax highlighting for KDE's editor component `katepart` added,
+  supporting Curry and Literate Curry.
+
+* A frontend bug leading to an internal erroe when using as patterns
+  inside functional patterns is fixed.
+
+* Some bugs regarding the combination of functional patterns and
+  nonlinear left-hand-sides are fixed.
+
+* The GHC and cabal binaries used for installation can now be
+  explicitly set. See the installation instructions for details.
+
+* Windows support for kernel installation.
+
+  The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
+  now be installed under Windows using MinGW. See the installation
+  instructions for details.
+
+* Library module `Directory` updated and extended.
+
+  - Replacement of `String` by `FilePath`
+  - Added new function `createDirectoryIfMissing :: Bool -> FilePath -> IO ()`
+  - Added new function `getHomeDirectory :: IO FilePath`
+  - Added new function `getTemporaryDirectory :: IO FilePath`
+  - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
+
+* Library `SetFunctions`: Operations `choose` and `select` added.
+
 * The front end accepts typed expressions of the form "Expr :: TypeExpr".
   Such type annotations are considered by the compiler.
   For instance, `(unknown :: Bool)` evaluates to `False` or `True`.
+
 * Library `FlatCurry` extended to represent typed expressions
   by a new constructor `Typed`.
 

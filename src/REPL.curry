@@ -557,8 +557,9 @@ processFork rst args
                       (if null args then "main" else args)
     unless (status == MainError) $ do
       pid <- getPID
-      let execname = "/tmp/kics2fork" ++ show pid
-      system $ "mv ." </> rst' :> outputSubdir </> "Main " ++ execname
+      tmp <- getTemporaryDirectory
+      let execname = tmp </> "kics2fork" ++ show pid
+      renameFile ("." </> rst' :> outputSubdir </> "Main") execname
       writeVerboseInfo rst' 3 ("Starting executable '" ++ execname ++ "'...")
       system ("( "++execname++" && rm -f "++execname++ ") "++
               "> /dev/null 2> /dev/null &") >> done
