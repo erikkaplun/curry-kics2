@@ -6,6 +6,15 @@ Release notes for KiCS2 Version 0.2.3 (under development)
 
 Changes to version 0.2.2:
 
+* A frontend bug leading to an internal erroe when using as patterns
+  inside functional patterns is fixed.
+
+* Some bugs regarding the combination of functional patterns and
+  nonlinear left-hand-sides are fixed.
+
+* The GHC and cabal binaries used for installation can now be
+  explicitly set. See the installation instructions for details.
+
 * Windows support for kernel installation.
 
   The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
