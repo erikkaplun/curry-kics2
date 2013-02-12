@@ -17,7 +17,7 @@ unregister:
 
 .PHONY: clean
 clean:
-	-$(CABAL) clean
+	rm -rf *.hi *.o
 	rm -f $(CABAL_FILE)
 
 $(CABAL_FILE): ../Makefile Makefile

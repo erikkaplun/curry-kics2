@@ -7,8 +7,8 @@ all: Benchmarks
 
 # generate binary for Benchmarks program:
 Benchmarks: Benchmarks.curry
-	cleancurry
-	../bin/kics2 :l Benchmarks :save :q
+	$(BINDIR)/cleancurry
+	$(BINDIR)/kics2 :l Benchmarks :save :q
 
 # publish all relevant benchmarks in the web:
 .PHONY: publish
@@ -19,5 +19,5 @@ publish:
 
 .PHONY: clean
 clean:
-	cleancurry
+	$(BINDIR)/cleancurry
 	rm -f bench.log
