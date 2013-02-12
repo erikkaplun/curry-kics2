@@ -414,6 +414,7 @@ roundtrip:
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
+	mv $(TARBALL) $(FULLNAME)-$(shell date +%Y%m%d).tar.gz
 
 .PHONY: config
 config:
