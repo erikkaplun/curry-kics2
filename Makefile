@@ -410,6 +410,7 @@ REPL: ${INSTALLCURRY} scripts
 roundtrip:
 	$(MAKE) cleanall
 	rm -rf $(BINDIR)
+	$(MAKE) installhaskell
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
