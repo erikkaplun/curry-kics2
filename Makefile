@@ -410,9 +410,11 @@ REPL: ${INSTALLCURRY} scripts
 roundtrip:
 	$(MAKE) cleanall
 	rm -rf $(BINDIR)
+	$(MAKE) installhaskell
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
+	mv $(TARBALL) $(FULLNAME)-$(shell date +%Y%m%d).tar.gz
 
 .PHONY: config
 config:
