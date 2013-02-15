@@ -495,10 +495,8 @@ showSimpleListApplication opts (Apply (Symbol (_,str)) tail) =
 showInfixApplication :: Options -> QName -> Expr -> String
 showInfixApplication opts infixop (Apply func arg2) = case func of
   (Apply f arg1) -> case f of
-    (Apply _ arg0) ->
-        "(" ++ showBoxedExpr opts arg0 ++ " " ++
-          showSymbol opts infixop ++ " " ++
-          showBoxedExpr opts arg1 ++ ") " ++
+    (Apply _ _) ->
+        "(" ++ showInfixApplication opts infixop func ++ ") " ++
           showBoxedExpr opts arg2
     _ -> showBoxedExpr opts arg1 ++ " "
         ++ showSymbol opts infixop
