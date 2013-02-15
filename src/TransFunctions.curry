@@ -255,14 +255,16 @@ transFunc f@(Func qn _ _ _ _) =
                        renameFun qn          `bindM` \newqn ->
                        renameFun fname       `bindM` \newfname ->
                        returnM $
-                         [Func newqn 1 vis (check42 (transTypeExpr 0) t)
-                          (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
+                         [Func newqn 2 vis (check42 (transTypeExpr 0) t)
+                          (Rule [0,1] (Comb FuncCall (mkGlobalName qn) []))
                          ,Func (mkGlobalName qn) 0 Private t
                           (Rule [] (Comb FuncCall newfname
                                    [Let [(constStoreVarIdx
-                                         ,Comb FuncCall (basics,"emptyCs") [] )]
+                                         ,Comb FuncCall (basics,"emptyCs") [] )
+                                        ,(nestingIdx,Comb FuncCall (basics,"initCover") [])]
                                         trVal
                                    ,Comb ConsCall cname []
+                                   ,Comb FuncCall (basics, "initCover") []
                                    ,Comb FuncCall (basics,"emptyCs") []]))]
                  else  transPureFunc f `bindM` (returnM . (:[]))
 
@@ -446,7 +448,7 @@ newBranches qn' vs i pConsName =
                              ++ [nestingIdx, constStoreVarIdx])
       -- pattern matching on guards will combine the new constraints with the given
       -- constraint store
-      guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar))
+      guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar ++ [nestingIdx]))
                                  (combConstr cVar constStoreVarIdx)
       combConstr cVar constVar = funcCall combConstrName [Var cVar, Var constVar]
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
@@ -736,7 +738,7 @@ splitSupply = funcCall (basics, "splitSupply")
 initSupply  = funcCall (basics, "initIDSupply") []
 leftSupply  = funcCall (basics, "leftSupply")
 rightSupply = funcCall (basics, "rightSupply")
-generate i  = funcCall (basics, "generate") [i]
+generate i  = funcCall (basics, "generate") [i, Var nestingIdx]
 
 defFailInfo = funcCall (basics, "defFailInfo") []
 

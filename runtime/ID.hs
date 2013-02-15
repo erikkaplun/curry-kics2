@@ -6,7 +6,7 @@ module ID
   ( -- * FailInfo
     FailInfo, defFailInfo
     -- * Cover
-  , Cover, incCover, decCover
+  , Cover, incCover, decCover, initCover
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList
     -- * Decisions
@@ -47,6 +47,7 @@ incCover :: Cover -> Cover
 incCover = (+ 1)
 decCover :: Cover -> Cover
 decCover = flip (-) 1
+initCover :: Cover
 initCover = 0
 
 

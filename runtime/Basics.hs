@@ -20,7 +20,7 @@ import Types
 -- ---------------------------------------------------------------------------
 
 -- |Make a deterministic function non-deterministic
-nd :: (a -> ConstStore -> b) -> a -> IDSupply -> Cover -> ConstStore -> b
+nd :: (a -> Cover -> ConstStore -> b) -> a -> IDSupply -> Cover -> ConstStore -> b
 nd f a _ cd cs = f a cd cs
 
 -- |Make higher order functions take a cover depths and a constraint store
@@ -46,7 +46,7 @@ nd_apply :: NonDet b => Func a b -> a -> IDSupply -> Cover -> ConstStore -> b
 nd_apply fun a s cd cs = d_dollar_bang apply fun cd cs
   where
   apply (Func f) cd cs' = f a s cd cs'
-  apply _          _ = internalError "Basics.nd_apply.apply: no ground term"
+  apply _        _  _ = internalError "Basics.nd_apply.apply: no ground term"
 
 -- ---------------------------------------------------------------------------
 -- Auxilaries for normalforms
@@ -79,8 +79,8 @@ nd_dollar_bang f x s cd cs = match hnfChoice hnfNarrowed hnfFree failCons hnfGua
 nonAsciiChr :: Int# -> Char#
 nonAsciiChr i = chr# i
 
-matchChar :: NonDet a => [(Char,a)] -> BinInt -> ConstStore -> a
-matchChar rules cs = matchInteger (map (mapFst ord) rules) cs
+matchChar :: NonDet a => [(Char,a)] -> BinInt -> Cover -> ConstStore -> a
+matchChar rules cd cs = matchInteger (map (mapFst ord) rules) cd cs
 
 -- TODO@fre: use unboxed int
 
@@ -93,7 +93,7 @@ matchInteger rules (Pos nat) cd cs                =
   matchNat (filter ((>0).fst) rules) nat cd cs
 matchInteger rules (Choice_BinInt d i l r) cd cs =
   narrow d i (matchInteger rules l cd cs) (matchInteger rules r cd cs)
-matchInteger rules (Choices_BinInt d i xs) cs =
+matchInteger rules (Choices_BinInt d i xs) cd cs =
   narrows cs d i (\x -> matchInteger rules x cd cs) xs
 matchInteger _     (Fail_BinInt d info) _  _     = 
   failCons d info
@@ -119,8 +119,8 @@ halfKey =  mapFst (`div` 2)
 mapFst :: (a -> b) -> (a, c) -> (b, c)
 mapFst f (a, b) = (f a, b)
 
-(&) :: C_Success -> C_Success -> ConstStore -> Cover -> C_Success
-(&) s1 s2 cs _ = amp s1 s2 cs
+(&) :: C_Success -> C_Success -> Cover -> ConstStore -> C_Success
+(&) s1 s2 _ cs = amp s1 s2 cs
   where
    amp C_Success                   s _  = s
    amp x@(Fail_C_Success _ _)      _ _  = x

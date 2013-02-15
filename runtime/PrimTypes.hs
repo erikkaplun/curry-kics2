@@ -51,14 +51,14 @@ instance NonDet BinInt where
 
 
 instance Generable BinInt where
-  generate s = Choices_BinInt defCover (freeID [1,0,1] s) [(Neg (generate (leftSupply s))),Zero,(Pos (generate (leftSupply s)))]
+  generate s cd = Choices_BinInt cd (freeID [1,0,1] s) [(Neg (generate (leftSupply s) cd )),Zero,(Pos (generate (leftSupply s) cd))]
 
 
 instance NormalForm BinInt where
   ($!!) cont (Neg x1) cd cs = ((\y1 cd1 cs1 -> cont (Neg y1) cd1 cs1) $!! x1) cd cs
   ($!!) cont Zero cd cs = cont Zero cd cs
   ($!!) cont (Pos x1) cd cs = ((\y1 cd1 cs1 -> cont (Pos y1) cd1 cs1) $!! x1) cd cs
-  ($!!) cont (Choice_BinInt d i x y) cs = nfChoice cont d i x y cd cs
+  ($!!) cont (Choice_BinInt d i x y) cd cs = nfChoice cont d i x y cd cs
   ($!!) cont (Choices_BinInt d i xs) cd cs = nfChoices cont d i xs cd cs
   ($!!) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
   ($!!) _ (Fail_BinInt d info) _ _ = failCons d info
@@ -84,24 +84,24 @@ instance Unifiable BinInt where
   (=.<=) Zero Zero _ _ = C_Success
   (=.<=) (Pos x1) (Pos y1) cd cs = (x1 =:<= y1) cd cs
   (=.<=) _ _ cd _= Fail_C_Success cd  defFailInfo
-  bind i (Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind (leftID i) x2)]))
-  bind i Zero = ((i :=: (ChooseN 1 0)):(concat []))
-  bind i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
-  bind i (Choice_BinInt d j l r) = [(ConstraintChoice d j (bind i l) (bind i r))]
-  bind i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow i d j xs 
-  bind i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind i) xs))]
-  bind _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_BinInt cd info) = [Unsolvable info]
-  bind i (Guard_BinInt _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
-  lazyBind i Zero = [(i :=: (ChooseN 1 0))]
-  lazyBind i (Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
-  lazyBind i (Choice_BinInt cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_BinInt cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
-  lazyBind i (Choices_BinInt cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_BinInt _ info) = [Unsolvable info]
-  lazyBind i (Guard_BinInt _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  bind cd i (Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind cd (leftID i) x2)]))
+  bind _  i Zero = ((i :=: (ChooseN 1 0)):(concat []))
+  bind cd i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
+  bind cd i (Choice_BinInt d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _  _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
+  bind _  _ (Fail_BinInt cd info) = [Unsolvable info]
+  bind cd i (Guard_BinInt _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind cd i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
+  lazyBind _  i Zero = [(i :=: (ChooseN 1 0))]
+  lazyBind cd i (Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
+  lazyBind cd i (Choice_BinInt d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_BinInt d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
+  lazyBind cd i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _  _ (Fail_BinInt _ info) = [Unsolvable info]
+  lazyBind cd i (Guard_BinInt _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
 -- Nats
 
@@ -148,7 +148,7 @@ instance NonDet Nat where
 
 
 instance Generable Nat where
-  generate s cd = Choices_Nat cd (freeID [0,1,1] s) [IHi,O (generate (leftSupply s) cd),I (generate (leftSupply s)cd )]
+  generate s cd = Choices_Nat cd (freeID [0,1,1] s) [IHi,O (generate (leftSupply s) cd),I (generate (leftSupply s) cd )]
 
 
 instance NormalForm Nat where
@@ -181,24 +181,24 @@ instance Unifiable Nat where
   (=.<=) (O x1) (O y1) cd cs = (x1 =:<= y1) cd cs
   (=.<=) (I x1) (I y1) cd cs = (x1 =:<= y1) cd cs
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  bind i IHi = ((i :=: (ChooseN 0 0)):(concat []))
-  bind i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind (leftID i) x2)]))
-  bind i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind (leftID i) x2)]))
-  bind i (Choice_Nat cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_Nat cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
-  bind i (Choices_Nat cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
-  bind _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_Nat _ info) = [Unsolvable info]
-  bind i (Guard_Nat _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind i IHi = [(i :=: (ChooseN 0 0))]
-  lazyBind i (O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
-  lazyBind i (I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind (leftID i) x2)))]
-  lazyBind i (Choice_Nat cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_Nat cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
-  lazyBind i (Choices_Nat cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_Nat _ info) = [Unsolvable info]
-  lazyBind i (Guard_Nat _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  bind _  i IHi = ((i :=: (ChooseN 0 0)):(concat []))
+  bind cd i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind cd (leftID i) x2)]))
+  bind cd i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
+  bind cd i (Choice_Nat d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_Nat d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
+  bind cd i (Choices_Nat d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _  _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.bind: Choices with ChoiceID: " ++ (show i))
+  bind _  _ (Fail_Nat _ info) = [Unsolvable info]
+  bind cd i (Guard_Nat _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind _  i IHi = [(i :=: (ChooseN 0 0))]
+  lazyBind cd i (O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
+  lazyBind cd i (I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
+  lazyBind cd i (Choice_Nat d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_Nat d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
+  lazyBind cd i (Choices_Nat d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _  _ (Fail_Nat _ info) = [Unsolvable info]
+  lazyBind cd i (Guard_Nat _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
 -- Higher Order Funcs
 
@@ -251,20 +251,20 @@ instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
 instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  bind _ (Func _) = internalError "can not bind a Func"
-  bind i (Choice_Func cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_Func cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs 
-  bind i (Choices_Func cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
-  bind _ (Choices_Func _ i@(ChoiceID _) _) = internalError ("Prelude.Func.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_Func _ info) = [Unsolvable info]
-  bind i (Guard_Func _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind _ (Func _) = internalError "can not lazily bind a Func"
-  lazyBind i (Choice_Func cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_Func cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
-  lazyBind i (Choices_Func cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_Func _ i _) = internalError ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_Func _ info) = [Unsolvable info]
-  lazyBind i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]  
+  bind _  _ (Func _) = internalError "can not bind a Func"
+  bind cd i (Choice_Func d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_Func d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_Func d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _  _ (Choices_Func _ i@(ChoiceID _) _) = internalError ("Prelude.Func.bind: Choices with ChoiceID: " ++ (show i))
+  bind _  _ (Fail_Func _ info) = [Unsolvable info]
+  bind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind _  _ (Func _) = internalError "can not lazily bind a Func"
+  lazyBind cd i (Choice_Func d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_Func d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
+  lazyBind cd i (Choices_Func d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_Func _ i _) = internalError ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _ _ (Fail_Func _ info) = [Unsolvable info]
+  lazyBind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]  
 -- END GENERATED FROM PrimTypes.curry
 
 -- BEGIN GENERATED FROM PrimTypes.curry
@@ -316,20 +316,20 @@ instance (NormalForm t0) => NormalForm (C_IO t0) where
 instance Unifiable t0 => Unifiable (C_IO t0) where
   (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  bind _ (C_IO _) = internalError "can not bind IO"
-  bind i (Choice_C_IO cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_C_IO cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
-  bind i (Choices_C_IO cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
-  bind _ (Choices_C_IO _ i _) = internalError ("Prelude.IO.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_C_IO _ info) = [Unsolvable info]
-  bind i (Guard_C_IO _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind _ (C_IO _)            = internalError "can not lazily bind IO"
-  lazyBind i (Choice_C_IO cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_IO cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
-  lazyBind i (Choices_C_IO cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_C_IO _ i@(ChoiceID _) _) = internalError ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_C_IO cd info) = [Unsolvable info]
-  lazyBind i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  bind _  _(C_IO _) = internalError "can not bind IO"
+  bind cd i (Choice_C_IO d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_C_IO d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
+  bind cd i (Choices_C_IO d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _  _ (Choices_C_IO _ i _) = internalError ("Prelude.IO.bind: Choices with ChoiceID: " ++ (show i))
+  bind _ _ (Fail_C_IO _ info) = [Unsolvable info]
+  bind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind _  _ (C_IO _)            = internalError "can not lazily bind IO"
+  lazyBind cd i (Choice_C_IO d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_C_IO d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
+  lazyBind cd i (Choices_C_IO d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_C_IO _ i@(ChoiceID _) _) = internalError ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _  _ (Fail_C_IO cd info) = [Unsolvable info]
+  lazyBind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
 instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
@@ -391,20 +391,20 @@ instance NormalForm (PrimData a) where
 instance Unifiable (PrimData t0) where
   (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
   (=.<=) _ _ cd _ = Fail_C_Success cd  defFailInfo
-  bind _ (PrimData _) = internalError "can not bind PrimData"
-  bind i (Choice_PrimData cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_PrimData cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs
-  bind i (Choices_PrimData cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
-  bind _ (Choices_PrimData _ i _) = internalError ("Prelude.PrimData.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_PrimData _ info) = [Unsolvable info]
-  bind i (Guard_PrimData _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind _ (PrimData _) = internalError "can not lazily bind PrimData"
-  lazyBind i (Choice_PrimData cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_PrimData cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs
-  lazyBind i (Choices_PrimData cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_PrimData _ i@(ChoiceID _) _) = internalError ("Prelude.PrimData.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_PrimData _ info) = [Unsolvable info]
-  lazyBind i (Guard_PrimData _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  bind _  _ (PrimData _) = internalError "can not bind PrimData"
+  bind cd i (Choice_PrimData d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_PrimData d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
+  bind cd i (Choices_PrimData d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _  _ (Choices_PrimData _ i _) = internalError ("Prelude.PrimData.bind: Choices with ChoiceID: " ++ (show i))
+  bind _  _ (Fail_PrimData _ info) = [Unsolvable info]
+  bind cd i (Guard_PrimData _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind _  _ (PrimData _) = internalError "can not lazily bind PrimData"
+  lazyBind cd i (Choice_PrimData d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_PrimData d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
+  lazyBind cd i (Choices_PrimData d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_PrimData _ i@(ChoiceID _) _) = internalError ("Prelude.PrimData.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _  _ (Fail_PrimData _ info) = [Unsolvable info]
+  lazyBind cd i (Guard_PrimData _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
 
 -- END GENERATED FROM PrimTypes.curry
