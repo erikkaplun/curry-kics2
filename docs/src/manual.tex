@@ -53,7 +53,6 @@
 
 \lstnewenvironment{curry}{}{}
 \lstnewenvironment{currynomath}{\lstset{mathescape=false}}{} % Curry w/o math
-
 \newcommand{\listline}{\vrule width0pt depth1.75ex}
 
 % program text in normal text
@@ -64,8 +63,9 @@
 
 \newcommand{\pindex}[1]{\index{#1@{\tt #1}}}  % program elements in index
 
-\newcommand{\labs}{\mbox{\tt\char92}}  % lambda abstraction in Curry
 \newcommand{\todo}[1]{\fbox{\sc To do: #1}}
+\newcommand{\CYS}{KiCS2\xspace} % name of Curry system described here
+\newcommand{\cyshome}{\mbox{\textit{kics2home}}\xspace} % symbolic installation directory
 \newcommand{\cb}{CurryBrowser\xspace}
 
 % allow underscores in programs:
@@ -113,7 +113,7 @@ Fabian Reck$^4$ \\[4ex]
 \addcontentsline{toc}{section}{Preface}
 \section*{Preface}
 
-This document describes KiCS2 (\textbf{Ki}el \textbf{C}urry \textbf{S}ystem
+This document describes \CYS (\textbf{Ki}el \textbf{C}urry \textbf{S}ystem
 Version \textbf{2}),
 an implementation of the multi-paradigm language Curry
 \cite{Hanus97POPL,Hanus06Curry} that is
@@ -126,11 +126,11 @@ Curry combines in a seamless way features from functional programming
 logic programming (logical variables, partial data structures,
 built-in search), and concurrent programming (concurrent evaluation
 of constraints with synchronization on logical variables).
-The current KiCS2 implementation does not support concurrent
+The current \CYS implementation does not support concurrent
 constraints. Alternatively, one can write distributed applications
 by the use of sockets that can be registered and accessed
 with symbolic names.
-Moreover, KiCS2 also supports
+Moreover, \CYS also supports
 the high-level implementation of
 graphical user interfaces and web services
 (as described in more detail in
@@ -139,11 +139,11 @@ graphical user interfaces and web services
 We assume familiarity with the ideas and features
 of Curry as described in the Curry language definition \cite{Hanus12Curry}.
 Therefore, this document only explains the use of the different
-components of KiCS2
-and the differences and restrictions of KiCS2
+components of \CYS
+and the differences and restrictions of \CYS
 (see Section~\ref{sec-restrictions})
 compared with the language Curry (Version 0.8.3).
-The basic ideas of the implementation of KiCS2
+The basic ideas of the implementation of \CYS
 can be found in
 \cite{BrasselHanusPeemoellerReck11,BrasselHanusPeemoellerReck11WLP}.
 
@@ -156,62 +156,62 @@ DFG grants Ha 2457/5-1 and Ha 2457/5-2.
 
 \newpage
 
-\section{Overview of KiCS2}
+\section{Overview of \CYS}
 
 \subsection{Installation}
 \label{sec-install}
 
-This version of KiCS2 has been developed and
+This version of \CYS has been developed and
 tested on Linux systems.
 In principle, it should be also executable on other
 platforms on which a Haskell implementation (Glasgow Haskell Compiler
 and Cabal) exists, like in many Linux distributions, Sun Solaris,
 or Mac OS X systems.
 
-Installation instructions for KiCS2 can be found in
-the file \code{INSTALL.txt} stored in the KiCS2 installation directory.
-Note that there are two possibilities to install KiCS2:
+Installation instructions for \CYS can be found in
+the file \code{INSTALL.txt} stored in the \CYS installation directory.
+Note that there are two possibilities to install \CYS:
 \begin{description}
 \item[Global installation:]\index{global installation}\index{installation!global}
-KiCS2 is installed in some global system directory where users
+\CYS is installed in some global system directory where users
 have no write permission. In this case, some options for experimenting
-with KiCS2 (like \code{supply} or \code{ghc}, see below)
+with \CYS (like \code{supply} or \code{ghc}, see below)
 are not available (since they require the recompilation of parts of
 the installed system).
 \item[Local installation:]\index{local installation}\index{installation!local}
-KiCS2 is installed in some local user directory where the user
+\CYS is installed in some local user directory where the user
 has write permission and the option \code{GLOBALINSTALL}
-in the \code{Makefile} of the KiCS2 installation is set as follows:
+in the \code{Makefile} of the \CYS installation is set as follows:
 \begin{lstlisting}
 GLOBALINSTALL=no
 \end{lstlisting}
-In this case, all options of KiCS2 are available.
+In this case, all options of \CYS are available.
 \end{description}
-In the following, $kics2home$ denotes the installation directory
-of the KiCS2 installation.
+In the following, \cyshome denotes the installation directory
+of the \CYS installation.
 
 
 \subsection{General Use}
 \label{sec-general}
 
 All executables required to use the different components
-of KiCS2 are stored in the directory \code{$kics2home$/bin}.
+of \CYS are stored in the directory \code{\cyshome/bin}.
 You should add this directory
 to your path (e.g., by the \code{bash} command
-\ccode{export PATH=$kics2home$/bin:\$PATH}).
+\ccode{export PATH=\cyshome/bin:\$PATH}).
 
 The source code of the Curry program
 must be stored in a file with the suffix \ccode{.curry},
 e.g., \code{prog.curry}. 
 Literate programs must be stored in files with the extension \ccode{.lcurry}.
 
-Since the translation of Curry programs with KiCS2 creates
+Since the translation of Curry programs with \CYS creates
 some auxiliary files (see Section~\ref{sec-auxfiles} for details),
 you need write permission
 in the directory where you have stored your Curry programs.
 Moreover, the current implementation also recompiles
 system libraries according to the setting of some options.
-Therefore, the KiCS2 system should be locally installed
+Therefore, the \CYS system should be locally installed
 in your user account.
 The auxiliary files for all Curry programs in the current
 directory can be deleted by the command\pindex{cleancurry}
@@ -219,7 +219,7 @@ directory can be deleted by the command\pindex{cleancurry}
 cleancurry
 \end{curry}
 (this is a shell script stored in the \code{bin} directory of the
-KiCS2 installation, see above).
+\CYS installation, see above).
 The command
 \begin{curry}
 cleancurry -r
@@ -232,7 +232,7 @@ also deletes the auxiliary files in all subdirectories.
 \label{sec-restrictions}
 
 There are a few minor restrictions on Curry programs
-when they are processed with KiCS2:
+when they are processed with \CYS:
 \begin{itemize}
 \item
 \index{singleton variables}\index{variables!singleton}
@@ -241,7 +241,7 @@ in a rule, should be denoted as an anonymous variable \ccode{_},
 otherwise the parser will print a warning since this is a
 typical source of programming errors.
 \item
-KiCS2 translates all \emph{local declarations} into global functions with
+\CYS translates all \emph{local declarations} into global functions with
 additional arguments (``lambda lifting'', see Appendix~D of the
 Curry language report).
 Thus, in the various run-time systems, the definition of
@@ -256,7 +256,7 @@ In general, tabulator stops should be avoided in source programs.
 \item
 Encapsulated search\index{encapsulated search}: In order
 to allow the integration of non-deterministic computations
-in programs performing I/O at the top-level, KiCS2 provides
+in programs performing I/O at the top-level, \CYS provides
 the libraries \code{AllSolutions} (Section~\ref{Library:AllSolutions})
 and \code{SearchTree} (Section~\ref{Library:SearchTree})
 where one can defined search operators and various search strategies.
@@ -265,7 +265,7 @@ The general definition of encapsulated search of the Curry report
 \item Concurrent computations\index{concurrency}
 based on the suspension of expressions
 containing free variables are not yet supported.
-KiCS2 supports \emph{value generators} for free variables
+\CYS supports \emph{value generators} for free variables
 so that a free variable is instantiated when its value is demanded.
 For instance, the initial expression
 \begin{curry}
@@ -291,19 +291,19 @@ There is currently no general connection to external constraint solvers.
 \end{itemize}
 
 
-\subsection{Modules in KiCS2}
+\subsection{Modules in \CYS}
 \label{sec-modules}
 
-The current implementation of KiCS2 supports only flat module names,
+The current implementation of \CYS supports only flat module names,
 i.e., the notation \code{Dir.Mod.f} is not supported.\index{modules}
 In order to allow the structuring of modules in different directories,
-KiCS2 searches for imported modules in various directories.
+\CYS searches for imported modules in various directories.
 By default, imported modules are searched in the directory
 of the main program and the system module directories
-\ccode{$kics2home$/lib} and \ccode{$kics2home$/lib/meta}.
+\ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
 This search path can be extended
 by setting the environment variable \code{CURRYPATH}\pindex{CURRYPATH}
-(which can be also set in a KiCS2 session by the option
+(which can be also set in a \CYS session by the option
 \ccode{:set path}\pindex{path}\pindex{:set path},
 see below)
 to a list of directory names separated by colons (\ccode{:}).
@@ -320,9 +320,9 @@ if one loads the Curry program \ccode{/home/joe/curryprogs/main}).
 \item The directories enumerated in the environment variable \code{CURRYPATH}.
 \item The directories enumerated in the \ccode{.kics2rc} variable
       \ccode{libraries}.
-\item The directories \ccode{$kics2home$/lib} and \ccode{$kics2home$/lib/meta}.
+\item The directories \ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
 \end{enumerate}
-Note that the standard prelude (\code{$kics2home$/lib/Prelude.curry})
+Note that the standard prelude (\code{\cyshome/lib/Prelude.curry})
 will be always implicitly imported to all modules if a module
 does not contain an explicit import declaration for the module
 \code{Prelude}.
@@ -330,57 +330,57 @@ does not contain an explicit import declaration for the module
 
 \newpage
 
-\section{Using the Interactive Environment of KiCS2}
+\section{Using the Interactive Environment of \CYS}
 \label{sec-kics2}
 
 This section describes the interactive environment
-KiCS2\index{KiCS2}
+\CYS\index{\CYS}
 that supports the development of applications written in Curry.
-The implementation of KiCS2 contains also a separate compiler
+The implementation of \CYS contains also a separate compiler
 which is automatically invoked by the interactive environment.
 
-\subsection{Invoking KiCS2}
+\subsection{Invoking \CYS}
 \label{sec:invoke-kics2}
 
-To start KiCS2, execute the command
+To start \CYS, execute the command
 \ccode{kics2}\pindex{kics2}
 (this is a shell script stored in
-\code{$kics2home$/bin} where $kics2home$ is the installation directory
-of KiCS2).
+\code{\cyshome/bin} where \cyshome is the installation directory
+of \CYS).
 When the system is ready (i.e., when the prompt \ccode{Prelude>} occurs),
-the prelude (\code{$kics2home$/lib/Prelude.curry})
+the prelude (\code{\cyshome/lib/Prelude.curry})
 is already loaded, i.e., all definitions in the prelude are accessible.
 Now you can type various commands (see next section)
 or an expression to be evaluated.
 
-One can also invoke KiCS2 with parameters.
+One can also invoke \CYS with parameters.
 These parameters are usual a sequence of commands
 (see next section) that are executed before the user interaction
 starts. For instance, the invocation
 \begin{curry}
 kics2 :load Mod :add List
 \end{curry}
-starts KiCS2, loads the main module \code{Mod}, and adds the additional
+starts \CYS, loads the main module \code{Mod}, and adds the additional
 module \code{List}.
 The invocation
 \begin{curry}
 kics2 :load Mod :eval config
 \end{curry}
-starts KiCS2, loads the main module \code{Mod}, and evaluates
+starts \CYS, loads the main module \code{Mod}, and evaluates
 the operation \code{config} before the user interaction starts.
 As a final example, the invocation
 \begin{curry}
 kics2 :load Mod :save :quit
 \end{curry}
-starts KiCS2, loads the main module \code{Mod}, creates an executable,
-and terminates KiCS2. This invocation could be useful in ``make'' files
+starts \CYS, loads the main module \code{Mod}, creates an executable,
+and terminates \CYS. This invocation could be useful in ``make'' files
 for systems implemented in Curry.
 
 
-\subsection{Command of KiCS2}
+\subsection{Command of \CYS}
 \label{sec:kics2-commands}
 
-The {\bf most important commands} of KiCS2 are
+The {\bf most important commands} of \CYS are
 (it is sufficient to type a unique prefix of a command if it is unique,
 e.g., one can type \ccode{:r} instead of \ccode{:reload}):
 
@@ -442,7 +442,7 @@ as in the expression
 xs++ys=:=[z] where xs,ys,z free
 \end{curry}
 they are specialized to the type \ccode{()}
-(since the current implementation of KiCS2 does not support
+(since the current implementation of \CYS does not support
 computations with polymorphic logic variables).
 
 \item[\fbox{:eval $expr$}]\pindex{:eval}
@@ -519,7 +519,7 @@ of all exported functions.
 \item[\fbox{\code{:interface $m$}}]\pindex{:interface}
 Similar to \ccode{:interface}
 but shows the interface of the module $m$
-which must be in the load path of KiCS2.
+which must be in the load path of \CYS.
 
 \item[\fbox{\code{:usedimports}}]\pindex{:usedimports}
 Show all calls to imported functions in the currently loaded module.
@@ -527,7 +527,7 @@ This might be useful to see which import declarations are really necessary.
 
 \item[\fbox{\code{:set $option$}}]\pindex{:set}
 Set or turn on/off a specific option
-of the KiCS2 environment (see \ref{sec:options} for a description
+of the \CYS environment (see \ref{sec:options} for a description
 of all options). Options are turned on by the prefix
 \ccode{+} and off by the prefix \ccode{-}. Options that can only
 be set (e.g., \code{path}) must not contain a prefix.
@@ -548,7 +548,7 @@ function) will be evaluated by the executable.
 \item[\fbox{\code{:fork $expr$}}]\pindex{:fork}
 The expression $expr$, which is typically of type \ccode{IO ()},
 is evaluated in an independent process which runs in
-parallel to the current KiCS2 process.
+parallel to the current \CYS process.
 All output and error messages from this new process are suppressed.
 This command is useful to test distributed Curry programs
 where one can start
@@ -560,7 +560,7 @@ is finished.
 
 \end{description}
 
-\subsection{Option of KiCS2}
+\subsection{Options of \CYS}
 \label{sec:options}
 
 The following options (which can be set by the command \ccode{:set})
@@ -570,7 +570,7 @@ are currently supported:
 \item[\fbox{\code{path $path$}}]\pindex{path} Set the additional search path
 for loading modules to $path$.
 Note that this search path is only used for loading modules
-inside this invocation of KiCS2.
+inside this invocation of \CYS.
 
 \item[\fbox{\code{prdfs }}]\pindex{prdfs}
 Set the search mode to evaluate non-deterministic expressions
@@ -614,7 +614,7 @@ resulting from the complete evaluation of the main expression
 in a tree-like structure.
 This mode is only useful for debugging or
 understanding the implementation of non-deterministic
-evaluations used in KiCS2.
+evaluations used in \CYS.
 If the optional argument $n$ is provided,
 the tree is shown up to depth $n$.
 
@@ -694,19 +694,19 @@ execution but in a faster startup time since the linker
 to create the main executable is not used.
 
 \item[\fbox{\code{cmp $opts$}}]\pindex{cmp}
-Define additional options passed to the KiCS2 compiler.
+Define additional options passed to the \CYS compiler.
 For instance, setting the option
 \begin{curry}
 :set cmp -O 0
 \end{curry}
-has the effect that all optimizations performed by the KiCS2 compiler
+has the effect that all optimizations performed by the \CYS compiler
 are turned off.
 
 \item[\fbox{\code{ghc $opts$}}]\pindex{ghc}
 Define additional options passed to the Glasgow Haskell Compiler (GHC)
 when the generated Haskell programs are compiled.
 One has to be careful when using such options.
-For instance, in a global installation of KiCS2
+For instance, in a global installation of \CYS
 (see Section~\ref{sec-install}), libraries are pre-compiled
 so that inconsistencies might occur if compilation options
 might be changed.
@@ -772,7 +772,7 @@ returns the value \code{["first","second"]}.
 \subsection{Source-File Options}
 
 If the evaluation of operations in some main module loaded into
-KiCS2 requires specific options, like an iterative-deepening
+\CYS requires specific options, like an iterative-deepening
 search strategy, one can also put these options into the source
 code of this module in order to avoid setting these options
 every time when this module is loaded.
@@ -789,7 +789,7 @@ where $opt$ is an option that can occur in a \ccode{:set} command
 (compare Section~\ref{sec:options}).
 Such a line in the source code (which is a comment according to
 the syntax of Curry)
-has the effect that this option is set by the KiCS2 command
+has the effect that this option is set by the \CYS command
 \ccode{:set $opt$} whenever this module is loaded (not reloaded!)
 as a main module. For instance, if a module starts with the
 lines
@@ -808,28 +808,28 @@ and verbosity level 2.
 \subsection{Command Line Editing}
 
 In order to have support for line editing or history functionality
-in the command line of KiCS2 (as often supported by the \code{readline}
+in the command line of \CYS (as often supported by the \code{readline}
 library), you should have the Unix command \code{rlwrap} installed
 on your local machine.
-If \code{rlwrap} is installed, it is used by KiCS2 if called on a terminal.
+If \code{rlwrap} is installed, it is used by \CYS if called on a terminal.
 If it should not be used (e.g., because it is executed
 in an editor with \code{readline} functionality), one can
-call KiCS2 with the parameter \ccode{--noreadline}
+call \CYS with the parameter \ccode{--noreadline}
 (which must occur as the first parameter).
 
 
 \subsection{Customization}
 \label{sec-customization}
 
-In order to customize the behavior of KiCS2 to your own preferences,
-there is a configuration file which is read by KiCS2 when it is invoked.
-When you start KiCS2 for the first time, a standard version of
+In order to customize the behavior of \CYS to your own preferences,
+there is a configuration file which is read by \CYS when it is invoked.
+When you start \CYS for the first time, a standard version of
 this configuration file is copied with the name
 \ccode{.kics2rc}\pindex{kics2rc}\pindex{.kics2rc}
 into your home directory. The file contains definitions
 of various settings, e.g., about showing warnings, using Curry extensions,
 programs etc.
-After you have started KiCS2 for the first time, look into this file
+After you have started \CYS for the first time, look into this file
 and adapt it to your own preferences.
 
 
@@ -838,18 +838,18 @@ and adapt it to your own preferences.
 Emacs is a powerful programmable editor suitable for program development.
 It is freely available for many platforms
 (see \url{http://www.emacs.org}).
-The distribution of KiCS2 contains also a special
+The distribution of \CYS contains also a special
 \emph{Curry mode}\index{Curry mode}\index{Emacs}
 that supports the development of Curry programs in
 the Emacs environment.
 This mode includes support for syntax highlighting,
 finding declarations in the current buffer, and
-loading Curry programs into KiCS2
+loading Curry programs into \CYS
 in an Emacs shell.
 
 The Curry mode has been adapted from a similar mode for Haskell programs.
 Its installation is described in the file \code{README}
-in directory \ccode{$kics2home$/tools/emacs} which also contains
+in directory \ccode{\cyshome/tools/emacs} which also contains
 the sources of the Curry mode and a short description about
 the use of this mode.
 
@@ -859,13 +859,13 @@ the use of this mode.
 \section{Extensions}
 \label{sec-extensions}
 
-KiCS2 supports some extensions in Curry programs that are not (yet)
+\CYS supports some extensions in Curry programs that are not (yet)
 part of the definition of Curry. These extensions are described below.
 
 \subsection{Recursive Variable Bindings}
 
 Local variable declarations (introduced by \code{let}\pindex{let}
-or \code{where}\pindex{where}) can be (mutually) recursive in KiCS2.
+or \code{where}\pindex{where}) can be (mutually) recursive in \CYS.
 For instance, the declaration
 \begin{curry}
 ones5 = let ones = 1 : ones
@@ -929,6 +929,28 @@ by the functional pattern.
 In general, a pattern of the form \code{($f$ $t_1$\ldots$t_n$)} ($n>0$)
 is interpreted as a functional pattern if $f$ is not a visible constructor
 but a defined function that is visible in the scope of the pattern.
+
+It is also possible to combine functional patterns with
+as-patterns.\index{as-pattern}\pindex{"@}
+Similarly to the meaning of as-patterns
+in standard constructor patterns,
+as-patterns in functional patterns are interpreted
+as a sequence of pattern matching where the variable of the as-pattern
+is matched before the given pattern is matched.
+This process can be described by introducing an auxiliary operation
+for this two-level pattern matching process.
+For instance, the definition
+\begin{curry}
+f (_ ++ x@[(42,_)] ++ _) = x
+\end{curry}
+is considered as syntactic sugar for the expanded definition
+\begin{curry}
+f (_ ++ x ++ _) = f' x
+ where
+  f' [(42,_)] = x
+\end{curry}
+However, as-patterns are usually implemented
+in a more efficient way without introducing auxiliary operations.
 
 \subsection{Order of Pattern Matching}
 
@@ -1191,7 +1213,7 @@ from different modules.
 \subsubsection{Restrictions in the Usage of Records}
 \label{sec-restrinrecs}
 
-In contrast to the basic concept in \cite{Leijen05}, KiCS2/Curry provides a
+In contrast to the basic concept in \cite{Leijen05}, \CYS/Curry provides a
 simpler version of records. Some of the features described there are
 currently not supported or even restricted.
 
@@ -1237,13 +1259,13 @@ new analyzers can be easily connected to \cb.
 A detailed description of the ideas behind this tool can be
 found in \cite{Hanus05WCFLP,Hanus06WLPE}.
 
-\cb is part of the KiCS2 distribution and can be
+\cb is part of the \CYS distribution and can be
 started in two ways:
 \begin{itemize}
 \item
-In the command shell via the command: \code{$kics2home$/bin/currybrowser mod}
+In the command shell via the command: \code{\cyshome/bin/currybrowser mod}
 \item
-In the KiCS2 environment after loading the module
+In the \CYS environment after loading the module
 \code{mod} and typing the command \ccode{:browse}.
 \end{itemize}
 Here, \ccode{mod} is the name of the main module of a Curry application.
@@ -1328,7 +1350,7 @@ are available through the ``Help'' menu of \cb.
 \label{sec-currytest}
 
 CurryTest\index{CurryTest}\index{testing programs}\index{program!testing}
-is a simple tool in the KiCS2 distribution to write
+is a simple tool in the \CYS distribution to write
 and run repeatable tests. CurryTest simplifies the task
 of writing test cases for a module and executing them.
 The tool is easy to use. Assume one has implemented a module \code{MyMod}
@@ -1380,7 +1402,6 @@ test2 = assertTrue      "all"    (all (<5) [1,2,3,4])
 
 test3 = assertSolutions "prefix" (\x -> let y free in  x++y =:= [1,2])
                                  [[],[1],[1,2]]
-
 \end{curry}
 For instance, \code{test1} asserts that the result of evaluating the
 expression \code{([1,2]++[3,4])} is equal to \code{[1,2,3,4]}.
@@ -1389,8 +1410,8 @@ We can execute a test suite by the command\pindex{currytest}
 \begin{curry}
 currytest testList
 \end{curry}
-(\code{currytest} is a program stored in \code{$kics2home$/bin}
-where $kics2home$ is the installation directory of KiCS2;
+(\code{currytest} is a program stored in \code{\cyshome/bin}
+where \cyshome is the installation directory of \CYS;
 see Section~\ref{sec-install}).
 In our example, \ccode{testList.curry} is the program containing the
 definition of all assertions. This has the effect
@@ -1454,8 +1475,8 @@ command\pindex{erd2curry}
 \begin{curry}
 erd2curry myerd.xmi
 \end{curry}
-(\code{erd2curry} is a program stored in \code{$kics2home$/bin}
-where $kics2home$ is the installation directory of KiCS2;
+(\code{erd2curry} is a program stored in \code{\cyshome/bin}
+where \cyshome is the installation directory of \CYS;
 see Section~\ref{sec-install}).
 If \code{MyData} is the name of the ERD, the Curry program file
 \ccode{MyData.curry} is generated containing all the necessary
@@ -1465,7 +1486,7 @@ If one does not want to use the Umbrello UML Modeller,
 one can also create a textual description of the ERD
 as a Curry term of type \code{ERD}
 (w.r.t.\ the type definition given in module
-\code{$kics2home$/tools/erd2curry/ERD.curry})
+\code{\cyshome/tools/erd2curry/ERD.curry})
 and store it in some file, e.g., \ccode{myerd.term}.
 This description can be compiled into a Curry program by the
 command\pindex{erd2curry}
@@ -1486,12 +1507,12 @@ erd2curry -v myerd.term
 
 \paragraph{Inclusion in the Curry application:}
 To compile the generated database code, either
-include the directory \code{$kics2home$/tools/erd2curry}
+include the directory \code{\cyshome/tools/erd2curry}
 into your Curry load path
 (e.g., by setting  the environment variable
 \ccode{CURRYPATH}\pindex{CURRYPATH}, see also Section~\ref{sec-modules})
 or copy the file
-\code{$kics2home$/tools/erd2curry/ERDGeneric.curry}
+\code{\cyshome/tools/erd2curry/ERDGeneric.curry}
 into the directory of the generated database code.
 
 
@@ -1499,7 +1520,7 @@ into the directory of the generated database code.
 
 \section{Technical Problems}
 
-One can implement distributed systems with KiCS2
+One can implement distributed systems with \CYS
 by the use of the library \code{NamedSocket} (Section~\ref{Library:NamedSocket})
 that supports a socket communication with symbolic names
 rather than natural numbers.
@@ -1510,10 +1531,10 @@ or \code{WUI} (Section~\ref{Library:WUI}).
 However, it might be possible that some technical problems
 arise due to the use of named sockets.
 Therefore, this section gives some information
-about the technical requirements of KiCS2 and how to solve
+about the technical requirements of \CYS and how to solve
 problems due to these requirements.
 
-There is one fixed port that is used by the implementation of KiCS2:
+There is one fixed port that is used by the implementation of \CYS:
 \begin{description}
 \item[Port 8767:] This port is used by the
 {\bf Curry Port Name Server} (CPNS) to implement symbolic names for
@@ -1533,9 +1554,9 @@ of an registered named socket. The demon will be automatically started for
 the first time on a machine when a user runs a program
 using named sockets.
 It can also be manually started and terminated by the
-scripts \code{$kics2home$/cpns/start} and
-\code{$kics2home$/cpns/stop}.
-If the demon is already running, the command \code{$kics2home$/cpns/start}
+scripts \code{\cyshome/cpns/start} and
+\code{\cyshome/cpns/stop}.
+If the demon is already running, the command \code{\cyshome/cpns/start}
 does nothing (so it can be always executed
 before invoking a Curry program using named sockets).
 
@@ -1554,19 +1575,19 @@ please write to
 \newpage
 \appendix
 
-\section{Libraries of the KiCS2 Distribution}
+\section{Libraries of the \CYS Distribution}
 \label{sec:libraries}
 
 {\setlength{\parindent}{0.0cm}
 
-The KiCS2 distribution comes with an extensive collection
+The \CYS distribution comes with an extensive collection
 of libraries for application programming.
 The libraries for meta-programming by representing
 Curry programs as datatypes in Curry are described
 in the following subsection in more detail.
 The complete set of libraries with all exported types and functions
 are described in the further subsections.
-For a more detailed online documentation of all libraries of KiCS2,
+For a more detailed online documentation of all libraries of \CYS,
 see \url{http://www-ps.informatik.uni-kiel.de/kics2/lib/index.html}.
 
 
@@ -1579,7 +1600,7 @@ To support meta-programming, i.e., the manipulation of Curry programs
 in Curry, there are system modules
 \code{FlatCurry} (Section~\ref{Library:FlatCurry})
 and \code{AbstractCurry} (Section~\ref{Library:AbstractCurry}),
-stored in the directory \ccode{$kics2home$/lib/meta},
+stored in the directory \ccode{\cyshome/lib/meta},
 which define datatypes for the representation
 of Curry programs.
 \code{AbstractCurry} is a more direct representation of a Curry program,
@@ -1745,7 +1766,7 @@ following term:
 \section{Auxiliary Files}
 \label{sec-auxfiles}
 
-During the translation and execution of a Curry program with KiCS2,
+During the translation and execution of a Curry program with \CYS,
 various intermediate representations of the source program are created
 and stored in different files which are shortly explained in this section.
 In general, it is not necessary to know about
@@ -1754,7 +1775,7 @@ and updated. You should only remember the command for deleting
 all auxiliary files (\ccode{cleancurry}, see Section~\ref{sec-general})
 to clean up your directories.
 
-The various components of KiCS2 create the following auxiliary files.
+The various components of \CYS create the following auxiliary files.
 \begin{description}
 \item[\code{prog.fcy}:] This file contains the Curry program
 in the so-called ``FlatCurry'' representation where all functions are global
@@ -1764,7 +1785,7 @@ is translated into explicit case/or expressions
 This representation might be useful for other back ends and
 compilers for Curry and is the basis doing meta-programming in Curry.
 This file is implicitly
-generated when a program is compiled with KiCS2.
+generated when a program is compiled with \CYS.
 The FlatCurry representation of a Curry program is usually
 generated by the front-end after parsing, type checking and eliminating
 local declarations.
@@ -1778,12 +1799,12 @@ i.e., it is similar to \code{prog.fcy} but contains only exported
 entities and the bodies of all functions omitted (i.e., ``external'').
 This representation is useful for providing a fast access
 to module interfaces.
-This file is implicitly generated when a program is compiled with KiCS2
+This file is implicitly generated when a program is compiled with \CYS
 and stored in the same directory as \code{prog.fcy}.
 
 \item[\code{Curry_prog.nda}:] This file contains some information about
 the determinism behavior of operations that is used by the
-KiCS2 compiler (see \cite{BrasselHanusPeemoellerReck11}
+\CYS compiler (see \cite{BrasselHanusPeemoellerReck11}
 for more details about the use of this information).
 If $dir$ is the directory where the Curry program is stored,
 the corresponding Haskell program is stored in the directory
@@ -1797,7 +1818,7 @@ This file is stored in the same directory as \code{Curry_prog.nda}.
 
 \item[\code{Curry_prog.hs}:] This file contains a Haskell program
 as the result of translating the Curry program with the
-KiCS2 compiler.
+\CYS compiler.
 This file is stored in the same directory as \code{Curry_prog.nda}.
 
 \item[\code{Curry_prog.o}:] This file contains the object code
@@ -1811,7 +1832,7 @@ compiled in order to execute it.
 This file is stored in the same directory as \code{Curry_prog.hs}.
 
 \item[\code{prog}:] This file contains the executable
-after compiling and saving a program with KiCS2
+after compiling and saving a program with \CYS
 (see command \ccode{:save} in Section~\ref{sec:kics2-commands}).
 
 \end{description}
@@ -1824,7 +1845,7 @@ after compiling and saving a program with KiCS2
 \label{sec:external-operations}
 
 \index{operation!external}\index{external operation}
-Currently, KiCS2 has no general interface to external operations,
+Currently, \CYS has no general interface to external operations,
 i.e., operations whose semantics is not defined by program rules
 in a Curry program but by some code written in another programming
 language.
@@ -1849,9 +1870,9 @@ f external
 below the type declaration for the external operation \code{f}.
 \end{enumerate}
 Furthermore, an implementation of the external operation
-must be provided in the target language of the KiCS2 compiler,
+must be provided in the target language of the \CYS compiler,
 i.e., in Haskell, and inserted in the compiled code.
-In order to simplify this task, KiCS2 follows some code
+In order to simplify this task, \CYS follows some code
 conventions that are described in the following.
 
 Assume you want to implement your own concatenation
@@ -1885,8 +1906,8 @@ so that it is ensured that the external operation \code{prim_sconc}
 is always called with complete evaluated arguments.
 
 In order to define the Haskell code implementing \code{prim_sconc},
-one has to satisfy the naming conventions of KiCS2.
-The KiCS2 compiler generates the following code for the
+one has to satisfy the naming conventions of \CYS.
+The \CYS compiler generates the following code for the
 external operation \code{prim_sconc} (note that the generated
 Haskell code for the module \code{String} is stored in the file
 \code{.curry/kics2/Curry_String.hs}):
@@ -1916,7 +1937,7 @@ the Haskell code implementing the external operations
 occurring in the module \code{String} must be in the
 file \code{External_String.hs} which is located in the same
 directory as the file \code{String.curry}.
-The KiCS2 compiler appends the code contained in
+The \CYS compiler appends the code contained in
 \code{External_String.hs} to the generated code
 stored in the file \code{.curry/kics2/Curry_String.hs}.\footnote{%
 If the file \code{External_String.hs} contains also
@@ -1942,7 +1963,7 @@ Note that the Curry-related types contain information about
 non-deterministic or constrained values
 (see \cite{BrasselHanusPeemoellerReck11,BrasselHanusPeemoellerReck11WLP})
 that are meaningless in Haskell.
-To solve this conversion problem, the implementation of KiCS2
+To solve this conversion problem, the implementation of \CYS
 provides a family of operations to perform these conversions
 for the predefined types occurring in the standard prelude.
 For instance, \code{fromCurry} converts a Curry type into the
@@ -1965,7 +1986,7 @@ function.
 
 The conversion between Curry types and Haskell types,
 i.e., the family of conversion operation \code{fromCurry}
-and \code{toCurry}, is defined in the KiCS2 implementation
+and \code{toCurry}, is defined in the \CYS implementation
 for all standard data types.
 In particular, it is also defined on function types so that one can
 easily implement external Curry I/O actions by using
@@ -1996,11 +2017,11 @@ which has the type
 CP.OP_List CP.C_Char -> CP.C_IO CP.OP_Unit
 \end{curry}
 When we compile the Curry module \code{String},
-KiCS2 combines these definitions in the target program so that
+\CYS combines these definitions in the target program so that
 we can immediately use the externally defined operation
 \code{printString} in Curry programs.
 
-As we have seen, KiCS2 transforms a name like
+As we have seen, \CYS transforms a name like
 \code{primOP} of an external operation into the name
 \code{external_d_C_primOP} for the Haskell operation
 to be implemented, i.e., only a specific prefix is added.

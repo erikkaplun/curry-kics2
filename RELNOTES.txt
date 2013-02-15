@@ -13,7 +13,8 @@ Changes to version 0.2.2:
   inside functional patterns is fixed.
 
 * Some bugs regarding the combination of functional patterns and
-  nonlinear left-hand-sides are fixed.
+  nonlinear left-hand-sides are fixed. The parser also accepts
+  as-patterns inside functional patterns.
 
 * The GHC and cabal binaries used for installation can now be
   explicitly set. See the installation instructions for details.
