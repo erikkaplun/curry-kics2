@@ -573,7 +573,7 @@ searchMSearch cd x = evalStateT (searchMSearch' cd return x) (Map.empty :: Decis
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => Cover -> (a -> m b) -> a -> m b
 searchMSearch' cd cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
   where
-  smpFail d info = if isCovered d then szero d info else mzero
+  smpFail d info  = szero d info
   smpVal v        = searchNF (searchMSearch' cd) cont v
 
   smpChoice d i x y = lookupDecision i >>= follow
@@ -599,7 +599,7 @@ searchMSearch' cd cont = match smpChoice smpChoices smpChoices smpFail smpGuard 
 
   smpGuard d cs e 
    | isCovered d = constrainMSearch d cs (searchMSearch' cd cont e)
-   | otherwise = solve cd cs e >>= maybe mzero (searchMSearch' cd cont . snd)
+   | otherwise = solve cd cs e >>= maybe (szero d defFailInfo) (searchMSearch' cd cont . snd)
 
   processLB d i cs xs = decide i NoDecision
                         $ guardCons d (StructConstr cs) (choicesCons d i xs)
