@@ -85,6 +85,11 @@ install: kernel
 alltools:
 	cd currytools && $(MAKE) # various tools
 	cd tools      && $(MAKE) # various tools
+	
+# install the benchmark system
+.PHONY: benchmarks
+benchmarks:
+	cd benchmarks && $(MAKE)
 
 # uninstall globally installed cabal packages
 .PHONY: uninstall
