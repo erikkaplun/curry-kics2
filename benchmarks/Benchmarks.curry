@@ -355,7 +355,7 @@ chooseSupply :: Supply -> String
 chooseSupply = map toLower . drop 2 . show
 
 mainExpr :: Strategy -> Output -> Goal -> String
-mainExpr _ _ (Goal False _ goal) = "evalD d_C_" ++ goal
+mainExpr _ _ (Goal False _ goal) = "main = evalD d_C_" ++ goal
 mainExpr s o (Goal True  _ goal) = searchExpr s
  where
   searchExpr PRDFS            = "main = prdfs print nd_C_" ++ goal
