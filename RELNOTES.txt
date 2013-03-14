@@ -6,6 +6,9 @@ Release notes for KiCS2 Version 0.2.3 (under development)
 
 Changes to version 0.2.2:
 
+* The KiCS2 REPL now supports the configuration of the user prompt
+  via `:set prompt <prompt>`.
+
 * Syntax highlighting for KDE's editor component `katepart` added,
   supporting Curry and Literate Curry.
 

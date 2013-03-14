@@ -22,6 +22,7 @@ import IO
 import IOExts
 import List          (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
 import ReadNumeric   (readNat)
+import ReadShowTerm  (readsTerm)
 import Sort          (mergeSort)
 import System        (system, getArgs, getEnviron, setEnviron, getPID)
 import Time
@@ -104,12 +105,24 @@ getBanner = do
 -- The main read-eval-print loop:
 repl :: ReplState -> IO ()
 repl rst = do
-  putStr prompt >> hFlush stdout
+  putStr (calcPrompt rst) >> hFlush stdout
   eof <- isEOF
   if eof
     then cleanUpRepl rst
     else do getLine >>= processInput rst . strip
- where prompt = unwords (rst :> addMods ++ [rst:> mainMod]) ++ "> "
+
+calcPrompt :: ReplState -> String
+calcPrompt rst = subst (rst :> prompt)
+ where
+  loaded = unwords (rst :> addMods ++ [rst:> mainMod])
+  subst []       = []
+  subst [c]      = [c]
+  subst (c:d:cs) = case c of
+    '%' -> case d of
+      '%' -> '%' : cs
+      's' -> loaded ++ subst cs
+      _   -> c : d : subst cs
+    _   -> c : subst (d:cs)
 
 -- Clean resources of REPL before terminating it.
 cleanUpRepl :: ReplState -> IO ()
@@ -599,6 +612,7 @@ replOptions =
   , ("v2"           , \r _ -> return (Just { verbose      := 2     | r }))
   , ("v3"           , \r _ -> return (Just { verbose      := 3     | r }))
   , ("v4"           , \r _ -> return (Just { verbose      := 4     | r }))
+  , ("prompt"       , setPrompt                                          )
   , ("+interactive" , \r _ -> return (Just { interactive  := True  | r }))
   , ("-interactive" , \r _ -> return (Just { interactive  := False | r }))
   , ("+first"       , \r _ -> return (Just { firstSol     := True  | r }))
@@ -616,6 +630,16 @@ replOptions =
   , ("rts"          , \r a -> return (Just { rtsOpts      := a     | r }))
   , ("args"         , \r a -> return (Just { rtsArgs      := a     | r }))
   ]
+
+setPrompt :: ReplState -> String -> IO (Maybe ReplState)
+setPrompt rst p
+  | null rawPrompt = skipCommand "no prompt specified"
+  | otherwise  = case head rawPrompt of
+    '"' -> case readsTerm rawPrompt of
+      [(strPrompt, [])] -> return (Just { prompt := strPrompt | rst })
+      _                 -> skipCommand "could not parse prompt"
+    _   -> return (Just { prompt := rawPrompt | rst })
+ where rawPrompt = strip p
 
 setNoGhci :: ReplState -> String -> IO (Maybe ReplState)
 setNoGhci rst _ = do
@@ -645,32 +669,33 @@ setOptionSupply rst args
  where allSupplies = ["integer", "ghc", "ioref", "pureio"]
 
 printOptions :: ReplState -> IO ()
-printOptions rst = putStrLn $
-  "Options for ':set' command:\n"++
-  "path <paths>   - set additional search paths for imported modules\n"++
-  "prdfs          - set search mode to primitive depth-first search\n"++
-  "dfs            - set search mode to depth-first search\n"++
-  "bfs            - set search mode to breadth-first search\n"++
-  "ids [<n>]      - set search mode to iterative deepening (initial depth <n>)\n"++
-  "par [<n>]      - set search mode to parallel search with <n> threads\n"++
-  "choices [<n>]  - set search mode to print the choice structure as a tree\n"++
-  "                 (up to level <n>)\n"++
-  ifLocal
-    "supply <I>     - set idsupply implementation (ghc|integer|ioref|pureio)\n"++
-  "v<n>           - verbosity level (0: quiet; 1: front end messages;\n"++
-  "                 2: backend messages, 3: intermediate messages and commands;\n"++
-  "                 4: all intermediate results)\n"++
-  "+/-interactive - turn on/off interactive execution of main goal\n"++
-  "+/-first       - turn on/off printing only first solution\n"++
-  "+/-optimize    - turn on/off optimization\n"++
-  "+/-bindings    - show bindings of free variables in initial goal\n"++
-  "+/-time        - show execution time\n"++
-  "+/-ghci        - use ghci instead of ghc to evaluate main expression\n"++
-  "cmp <opts>     - additional options passed to KiCS2 compiler\n" ++
-  "ghc <opts>     - additional options passed to GHC\n"++
-  "rts <opts>     - run-time options for ghc (+RTS <opts> -RTS)\n" ++
-  "args <args>    - run-time arguments passed to main program\n" ++
-  showCurrentOptions rst
+printOptions rst = putStrLn $ unlines
+  [ "Options for ':set' command:"
+  , "path <paths>    - set additional search paths for imported modules"
+  , "prdfs           - set search mode to primitive depth-first search"
+  , "dfs             - set search mode to depth-first search"
+  , "bfs             - set search mode to breadth-first search"
+  , "ids [<n>]       - set search mode to iterative deepening (initial depth <n>)"
+  , "par [<n>]       - set search mode to parallel search with <n> threads"
+  , "choices [<n>]   - set search mode to print the choice structure as a tree"
+  , "                  (up to level <n>)"
+  , ifLocal "supply <I>      - set idsupply implementation (ghc|integer|ioref|pureio)"
+  , "v<n>            - verbosity level (0: quiet; 1: front end messages;"
+  , "                  2: backend messages, 3: intermediate messages and commands;"
+  , "                  4: all intermediate results)"
+  , "prompt <prompt> - set the user prompt"
+  , "+/-interactive  - turn on/off interactive execution of main goal"
+  , "+/-first        - turn on/off printing only first solution"
+  , "+/-optimize     - turn on/off optimization"
+  , "+/-bindings     - show bindings of free variables in initial goal"
+  , "+/-time         - show execution time"
+  , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
+  , "cmp <opts>      - additional options passed to KiCS2 compiler"
+  , "ghc <opts>      - additional options passed to GHC"
+  , "rts <opts>      - run-time options for ghc (+RTS <opts> -RTS)"
+  , "args <args>     - run-time arguments passed to main program"
+  , showCurrentOptions rst
+  ]
 
 -- Hide string if the current installation is global:
 ifLocal :: String -> String
@@ -695,6 +720,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   "run-time options  : " ++ rst :> rtsOpts ++ "\n" ++
   "run-time arguments: " ++ rst :> rtsArgs ++ "\n" ++
   "verbosity         : " ++ show (rst :> verbose) ++ "\n" ++
+  "prompt            : " ++ show (rst :> prompt)  ++ "\n" ++
   showOnOff (rst :> interactive ) ++ "interactive " ++
   showOnOff (rst :> firstSol    ) ++ "first "       ++
   showOnOff (rst :> optim       ) ++ "optimize "    ++

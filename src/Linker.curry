@@ -41,6 +41,7 @@ type ReplState =
   , outputSubdir :: String
   , mainMod      :: String     -- name of main module
   , addMods      :: [String]   -- names of additionally added modules
+  , prompt       :: String     -- repl prompt shown in front of user input
   , optim        :: Bool       -- compile with optimization
   , ndMode       :: NonDetMode -- mode for non-deterministic main goal
   , firstSol     :: Bool       -- print only first solution to nd main goal?
@@ -69,6 +70,7 @@ initReplState =
   , outputSubdir := ".curry" </> "kics2"
   , mainMod      := "Prelude"
   , addMods      := []
+  , prompt       := "%s> "
   , optim        := True
   , ndMode       := DFS
   , firstSol     := False
