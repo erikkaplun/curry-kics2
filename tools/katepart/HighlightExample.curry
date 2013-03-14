@@ -2,13 +2,12 @@
    spanning two lines.
 -}
 
-{-# Pragma1,
-    Pragma2
-#-}
+-- This is a single line comment.
 
+{-# NoImplicitPrelude, FunctionalPatterns #-}
 module SyntaxHighlighting
   ( module SyntaxHighlighting
-  , Data (..), Type, function
+  , Data (..), Type, function, (</>) -- operator
   ) where
 
 import qualified Maybe as Maybe hiding
@@ -16,37 +15,48 @@ import qualified Maybe as Maybe hiding
   , fromMaybe
   )
 
-import missspelling
-
--- This is a single line comment
+import missspelled
 
 --- Currydoc info
---- second line.
+--- with second line.
 type Type = ()
 
 data Data
-  = Cons1
-  | Cons2
+  = Cons1 Bool
+  | Cons2 (() -> ())
 
 type Record =
   { field1 :: Bool
   , field2 :: Int
   }
 
-function :: Int -> Int
+function, special :: Int -> Int
 function _ = id local
   where local = 42
+special _ = sum [1 .. 2]
+  where hiding    = 1
+        as        = 2
+        qualified = 3
 
-special = ()
-  where hiding = 1 -- no keyword!
-        as     = 2 -- no keyword!
+-- Literals
+octal   = 0o123
+dec     = 123
+hex     = 0x123
+float   = 2.0
+char    = 'a'
+charEsc = '\n'
 
-char = 'a'
+string    = "A string"
+stringGap = "A \  \gap"
+stringNewlineGap = "A string \
+                 \spanning two lines"
+stringEsc = "Various\123\"\&\x123\DEL\^@ escape sequences"
 
-string = "A string"
-
-octal = 0o123
-
-hex = 0x42
-
-enum = [1 .. 2]
+-- Errors in literals
+charTooShort = ''
+charTooLong  = 'way too long'
+charNewline  = '
+a'
+stringUnknownEscape = "\FOO"
+stringNewline       = "
+a"
