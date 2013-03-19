@@ -1,8 +1,18 @@
 Release Notes for KiCS2
 =======================
 
-Release notes for KiCS2 Version 0.2.3 (under development)
+Release notes for KiCS2 Version 0.2.4 (under development)
 ---------------------------------------------------------
+
+Changes to version 0.2.3:
+
+* Internal constructor in library FiniteMap changed.
+  As a consequence, compiler intermediate (analysis) files produced
+  by previous KiCS2 versions are incompatible to this version.
+
+
+Release notes for KiCS2 Version 0.2.3
+-------------------------------------
 
 Changes to version 0.2.2:
 
