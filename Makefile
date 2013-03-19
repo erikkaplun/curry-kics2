@@ -9,7 +9,7 @@ MAJORVERSION    = 0
 # The minor version number:
 MINORVERSION    = 2
 # The revision version number:
-REVISIONVERSION = 3
+REVISIONVERSION = 4
 # Complete version:
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
@@ -85,7 +85,7 @@ install: kernel
 alltools:
 	cd currytools && $(MAKE) # various tools
 	cd tools      && $(MAKE) # various tools
-	
+
 # install the benchmark system
 .PHONY: benchmarks
 benchmarks:
