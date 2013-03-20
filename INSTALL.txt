@@ -27,7 +27,7 @@ these packages by
 Alternatively, you can easily install the [Glasgow Haskell Compiler]
 and [Cabal] by
 
-    sudo apt-get install ghc6 cabal-install
+    sudo apt-get install ghc cabal-install
 
 After unpacking the distribution file, go into the main directory
 of the distribution (which is denoted by `kics2home` in the following):
