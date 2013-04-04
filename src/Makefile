@@ -80,7 +80,7 @@ ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 else
 	pakcs -s Compile
 	rm -f Compile # delete symbolic link
-	mv Compile.state $(COMP)
+	mv Compile $(COMP)
 endif
 
 # generate executable for Curry -> Haskell compiler kics2c:
