@@ -79,7 +79,6 @@ ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 	mv Compile $(COMP)
 else
 	pakcs -s Compile
-	rm -f Compile # delete symbolic link
 	mv Compile $(COMP)
 endif
 
