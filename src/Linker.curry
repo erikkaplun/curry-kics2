@@ -92,12 +92,6 @@ loadPaths rst = "." : rst :> importPaths ++ rst :> libPaths
 
 -- ---------------------------------------------------------------------------
 
---- Location of the system configuration file.
---- Currently, user-defined ghc options are stored here in order
---- to force the recompilation of target programs if ghc options are changed.
-scFileName :: String
-scFileName = Inst.installDir </> ".kics2sc"
-
 --- File name of created Main file
 mainGoalFile :: String
 mainGoalFile = "Curry_Main_Goal.curry"
@@ -127,15 +121,18 @@ getGoalInfo rst = do
   return (isdet, isio)
 
 -- Checks whether user-defined ghc options have been changed.
-updateGhcOptions :: String -> IO Bool
-updateGhcOptions newOpts = do
-  oldOpts <- readPropertyFile scFileName >>= return . flip rcValue key
+updateGhcOptions :: ReplState -> IO (ReplState,Bool)
+updateGhcOptions rst =
   if oldOpts == newOpts
-    then return False
+    then return (rst,False)
     else do
-      updatePropertyFile scFileName key newOpts
-      return True
- where key = "GHC_OPTIONS"
+      setRCProperty key newOpts
+      rcDefs <- readRC
+      return ({ rcvars := rcDefs | rst }, True)
+ where
+   key = "ghc_options"
+   oldOpts = rcValue (rst :> rcvars) key
+   newOpts = rst :> ghcOpts
 
 --- Result of compiling main program
 data MainCompile = MainError | MainDet | MainNonDet
@@ -145,16 +142,16 @@ createAndCompileMain :: ReplState -> Bool -> String -> Maybe Int
                      -> IO (ReplState, MainCompile)
 createAndCompileMain rst createExecutable mainExp bindings = do
   (isdet, isio) <- getGoalInfo rst
-  wasUpdated    <- updateGhcOptions (rst :> ghcOpts)
-  writeFile mainFile $ mainModule rst isdet isio bindings
+  (rst',wasUpdated) <- updateGhcOptions rst
+  writeFile mainFile $ mainModule rst' isdet isio bindings
 
-  let ghcCompile = ghcCall rst useGhci wasUpdated mainFile
-  writeVerboseInfo rst 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
-  (rst', status) <- if useGhci
-                      then compileWithGhci rst ghcCompile mainExp
-                      else system ghcCompile >>= \stat -> return (rst, stat)
-  return (rst', if status > 0 then MainError else
-                if isdet || isio then MainDet else MainNonDet)
+  let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
+  writeVerboseInfo rst' 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  (rst'', status) <- if useGhci
+                      then compileWithGhci rst' ghcCompile mainExp
+                      else system ghcCompile >>= \stat -> return (rst', stat)
+  return (rst'', if status > 0 then MainError else
+                 if isdet || isio then MainDet else MainNonDet)
  where
   mainFile = "." </> rst :> outputSubdir </> "Main.hs"
   -- option parsing
