@@ -11,6 +11,8 @@ Changes to version 0.2.3:
   by previous KiCS2 versions are incompatible to this version.
 * CASS tool (Curry Analysis Server System) added and integrated
   into currydoc.
+* Library `HTML`: default (white) background for body of generated
+  web pages removed (since this is usually defined in css files).
 
 
 Release notes for KiCS2 Version 0.2.3
