@@ -659,6 +659,20 @@ process.
 Show also all intermediate results of the compilation process.
 \end{description}
 
+\item[\fbox{\code{prompt $p$}}]\pindex{prompt}
+Sets the user prompt which is shown when \CYS is waiting for input.
+If the parameter $p$ starts with a letter or a percent sign,
+the prompt is printed as the given parameter,
+where the sequence \ccode{\%s} is expanded to the list of
+currently loaded modules
+and \ccode{\%\%} is expanded to a percent sign.
+If the prompt starts with a double quote, it is read as a string and,
+therefore, also supports the normal escape sequences that can occur
+in Curry programs. The default setting is
+\begin{curry}
+:set prompt "%s> "
+\end{curry}
+
 \item[\fbox{\code{+/-interactive}}]\pindex{interactive}
 Turn on/off the interactive mode.
 In the interactive mode, the next non-deterministic value
