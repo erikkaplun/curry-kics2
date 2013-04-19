@@ -7,10 +7,22 @@ S.~Antoy and M.~Hanus.
   Program Synthesis and Transformation (LOPSTR'05)}, pages 6--22. Springer LNCS
   3901, 2005.
 
+\bibitem{AntoyHanus09}
+S.~Antoy and M.~Hanus.
+\newblock Set functions for functional logic programming.
+\newblock In {\em Proceedings of the 11th ACM SIGPLAN International Conference
+  on Principles and Practice of Declarative Programming (PPDP'09)}, pages
+  73--82. ACM Press, 2009.
+
 \bibitem{AugustssonRittriSynek94}
 L.~Augustsson, M.~Rittri, and D.~Synek.
 \newblock On generating unique names.
 \newblock {\em Journal of Functional Programming}, 4(1):117--123, 1994.
+
+\bibitem{BrasselHanusHuch04JFLP}
+B.~Bra{\ss}el, M.~Hanus, and F.~Huch.
+\newblock Encapsulating non-determinism in functional logic computations.
+\newblock {\em Journal of Functional and Logic Programming}, 2004(6), 2004.
 
 \bibitem{BrasselHanusMueller08PADL}
 B.~Bra{\ss}el, M.~Hanus, and M.~M{\"u}ller.

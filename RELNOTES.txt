@@ -6,6 +6,10 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
+* Library `Prelude`: operations for encapsulated search omitted
+  since the base primitive `try` is not implemented.
+  Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
+  for encapsulated search.
 * Internal constructor in library FiniteMap changed.
   As a consequence, compiler intermediate (analysis) files produced
   by previous KiCS2 versions are incompatible to this version.
