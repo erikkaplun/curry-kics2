@@ -10,6 +10,8 @@ Changes to version 0.2.3:
   since the base primitive `try` is not implemented.
   Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
   for encapsulated search.
+* Library `SearchTree`: operation `getAllValuesWith` added,
+  operation `someValueBy` slightly changed and renamed to `someValueWith`.
 * Internal constructor in library FiniteMap changed.
   As a consequence, compiler intermediate (analysis) files produced
   by previous KiCS2 versions are incompatible to this version.
