@@ -6,9 +6,19 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
+* Library `Prelude`: operations for encapsulated search omitted
+  since the base primitive `try` is not implemented.
+  Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
+  for encapsulated search.
+* Library `SearchTree`: operation `getAllValuesWith` added,
+  operation `someValueBy` slightly changed and renamed to `someValueWith`.
 * Internal constructor in library FiniteMap changed.
   As a consequence, compiler intermediate (analysis) files produced
   by previous KiCS2 versions are incompatible to this version.
+* CASS tool (Curry Analysis Server System) added and integrated
+  into currydoc.
+* Library `HTML`: default (white) background for body of generated
+  web pages removed (since this is usually defined in css files).
 
 
 Release notes for KiCS2 Version 0.2.3

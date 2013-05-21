@@ -44,3 +44,14 @@ dotviewcommand=dot -Tps > /tmp/dotxxx && gv /tmp/dotxxx
 keepfiles=no
 
 ############################################################################
+# DO NOT CHANGE THESE OPTIONS:
+
+# The following options are automatically set by KiCS2 and should
+# not be changed manually.
+
+# The ghc options used in the previous compilation (defined by ":set ghc ...").
+# If the ghc options are changed, the additional option "-fforce-recomp"
+# is passed to ghc.
+ghc_options=
+
+############################################################################

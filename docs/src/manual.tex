@@ -254,15 +254,49 @@ Tabulator stops instead of blank spaces in source files are
 interpreted as stops at columns 9, 17, 25, 33, and so on.
 In general, tabulator stops should be avoided in source programs.
 \item
-Encapsulated search\index{encapsulated search}: In order
-to allow the integration of non-deterministic computations
-in programs performing I/O at the top-level, \CYS provides
-the libraries \code{AllSolutions} (Section~\ref{Library:AllSolutions})
-and \code{SearchTree} (Section~\ref{Library:SearchTree})
-where one can defined search operators and various search strategies.
+Encapsulated search\index{encapsulated search}:
 The general definition of encapsulated search of the Curry report
 \cite{HanusSteiner98PLILP} is not supported.
-\item Concurrent computations\index{concurrency}
+Thus, the corresponding prelude operations like
+\code{try}\pindex{try},
+\code{solveAll}\pindex{solveAll},
+\code{once}\pindex{once},
+\code{findall}\pindex{findall}, or
+\code{best}\pindex{best}
+are not defined in the \CYS prelude.
+However, \CYS supports appropriate alternatives
+to encapsulate non-deterministic computations:
+\begin{description}
+\item[Strong encapsulation:]
+This means that all potential
+non-determinism is encapsulated. Since this might
+result in dependencies on the evaluation strategy
+(see \cite{BrasselHanusHuch04JFLP} for a detailed discussion),
+this kind of encapsulation is only available as I/O operations.
+For instance, the library \code{AllSolutions}\pindex{AllSolutions}
+(Section~\ref{Library:AllSolutions})
+defines the operation
+\begin{curry}
+getAllValues :: a -> IO [a]
+\end{curry}
+to compute all values of a given argument expression.
+There is also the library \code{SearchTree}\pindex{SearchTree}
+(Section~\ref{Library:SearchTree})
+which supports user-programmable search strategies
+and contains some predefined strategies
+like depth-first, breadth-first, iterative deepening search.
+\item[Weak encapsulation:]
+This means that only the non-determinism
+defined inside an encapsulation operator is encapsulated.
+Conceptually, these operators are offered as
+\emph{set functions}\index{set functions} \cite{AntoyHanus09}
+which compute the set of all results but do not encapsulate
+non-determinism in the actual arguments.
+See the library \code{SetFunctions}
+(Section~\ref{Library:SetFunctions}) for more details.
+\end{description}
+\item
+Concurrent computations\index{concurrency}
 based on the suspension of expressions
 containing free variables are not yet supported.
 \CYS supports \emph{value generators} for free variables
@@ -658,6 +692,20 @@ process.
 \item[$n=4$:]
 Show also all intermediate results of the compilation process.
 \end{description}
+
+\item[\fbox{\code{prompt $p$}}]\pindex{prompt}
+Sets the user prompt which is shown when \CYS is waiting for input.
+If the parameter $p$ starts with a letter or a percent sign,
+the prompt is printed as the given parameter,
+where the sequence \ccode{\%s} is expanded to the list of
+currently loaded modules
+and \ccode{\%\%} is expanded to a percent sign.
+If the prompt starts with a double quote, it is read as a string and,
+therefore, also supports the normal escape sequences that can occur
+in Curry programs. The default setting is
+\begin{curry}
+:set prompt "%s> "
+\end{curry}
 
 \item[\fbox{\code{+/-interactive}}]\pindex{interactive}
 Turn on/off the interactive mode.
