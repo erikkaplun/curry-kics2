@@ -7,13 +7,16 @@ CABAL_FILE  = $(PACKAGE).cabal
 # idsupply directory to use
 IDSUPPLYDIR = idsupplyioref
 
+# the runtime package configuration file
+RUNTIME_PKG_CONF = $(LOCALPKG)/runtime.conf
+
 .PHONY: install
 install: $(CABAL_FILE)
-	$(CABAL_INSTALL) -O2
+	$(CABAL_INSTALL)
 
 .PHONY: unregister
 unregister:
-	-$(GHC-PKG) unregister $(PACKAGE)-$(VERSION)
+	-$(GHC-PKG) unregister --package-db=$(PKGDB) $(PACKAGE)-$(VERSION)
 
 .PHONY: clean
 clean:

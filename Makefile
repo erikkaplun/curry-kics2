@@ -27,6 +27,8 @@ export BINDIR    = $(ROOT)/bin
 export LIBDIR    = $(ROOT)/lib
 # Directory where local executables are stored:
 export LOCALBIN  = $(BINDIR)/.local
+# Directory where local package installations are stored:
+export LOCALPKG  = $(ROOT)/pkg
 # The compiler binary
 export COMP      = $(LOCALBIN)/kics2c
 # The REPL binary
@@ -48,13 +50,18 @@ MAKELOG = make.log
 # The path to the Glasgow Haskell Compiler:
 export GHC     := "$(shell which ghc)"
 export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
-# The path to the package configuration file
-PKGCONF := $(shell $(GHC-PKG) --user -v0 list | head -1 | sed "s/:$$//" | sed "s/\\\\/\//g" )
+# The path to the package database
+export PKGDB := $(LOCALPKG)/kics2.conf.d
+
 # Standard options for compiling target programs with ghc:
-export GHC_OPTIONS =
-export CYMAKE        = ""
-export CABAL         = cabal
-export CABAL_INSTALL = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG)
+export GHC_OPTIONS    =
+export CYMAKE         = ""
+export CABAL          = cabal
+ifeq ($(GHC_GEQ_76),0)
+export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) --global --package-db=$(PKGDB) -O2
+else
+export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) --global --package-conf=$(PKGDB) -O2
+endif
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -105,7 +112,7 @@ endif
 
 # install a kernel system without all tools
 .PHONY: kernel
-kernel: $(INSTALLCURRY) frontend scripts
+kernel: $(PKGDB) $(INSTALLCURRY) frontend scripts
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
@@ -117,17 +124,10 @@ ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) acy
 endif
 
-.PHONY: scripts
-scripts: $(BINDIR)/cleancurry
-	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
+# create package database
 
-.PHONY: frontend
-frontend:
-	cd frontend && $(MAKE)
-
-# install required cabal packages
-.PHONY: installhaskell
-installhaskell:
+$(PKGDB):
+	$(GHC-PKG) init $(PKGDB)
 	$(CABAL) update
 	$(CABAL_INSTALL) network
 	$(CABAL_INSTALL) unbounded-delays
@@ -135,6 +135,14 @@ installhaskell:
 	$(CABAL_INSTALL) tree-monad
 	$(CABAL_INSTALL) parallel-tree-search
 	$(CABAL_INSTALL) mtl
+
+.PHONY: scripts
+scripts: $(BINDIR)/cleancurry
+	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
+
+.PHONY: frontend
+frontend:
+	cd frontend && $(MAKE)
 
 .PHONY: clean
 clean: $(BINDIR)/cleancurry
@@ -220,9 +228,9 @@ endif
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
 ifeq ($(GHC_GEQ_76),0)
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-db \"${PKGCONF}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-db \"${PKGDB}\""' >> $@
 else
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGCONF}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-conf \"${PKGDB}\""' >> $@
 endif
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
@@ -394,7 +402,7 @@ bootstrapwithlogging:
 
 # bootstrap the compiler
 .PHONY: bootstrap
-bootstrap: ${INSTALLCURRY} frontend scripts
+bootstrap: $(PKGDB) ${INSTALLCURRY} frontend scripts
 	cd src && $(MAKE) bootstrap
 
 .PHONY: Compile
