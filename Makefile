@@ -57,11 +57,7 @@ export PKGDB := $(LOCALPKG)/kics2.conf.d
 export GHC_OPTIONS    =
 export CYMAKE         = ""
 export CABAL          = cabal
-ifeq ($(GHC_GEQ_76),0)
 export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) --global --package-db=$(PKGDB) -O2
-else
-export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) --global --package-conf=$(PKGDB) -O2
-endif
 
 # main (default) target: starts installation with logging
 .PHONY: all
@@ -230,7 +226,7 @@ endif
 ifeq ($(GHC_GEQ_76),0)
 	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-db \"${PKGDB}\""' >> $@
 else
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-conf \"${PKGDB}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGDB}\""' >> $@
 endif
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
@@ -423,7 +419,6 @@ REPL: ${INSTALLCURRY} scripts
 roundtrip:
 	$(MAKE) cleanall
 	rm -rf $(BINDIR)
-	$(MAKE) installhaskell
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist
