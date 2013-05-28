@@ -7,7 +7,7 @@ KiCS2 is an implementation of the multi-paradigm declarative language
 group at the [University of Kiel](http://www.uni-kiel.de/).
 KiCS2 compiles Curry programs into [Haskell programs](http://www.haskell.org/)
 using the [Glasgow Haskell Compiler](http://www.haskell.org/ghc/)
-as its back end.
+as its backend.
 Similarly to many other implementations of Curry,
 KiCS2 has an interactive environment (read/eval/print loop)
 to ease the development of Curry applications.
@@ -38,8 +38,8 @@ This directory contains various tools for Curry
 This directory contains some documentation, in particular,
 the KiCS2 User Manual.
 
-`frontend`: 
-This directory contains the Curry front-end, i.e., a parser for
+`frontend`:
+This directory contains the Curry frontend, i.e., a parser for
 Curry programs. It is adapted from the parser of the
 [Muenster Curry Compiler](http://danae.uni-muenster.de/~lux/curry/).
 

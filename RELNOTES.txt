@@ -6,19 +6,27 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
-* Library `Prelude`: operations for encapsulated search omitted
-  since the base primitive `try` is not implemented.
-  Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
-  for encapsulated search.
-* Library `SearchTree`: operation `getAllValuesWith` added,
-  operation `someValueBy` slightly changed and renamed to `someValueWith`.
-* Internal constructor in library FiniteMap changed.
-  As a consequence, compiler intermediate (analysis) files produced
-  by previous KiCS2 versions are incompatible to this version.
-* CASS tool (Curry Analysis Server System) added and integrated
-  into currydoc.
-* Library `HTML`: default (white) background for body of generated
-  web pages removed (since this is usually defined in css files).
+  * The installation process now uses `cabal`'s capabilities to install
+    all required and locally generated Haskell packages into the installation
+    directory, inside a new directory `pkg`.
+    As a consequence, the installation process no longer depends on packages
+    to be installed for the user.
+    Furthermore, different versions of the KiCS2 compiler can now
+    be installed in parallel, even when they are configured
+    to use different versions of GHC.
+  * Library `Prelude`: operations for encapsulated search omitted
+    since the base primitive `try` is not implemented.
+    Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
+    for encapsulated search.
+  * Library `SearchTree`: operation `getAllValuesWith` added,
+    operation `someValueBy` slightly changed and renamed to `someValueWith`.
+  * Internal constructor in library FiniteMap changed.
+    As a consequence, compiler intermediate (analysis) files produced
+    by previous KiCS2 versions are incompatible to this version.
+  * CASS tool (Curry Analysis Server System) added and integrated
+    into currydoc.
+  * Library `HTML`: default (white) background for body of generated
+    web pages removed (since this is usually defined in css files).
 
 
 Release notes for KiCS2 Version 0.2.3
@@ -26,44 +34,44 @@ Release notes for KiCS2 Version 0.2.3
 
 Changes to version 0.2.2:
 
-* The KiCS2 REPL now supports the configuration of the user prompt
-  via `:set prompt <prompt>`.
+  * The KiCS2 REPL now supports the configuration of the user prompt
+    via `:set prompt <prompt>`.
 
-* Syntax highlighting for KDE's editor component `katepart` added,
-  supporting Curry and Literate Curry.
+  * Syntax highlighting for KDE's editor component `katepart` added,
+    supporting Curry and Literate Curry.
 
-* A frontend bug leading to an internal erroe when using as patterns
-  inside functional patterns is fixed.
+  * A frontend bug leading to an internal erroe when using as patterns
+    inside functional patterns is fixed.
 
-* Some bugs regarding the combination of functional patterns and
-  nonlinear left-hand-sides are fixed. The parser also accepts
-  as-patterns inside functional patterns.
+  * Some bugs regarding the combination of functional patterns and
+    nonlinear left-hand-sides are fixed. The parser also accepts
+    as-patterns inside functional patterns.
 
-* The GHC and cabal binaries used for installation can now be
-  explicitly set. See the installation instructions for details.
+  * The GHC and cabal binaries used for installation can now be
+    explicitly set. See the installation instructions for details.
 
-* Windows support for kernel installation.
+  * Windows support for kernel installation.
 
-  The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
-  now be installed under Windows using MinGW. See the installation
-  instructions for details.
+    The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
+    now be installed under Windows using MinGW. See the installation
+    instructions for details.
 
-* Library module `Directory` updated and extended.
+  * Library module `Directory` updated and extended.
 
-  - Replacement of `String` by `FilePath`
-  - Added new function `createDirectoryIfMissing :: Bool -> FilePath -> IO ()`
-  - Added new function `getHomeDirectory :: IO FilePath`
-  - Added new function `getTemporaryDirectory :: IO FilePath`
-  - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
+    - Replacement of `String` by `FilePath`
+    - Added new function `createDirectoryIfMissing :: Bool -> FilePath -> IO ()`
+    - Added new function `getHomeDirectory :: IO FilePath`
+    - Added new function `getTemporaryDirectory :: IO FilePath`
+    - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
 
-* Library `SetFunctions`: Operations `choose` and `select` added.
+  * Library `SetFunctions`: Operations `choose` and `select` added.
 
-* The front end accepts typed expressions of the form "Expr :: TypeExpr".
-  Such type annotations are considered by the compiler.
-  For instance, `(unknown :: Bool)` evaluates to `False` or `True`.
+  * The front end accepts typed expressions of the form "Expr :: TypeExpr".
+    Such type annotations are considered by the compiler.
+    For instance, `(unknown :: Bool)` evaluates to `False` or `True`.
 
-* Library `FlatCurry` extended to represent typed expressions
-  by a new constructor `Typed`.
+  * Library `FlatCurry` extended to represent typed expressions
+    by a new constructor `Typed`.
 
 -------------------------------------------------------------------------
 
