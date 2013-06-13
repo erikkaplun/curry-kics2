@@ -2,83 +2,97 @@
 # Makefile for KiCS2 compiler suite
 ########################################################################
 
-# Is this a global installation (with restricted functionality)(yes/no)?
+# Is this a global installation (with restricted flexibility)(yes/no)?
 GLOBALINSTALL   = yes
-# The major version number:
+# The major version number
 MAJORVERSION    = 0
-# The minor version number:
+# The minor version number
 MINORVERSION    = 2
-# The revision version number:
+# The revision version number
 REVISIONVERSION = 4
-# Complete version:
+# Complete version
 export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date
 COMPILERDATE   := $(shell git log -1 --format="%ci" | cut -c-10)
 # The installation date
 INSTALLDATE    := $(shell date)
 
-# The name of the Curry system
+# The name of the Curry system, needed for installation of currytools
 export CURRYSYSTEM = kics2
 # the root directory
 export ROOT      = $(CURDIR)
 # binary directory and executables
 export BINDIR    = $(ROOT)/bin
-# Directory where the libraries are located:
+# Directory where the libraries are located
 export LIBDIR    = $(ROOT)/lib
-# Directory where local executables are stored:
+# Directory where local executables are stored
 export LOCALBIN  = $(BINDIR)/.local
-# Directory where local package installations are stored:
+# Directory where local package installations are stored
 export LOCALPKG  = $(ROOT)/pkg
 # The compiler binary
 export COMP      = $(LOCALBIN)/kics2c
-# The REPL binary
+# The REPL binary, used for building the libraries
 export REPL      = $(LOCALBIN)/kics2i
-# The default options for the REPL
+# The default options for the REPL, used for libraries and tools
 export REPL_OPTS = :set v2 :set -ghci
 # The frontend binary
-export FRONTEND    = $(BINDIR)/cymake
+export CYMAKE    = $(BINDIR)/cymake
 
 # The Haskell installation info
 export INSTALLHS     = $(ROOT)/runtime/Installation.hs
 # The Curry installation info
 export INSTALLCURRY  = $(ROOT)/src/Installation.curry
-# The version information for the manual:
+# The version information for the manual
 MANUALVERSION = $(ROOT)/docs/src/version.tex
-# Logfiles for make:
+# Logfiles for make
 MAKELOG = make.log
 
-# The path to the Glasgow Haskell Compiler:
+########################################################################
+# Fancy GHC configuration
+########################################################################
+# The path to the Glasgow Haskell Compiler
 export GHC     := "$(shell which ghc)"
 export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
+# extract GHC version
+GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
+GHC_MINOR := $(shell $(GHC) --numeric-version | cut -d. -f2)
+# GHC >= 7.6 ?
+GHC_GEQ_76 = $(shell test $(GHC_MAJOR) -gt 7 -o \( $(GHC_MAJOR) -eq 7 \
+              -a $(GHC_MINOR) -ge 6 \) ; echo $$?)
+# package-db (>= 7.6) or package-conf (< 7.6)?
+ifeq ($(GHC_GEQ_76),0)
+GHC_PKG_SUFFIX = db
+else
+GHC_PKG_SUFFIX = conf
+endif
 # The path to the package database
 export PKGDB := $(LOCALPKG)/kics2.conf.d
-
-# Standard options for compiling target programs with ghc:
+# Command to unregister a package
+export GHC_UNREGISTER = $(GHC-PKG) unregister --package-$(GHC_PKG_SUFFIX)=$(PKGDB)
+# Standard options for compiling target programs with ghc
 export GHC_OPTIONS    =
-export CYMAKE         = ""
 export CABAL          = cabal
-export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC) --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) --global --package-db=$(PKGDB) -O2
+export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC)       \
+                        --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) \
+                        --global --package-db=$(PKGDB) -O2
+
+########################################################################
+# The targets
+########################################################################
 
 # main (default) target: starts installation with logging
 .PHONY: all
 all:
-	${MAKE} installwithlogging
-
-# install the complete system and log the installation process
-.PHONY: installwithlogging
-installwithlogging:
 	@rm -f ${MAKELOG}
 	@echo "Make started at `date`" > ${MAKELOG}
-	${MAKE} install 2>&1 | tee -a ${MAKELOG}
+	$(MAKE) install 2>&1 | tee -a ${MAKELOG}
 	@echo "Make finished at `date`" >> ${MAKELOG}
 	@echo "Make process logged in file ${MAKELOG}"
 
 # install the complete system if the kics2 compiler is present
 .PHONY: install
-install: kernel
+install: kernel alltools
 	cd cpns       && $(MAKE) # Curry Port Name Server demon
-	cd currytools && $(MAKE) # various tools
-	cd tools      && $(MAKE) # various tools
 	cd www        && $(MAKE) # scripts for dynamic web pages
 	$(MAKE) manual
 	# make everything accessible:
@@ -97,16 +111,10 @@ benchmarks:
 # uninstall globally installed cabal packages
 .PHONY: uninstall
 uninstall:
-ifeq ($(GLOBALINSTALL),yes)
-	cd frontend && $(MAKE) unregister
-	cd lib      && $(MAKE) unregister
-	cd runtime  && $(MAKE) unregister
-	@echo "All globally installed cabal packages have been unregistered."
-endif
 	rm -rf $(HOME)/.kics2rc $(HOME)/.kics2rc.bak $(HOME)/.kics2i_history
 	@echo "Just remove this directory to finish uninstallation."
 
-# install a kernel system without all tools
+# install the kernel system (binaries and libraries)
 .PHONY: kernel
 kernel: $(PKGDB) $(INSTALLCURRY) frontend scripts
 	cd src && $(MAKE)
@@ -121,9 +129,8 @@ ifeq ($(GLOBALINSTALL),yes)
 endif
 
 # create package database
-
 $(PKGDB):
-	$(GHC-PKG) init $(PKGDB)
+	$(GHC-PKG) init $@
 	$(CABAL) update
 	$(CABAL_INSTALL) network
 	$(CABAL_INSTALL) unbounded-delays
@@ -168,8 +175,13 @@ cleanall: clean
 	cd src   && $(MAKE) cleanall
 	cd utils && $(MAKE) cleanall
 	$(BINDIR)/cleancurry -r
-	rm -rf ${LOCALBIN}
-#	cd scripts && $(MAKE) clean
+	rm -rf ${LOCALBIN} $(CYMAKE) $(LOCALPKG)
+	cd scripts && $(MAKE) clean
+	rm $(BINDIR)/cleancurry
+
+.PHONY: maintainer-clean
+maintainer-clean: cleanall
+	rm -rf $(BINDIR)
 
 ##############################################################################
 # Building the compiler itself
@@ -178,12 +190,6 @@ cleanall: clean
 # generate module with basic installation information:
 ${INSTALLCURRY}: ${INSTALLHS}
 	cp $< $@
-
-GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
-GHC_MINOR := $(shell $(GHC) --numeric-version | cut -d. -f2)
-
-GHC_GEQ_76 = $(shell test $(GHC_MAJOR) -gt 7 -o \( $(GHC_MAJOR) -eq 7 \
-              -a $(GHC_MINOR) -ge 6 \) ; echo $$?)
 
 ${INSTALLHS}: Makefile utils/pwd utils/which
 ifneq ($(shell test -x $(GHC) ; echo $$?), 0)
@@ -223,11 +229,7 @@ endif
 	echo 'runtimeMinor = $(GHC_MINOR)' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-ifeq ($(GHC_GEQ_76),0)
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-db -package-db \"${PKGDB}\""' >> $@
-else
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-conf -package-conf \"${PKGDB}\""' >> $@
-endif
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-$(GHC_PKG_SUFFIX) -package-$(GHC_PKG_SUFFIX) \"${PKGDB}\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
@@ -347,8 +349,8 @@ $(TARBALL): $(COMP)
 	# create local binary directory
 	mkdir -p ${TMPDIR}/bin/.local
 	# copy frontend binary into distribution
-	if [ -x $(FRONTEND) ] ; then \
-	  cp -pr $(FRONTEND) $(TMPDIR)/bin/ ; \
+	if [ -x $(CYMAKE) ] ; then \
+	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
 	else \
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
@@ -417,8 +419,7 @@ REPL: ${INSTALLCURRY} scripts
 # reinstalled and, later on, unregistered.
 .PHONY: roundtrip
 roundtrip:
-	$(MAKE) cleanall
-	rm -rf $(BINDIR)
+	$(MAKE) maintainer-clean
 	$(MAKE) bootstrap
 	$(MAKE) dist
 	$(MAKE) testdist

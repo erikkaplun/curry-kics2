@@ -22,7 +22,7 @@ and execute
     git submodule update
 
 in order to obtain further files managed by git in other repositories,
-i.e., the front end and the Curry system libraries shared by KiCS2 and PAKCS.
+i.e., the frontend and the Curry system libraries shared by KiCS2 and PAKCS.
 
 Then, each future update can be obtained by the executing
 
@@ -37,7 +37,7 @@ implementation on your machine in order to start the
 bootstrapping process.
 Currently, there are at least two options:
 
-1. Bootstrapping with KiCS2 (the faster option)
+ 1. Bootstrapping with KiCS2 (the faster option)
 
     Download and install the KiCS2 distribution from the
     [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
@@ -52,7 +52,7 @@ Currently, there are at least two options:
 
     in the directory `kics2`.
 
-2. Bootstrapping with PAKCS (the slower option)
+ 2. Bootstrapping with PAKCS (the slower option)
 
     Download and install the PAKCS implementation of Curry from the
     [PAKCS web site](http://www.informatik.uni-kiel.de/~pakcs).
@@ -63,11 +63,6 @@ Currently, there are at least two options:
         make bootstrap
 
     in the directory `kics2`.
-
-If you install KiCS2 for the first time, you need to install
-some Haskell packages via Cabal, i.e., run the command
-
-    make installhaskell
 
 Now you are ready to install KiCS2 with all its components by
 

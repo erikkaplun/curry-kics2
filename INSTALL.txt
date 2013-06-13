@@ -35,11 +35,6 @@ of the distribution (which is denoted by `kics2home` in the following):
     tar xvzf kics2-<version>.tar.gz
     cd kics2-<version>
 
-If you install KiCS2 for the first time, you need to install
-some Haskell packages via Cabal, i.e., run the command
-
-    make installhaskell
-
 Now you are ready to install KiCS2 with all its components by
 
     make
@@ -55,15 +50,12 @@ This installs only the compiler and the interactive environment
 to execute Curry programs but no additional tools (like the
 Curry browser, unit tester, etc).
 
-When the installation is finished,
-the commands to use KiCS2 are installed in the local
-directory `bin`.
-In order to use the system easily,
-add the directory "`kics2home/bin`"
-to your path, e.g., by the command
-"`export PATH=$PATH:kics2home/bin`"
+When the installation is finished, the commands to use KiCS2
+are installed in the local directory `bin`.
+In order to use the system easily, add the directory `kics2home/bin`
+to your path, e.g., by the command `export PATH=$PATH:kics2home/bin`
 in the `bash`.
-Now you can start KiCS2 via the command "`kics2`".
+Now you can start KiCS2 via the command `kics2`.
 If you do no want to have the specific version number of KiCS2
 included in your path, you can set a symbolic link like
 
@@ -100,11 +92,6 @@ the installation commands like for a Linux installation, i.e., for unpacking:
     tar xvzf kics2-<version>.tar.gz
     cd kics2-<version>
 
-If you install KiCS2 for the first time, you need to install
-some Haskell packages via Cabal, i.e., run the command
-
-    make installhaskell
-
 Now you are ready to install the KiCS2 kernel by
 
     make kernel
@@ -115,27 +102,29 @@ you can use `kics2` like other Windows binaries in a standard command line.
 Notes
 -----
 
-1. You can configure the behavior of KiCS2 by various settings
-   in the file `.kics2rc` located in your user directory,
+ 1. You can configure the behavior of KiCS2 by various settings
+    in the file `.kics2rc` located in your user directory,
     which is created when you use KiCS2 for the first time.
-2. If you like to have support for _line editing or history functionality_
-   in the KiCS2 interactive environment (as supported by the readline
-   library), you should have the Unix/Linux command "rlwrap" installed
-   on your local machine (e.g., by "`sudo apt-get install rlwrap`").
-   KiCS2 uses "rlwrap" if called on a terminal
-   without the parameter "`--noreadline`".
-3. If you want to use the **library for GUI programming in Curry**
-   (`kics2home/lib/GUI.curry`), you need also a
-   Tcl/Tk implementation (including the windowing shell `wish`)
-   which can be downloaded
-   [here](http://www.scriptics.com/software/tcltk/) or
-   installed in a Ubuntu distribution by
 
-       sudo apt-get install tk tcl
+ 2. If you like to have support for _line editing or history functionality_
+    in the KiCS2 interactive environment (as supported by the readline
+    library), you should have the Unix/Linux command `rlwrap` installed
+    on your local machine (e.g., by `sudo apt-get install rlwrap`).
+    KiCS2 uses `rlwrap` if called on a terminal
+    without the parameter `--noreadline`.
 
-   In this case, the windowing shell `wish` must be
-   in your path (or you can also modify the definition of the
-   operation `openGuiPort` in the library `GUI.curry`).
+ 3. If you want to use the **library for GUI programming in Curry**
+    (`kics2home/lib/GUI.curry`), you need also a
+    Tcl/Tk implementation (including the windowing shell `wish`)
+    which can be downloaded
+    [here](http://www.scriptics.com/software/tcltk/) or
+    installed in a Ubuntu distribution by
+
+        sudo apt-get install tk tcl
+
+    In this case, the windowing shell `wish` must be
+    in your path (or you can also modify the definition of the
+    operation `openGuiPort` in the library `GUI.curry`).
 
 
 Changing system constants
@@ -148,11 +137,11 @@ tuple sizes cannot be compiled. If you want to increase this size
 (in a source distribution of KiCS2)
 two system files and install your system as follows:
 
-1. Change the definition of the constant `maxTupleArity` in the file
-   `kics2home/frontend/curry-frontend/src/Generators/GenFlatCurry.hs`
-   according to your required maximal arity.
-2. Delete the file `kics2home/lib/.curry/Prelude.fcy`.
-3. Re-install KiCS2 by running `make`.
+ 1. Change the definition of the constant `maxTupleArity` in the file
+    `kics2home/frontend/curry-frontend/src/Generators/GenFlatCurry.hs`
+    according to your required maximal arity.
+ 2. Delete the file `kics2home/lib/.curry/Prelude.fcy`.
+ 3. Re-install KiCS2 by running `make`.
 
 -------------------------------------------------------------
 

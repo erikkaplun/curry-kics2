@@ -38,6 +38,7 @@ runtime/dist
 runtime/kics2-runtime.cabal
 docs/src/version.tex
 cabal-dev/
+pkg/
 
 # binaries
 benchmarks/Benchmarks
