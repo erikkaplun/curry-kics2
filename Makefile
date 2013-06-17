@@ -2,6 +2,9 @@
 # Makefile for KiCS2 compiler suite
 ########################################################################
 
+# Some information about this installation
+# ----------------------------------------
+
 # Is this a global installation (with restricted flexibility)(yes/no)?
 GLOBALINSTALL   = yes
 # The major version number
@@ -11,67 +14,79 @@ MINORVERSION    = 2
 # The revision version number
 REVISIONVERSION = 4
 # Complete version
-export VERSION := $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
-# The version date
+export VERSION  = $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
+# The version date, extracted from the last git commit
 COMPILERDATE   := $(shell git log -1 --format="%ci" | cut -c-10)
-# The installation date
+# The installation date, set to the current date
 INSTALLDATE    := $(shell date)
-
 # The name of the Curry system, needed for installation of currytools
 export CURRYSYSTEM = kics2
-# the root directory
-export ROOT      = $(CURDIR)
+
+# Paths used in this this installation
+# ------------------------------------
+
+# root directory of the installation
+export ROOT     = $(CURDIR)
 # binary directory and executables
-export BINDIR    = $(ROOT)/bin
+export BINDIR   = $(ROOT)/bin
 # Directory where the libraries are located
-export LIBDIR    = $(ROOT)/lib
+export LIBDIR   = $(ROOT)/lib
 # Directory where local executables are stored
-export LOCALBIN  = $(BINDIR)/.local
+export LOCALBIN = $(BINDIR)/.local
 # Directory where local package installations are stored
-export LOCALPKG  = $(ROOT)/pkg
+export LOCALPKG = $(ROOT)/pkg
+# The path to the package database
+export PKGDB    = $(LOCALPKG)/kics2.conf.d
+
+# Special files and binaries used in this this installation
+# ---------------------------------------------------------
+
 # The compiler binary
-export COMP      = $(LOCALBIN)/kics2c
+export COMP         = $(LOCALBIN)/kics2c
 # The REPL binary, used for building the libraries
-export REPL      = $(LOCALBIN)/kics2i
+export REPL         = $(LOCALBIN)/kics2i
 # The default options for the REPL, used for libraries and tools
-export REPL_OPTS = :set v2 :set -ghci
+export REPL_OPTS    = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE    = $(BINDIR)/cymake
-
+export CYMAKE       = $(BINDIR)/cymake
 # The Haskell installation info
-export INSTALLHS     = $(ROOT)/runtime/Installation.hs
+export INSTALLHS    = $(ROOT)/runtime/Installation.hs
 # The Curry installation info
-export INSTALLCURRY  = $(ROOT)/src/Installation.curry
+export INSTALLCURRY = $(ROOT)/src/Installation.curry
 # The version information for the manual
-MANUALVERSION = $(ROOT)/docs/src/version.tex
+MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
-MAKELOG = make.log
+MAKELOG             = make.log
 
-########################################################################
-# Fancy GHC configuration
-########################################################################
-# The path to the Glasgow Haskell Compiler
+# Fancy GHC and CABAL configuration
+# ---------------------------------
+
+# The path to the Glasgow Haskell Compiler and Cabal
 export GHC     := "$(shell which ghc)"
 export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
+export CABAL   =  cabal
+
+# Because of an API change in GHC 7.6, we need to distinguish
+# GHC < 7.6 and GHC >= 7.6
+
 # extract GHC version
 GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
 GHC_MINOR := $(shell $(GHC) --numeric-version | cut -d. -f2)
-# GHC >= 7.6 ?
+# Is the GHC version >= 7.6 ?
 GHC_GEQ_76 = $(shell test $(GHC_MAJOR) -gt 7 -o \( $(GHC_MAJOR) -eq 7 \
               -a $(GHC_MINOR) -ge 6 \) ; echo $$?)
 # package-db (>= 7.6) or package-conf (< 7.6)?
 ifeq ($(GHC_GEQ_76),0)
-GHC_PKG_SUFFIX = db
+GHC_PKG_OPT = package-db
 else
-GHC_PKG_SUFFIX = conf
+GHC_PKG_OPT = package-conf
 endif
-# The path to the package database
-export PKGDB := $(LOCALPKG)/kics2.conf.d
-# Command to unregister a package
-export GHC_UNREGISTER = $(GHC-PKG) unregister --package-$(GHC_PKG_SUFFIX)=$(PKGDB)
+
 # Standard options for compiling target programs with ghc
-export GHC_OPTIONS    =
-export CABAL          = cabal
+export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) $(PKGDB)
+# Command to unregister a package
+export GHC_UNREGISTER = $(GHC-PKG) unregister --$(GHC_PKG_OPT)=$(PKGDB)
+#
 export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC)       \
                         --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) \
                         --global --package-db=$(PKGDB) -O2
@@ -229,10 +244,10 @@ endif
 	echo 'runtimeMinor = $(GHC_MINOR)' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\" -no-user-package-$(GHC_PKG_SUFFIX) -package-$(GHC_PKG_SUFFIX) \"${PKGDB}\""' >> $@
+	echo 'ghcExec = "\"$(shell utils/which $(GHC))\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
-	echo 'ghcOptions = "$(GHC_OPTIONS)"' >> $@
+	echo 'ghcOptions = "$(GHC_OPTS)"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
