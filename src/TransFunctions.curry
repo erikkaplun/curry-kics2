@@ -357,7 +357,7 @@ transHOTypeExprWith combFunc (TCons qn ts)    =
   TCons qn (map (transHOTypeExprWith combFunc) ts)
 
 -- translate a single rule of a function adds a supply argument
--- to non-deterministic versions and a constStore argument to all functions
+-- to non-deterministic versions and a constStore and nesting index argument to all functions
 transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
