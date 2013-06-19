@@ -352,6 +352,7 @@ endif
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf $(BINDIR)
+	rm -rf $(PKGDB)
 	cd utils && $(MAKE) cleanall
 	rm -rf $(DEV_DIRS)
 
@@ -415,15 +416,15 @@ bootstrapwithlogging:
 
 # bootstrap the compiler
 .PHONY: bootstrap
-bootstrap: $(PKGDB) ${INSTALLCURRY} frontend scripts
+bootstrap: $(PKGDB) $(INSTALLCURRY) frontend scripts
 	cd src && $(MAKE) bootstrap
 
 .PHONY: Compile
-Compile: ${INSTALLCURRY} scripts
+Compile: $(PKGDB) $(INSTALLCURRY) scripts
 	cd src && ${MAKE} CompileBoot
 
 .PHONY: REPL
-REPL: ${INSTALLCURRY} scripts
+REPL: $(PKGDB) $(INSTALLCURRY) scripts
 	cd src && ${MAKE} REPLBoot
 
 # Peform a full bootstrap - distribution - installation - uninstallation

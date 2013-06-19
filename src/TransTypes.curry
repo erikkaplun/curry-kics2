@@ -46,10 +46,10 @@ genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
             , Cons (mkFailName    qf) 2 acvis [coverType, failInfoType]
             , Cons (mkGuardName   qf) 2 acvis [coverType, constraintType, ctype]
             ]
-    instanceDecls = map ($t) [ showInstance hoResult
+    instanceDecls = map ($t) [ showInstance       hoResult
                              , readInstance
                              , nondetInstance
-                             , generableInstance
+                             , generableInstance  hoResult
                              , normalformInstance hoResult
                              , unifiableInstance  hoResult
                              , curryInstance      hoResult
@@ -352,8 +352,8 @@ matchRules qf = map nameRule
 -- TODO generators for constructor arguments can pe the same idsupplies
 --      for different constructors; change bind accordingly
 
-generableInstance :: FC.TypeDecl -> TypeDecl
-generableInstance (FC.Type qf _ tnums cdecls) =
+generableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+generableInstance hoResult (FC.Type qf _ tnums cdecls) =
   mkInstance (basics "Generable") [] ctype targs
     [(basics "generate", simpleRule [PVar s,PVar c]  genBody)]
   where
@@ -369,7 +369,11 @@ generableInstance (FC.Type qf _ tnums cdecls) =
       , list2ac $ map genCons cdecls
       ]
 
-    genCons (FC.Cons qn arity _ _) = applyF qn (consArgs2gen arity)
+
+    genCons (FC.Cons qn arity _ _) | lookupFM hoResult qn == Just HO
+                                       = applyF (mkHoConsName qn) (consArgs2gen arity)
+                                   | otherwise 
+                                       = applyF qn (consArgs2gen arity)
 
     arities = list2ac $ map (intc . consArity) cdecls
 
