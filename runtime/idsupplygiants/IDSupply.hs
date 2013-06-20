@@ -12,7 +12,7 @@ import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
 import qualified Data.Map as Map (Map, empty, delete, findWithDefault, insert)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Giant(n, o, i, T(..))
+import Giant (n, o, i, T(..))
 
 -- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Decision, defaultDecision, isDefaultDecision)
@@ -33,7 +33,7 @@ mkInteger :: Unique -> Integer
 mkInteger = n
 
 showUnique :: Unique -> String
-showUnique = show
+showUnique = show . n
 
 -- |Initialize a new 'IDSupply'
 initSupply :: IO IDSupply
