@@ -1,4 +1,4 @@
---{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 -- needed to define toplevel isomorphisms
 module Giant where
 
@@ -71,26 +71,6 @@ view x | i_ x = i (view (i' x))
 n :: (N n) => n -> Integer
 n = view
 
-class N n => OrdN n where
-  cmp :: n -> n -> Ordering
-  cmp x y | e_ x && e_ y = EQ
-  cmp x _ | e_ x = LT
-  cmp _ y | e_ y = GT
-  cmp x y | o_ x && o_ y = cmp (o' x) (o' y)
-  cmp x y | i_ x && i_ y = cmp (i' x) (i' y)
-  cmp x y | o_ x && i_ y = down (cmp (o' x) (i' y)) where
-    down EQ = LT
-    down r = r
-  cmp x y | i_ x && o_ y = up (cmp (i' x) (o' y)) where
-    up EQ = GT
-    up r = r
-
-  min2,max2 :: n -> n -> n
-  min2 x y = if LT==cmp x y then x else y
-  max2 x y = if LT==cmp x y then y else x
-
-instance OrdN T
-
 data T = T | V T [T] | W T [T] deriving (Eq,Show,Read)
 
 instance N T where
@@ -115,5 +95,48 @@ instance N T where
   o_ (V _ _ ) = True
   o_ _ = False
 
-instance Ord T where
-  compare = cmp
+-- Trie representation for T
+type TList = [T]
+
+data TListMap a = TListMap (Maybe a) (TMap (TListMap a))
+
+emptyTListMap :: TListMap a
+emptyTListMap = TListMap Nothing emptyTMap
+
+lookupTList :: TList -> TListMap a -> Maybe a
+lookupTList []     (TListMap v _)    = v
+lookupTList (t:ts) (TListMap _ tMap) = lookupT t tMap >>= lookupTList ts
+
+insertTList :: TList -> a -> TListMap a -> TListMap a
+insertTList tList x = updateTList tList (const (Just x))
+
+deleteTList :: TList -> TListMap a -> TListMap a
+deleteTList tList = updateTList tList (const Nothing)
+
+updateTList :: TList -> (Maybe a -> Maybe a) -> TListMap a -> TListMap a
+updateTList [] upd (TListMap v tMap) = TListMap (upd v) tMap
+updateTList (t:ts) upd (TListMap v tMap) = TListMap v $
+  updateT t (Just . updateTList ts upd . maybe emptyTListMap id) tMap
+
+data TMap a = TMap (Maybe a) (TMap (TListMap a)) (TMap (TListMap a))
+
+emptyTMap :: TMap a
+emptyTMap = TMap Nothing emptyTMap emptyTMap
+
+lookupT :: T -> TMap a -> Maybe a
+lookupT T        (TMap v _ _)     = v
+lookupT (V c ts) (TMap _ tMapV _) = lookupT c tMapV >>= lookupTList ts
+lookupT (W c ts) (TMap _ _ tMapW) = lookupT c tMapW >>= lookupTList ts
+
+insertT :: T -> a -> TMap a -> TMap a
+insertT t = updateT t . const . Just
+
+deleteT :: T -> TMap a -> TMap a
+deleteT t = updateT t (const Nothing) 
+
+updateT :: T -> (Maybe a -> Maybe a) -> TMap a -> TMap a
+updateT T upd (TMap v tMapV tMapW) = TMap (upd v) tMapV tMapW
+updateT (V c ts) upd (TMap v tMapV tMapW) = TMap v 
+  (updateT c (Just . updateTList ts upd . maybe emptyTListMap id) tMapV) tMapW
+updateT (W c ts) upd (TMap v tMapV tMapW) = TMap v tMapV
+  (updateT c (Just . updateTList ts upd . maybe emptyTListMap id) tMapW)
