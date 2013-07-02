@@ -207,10 +207,8 @@ transProg p@(Prog m is ts fs _) =
   returnM $ (Prog m is [] (concat fss) [], (visType , visNDRes, visHOFun, visHOCons))
 
 -- Register the types of constructors to be able to retrieve the types for
--- constructors used in case patterns.
--- TODO: This becomes needless if the type could be computed from the
--- function's type expression, which in turn requires the case lifting to
--- provide correct types for lifted case expressions instead of TVar (-42).
+-- constructors used in case patterns. May be needless now because the case
+-- lifting now also creates correct types.
 getConsMap :: [TypeDecl] -> TypeMap
 getConsMap ts = listToFM (<)
               $ concatMap (\ (Type qn _ _ cs) -> map (\c -> (consName c,qn)) cs)
@@ -255,7 +253,7 @@ transFunc f@(Func qn _ _ _ _) =
                        renameFun qn          `bindM` \newqn ->
                        renameFun fname       `bindM` \newfname ->
                        returnM $
-                         [Func newqn 1 vis (check42 (transTypeExpr 0) t)
+                         [Func newqn 1 vis (transTypeExpr 0 t)
                           (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
                          ,Func (mkGlobalName qn) 0 Private t
                           (Rule [] (Comb FuncCall newfname
@@ -281,14 +279,14 @@ transPureFunc :: FuncDecl -> M FuncDecl
 transPureFunc (Func qn a v t r) = doInDetMode True $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' (a + 1) v (check42 (transTypeExpr a) t) r')
+  returnM (Func qn' (a + 1) v (transTypeExpr a t) r')
 
 -- translate into non-deterministic function
 transNDFunc :: FuncDecl -> M FuncDecl
 transNDFunc (Func qn a v t r) = doInDetMode False $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' (a + 2) v (check42 (transNDTypeExpr a) t) r')
+  returnM (Func qn' (a + 2) v (transNDTypeExpr a t) r')
 
 -- renaming of functions respective to their order and the determinism mode
 renameFun :: QName -> M QName
@@ -304,11 +302,6 @@ renameCons qn@(q, n) =
   isDetMode `bindM` \dm ->
   getConsHOClass qn `bindM` \hoCl ->
   returnM (q, (consPrefix dm hoCl) ++ n)
-
-check42 :: (TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
-check42 f t = case t of
-  (TVar (-42)) -> t
-  _            -> f t
 
 -- translate a type expressen by inserting an additional ConstStore type
 
@@ -548,7 +541,7 @@ transExpr e@(Case _ _ _) = returnM ([], e)
 transExpr (Typed e ty) =
   isDetMode `bindM` \dm ->
   transExpr e `bindM` \(g, e') ->
-  genIds g (Typed e' (check42 (transExprType dm) ty))
+  genIds g (Typed e' (transExprType dm ty))
 
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
