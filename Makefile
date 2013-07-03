@@ -6,7 +6,7 @@
 # ----------------------------------------
 
 # Is this a global installation (with restricted flexibility)(yes/no)?
-GLOBALINSTALL   = no
+GLOBALINSTALL   = yes
 # The major version number
 MAJORVERSION    = 0
 # The minor version number
