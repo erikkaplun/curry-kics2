@@ -10,6 +10,16 @@ IDSUPPLYDIR = idsupplyioref
 # the runtime package configuration file
 RUNTIME_PKG_CONF = $(LOCALPKG)/runtime.conf
 
+# replacement stuff
+comma     := ,
+empty     :=
+space     := $(empty) $(empty)
+# a b c -> a, b, c
+comma_sep  = $(subst $(space),$(comma)$(space),$(1))
+# runtime dependencies as comma separated list
+CABAL_RUNTIMEDEPS = $(call comma_sep,$(RUNTIMEDEPS))
+
+
 .PHONY: install
 install: $(CABAL_FILE)
 	$(CABAL_INSTALL)
@@ -37,9 +47,7 @@ endif
 	echo "Cabal-Version:  >= 1.9.2"                          >> $@
 	echo ""                                                  >> $@
 	echo "Library"                                           >> $@
-	echo "  Build-Depends:"                                  >> $@
-	echo "      base, containers, ghc, mtl"                  >> $@
-	echo "    , parallel-tree-search, tree-monad"            >> $@
+	echo "  Build-Depends: $(CABAL_RUNTIMEDEPS)"             >> $@
 	echo "  Exposed-modules:"                                >> $@
 	echo "      Basics, CurryException, Debug, IDSupply"     >> $@
 	echo "    , Installation, MonadList, MonadSearch"        >> $@

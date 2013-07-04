@@ -58,6 +58,15 @@ MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
 MAKELOG             = make.log
 
+# Cabal packages on which this installation depends
+# -------------------------------------------------
+
+# Dependencies for the kics2 libraries
+export LIBDEPS     = base old-time directory process parallel-tree-search network time unbounded-delays
+# Dependencies for the kics2 runtime system
+export RUNTIMEDEPS = base containers ghc mtl parallel-tree-search tree-monad
+
+
 # Fancy GHC and CABAL configuration
 # ---------------------------------
 
@@ -147,12 +156,14 @@ endif
 $(PKGDB):
 	$(GHC-PKG) init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) network
-	$(CABAL_INSTALL) unbounded-delays
-	$(CABAL_INSTALL) parallel
-	$(CABAL_INSTALL) tree-monad
-	$(CABAL_INSTALL) parallel-tree-search
-	$(CABAL_INSTALL) mtl
+	$(CABAL_INSTALL) $(LIBDEPS)
+	$(CABAL_INSTALL) $(RUNTIMEDEPS)
+#	$(CABAL_INSTALL) network
+#	$(CABAL_INSTALL) unbounded-delays
+#	$(CABAL_INSTALL) parallel
+#	$(CABAL_INSTALL) tree-monad
+#	$(CABAL_INSTALL) parallel-tree-search
+#	$(CABAL_INSTALL) mtl
 
 .PHONY: scripts
 scripts: $(BINDIR)/cleancurry
