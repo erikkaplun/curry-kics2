@@ -666,7 +666,7 @@ setOptionSupply :: ReplState -> String -> IO (Maybe ReplState)
 setOptionSupply rst args
   | args `elem` allSupplies = return (Just { idSupply := args | rst })
   | otherwise               = skipCommand "unknown identifier supply"
- where allSupplies = ["integer", "ghc", "ioref", "pureio"]
+ where allSupplies = ["integer", "ghc", "ioref", "pureio", "giants"]
 
 printOptions :: ReplState -> IO ()
 printOptions rst = putStrLn $ unlines
@@ -679,7 +679,7 @@ printOptions rst = putStrLn $ unlines
   , "par [<n>]       - set search mode to parallel search with <n> threads"
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
-  , ifLocal "supply <I>      - set idsupply implementation (ghc|integer|ioref|pureio)"
+  , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
   , "v<n>            - verbosity level (0: quiet; 1: front end messages;"
   , "                  2: backend messages, 3: intermediate messages and commands;"
   , "                  4: all intermediate results)"
