@@ -6,6 +6,8 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
+  * The compiler now uses type inference for FlatCurry programs to
+    improve the generated Haskell files.
   * The installation process now uses `cabal`'s capabilities to install
     all required and locally generated Haskell packages into the installation
     directory, inside a new directory `pkg`.

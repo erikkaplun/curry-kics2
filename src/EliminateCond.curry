@@ -43,16 +43,16 @@ eliminateCond p = updProgFuncs (concatMap transFunc) p
 -- that perform pattern matching. The transformed function is
 -- returnd along with the auxiliary functions
 transFunc :: AFuncDecl TypeExpr -> [AFuncDecl TypeExpr]
-transFunc f@(AFunc _ _ _ _ (AExternal _)) = [f]
-transFunc (AFunc f k v t (ARule vars exp)) =
-  let (newExp, (newFuns, _)) = runState (transExpr f exp) ([], 0)
-  in AFunc f k v t (ARule vars newExp) : newFuns
+transFunc f@(AFunc _ _ _ _ (AExternal _ _)) = [f]
+transFunc (AFunc f k v t (ARule ty vs e)) =
+  let (e', (newFuns, _)) = runState (transExpr f e) ([], 0)
+  in AFunc f k v t (ARule ty vs e') : newFuns
 
 -- the transformation of an expression is done in the state monad.
 -- the state consists of the introduced auxiliary functions and
 -- a counter for name generation
 transExpr :: QName -> AExpr TypeExpr
-          -> State (AExpr TypeExpr) ([AFuncDecl TypeExpr], Int)
+          -> State ([AFuncDecl TypeExpr], Int) (AExpr TypeExpr)
 transExpr f e = trExpr transVar transLit transComb transLet
                 transFree transOr transCase transBranch transTyped e
  where
@@ -60,14 +60,14 @@ transExpr f e = trExpr transVar transLit transComb transLet
   -- cond is found, the call to an auxiliary function is generated
   transVar ty v = returnS $ AVar ty v
   transLit ty l = returnS $ ALit ty l
-  transComb ty cType cName cargs =
+  transComb ty cType (cName, cTy) cargs =
     case (cName, cargs) of
      (("Prelude","cond"),[cond, expr])
        -> cond `bindS` \newArg1 ->
           expr `bindS` \newArg2 ->
           makeAuxFuncCall f ty newArg1 newArg2
      _ -> sequenceS cargs `bindS` \newArgs ->
-          returnS (AComb ty cType cName newArgs)
+          returnS (AComb ty cType (cName, cTy) newArgs)
   -- for other expressions the transformation has to be done
   -- for their subexpressions
   transLet ty bindings exp =
@@ -103,31 +103,32 @@ transExpr f e = trExpr transVar transLit transComb transLet
 -- The created function is saved in the state, the
 -- call to this function is returned.
 makeAuxFuncCall :: QName -> TypeExpr -> AExpr TypeExpr -> AExpr TypeExpr
-                -> State (AExpr TypeExpr) ([AFuncDecl TypeExpr], Int)
+                -> State ([AFuncDecl TypeExpr], Int) (AExpr TypeExpr)
 makeAuxFuncCall name ty cond newBody =
   getS                            `bindS` \(funs,idx) ->
-  setS (newFun idx:funs, idx + 1) `bindS` \_          ->
-  returnS $ AComb ty FuncCall (mkNewName name idx)
+  putS (newFun idx:funs, idx + 1) `bindS` \_          ->
+  returnS $ AComb ty FuncCall (mkNewName name idx, funtype)
                               (map (uncurry (flip AVar)) typedVars ++ [cond])
  where
   newFun i = AFunc (mkNewName name i) numArgs Private funtype rule
-  rule =  ARule [1 .. numArgs]
-            (ACase ty Flex (AVar (typeOf cond) numArgs)
-                  [ABranch (APattern (typeOf cond) ("Prelude", "Success") [])
+  rule =  ARule funtype argVars
+            (ACase ty Flex (AVar condType numArgs)
+                  [ABranch (APattern condType (successId, successType) [])
                           (rnmAllVars renameVarFun newBody)])
 
-  funtype = foldr FuncType (FuncType (typeOf cond) ty) (map snd typedVars)
-
+  funtype = foldr FuncType ty (map snd argVars)
+  condType = annExpr cond
   typedVars = unboundVars newBody
+  argVars = zip [1 ..] (map snd typedVars ++ [condType])
   numArgs = length typedVars + 1
   renameVarFun v = maybe v (+1) (elemIndex v (map fst typedVars))
   mkNewName (mod,oldName) idx = (mod, "__cond_" ++ show idx ++ "_" ++ oldName)
 
-typeOf :: AExpr TypeExpr -> TypeExpr
-typeOf = trExpr (\ty _ -> ty) (\ty _ -> ty) (\ty _ _ _ -> ty) (\ty _ _ -> ty)
-                (\ty _ _ -> ty)(\ty _ _ -> ty)(\ty _ _ _ -> ty) pat (\ty _ _ -> ty)
-  where pat p _ = trPattern (\ty _ _ -> ty) (\ty _ -> ty) p
+successId :: QName
+successId = ("Prelude", "Success")
 
+successType :: TypeExpr
+successType = TCons successId []
 
 --- Return all variables in an expression that are unbound in the expression.
 unboundVars :: AExpr TypeExpr -> [(VarIndex, TypeExpr)]
@@ -141,5 +142,5 @@ unboundVars e = nub (trExpr var lit comb leT freE oR casE branch typed e)
  freE _ vs = filter (\v -> fst v `notElem` (map fst) vs)
  oR   _       = (++)
  casE _ _ vars  bVars  = concat (vars:bVars)
- branch (APattern _ _ vs) vars = filter (\v -> fst v `notElem` vs) vars
+ branch (APattern _ _ vs) vars = filter (\v -> fst v `notElem` map fst vs) vars
  typed _ vs _ = vs

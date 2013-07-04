@@ -131,7 +131,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
   showDetail opts "Inferring types"
   let afcy = either error id (inferProgFromProgEnv progs fcy)
-  dump DumpTypedFlat opts fcyName (show fcy')
+  dump DumpTypedFlat opts typedName (show fcy')
 
   showDetail opts "Lifting case expressions"
   let pLifted = liftCases True afcy
@@ -176,6 +176,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
     where
     fcyName        = fcyFile $ withBaseName (++ "Dump")      mid
+    typedName      = fcyFile $ withBaseName (++ "Typed")     mid
     liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
     elimName       = fcyFile $ withBaseName (++ "ElimCond")  mid
     renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid

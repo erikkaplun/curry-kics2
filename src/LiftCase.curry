@@ -73,7 +73,7 @@ liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
     lit :: TypeExpr -> Literal -> M (AExpr TypeExpr)
     lit ty l i = (ALit ty l, i, id, [])
 
-    comb :: TypeExpr -> CombType -> QName -> [M (AExpr TypeExpr)]
+    comb :: TypeExpr -> CombType -> (QName, TypeExpr) -> [M (AExpr TypeExpr)]
          -> M (AExpr TypeExpr)
     comb ty ct n args i = let (args', i', ff, vs) = sequence args i
                           in  (AComb ty ct n args', i', ff, vs)
@@ -125,36 +125,32 @@ liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
     typed ty e ty' i = let (e', i', ff, ve) = e i
                        in (ATyped ty e' ty', i', ff, ve)
 
-genFuncCall :: String -> String -> Int -> TypeExpr
-            -> [TypedVar]
+genFuncCall :: String -> String -> Int -> TypeExpr -> [TypedVar]
             -> AExpr TypeExpr -> AExpr TypeExpr
 genFuncCall mod aux i ty env e =
-  AComb ty FuncCall (newName mod aux i) (map (uncurry (flip AVar)) env ++ [e])
+  AComb ty FuncCall (newName mod aux i, funtype) (map (uncurry (flip AVar)) env ++ [e])
+  where funtype = foldr FuncType (FuncType (annExpr e) ty) (map snd env)
 
 genFunc :: String -> String -> Int -> TypeExpr
         -> [TypedVar] -> AExpr TypeExpr
         ->  CaseType -> [ABranchExpr TypeExpr] -> AFuncDecl TypeExpr
 genFunc mod aux i ty env e ct bs =
-  AFunc (newName mod aux i) (length env + 1) Private funtype rule
+  AFunc (newName mod aux i) (length args) Private funtype rule
   where
-    rule = ARule (map fst env ++ [v]) (ACase ty ct (AVar (typeOf e) v) bs)
+    ety = annExpr e
+    args = env ++ [(v, ety)]
+    rule = ARule funtype args (ACase ty ct (AVar ety v) bs)
     v = case e of
          AVar _ idx -> idx
          _          -> nextLocalName (map fst env ++ concatMap allVarsBranch bs)
 
     allVarsBranch (ABranch p pe) =
-       trPattern (\ _ _ xs -> xs) (\ _ _ -> []) p ++ allVars pe
+      trPattern (\ _ _ xs -> map fst xs) (\ _ _ -> []) p ++ allVars pe
 
-    funtype = foldr FuncType (FuncType (typeOf e) ty) (map snd env)
-
-typeOf :: AExpr TypeExpr -> TypeExpr
-typeOf = trExpr (\ty _ -> ty) (\ty _ -> ty) (\ty _ _ _ -> ty) (\ty _ _ -> ty)
-                (\ty _ _ -> ty)(\ty _ _ -> ty)(\ty _ _ _ -> ty) pat
-                (\ty _ _ -> ty)
-  where pat p _ = trPattern (\ty _ _ -> ty) (\ty _ -> ty) p
+    funtype = foldr FuncType ty (map snd args)
 
 removePVars :: [TypedVar] -> APattern TypeExpr -> [TypedVar]
-removePVars e = trPattern (\ _ _ vs -> filter (\v -> fst v `notElem` vs) e)
+removePVars e = trPattern (\ _ _ vs -> filter (\v -> fst v `notElem` map fst vs) e)
                           (\_ _ -> e)
 
 genAuxName :: [String] -> String
