@@ -380,10 +380,11 @@ $(TARBALL): $(COMP)
 	cp $(COMP) ${TMPDIR}/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd ${TMPDIR} && ${MAKE} Compile   # translate compiler
-	cd ${TMPDIR} && ${MAKE} REPL      # translate REPL
-	cd ${TMPDIR} && ${MAKE} clean     # clean object files
-	cd ${TMPDIR} && ${MAKE} cleandist # delete unnessary files
+	cd ${TMPDIR} && ${MAKE} Compile       # translate compiler
+	cd ${TMPDIR} && ${MAKE} REPL          # translate REPL
+	cd ${TMPDIR} && ${MAKE} clean         # clean object files
+	cd ${TMPDIR} && ${MAKE} typeinference # precompile typeinference
+	cd ${TMPDIR} && ${MAKE} cleandist     # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
 	  mkdir -p ${TMPDIR}/docs ; \
@@ -432,6 +433,10 @@ Compile: $(PKGDB) $(INSTALLCURRY) scripts
 .PHONY: REPL
 REPL: $(PKGDB) $(INSTALLCURRY) scripts
 	cd src && ${MAKE} REPLBoot
+
+.PHONY: typeinference
+typeinference:
+	cd currytools && $(MAKE) typeinference
 
 # Peform a full bootstrap - distribution - installation - uninstallation
 # lifecycle to test consistency of the whole process.
