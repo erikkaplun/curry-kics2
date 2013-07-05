@@ -8,6 +8,7 @@ Changes to version 0.2.3:
 
   * The compiler now uses type inference for FlatCurry programs to
     improve the generated Haskell files.
+  * Library `Function` added.
   * The installation process now uses `cabal`'s capabilities to install
     all required and locally generated Haskell packages into the installation
     directory, inside a new directory `pkg`.
@@ -29,6 +30,9 @@ Changes to version 0.2.3:
     into currydoc.
   * Library `HTML`: default (white) background for body of generated
     web pages removed (since this is usually defined in css files).
+  * Type inference tool (see `currytools/typeinference`) added.
+    This tool can be used to annotate expressions in FlatCurry programs 
+    with their type.
 
 
 Release notes for KiCS2 Version 0.2.3
