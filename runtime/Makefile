@@ -16,7 +16,7 @@ install: $(CABAL_FILE)
 
 .PHONY: unregister
 unregister:
-	-$(GHC-PKG) unregister --package-db=$(PKGDB) $(PACKAGE)-$(VERSION)
+	-$(GHC_UNREGISTER) $(PACKAGE)-$(VERSION)
 
 .PHONY: clean
 clean:
