@@ -159,12 +159,6 @@ $(PKGDB):
 	$(CABAL) update
 	$(CABAL_INSTALL) $(LIBDEPS)
 	$(CABAL_INSTALL) $(RUNTIMEDEPS)
-#	$(CABAL_INSTALL) network
-#	$(CABAL_INSTALL) unbounded-delays
-#	$(CABAL_INSTALL) parallel
-#	$(CABAL_INSTALL) tree-monad
-#	$(CABAL_INSTALL) parallel-tree-search
-#	$(CABAL_INSTALL) mtl
 
 .PHONY: scripts
 scripts: $(BINDIR)/cleancurry
