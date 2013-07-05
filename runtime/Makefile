@@ -17,7 +17,8 @@ space     := $(empty) $(empty)
 # a b c -> a, b, c
 comma_sep  = $(subst $(space),$(comma)$(space),$(1))
 # runtime dependencies as comma separated list
-CABAL_RUNTIMEDEPS = $(call comma_sep,$(RUNTIMEDEPS)), ghc
+RUNTIMEDEPS       += ghc
+CABAL_RUNTIMEDEPS  = $(call comma_sep,$(RUNTIMEDEPS))
 
 
 .PHONY: install
