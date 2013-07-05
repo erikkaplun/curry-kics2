@@ -19,7 +19,7 @@ getDestTime :: String -> IO (Maybe ClockTime)
 getDestTime fn = do
   exists <- doesFileExist fn
   if exists
-    then Just `liftIO` getModificationTime fn
+    then Just `Utils.liftIO` getModificationTime fn
     else return Nothing
 
 getDepTimes :: [String] -> IO [ClockTime]

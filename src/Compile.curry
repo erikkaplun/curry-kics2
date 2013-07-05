@@ -38,7 +38,7 @@ import SimpleMake
 -- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (when, foldIO, liftIO, notNull)
+import Utils (when, foldIO, notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
@@ -56,7 +56,7 @@ build opts fn = do
     Just f -> do
       (mods, errs) <- deps opts f
       if null errs
-        then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
+        then Utils.foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
         else mapIO_ putErrLn errs
         where initState = { compOptions := opts | defaultState }
 

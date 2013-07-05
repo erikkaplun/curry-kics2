@@ -26,7 +26,7 @@ defaultRC = installDir </> "kics2rc.default"
 --- current distribution. This file must have the usual format of
 --- property files (see description in module PropertyFile).
 rcFileName :: IO FilePath
-rcFileName = (</> ".kics2rc") `liftIO` getHomeDirectory
+rcFileName = (</> ".kics2rc") `Utils.liftIO` getHomeDirectory
 
 --- Reads the rc file. If it is not present, the standard file
 --- from the distribution will be copied.

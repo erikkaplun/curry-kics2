@@ -71,7 +71,7 @@ sourceDeps opts m fn mEnv = do
   fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn) $
                              setFullPath importPaths $
                              setQuiet quiet defaultParams
-  foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
+  Utils.foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
     where
       importPaths = "." : opts :> optImportPaths
       quiet       = (opts :> optVerbosity) < VerbFrontend
