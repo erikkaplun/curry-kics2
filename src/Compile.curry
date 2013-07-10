@@ -30,6 +30,7 @@ import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase (liftCases)
 import EliminateCond (eliminateCond)
+import DefaultPolymorphic (defaultPolymorphic)
 import Inference (inferProgFromProgEnv)
 import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
 import ModuleDeps (ModuleIdent, Source, deps)
@@ -141,8 +142,12 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let pElim = eliminateCond pLifted
   dump DumpEliminated opts elimName (show pElim)
 
+  showDetail opts "Default locally polymorphic sub-expressions"
+  let pDefaulted = defaultPolymorphic pElim
+  dump DumpDefaulted opts defaultedName (show pDefaulted)
+
   showDetail opts "Renaming symbols"
-  let renamed@(Prog _ _ ts _ _)  = rename (unAnnProg pElim)
+  let renamed@(Prog _ _ ts _ _)  = rename (unAnnProg pDefaulted)
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
@@ -179,6 +184,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     typedName      = fcyFile $ withBaseName (++ "Typed")     mid
     liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
     elimName       = fcyFile $ withBaseName (++ "ElimCond")  mid
+    defaultedName  = fcyFile $ withBaseName (++ "Defaulted") mid
     renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
