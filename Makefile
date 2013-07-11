@@ -358,7 +358,7 @@ endif
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
 	rm -rf $(BINDIR)
-	rm -rf $(PKGDB)
+	rm -rf $(LOCALPKG)
 	cd utils && $(MAKE) cleanall
 	rm -rf $(DEV_DIRS)
 
