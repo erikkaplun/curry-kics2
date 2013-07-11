@@ -571,7 +571,7 @@ searchMSearch :: (MonadSearch m, NormalForm a) => Cover -> a -> m a
 searchMSearch cd x = evalStateT (searchMSearch' cd return x) (Map.empty :: DecisionMap)
 
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => Cover -> (a -> m b) -> a -> m b
-searchMSearch' cd cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
+searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal x
   where
   smpFail d info  = szero d info
   smpVal v        = searchNF (searchMSearch' cd) cont v
@@ -584,7 +584,20 @@ searchMSearch' cd cont = match smpChoice smpChoices smpChoices smpFail smpGuard 
     follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
     plus = if isCovered d then splus d i else mplus 
 
-  smpChoices d i xs = lookupDecision i >>= follow
+  smpFree d i xs = lookupDecisionID i >>= follow
+    where
+    follow (LazyBind cs,_)  = processLB d i cs xs
+    follow (ChooseN c _,_)  = searchMSearch' cd cont (xs !! c)
+    follow (NoDecision ,j)  = sumF j $
+      zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
+    follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
+    pns = case i of
+           FreeID pns _ -> pns
+           NarrowedID pns _ -> pns
+    sumF j | isCovered d  = svar d i
+           | otherwise    = var (cont (choicesCons d j xs))
+
+  smpNarrowed d i xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs)  = processLB d i cs xs
     follow (ChooseN c _)  = searchMSearch' cd cont (xs !! c)
@@ -594,7 +607,10 @@ searchMSearch' cd cont = match smpChoice smpChoices smpChoices smpFail smpGuard 
     pns = case i of
            FreeID pns _ -> pns
            NarrowedID pns _ -> pns
-    sumF = if isCovered d then ssum d i else msum
+    sumF | isCovered d = ssum d i
+         | otherwise   = msum 
+
+
 
 
   smpGuard d cs e 

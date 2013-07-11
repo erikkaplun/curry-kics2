@@ -12,7 +12,7 @@ module ID
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
-  , ID (..), leftID, rightID, narrowID, getKey, mkInteger
+  , ID (..), leftID, rightID, narrowID, getKey, mkInteger, isNarrowed
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Decision management
   , traceLookup, traceDecision
@@ -190,6 +190,10 @@ getUnique :: ID -> Unique
 getUnique (ChoiceID          u) = u
 getUnique (FreeID          _ s) = unique s
 getUnique (NarrowedID      _ s) = unique s
+
+isNarrowed :: ID -> Bool
+isNarrowed (NarrowedID _ _) = True
+isNarrowed _                = False
 
 
 -- ---------------------------------------------------------------------------
