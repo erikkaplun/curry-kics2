@@ -6,6 +6,17 @@ Release notes for KiCS2 Version 0.2.4 (under development)
 
 Changes to version 0.2.3:
 
+  * Fixed a long standing bug which occured in combination with locally
+    polymorphic sub-expressions. For example, in the rule
+    `f = fst (3, id)` the identifier `id` has type `forall a . a -> a`,
+    but the type variable `a` does not occur in the type of `f`.
+    This lead to a type error in the generated Haskell sources.
+    The compiler now solves this problem by replacing such type variables
+    with the unit type `()`, thus the above mentioned rule becomes
+    `f = fst (3, id :: () -> ())`.
+  * The compiler now uses type inference for FlatCurry programs to
+    improve the generated Haskell files.
+  * Library `Function` added.
   * The installation process now uses `cabal`'s capabilities to install
     all required and locally generated Haskell packages into the installation
     directory, inside a new directory `pkg`.
@@ -27,6 +38,9 @@ Changes to version 0.2.3:
     into currydoc.
   * Library `HTML`: default (white) background for body of generated
     web pages removed (since this is usually defined in css files).
+  * Type inference tool (see `currytools/typeinference`) added.
+    This tool can be used to annotate expressions in FlatCurry programs
+    with their type.
 
 
 Release notes for KiCS2 Version 0.2.3

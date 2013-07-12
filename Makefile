@@ -10,9 +10,9 @@ GLOBALINSTALL   = yes
 # The major version number
 MAJORVERSION    = 0
 # The minor version number
-MINORVERSION    = 2
+MINORVERSION    = 3
 # The revision version number
-REVISIONVERSION = 4
+REVISIONVERSION = 0
 # Complete version
 export VERSION  = $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date, extracted from the last git commit
@@ -57,6 +57,16 @@ export INSTALLCURRY = $(ROOT)/src/Installation.curry
 MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
 MAKELOG             = make.log
+
+# Cabal packages on which this installation depends
+# -------------------------------------------------
+
+# Dependencies for the kics2 libraries
+export LIBDEPS     = base old-time directory process parallel-tree-search \
+                     network time unbounded-delays
+# Dependencies for the kics2 runtime system
+export RUNTIMEDEPS = base containers mtl parallel-tree-search tree-monad
+
 
 # Fancy GHC and CABAL configuration
 # ---------------------------------
@@ -147,12 +157,8 @@ endif
 $(PKGDB):
 	$(GHC-PKG) init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) network
-	$(CABAL_INSTALL) unbounded-delays
-	$(CABAL_INSTALL) parallel
-	$(CABAL_INSTALL) tree-monad
-	$(CABAL_INSTALL) parallel-tree-search
-	$(CABAL_INSTALL) mtl
+	$(CABAL_INSTALL) $(LIBDEPS)
+	$(CABAL_INSTALL) $(RUNTIMEDEPS)
 
 .PHONY: scripts
 scripts: $(BINDIR)/cleancurry
@@ -374,10 +380,11 @@ $(TARBALL): $(COMP)
 	cp $(COMP) ${TMPDIR}/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd ${TMPDIR} && ${MAKE} Compile   # translate compiler
-	cd ${TMPDIR} && ${MAKE} REPL      # translate REPL
-	cd ${TMPDIR} && ${MAKE} clean     # clean object files
-	cd ${TMPDIR} && ${MAKE} cleandist # delete unnessary files
+	cd ${TMPDIR} && ${MAKE} Compile       # translate compiler
+	cd ${TMPDIR} && ${MAKE} REPL          # translate REPL
+	cd ${TMPDIR} && ${MAKE} clean         # clean object files
+	cd ${TMPDIR} && ${MAKE} typeinference # precompile typeinference
+	cd ${TMPDIR} && ${MAKE} cleandist     # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
 	  mkdir -p ${TMPDIR}/docs ; \
@@ -426,6 +433,10 @@ Compile: $(PKGDB) $(INSTALLCURRY) scripts
 .PHONY: REPL
 REPL: $(PKGDB) $(INSTALLCURRY) scripts
 	cd src && ${MAKE} REPLBoot
+
+.PHONY: typeinference
+typeinference:
+	cd currytools && $(MAKE) typeinference
 
 # Peform a full bootstrap - distribution - installation - uninstallation
 # lifecycle to test consistency of the whole process.

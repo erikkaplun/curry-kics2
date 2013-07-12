@@ -1,123 +1,46 @@
-------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --- This module provides a transformation on FlatCurry programs.
---- The result contains a new function for each nested case 
---- contained in the original program. 
---- The new functions have the names  "_case_ ... i" where i
---- is a number and there are as many underscores as necessary 
---- to avoid name clashes. (Example: _case_0)
---- In addition, all the cases are normalized, i.e. applied to 
---- a variable. This variable is always the last argument of 
---- the newly generated function.
---- The first argument of liftCases is a boolean flag, meaning:
---- False: introduce function for EACH case of original program
---- True:  introduce function for nested and not normalized 
----        cases only
+--- The result contains a new function for each nested case
+--- contained in the original program.
+--- The new functions have the names  "_case_ ... i" where i is a number
+--- and there are as many underscores as necessary to avoid name clashes.
+--- Example: _case_0.
 ---
---- Some possible improvements:
---- 1) Up to now the newly generated functions are not correctly 
----    typed but have type (TVar (-42)).
----    (done, but untested. hsi)
+--- In addition, all the cases are normalized, i.e., applied to a variable.
+--- This variable is always the last argument of the newly generated function.
+--- The first argument of liftCases is a boolean flag
+--- with the following meaning:
+---   False: introduce function for EACH case of the original program
+---   True:  introduce function for nested and not normalized
+---          cases only
 ---
---- @author  bbr,sebf
---- @version October 2006
-------------------------------------------------------------------
+--- @author  bbr,sebf, bjp
+--- @version July 2013
+--------------------------------------------------------------------------------
 
-module LiftCase (liftCases,isCaseAuxFuncName,isCaseAuxFuncType) where
+module LiftCase (liftCases) where
 
-import FlatCurry
-import FlatCurryGoodies
-import List (isPrefixOf,partition,delete)
+import AnnotatedFlatCurry
+import AnnotatedFlatCurryGoodies
+import List                      (isPrefixOf, partition, delete, nub, sortBy)
 import FiniteMap
 
-isCaseAuxFuncName :: String -> Bool
-isCaseAuxFuncName n = take 6 n == "_case_"
-
-isCaseAuxFuncType :: TypeExpr -> Bool
-isCaseAuxFuncType t = t==TVar (-42)
-
 --- @param - the program to be transformed
-liftCases :: Bool -> Prog -> Prog
-liftCases nestedOnly p = 
-  let fs  = progFuncs p
-      aux = genAuxName (map (snd . funcName) fs)
-      (exts,ins) = partition isExternal fs
-      (newFsf,_,auxFf) = foldr (liftCasesFunc nestedOnly (progName p) aux) 
-                               (id,0,id) 
+liftCases :: Bool -> AProg TypeExpr -> AProg TypeExpr
+liftCases nestedOnly p =
+  let fs          = progFuncs p
+      aux         = genAuxName (map (snd . funcName) fs)
+      (exts, ins) = partition isExternal fs
+      (newFsf,_,auxFf) = foldr (liftCasesFunc nestedOnly (progName p) aux)
+                               (id,0,id)
                                ins
    in updProgFuncs (const (newFsf (auxFf exts))) p
 
-type FuncList = [FuncDecl] -> [FuncDecl]
-type Result = (FuncList,Int,FuncList)
+type FuncList = [AFuncDecl TypeExpr] -> [AFuncDecl TypeExpr]
+type TypedVar = (VarIndex, TypeExpr)
+type Result = (FuncList, Int, FuncList)
 
-type M x = Int -> (x, Int, FuncList, [VarIndex])
-
-
-liftCasesFunc :: Bool -> String -> String -> FuncDecl -> Result -> Result
-liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) = 
-  ((updFuncBody (const exp) f:) . esMain,iMain,ffMain . ffeMain)
-  where
-    body = funcBody f
-
-    (exp,iMain,ffeMain,_) = 
-     if onlyNested then (case body of
-      Case cm (Var v) bs -> 
-         let (e',i',ffe,_)    = trans (Var v) i0
-             (bs',i'',ffbs,_) = 
-               sequence (map (\ (Branch pat be) -> branch pat (trans be)) bs) i'
-          in (Case cm e' bs', i'',ffe . ffbs,[])
-      _            -> trans body i0)
-     else trans body i0
-           
-    trans = trExpr var lit comb leT freE or casE branch typed
-
-    var :: VarIndex -> M Expr
-    var v i = (Var v,i,id,[v])
-
-    lit :: Literal -> M Expr
-    lit l i = (Lit l,i,id,[])
-
-    comb :: CombType -> QName -> [M Expr] -> M Expr
-    comb ct n args i = let (args',i',ff,vs) = sequence args i
-      in (Comb ct n args',i',ff,vs)
-
-    leT :: [(VarIndex,M Expr)] -> M Expr -> M Expr
-    leT bs e i = 
-      let (vs,es)  = unzip bs 
-          (es',i',ffes,ves) = sequence es i
-          (e',i'',ffe,ve) = e i'
-      in (Let (zip vs es') e',i'', ffes . ffe,
-          filter (not . elemOf vs) (ves ++ ve))
-
-    freE :: [VarIndex] -> M Expr -> M Expr
-    freE vs e i = 
-      let (e',i',ff,ve) = e i 
-       in (Free vs e',i',ff,filter (not . elemOf vs) ve)
-
-    or :: M Expr -> M Expr -> M Expr
-    or e1 e2 i = 
-      let ([e1',e2'],i',ff,vs) = sequence [e1,e2] i
-       in (Or e1' e2',i',ff,vs)
-
-    casE :: CaseType -> M Expr -> [M BranchExpr] -> M Expr
-    casE ct e bs i = 
-      let (e',i',ffe,ve)     = e i
-          (bs',i'',ffbs,vbs) = sequence bs i'
-          envRes :: [VarIndex]
-          envRes = nub (ve  ++ vbs)
-          env = case e' of
-                  Var v -> delete v envRes
-                  _     -> envRes
-       in (genFuncCall mod aux i'' env e',i''+1,
-           (genFunc mod aux i'' env e' ct bs':) . ffe . ffbs,
-           envRes)
-
-    branch :: Pattern -> M Expr -> M BranchExpr
-    branch p e i = 
-      let (e',i',ff,ve) = e i
-       in (Branch p e',i',ff,removePVars ve p)
-
-    typed :: M Expr -> TypeExpr -> M Expr
-    typed e ty i = let (e',i',ff,ve) = e i in (Typed e' ty,i',ff,ve)
+type M x = Int -> (x, Int, FuncList, [TypedVar])
 
 sequence :: [M c] -> M [c]
 sequence l i = foldr once ([],i,id,[]) l
@@ -125,46 +48,119 @@ sequence l i = foldr once ([],i,id,[]) l
     once f (es,j,ff1,vs1) = let (e,k,ff2,vs2) = f j
                              in (e:es,k,ff1 . ff2,vs1++vs2)
 
-genFuncCall :: String -> String -> Int -> [VarIndex] -> Expr -> Expr
-genFuncCall mod aux i env e = 
-  Comb FuncCall (newName mod aux i) (map Var env ++ [e])
-
-genFunc :: String -> String -> Int -> [VarIndex] -> Expr ->
-           CaseType -> [BranchExpr] -> FuncDecl
-genFunc mod aux i env e ct bs = 
-  Func (newName mod aux i) (length env+1) Private funtype $
-       Rule args rhs
+liftCasesFunc :: Bool -> String -> String -> AFuncDecl TypeExpr -> Result
+              -> Result
+liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
+  ((updFuncBody (const exp) f:) . esMain, iMain, ffMain . ffeMain)
   where
-    v = case e of 
-         Var idx -> idx
-         _       -> nextLocalName (env++concatMap allVarsBranch bs)
-    
-    allVarsBranch (Branch p pe) = 
-       trPattern (\ _ xs -> xs) (\ _ -> []) p ++ allVars pe
+    body = funcBody f
 
-    args = env ++ [v]
-    rhs = Case ct (Var v) bs
+    (exp, iMain, ffeMain, _) =
+     if onlyNested then case body of
+      ACase ty cm (AVar ty' v) bs ->
+         let (e' , i' , ffe , _) = trans (AVar ty' v) i0
+             (bs', i'', ffbs, _) =
+               sequence (map (\ (ABranch p be) -> branch p (trans be)) bs) i'
+         in (ACase ty cm e' bs',  i'', ffe . ffbs, [])
+      _            -> trans body i0
+     else trans body i0
 
-    funtype = TVar (-42)
-              
+    trans = trExpr var lit comb leT freE or casE branch typed
 
-    
-removePVars :: [VarIndex] -> Pattern -> [VarIndex]
-removePVars e = trPattern (\ _ vs -> filter (not . elemOf vs) e) (const e)
+    var :: TypeExpr -> VarIndex -> M (AExpr TypeExpr)
+    var ty v i = (AVar ty v, i, id, [(v, ty)])
+
+    lit :: TypeExpr -> Literal -> M (AExpr TypeExpr)
+    lit ty l i = (ALit ty l, i, id, [])
+
+    comb :: TypeExpr -> CombType -> (QName, TypeExpr) -> [M (AExpr TypeExpr)]
+         -> M (AExpr TypeExpr)
+    comb ty ct n args i = let (args', i', ff, vs) = sequence args i
+                          in  (AComb ty ct n args', i', ff, vs)
+
+    leT :: TypeExpr -> [(VarIndex, M (AExpr TypeExpr))] -> M (AExpr TypeExpr)
+        -> M (AExpr TypeExpr)
+    leT ty bs e i =
+      let (vs, es) = unzip bs
+          (es',i',ffes,ves) = sequence es i
+          (e',i'',ffe,ve) = e i'
+      in (ALet ty (zip vs es') e',i'', ffes . ffe,
+          filter (\v -> fst v `notElem` vs) (ves ++ ve))
+
+    freE :: TypeExpr -> [TypedVar] -> M (AExpr TypeExpr)
+         -> M (AExpr TypeExpr)
+    freE ty vs e i =
+      let (e', i', ff, ve) = e i
+      in (AFree ty vs e', i', ff, filter (\v -> fst v `notElem` map fst vs) ve)
+
+    or :: TypeExpr -> M (AExpr TypeExpr) -> M (AExpr TypeExpr)
+       -> M (AExpr TypeExpr)
+    or ty e1 e2 i =
+      let ([e1',e2'],i',ff,vs) = sequence [e1,e2] i
+      in (AOr ty e1' e2',i',ff,vs)
+
+    casE :: TypeExpr -> CaseType -> M (AExpr TypeExpr)
+         -> [M (ABranchExpr TypeExpr)] -> M (AExpr TypeExpr)
+    casE ty ct e bs i =
+      let (e' , i' , ffe , ve ) = e i
+          (bs', i'', ffbs, vbs) = sequence bs i'
+          envRes :: [(VarIndex, TypeExpr)]
+          envRes = nub (ve ++ vbs)
+          env = case e' of
+                  AVar ty' v -> delete (v, ty') envRes
+                  _          -> envRes
+      in ( genFuncCall mod aux i'' ty env e'
+         , i''+1
+         , (genFunc mod aux i'' ty env e' ct bs':) . ffe . ffbs
+         , envRes
+         )
+
+    branch :: APattern TypeExpr -> M (AExpr TypeExpr)
+           -> M (ABranchExpr TypeExpr)
+    branch p e i =
+      let (e',i',ff,ve) = e i
+      in (ABranch p e', i', ff, removePVars ve p)
+
+    typed :: TypeExpr -> M (AExpr TypeExpr) -> TypeExpr -> M (AExpr TypeExpr)
+    typed ty e ty' i = let (e', i', ff, ve) = e i
+                       in (ATyped ty e' ty', i', ff, ve)
+
+genFuncCall :: String -> String -> Int -> TypeExpr -> [TypedVar]
+            -> AExpr TypeExpr -> AExpr TypeExpr
+genFuncCall mod aux i ty env e =
+  AComb ty FuncCall (newName mod aux i, funtype) (map (uncurry (flip AVar)) env ++ [e])
+  where funtype = foldr FuncType (FuncType (annExpr e) ty) (map snd env)
+
+genFunc :: String -> String -> Int -> TypeExpr
+        -> [TypedVar] -> AExpr TypeExpr
+        ->  CaseType -> [ABranchExpr TypeExpr] -> AFuncDecl TypeExpr
+genFunc mod aux i ty env e ct bs =
+  AFunc (newName mod aux i) (length args) Private funtype rule
+  where
+    ety = annExpr e
+    args = env ++ [(v, ety)]
+    rule = ARule funtype args (ACase ty ct (AVar ety v) bs)
+    v = case e of
+         AVar _ idx -> idx
+         _          -> nextLocalName (map fst env ++ concatMap allVarsBranch bs)
+
+    allVarsBranch (ABranch p pe) =
+      trPattern (\ _ _ xs -> map fst xs) (\ _ _ -> []) p ++ allVars pe
+
+    funtype = foldr FuncType ty (map snd args)
+
+removePVars :: [TypedVar] -> APattern TypeExpr -> [TypedVar]
+removePVars e = trPattern (\ _ _ vs -> filter (\v -> fst v `notElem` map fst vs) e)
+                          (\_ _ -> e)
 
 genAuxName :: [String] -> String
 genAuxName = foldl addUnderscores "_case_"
 
 addUnderscores :: String -> String -> String
-addUnderscores n m = if isPrefixOf n m then addUnderscores (n++"_") m else n     
-
-elemOf = flip elem
-
-nub :: [VarIndex] -> [VarIndex]
-nub xs = map fst $ fmToList $ listToFM (<) $ map (\ i -> (i,())) xs
+addUnderscores n m = if n `isPrefixOf` m then addUnderscores (n ++ "_") m else n
 
 newName :: String -> String -> Int -> QName
-newName m l i = (m,l ++ show i)
+newName m l i = (m, l ++ show i)
 
 nextLocalName :: [VarIndex] -> VarIndex
 nextLocalName vs =  (foldr max 0 vs + 1)

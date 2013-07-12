@@ -34,7 +34,8 @@ getCalls ds = map (\ decl -> (decl, callHelp decl)) ds
       F f -> callsDirectly f
       T t -> callsDirectly2 t
 
-fullIteration :: AnalysisFunction t a -> [(t, [QName])] -> Map a -> Map a -> Map a
+fullIteration :: AnalysisFunction t a -> [(t, [QName])] -> Map a -> Map a
+              -> Map a
 fullIteration analyze calls env start =
   let after = listToFM (<) $ map (analyze (env `plusFM` start)) calls
   in if (start `eqFM` after)
@@ -52,8 +53,10 @@ initNDResult = listToFM (<) [(qmark, ND)]
 analyseND :: Prog -> NDResult -> NDResult
 analyseND p preRes =
   let funcs = progFuncs p
-      start = listToFM (<) $ map (\f -> let name = funcName f in (name, if name == qmark then ND else D)) funcs
+      start = listToFM (<) $ map initValue funcs
   in  fullIteration ndFunc (getFunctionCalls funcs) preRes start
+  where initValue f = let name = funcName f
+                      in (name, if name == qmark then ND else D)
 
 ndFunc:: AnalysisFunction FuncDecl NDClass
 ndFunc ndmap (f, called)
@@ -132,37 +135,36 @@ ordFunc orderMap (T (TypeSyn qName _ _ typeExpr),_)
 ordFunc orderMap (F func                        ,_)
   = (funcName func,(ordHelp2 (funcType func) (funcArity func) orderMap))
 
-goThroughConsList _ [] = FO
-goThroughConsList orderMap (conDecl:conDecls) = let (Cons _ _ _ typeExprs)= conDecl in
-  hoOr (foldr (\typeExpr order->hoOr order (ordHelp1 orderMap typeExpr)) FO typeExprs)
-        (goThroughConsList orderMap conDecls)
+goThroughConsList _        [] = FO
+goThroughConsList orderMap (Cons _ _ _ tys : conDecls)
+  = hoOr (foldr (\ ty order -> hoOr order (ordHelp1 orderMap ty)) FO tys)
+         (goThroughConsList orderMap conDecls)
 
-ordHelp1 _ (TVar _) = FO
-ordHelp1 _ (FuncType _ _) = HO
-ordHelp1 orderMap (TCons qName typeExprs) = hoOr (fromMaybe FO (lookupFM orderMap qName))
-  (foldr (\typeExpr order->hoOr order (ordHelp1 orderMap typeExpr)) FO typeExprs)
+ordHelp1 _        (TVar          _) = FO
+ordHelp1 _        (FuncType    _ _) = HO
+ordHelp1 orderMap (TCons qName tys)
+  = hoOr (fromMaybe FO (lookupFM orderMap qName))
+         (foldr (\ty order -> hoOr order (ordHelp1 orderMap ty)) FO tys)
 
-ordHelp2 functype arity orderMap =
-  if (arity==0)
-    then case functype of
-         FuncType _ _ -> HO
-         TVar (-42) -> HO
-         TCons x (y:ys)->
-           let cons1=(ordHelp2 y 0 orderMap)
-               consRest=(ordHelp2 (TCons x ys) 0 orderMap)
-           in (hoOr cons1 consRest)
-         TCons (modName,consName) []-> fromMaybe FO (lookupFM orderMap (modName,consName))
-         _ -> FO
-    else case functype of
-         TVar (-42) -> HO
-         FuncType x y->
-             let func1 = (ordHelp2 x 0 orderMap)
-                 funcRest = (ordHelp2 y (arity-1) orderMap)
-             in (hoOr func1 funcRest)
+ordHelp2 functype arity orderMap = if arity == 0
+  then case functype of
+        FuncType  _ _ -> HO
+        TCons x (y:ys)->
+          let cons1=(ordHelp2 y 0 orderMap)
+              consRest=(ordHelp2 (TCons x ys) 0 orderMap)
+          in (hoOr cons1 consRest)
+        TCons (modName,consName) [] ->
+          fromMaybe FO (lookupFM orderMap (modName,consName))
+        _ -> FO
+  else case functype of
+        FuncType x y ->
+            let func1 = (ordHelp2 x 0 orderMap)
+                funcRest = (ordHelp2 y (arity-1) orderMap)
+            in (hoOr func1 funcRest)
 
--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Visibility analysis
--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 data Visibilities = Vis ([QName],[QName]) ([QName],[QName]) ([QName],[QName])
 
@@ -179,7 +181,8 @@ analyzeVisibility :: Prog -> Visibilities
 analyzeVisibility p =
   Vis (splitVisibleFuncs (progFuncs p))
       (splitVisibleTypes types)
-      (splitVisibleCons  (concatMap typeConsDecls (filter (not . isTypeSyn) types)))
+      (splitVisibleCons  (concatMap typeConsDecls
+                                    (filter (not . isTypeSyn) types)))
  where
   types = progTypes p
 
@@ -192,9 +195,8 @@ splitVisibleTypes types =
     (map typeName pubs, map typeName privs)
 
 splitVisibleCons cons =
-  let (pubs,privs) = partition (\c -> consVisibility c == Public) cons in  
-   (map consName pubs, map consName privs)                  
+  let (pubs,privs) = partition (\c -> consVisibility c == Public) cons in
+   (map consName pubs, map consName privs)
 
-(|++|) :: ([a],[b]) -> ([a],[b]) -> ([a],[b])
-(xs1, xs2) |++| (ys1,ys2) = (xs1 ++ ys1 , xs2 ++ ys2)
-  
+(|++|) :: ([a], [b]) -> ([a], [b]) -> ([a], [b])
+(xs1, xs2) |++| (ys1, ys2) = (xs1 ++ ys1 , xs2 ++ ys2)

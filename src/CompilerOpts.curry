@@ -43,8 +43,10 @@ data Verbosity
 -- |Dump formats of the compiler
 data DumpFormat
   = DumpFlat        -- dump flat curry
+  | DumpTypedFlat   -- dump typed flat curry
   | DumpLifted      -- dump flat curry after case lifting
   | DumpEliminated  -- dump flat curry after cond elimination
+  | DumpDefaulted   -- dump flat curry after defaulting
   | DumpRenamed     -- dump renamed flat curry
   | DumpFunDecls    -- dump transformed function declarations
   | DumpTypeDecls   -- dump transformed type declarations
@@ -62,8 +64,8 @@ data Extension
   | ExtUnknown String
 
 allDumps :: [DumpFormat]
-allDumps = [ DumpFlat, DumpLifted, DumpEliminated, DumpRenamed
-           , DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
+allDumps = [ DumpFlat, DumpTypedFlat, DumpLifted, DumpEliminated, DumpDefaulted
+           , DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
 
 defaultOptions :: Options
 defaultOptions =
@@ -139,14 +141,22 @@ options =
       (NoArg (\opts -> { optDump :=
         nub (DumpFlat : opts :> optDump) | opts }))
       "dump flat curry representation"
+  , Option [] ["dump-typed-flat"]
+      (NoArg (\opts -> { optDump :=
+        nub (DumpTypedFlat : opts :> optDump) | opts }))
+      "dump flat curry representation after type inference"
   , Option [] ["dump-lifted"]
       (NoArg (\opts -> { optDump :=
         nub (DumpLifted : opts :> optDump) | opts }))
       "dump flat curry after case lifting"
   , Option [] ["dump-elim"]
-      (NoArg (\opts -> { optDump := 
+      (NoArg (\opts -> { optDump :=
         nub (DumpEliminated : opts :> optDump) | opts}))
       "dump flat curry after cond elimination"
+  , Option [] ["dump-defaulted"]
+      (NoArg (\opts -> { optDump :=
+        nub (DumpDefaulted : opts :> optDump) | opts}))
+      "dump flat curry after defaulting locally polymorphic sub-expressions"
   , Option [] ["dump-abstract-hs"]
       (NoArg (\opts -> { optDump :=
         nub (DumpAbstractHs : opts :> optDump) | opts }))
