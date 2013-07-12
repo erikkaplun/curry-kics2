@@ -118,13 +118,13 @@ narrows _  cd i@(NarrowedID      _ _) f xs = choicesCons cd i (map f xs)
 narrows _  _    (ChoiceID          _) _ _  = internalError "Types.narrows: ChoiceID"
 
 
-bindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
-bindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ConstraintChoices cd (NarrowedID p s) (map (bind i) xs)]
-                                    | otherwise    = [ i :=: BindTo j ]
+bindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
+bindOrNarrow cd i d j@(FreeID p s) xs | d < cd    = [ConstraintChoices cd (NarrowedID p s) (map (bind cd i) xs)]
+				      | otherwise = [ i :=: BindTo j]
 
-lazyBindOrNarrow :: Unifiable a => ID -> Cover -> ID -> [a] -> [Constraint]
-lazyBindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind i) xs)]
-                                        | otherwise    = [ i :=: BindTo j ]
+lazyBindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
+lazyBindOrNarrow cd i d j@(FreeID p s) xs | d < cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind cd i) xs)]
+					  | otherwise    = [ i :=: BindTo j ]
 
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
@@ -140,42 +140,42 @@ lazyBindOrNarrow i cd j@(FreeID p s) xs | isCovered cd = [ConstraintChoices cd (
 -- the NF/GNF.
 class (NonDet a, Show a) => NormalForm a where
   -- |Apply a continuation to the normal form
-  ($!!) :: NonDet b => (a -> ConstStore -> b) -> a -> ConstStore -> b
+  ($!!) :: NonDet b => (a -> Cover -> ConstStore -> b) -> a -> Cover -> ConstStore -> b
   -- |Apply a continuation to the ground normal form
-  ($##) :: NonDet b => (a -> ConstStore -> b) -> a -> ConstStore -> b
+  ($##) :: NonDet b => (a -> Cover -> ConstStore -> b) -> a -> Cover -> ConstStore -> b
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- two alternatives of a binary choice.
 nfChoice :: (NormalForm a, NonDet b) 
-         => (a -> ConstStore -> b) -> Cover -> ID -> a -> a -> ConstStore -> b
-nfChoice cont cd i x1 x2 cs = case i of
-  ChoiceID      _ -> choiceCons cd i ((cont $!! x1) cs) ((cont $!! x2) cs)
+         => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> a -> a -> Cover -> ConstStore -> b
+nfChoice cont d i x1 x2 cd cs = case i of
+  ChoiceID      _ -> choiceCons d i ((cont $!! x1) cd cs) ((cont $!! x2) cd cs)
   _               -> internalError "Basics.nfChoice: no ChoiceID" 
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- n alternatives of a n-ary choice.
 nfChoices :: (NormalForm a, NonDet b) 
-          => (a -> ConstStore -> b) -> Cover -> ID -> [a] -> ConstStore -> b
-nfChoices cont cd i xs cs = case i of
+          => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> [a] -> Cover -> ConstStore -> b
+nfChoices cont d i xs cd cs = case i of
    ChoiceID _     -> internalError "Basics.nfChoices: ChoiceID"
-   FreeID _ _     -> cont (choicesCons cd i xs) cs
-   NarrowedID _ _ -> choicesCons cd i (map (\x -> (cont $!! x) cs) xs)
-
+   FreeID _ _     -> cont (choicesCons d i xs) cd cs
+   NarrowedID _ _ -> choicesCons d i (map (\x -> (cont $!! x) cd cs) xs)
+   
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the two alternatives of a binary choice.
 gnfChoice :: (NormalForm a, NonDet b) 
-          => (a -> ConstStore -> b) -> Cover -> ID -> a -> a -> ConstStore -> b
-gnfChoice cont cd i x1 x2 cs = case i of
-  ChoiceID _ -> choiceCons cd i ((cont $## x1) cs) ((cont $## x2) cs)
+          => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> a -> a -> Cover -> ConstStore -> b
+gnfChoice cont d i x1 x2 cd cs = case i of
+  ChoiceID _ -> choiceCons d i ((cont $## x1) cd cs) ((cont $## x2) cd cs)
   _          -> internalError "Basics.gnfChoice: no ChoiceID"
 
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the n alternatives of a n-ary choice.
 gnfChoices :: (NormalForm a, NonDet b) 
-           => (a -> ConstStore -> b) -> Cover -> ID -> [a] -> ConstStore -> b
-gnfChoices cont cd i xs cs = narrows cs cd i (\x -> (cont $## x) cs) xs
+           => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> [a] -> Cover -> ConstStore -> b
+gnfChoices cont d i xs cd cs = narrows cs d i (\x -> (cont $## x) cd cs) xs
 
 -- ---------------------------------------------------------------------------
 -- Generator function for free variables
@@ -185,35 +185,35 @@ gnfChoices cont cd i xs cs = narrows cs cd i (\x -> (cont $## x) cs) xs
 -- variables.
 class NonDet a => Generable a where
   -- |Generate a free variable for the given 'IDSupply'
-  generate :: IDSupply -> a
+  generate :: IDSupply -> Cover -> a
 
 -- ---------------------------------------------------------------------------
 -- Unification
 -- ---------------------------------------------------------------------------
 
 -- Class for data that supports unification
-class (NormalForm a, Coverable a) => Unifiable a where
+class (NormalForm a) => Unifiable a where
   -- |Unification on constructor-rooted terms
-  (=.=)    :: a -> a -> ConstStore -> C_Success
+  (=.=)    :: a -> a -> Cover -> ConstStore -> C_Success
   -- |Lazy unification on constructor-rooted terms,
   --  used for functional patterns
-  (=.<=)   :: a -> a -> ConstStore -> C_Success
+  (=.<=)   :: a -> a -> Cover -> ConstStore -> C_Success
   -- |Bind a free variable to a value
-  bind     :: ID -> a -> [Constraint]
+  bind     :: Cover -> ID -> a -> [Constraint]
   -- |Lazily bind a free variable to a value
-  lazyBind :: ID -> a -> [Constraint]
+  lazyBind :: Cover -> ID -> a -> [Constraint]
 
 -- |Unification on general terms
-(=:=) :: Unifiable a => a -> a -> ConstStore -> C_Success
+(=:=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
 (=:=) = unifyMatch
 
-unifyMatch :: Unifiable a => a -> a -> ConstStore -> C_Success
-unifyMatch x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
+unifyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
-  uniChoice cd i x1 x2 = checkFail (choiceCons cd i ((x1 =:= y) cs) ((x2 =:= y) cs)) y
-  uniNarrowed cd i xs  = checkFail (choicesCons cd i (map (\x' -> (x' =:= y) cs) xs)) y
-  uniFree cdi i xs     = lookupCs cs i (\xval -> (xval =:= y) cs)
-                                    (if isCovered cdi then (unifyMatch (narrows cs cdi i id xs) y cs) else (bindTo cs y))
+  uniChoice d i x1 x2 = checkFail (choiceCons d i ((x1 =:= y) cd cs) ((x2 =:= y) cd cs)) y
+  uniNarrowed d i xs  = checkFail (choicesCons d i (map (\x' -> (x' =:= y) cd cs) xs)) y
+  uniFree cdi i xs    = lookupCs cs i (\xval -> (xval =:= y) cd cs)
+                          (if cdi < cd then (unifyMatch (narrows cs cdi i id xs) y cd cs) else (bindTo cs y))
                                       -- TODO: use global cs
     where
     bindTo cs' y' = match bindChoice bindNarrowed bindFree failCons bindGuard bindVal y'
@@ -221,107 +221,107 @@ unifyMatch x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal
       bindChoice   cdj j y1 y2 = choiceCons  cdj j (bindTo cs' y1) (bindTo cs' y2)
       bindNarrowed cdj j ys    = choicesCons cdj j (map (bindTo cs') ys)
       bindFree     cdj j ys    = lookupCs cs j (bindTo cs') $
-                              if isCovered cdj
-                                then unifyMatch x (narrows cs cdj j id ys) cs
-                                else guardCons defCover (ValConstr i y' [i :=: BindTo j]) C_Success
+			      if cdj < cd
+               then unifyMatch x (narrows cs cdj j id ys) cd cs
+               else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_Success
       bindGuard cdj c    = guardCons cdj c . (bindTo $! c `addCs` cs')
-      bindVal v          = bindToVal i v cs'
+      bindVal v          = bindToVal i v cd cs'
 
-  uniGuard cd c e    = checkFail (guardCons cd c ((e =:= y) $! c `addCs` cs)) y
+  uniGuard cdx c e    = checkFail (guardCons cdx c ((e =:= y) cd $! c `addCs` cs)) y
   uniVal v          = uniWith cs y
     where
     uniWith cs' y' = match univChoice univNarrowed univFree failCons univGuard univVal y'
       where
-      univChoice cd j y1 y2   = choiceCons cd  j (uniWith cs' y1) (uniWith cs' y2)
-      univNarrowed cd j ys    = choicesCons cd j (map (uniWith cs') ys)
-      univFree cd j ys        = lookupCs cs j (uniWith cs') 
-                                 (if isCovered cd then uniWith cs' (narrows cs' cd j id ys) 
-                                                  else (bindToVal j v cs'))
-      univGuard cd c          = guardCons cd c . (uniWith $! c `addCs` cs')
-      univVal w            = (v =.= w) cs'
+      univChoice d j y1 y2   = choiceCons d  j (uniWith cs' y1) (uniWith cs' y2)
+      univNarrowed d j ys    = choicesCons d j (map (uniWith cs') ys)
+      univFree d j ys        = lookupCs cs j (uniWith cs') 
+				 (if d < cd then uniWith cs' (narrows cs' cd j id ys) 
+                    else (bindToVal j v cd cs'))
+      univGuard d c          = guardCons d c . (uniWith $! c `addCs` cs')
+      univVal w            = (v =.= w) cd cs'
   checkFail e = match (\_ _ _ _ -> e) const3 const3 failCons const3 (const e)
     where const3 _ _ _ = e
 
-unifyTry :: Unifiable a => a -> a -> ConstStore -> C_Success
-unifyTry xVal yVal csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF hx, hy
+unifyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF hx, hy
   where
   -- failure
-  unify (Fail cd info) _              _ = failCons cd info
-  unify _              (Fail cd info) _ = failCons cd info
+  unify (Fail d info) _              _ = failCons d info
+  unify _              (Fail d info) _ = failCons d info
   -- binary choice
-  unify (Choice cd i x1 x2) hy cs = choiceCons cd i (unify (try x1) hy cs)
-                                                    (unify (try x2) hy cs)
-  unify hx (Choice cd j y1 y2) cs = choiceCons cd j (unify hx (try y1) cs)
-                                                    (unify hx (try y2) cs)
+  unify (Choice d i x1 x2) hy cs = choiceCons d i (unify (try x1) hy cs)
+                                                  (unify (try x2) hy cs)
+  unify hx (Choice d j y1 y2) cs = choiceCons d j (unify hx (try y1) cs)
+                                                  (unify hx (try y2) cs)
   -- n-ary choice
-  unify (Narrowed cd i xs) hy cs = choicesCons cd i (map (\x -> unify (try x) hy cs) xs)
-  unify hx (Narrowed cd j ys) cs = choicesCons cd j (map (\y -> unify hx (try y) cs) ys)
+  unify (Narrowed d i xs) hy cs = choicesCons d i (map (\x -> unify (try x) hy cs) xs)
+  unify hx (Narrowed d j ys) cs = choicesCons d j (map (\y -> unify hx (try y) cs) ys)
   -- constrained value
-  unify (Guard cd c x) hy cs = guardCons cd c (unify (try x) hy $! c `addCs` cs)
-  unify hx (Guard cd c y) cs = guardCons cd c (unify hx (try y) $! c `addCs` cs)
+  unify (Guard d c x) hy cs = guardCons d c (unify (try x) hy $! c `addCs` cs)
+  unify hx (Guard d c y) cs = guardCons d c (unify hx (try y) $! c `addCs` cs)
   -- constructor-rooted terms
-  unify (Val x) (Val y) cs = (x =.= y) cs
+  unify (Val x) (Val y) cs = (x =.= y) cd cs
   -- two free variables
   unify hx@(Free cdi i xs) hy@(Free cdj j nfy) cs = lookupCs cs i
     (\x -> unify (try x) hy cs)
     (lookupCs cs j (\y -> unify hx (try y) cs)
-                   (if isCovered cdi 
+                   (if cdi < cd 
                     then unify (try (narrows cs cdi i id xs)) hy cs
-                    else (if isCovered cdj
+                    else (if cdj < cd
                            then unify hx (try (narrows cs cdj j id nfy)) cs
                            else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_Success)))
   -- one free variable and one value
   unify (Free cdi i xs) hy@(Val y) cs = lookupCs cs i
     (\x -> unify (try x) hy cs) 
-    (if isCovered cdi then unify (try (narrows cs cdi i id xs)) hy cs
-                      else bindToVal i y cs)
+    (if cdi < cd then unify (try (narrows cs cdi i id xs)) hy cs
+                 else bindToVal i y cd cs)
   -- one free variable and one value
   unify hx@(Val x) (Free cdj j ys) cs = lookupCs cs j
     (\y -> unify hx (try y) cs) 
-    (if isCovered cdj then unify hx (try (narrows cs cdj j id ys)) cs
-                      else bindToVal j x cs)
+    (if cdj < cd then unify hx (try (narrows cs cdj j id ys)) cs
+                 else bindToVal j x cd cs)
 
-bindToVal :: Unifiable a => ID -> a -> ConstStore -> C_Success
+bindToVal :: Unifiable a => ID -> a -> Cover -> ConstStore -> C_Success
 #ifdef STRICT_VAL_BIND
-bindToVal i v cs = ((\w _ -> constrain defCover i w) $!! v) cs
+bindToVal i v cd cs = ((\w _ -> constrain cd i w) $!! v) cs
 #else
-bindToVal i v _ =           constrain defCover i v
+bindToVal i v cd _ =           constrain cd i v
 #endif
 
 constrain :: Unifiable a => Cover -> ID -> a -> C_Success
-constrain cd i v = guardCons cd (ValConstr i v (bind i v)) C_Success
+constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_Success
 
   -- TODO2: Occurs check?
 
 -- Lazy unification on general terms, used for function patterns
-(=:<=) :: Unifiable a => a -> a -> ConstStore -> C_Success
-(=:<=) x y cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
+(=:<=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+(=:<=) x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
   -- binary choice
-  uniChoice cd i x1 x2 = choiceCons cd i ((x1 =:<= y) cs) ((x2 =:<= y) cs)
+  uniChoice d i x1 x2 = choiceCons d i ((x1 =:<= y) cd cs) ((x2 =:<= y) cd cs)
   -- n-ary choice
-  uniNarrowed cd i xs  = choicesCons cd i (map (\z -> (z =:<= y) cs) xs)
+  uniNarrowed d i xs  = choicesCons d i (map (\z -> (z =:<= y) cd cs) xs)
   -- constrained value
-  uniGuard cd c e      = guardCons cd c ((e =:<= y) $! c `addCs` cs)
+  uniGuard d c e      = guardCons d c ((e =:<= y) cd $! c `addCs` cs)
   -- free variable
-  uniFree cd i xs   = lookupCs cs i (\xVal -> (xVal =:<= y) cs)
-                       (if isCovered cd
-                        then (narrows cs cd i id xs =:<= y) cs
-                        else guardCons cd (StructConstr [i :=: LazyBind (lazyBind i y)]) C_Success)
+  uniFree d i xs   = lookupCs cs i (\xVal -> (xVal =:<= y) cd cs)
+                       (if d < cd
+                        then (narrows cs d i id xs =:<= y) cd cs
+                        else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_Success)
   -- constructor-rooted term
   uniVal vx = unifyWith cs y
     where
     unifyWith cs' = match uniyChoice uniyNarrowed uniyFree failCons uniyGuard uniyVal
       where
-      uniyChoice cd j y1 y2  = choiceCons cd j (unifyWith cs' y1) (unifyWith cs' y2)
-      uniyNarrowed cd j ys   = choicesCons cd j (map (unifyWith cs') ys)
-      uniyGuard cd c         = guardCons cd c . (unifyWith $! c `addCs` cs')
-      uniyVal vy          = (vx =.<= vy) cs'
-      uniyFree cd j ys    = 
+      uniyChoice d j y1 y2  = choiceCons d j (unifyWith cs' y1) (unifyWith cs' y2)
+      uniyNarrowed d j ys   = choicesCons d j (map (unifyWith cs') ys)
+      uniyGuard d c         = guardCons d c . (unifyWith $! c `addCs` cs')
+      uniyVal vy            = (vx =.<= vy) cd cs'
+      uniyFree d j ys       = 
          lookupCs cs' j (unifyWith cs') 
-          (if isCovered cd
-           then unifyWith cs' (narrows cs' cd j id ys)
-           else guardCons cd (StructConstr [j :=: LazyBind (lazyBind j vx)]) C_Success)
+          (if d < cd
+           then unifyWith cs' (narrows cs' d j id ys)
+           else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
 
 -- ---------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types
@@ -413,7 +413,7 @@ instance NonDet C_Success where
   match _ _ _ _ _ f x = f x
 
 instance Generable C_Success where
-  generate s = Choices_C_Success defCover (freeID [0] s) [C_Success]
+  generate s cd = Choices_C_Success cd (freeID [0] s) [C_Success]
 
 instance NormalForm C_Success where
   ($!!) cont C_Success = cont C_Success
@@ -430,32 +430,25 @@ instance NormalForm C_Success where
   searchNF _ _ x = internalError ("Prelude.Success.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable C_Success where
-  (=.=) C_Success C_Success _ = C_Success
-  (=.=) _ _ _ = Fail_C_Success defCover defFailInfo
-  (=.<=) C_Success C_Success _ = C_Success
-  (=.<=) _ _ _ = Fail_C_Success defCover defFailInfo
-  bind i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
-  bind i (Choice_C_Success cd j l r) = [(ConstraintChoice cd j (bind i l) (bind i r))]
-  bind i (Choices_C_Success cd j@(FreeID _ _) xs) = bindOrNarrow i cd j xs 
-  bind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (bind i) xs))]
-  bind _ (Choices_C_Success cd i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ (Fail_C_Success cd info) = [Unsolvable info]
-  bind i (Guard_C_Success _ cs e) = (getConstrList cs) ++ (bind i e)
-  lazyBind i C_Success = [(i :=: (ChooseN 0 0))]
-  lazyBind i (Choice_C_Success cd j l r) = [(ConstraintChoice cd j (lazyBind i l) (lazyBind i r))]
-  lazyBind i (Choices_C_Success cd j@(FreeID _ _) xs) = lazyBindOrNarrow i cd j xs 
-  lazyBind i (Choices_C_Success cd j@(NarrowedID _ _) xs) = [(ConstraintChoices cd j (map (lazyBind i) xs))]
-  lazyBind _ (Choices_C_Success cd i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _ (Fail_C_Success cd info) = [Unsolvable info]
-  lazyBind i (Guard_C_Success cd cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind i e)))]
+  (=.=) C_Success C_Success _ _ = C_Success
+  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) C_Success C_Success _ _ = C_Success
+  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  bind _ i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
+  bind cd i (Choice_C_Success  d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
+  bind cd i (Choices_C_Success d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
+  bind _ _  (Choices_C_Success  _ i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
+  bind _ _ (Fail_C_Success _ info) = [Unsolvable info]
+  bind cd i (Guard_C_Success _ cs e) = (getConstrList cs) ++ (bind cd i e)
+  lazyBind _  i C_Success = [(i :=: (ChooseN 0 0))]
+  lazyBind cd i (Choice_C_Success d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
+  lazyBind cd i (Choices_C_Success d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs 
+  lazyBind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
+  lazyBind _  _ (Choices_C_Success _ i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
+  lazyBind _  _(Fail_C_Success _ info) = [Unsolvable info]
+  lazyBind cd i (Guard_C_Success d cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
-
-instance Coverable C_Success where
-  cover s@C_Success               = s
-  cover (Choice_C_Success cd i x y)  = Choice_C_Success (incCover cd) i (cover x) (cover y)
-  cover (Choices_C_Success cd i xs)  = Choices_C_Success (incCover cd) i (map cover xs)
-  cover (Fail_C_Success cd info)  = Fail_C_Success (incCover cd) info
-  cover (Guard_C_Success cd cs x)    = Guard_C_Success (incCover cd) cs (cover x)
 -- END GENERATED FROM PrimTypes.curry
 
 -- ---------------------------------------------------------------------------
@@ -490,6 +483,3 @@ instance NonDet b => Unifiable (a -> b) where
   (=.<=)   = internalError "(=.<=) for function is undefined"
   bind     = internalError "bind for function is undefined"
   lazyBind = internalError "lazyBind for function is undefined"
-
-instance Coverable (a -> b) where
-  cover f = f

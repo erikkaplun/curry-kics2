@@ -6,18 +6,18 @@ module ID
   ( -- * FailInfo
     FailInfo, defFailInfo
     -- * Cover
-  , Cover, incCover, decCover, defCover, isCovered
+  , Cover, incCover, decCover, initCover
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
-  , ID (..), leftID, rightID, narrowID, getKey, mkInteger
+  , ID (..), leftID, rightID, narrowID, getKey, mkInteger, isNarrowed
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
-  , nextNIDs, Store (..), Coverable (..)
+  , nextNIDs, Store (..)
   ) where
 
 import Control.Monad (liftM, when, zipWithM_)
@@ -47,11 +47,9 @@ incCover :: Cover -> Cover
 incCover = (+ 1)
 decCover :: Cover -> Cover
 decCover = flip (-) 1
-defCover :: Cover
-defCover = 0
+initCover :: Cover
+initCover = 0
 
-isCovered :: Cover -> Bool
-isCovered x = x > 0
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -193,16 +191,10 @@ getUnique (ChoiceID          u) = u
 getUnique (FreeID          _ s) = unique s
 getUnique (NarrowedID      _ s) = unique s
 
+isNarrowed :: ID -> Bool
+isNarrowed (NarrowedID _ _) = True
+isNarrowed _                = False
 
--- ---------------------------------------------------------------------------
--- Covering Choices for SetFunctions
---- --------------------------------------------------------------------------
-
-class Coverable a where
-  -- Transformes all identifier of choices in the data-structures
-  -- to covered identifiers
-  cover :: a -> a
-  cover = internalError "cover is undefined"
 
 -- ---------------------------------------------------------------------------
 -- Tracing

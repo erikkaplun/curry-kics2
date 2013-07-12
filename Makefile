@@ -10,9 +10,9 @@ GLOBALINSTALL   = yes
 # The major version number
 MAJORVERSION    = 0
 # The minor version number
-MINORVERSION    = 2
+MINORVERSION    = 3
 # The revision version number
-REVISIONVERSION = 4
+REVISIONVERSION = 0
 # Complete version
 export VERSION  = $(MAJORVERSION).$(MINORVERSION).$(REVISIONVERSION)
 # The version date, extracted from the last git commit
