@@ -1,0 +1,60 @@
+\section{ERD2Curry: A Tool to Generate Programs from ER Specifications}
+\label{sec-erd2curry}
+
+ERD2Curry\index{ERD2Curry}\index{database programming}
+is a tool to generate Curry code to access and manipulate data
+persistently stored from
+entity relationship diagrams.\index{entity relationship diagrams}
+The idea of this tool is described in detail in
+\cite{BrasselHanusMueller08PADL}.
+Thus, we describe only the basic steps to use this tool
+in the following.
+
+If one creates an entity relationship diagram (ERD)
+with the Umbrello UML Modeller, one has to store its
+XML description in XMI format (as offered by Umbrello)
+in a file, e.g., \ccode{myerd.xmi}.
+This description can be compiled into a Curry program by the
+command\pindex{erd2curry}
+\begin{curry}
+erd2curry myerd.xmi
+\end{curry}
+(\code{erd2curry} is a program stored in \code{\cyshome/bin}
+where \cyshome is the installation directory of \CYS;
+see Section~\ref{sec-install}).
+If \code{MyData} is the name of the ERD, the Curry program file
+\ccode{MyData.curry} is generated containing all the necessary
+database access code as described in \cite{BrasselHanusMueller08PADL}.
+
+If one does not want to use the Umbrello UML Modeller,
+one can also create a textual description of the ERD
+as a Curry term of type \code{ERD}
+(w.r.t.\ the type definition given in module
+\code{\cyshome/tools/erd2curry/ERD.curry})
+and store it in some file, e.g., \ccode{myerd.term}.
+This description can be compiled into a Curry program by the
+command\pindex{erd2curry}
+\begin{curry}
+erd2curry -t myerd.term
+\end{curry}
+%
+There is also the possibility to visualize an ERD term
+as a graph with the graph visualization program \code{dotty}
+(for this purpose, it might be necessary to adapt the definition
+of \code{dotviewcommand} in your \ccode{.kics2rc} file,
+see Section~\ref{sec-customization},
+according to your local environment).
+This can be done by the command
+\begin{curry}
+erd2curry -v myerd.term
+\end{curry}
+
+\paragraph{Inclusion in the Curry application:}
+To compile the generated database code, either
+include the directory \code{\cyshome/tools/erd2curry}
+into your Curry load path
+(e.g., by setting  the environment variable
+\ccode{CURRYPATH}\pindex{CURRYPATH}, see also Section~\ref{sec-modules})
+or copy the file
+\code{\cyshome/tools/erd2curry/ERDGeneric.curry}
+into the directory of the generated database code.

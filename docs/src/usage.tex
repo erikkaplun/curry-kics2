@@ -1,0 +1,536 @@
+\section{Using the Interactive Environment of \CYS}
+\label{sec-kics2}
+
+This section describes the interactive environment
+\CYS\index{\CYS}
+that supports the development of applications written in Curry.
+The implementation of \CYS contains also a separate compiler
+which is automatically invoked by the interactive environment.
+
+\subsection{Invoking \CYS}
+\label{sec:invoke-kics2}
+
+To start \CYS, execute the command
+\ccode{kics2}\pindex{kics2}
+(this is a shell script stored in
+\code{\cyshome/bin} where \cyshome is the installation directory
+of \CYS).
+When the system is ready (i.e., when the prompt \ccode{Prelude>} occurs),
+the prelude (\code{\cyshome/lib/Prelude.curry})
+is already loaded, i.e., all definitions in the prelude are accessible.
+Now you can type various commands (see next section)
+or an expression to be evaluated.
+
+One can also invoke \CYS with parameters.
+These parameters are usual a sequence of commands
+(see next section) that are executed before the user interaction
+starts. For instance, the invocation
+\begin{curry}
+kics2 :load Mod :add List
+\end{curry}
+starts \CYS, loads the main module \code{Mod}, and adds the additional
+module \code{List}.
+The invocation
+\begin{curry}
+kics2 :load Mod :eval config
+\end{curry}
+starts \CYS, loads the main module \code{Mod}, and evaluates
+the operation \code{config} before the user interaction starts.
+As a final example, the invocation
+\begin{curry}
+kics2 :load Mod :save :quit
+\end{curry}
+starts \CYS, loads the main module \code{Mod}, creates an executable,
+and terminates \CYS. This invocation could be useful in ``make'' files
+for systems implemented in Curry.
+
+
+\subsection{Command of \CYS}
+\label{sec:kics2-commands}
+
+The {\bf most important commands} of \CYS are
+(it is sufficient to type a unique prefix of a command if it is unique,
+e.g., one can type \ccode{:r} instead of \ccode{:reload}):
+
+\begin{description}
+\item[\fbox{\code{:help}}]\pindex{:help}
+Show a list of all available commands.
+
+\item[\fbox{\code{:load $prog$}}]\pindex{:load}
+Compile and load the program stored in \code{$prog$.curry}
+together with all its imported modules.
+% If this file does not exist, the system looks for a FlatCurry
+% file \code{$prog$.fcy} and compiles from this intermediate representation.
+% If the file \code{$prog$.fcy} does not exists, too, the system looks
+% for a file \code{$prog$_flat.xml} containing a FlatCurry program in
+% XML representation (compare command \ccode{:xml}\pindex{:xml}),
+% translates this into a FlatCurry file \code{$prog$.fcy}
+% and compiles from this intermediate representation.
+
+\item[\fbox{\code{:reload}}]\pindex{:reload}
+Recompile all currently loaded modules.
+
+\item[\fbox{\code{:add} $m$}]\pindex{:add}
+Add module $m$ to the set of currently loaded modules
+so that its exported entities are available in the top-level environment.
+
+\item[\fbox{$expr$}] Evaluate the expression $expr$ to normal form
+and show the computed results.
+In the default mode, all results of
+non-deterministic computations are printed.
+One can also print first one result and the next result
+only if the user requests it. This behavior can be set by
+the option \code{interactive}\index{interactive} (see below).
+
+\textbf{Free variables in initial expressions} must be declared as
+in Curry programs.
+In order to see the results of their bindings,\footnote{Currently,
+bindings are only printed if the initial expression is not an I/O action
+(i.e., not of type \ccode{IO\ldots})
+and there are not more than ten free variables
+in the initial expression.}
+they must be introduced by a \ccode{where\ldots{}free} declaration.
+For instance, one can write
+\begin{curry}
+xs++ys =:= [1,2]  where xs,ys free
+\end{curry}
+in order to obtain the following three possible bindings:
+\begin{curry}
+{xs = [], ys = [1,2]} Success
+{xs = [1], ys = [2]} Success
+{xs = [1,2], ys = []} Success
+\end{curry}
+Without these declarations, an error is reported in order to
+avoid the unintended introduction of free variables in initial expressions
+by typos.
+
+If the free variables in the initial goal are of a polymorphic type,
+as in the expression
+\begin{curry}
+xs++ys=:=[z] where xs,ys,z free
+\end{curry}
+they are specialized to the type \ccode{()}
+(since the current implementation of \CYS does not support
+computations with polymorphic logic variables).
+
+\item[\fbox{:eval $expr$}]\pindex{:eval}
+Same as $expr$. This command might be useful when putting
+commands as arguments when invoking \code{kics2}.
+
+% \item[\fbox{\code{let} $x$ \code{=} $expr$}]
+% Define the identifier $x$ as an abbreviation for the expression $expr$
+% which can be used in subsequent expressions. The identifier $x$
+% is visible until the next \code{load} or \code{reload} command.
+
+\item[\fbox{\code{:quit}}]\pindex{:quit} Exit the system.
+\end{description}
+%
+\bigskip
+%
+There are also a number of {\bf further commands} that are often
+useful:
+%
+\begin{description}
+\item[\fbox{\code{:type $expr$}}]\pindex{:type}
+Show the type of the expression $expr$.
+
+\item[\fbox{\code{:programs}}]\pindex{:programs}
+Show the list of all Curry programs that are available in the load path.
+
+\item[\fbox{\code{:cd $dir$}}]\pindex{:cd}
+Change the current working directory to $dir$.
+
+\item[\fbox{\code{:edit}}]\pindex{:edit}
+Load the source code of the current main module into a text editor.
+If the variable \code{editcommand} is set in the
+configuration file \ccode{.kics2rc}
+(see Section~\ref{sec-customization}),
+its value is used as an editor command, otherwise
+the environment variable \ccode{EDITOR} is used as the editor program.
+
+\item[\fbox{\code{:edit $file$}}]\pindex{:edit}
+Load file $file$ into a text editor which is defined
+as in the command \ccode{:edit}.
+
+\item[\fbox{\code{:show}}]\pindex{:show}
+Show the source text of the currently loaded Curry program.
+If the variable \code{showcommand} is set in the
+configuration file \ccode{.kics2rc}
+(see Section~\ref{sec-customization}),
+its value is used as a command to show the source text,
+otherwise the \ccode{cat} is used.
+
+\item[\fbox{\code{:show $m$}}]\pindex{:show}
+Show the source text of module $m$ which must be accessible
+via the current load path.
+
+\item[\fbox{\code{:source $f$}}]\pindex{:source}
+Show the source code of function $f$ (which must be visible
+in the currently loaded module) in a separate window.
+
+\item[\fbox{\code{:source $m$.$f$}}]\pindex{:source}
+Show the source code of function $f$ defined in module $m$
+in a separate window.
+
+\item[\fbox{\code{:browse}}]\pindex{:browse}
+Start the CurryBrowser to analyze the currently loaded
+module together with all its imported modules
+(see Section~\ref{sec-currybrowser} for more details).
+
+\item[\fbox{\code{:interface}}]\pindex{:interface}
+Show the interface of the currently loaded
+module, i.e., show the names of all imported modules,
+the fixity declarations of all exported operators,
+the exported datatypes declarations and the types
+of all exported functions.
+
+\item[\fbox{\code{:interface $m$}}]\pindex{:interface}
+Similar to \ccode{:interface}
+but shows the interface of the module $m$
+which must be in the load path of \CYS.
+
+\item[\fbox{\code{:usedimports}}]\pindex{:usedimports}
+Show all calls to imported functions in the currently loaded module.
+This might be useful to see which import declarations are really necessary.
+
+\item[\fbox{\code{:set $option$}}]\pindex{:set}
+Set or turn on/off a specific option
+of the \CYS environment (see \ref{sec:options} for a description
+of all options). Options are turned on by the prefix
+\ccode{+} and off by the prefix \ccode{-}. Options that can only
+be set (e.g., \code{path}) must not contain a prefix.
+
+\item[\fbox{\code{:set}}]\pindex{:set}
+Show a help text on the possible options
+together with the current values of all options.
+
+\item[\fbox{\code{:save}}]\pindex{:save} Save the currently loaded
+program as an executable evaluating the main expression \ccode{main}.
+The executable is stored in the file \code{Mod}
+if \code{Mod} is the name of the currently loaded main module.
+
+\item[\fbox{\code{:save $expr$}}]\pindex{:save} Similar as \ccode{:save}
+but the expression $expr$ (typically: a call to the main
+function) will be evaluated by the executable.
+
+\item[\fbox{\code{:fork $expr$}}]\pindex{:fork}
+The expression $expr$, which is typically of type \ccode{IO ()},
+is evaluated in an independent process which runs in
+parallel to the current \CYS process.
+All output and error messages from this new process are suppressed.
+This command is useful to test distributed Curry programs
+where one can start
+a new server process by this command. The new process
+will be terminated when the evaluation of the expression $expr$
+is finished.
+
+\item[\fbox{\code{:!$cmd$}}]\pindex{:"!} Shell escape: execute $cmd$ in a Unix shell.
+
+\end{description}
+
+\subsection{Options of \CYS}
+\label{sec:options}
+
+The following options (which can be set by the command \ccode{:set})
+are currently supported:
+
+\begin{description}
+\item[\fbox{\code{path $path$}}]\pindex{path} Set the additional search path
+for loading modules to $path$.
+Note that this search path is only used for loading modules
+inside this invocation of \CYS.
+
+\item[\fbox{\code{prdfs }}]\pindex{prdfs}
+Set the search mode to evaluate non-deterministic expressions
+to primitive depth-first search (which is usually the fastest method
+to print all non-deterministic values).
+
+\item[\fbox{\code{dfs}}]\pindex{dfs}
+Set the search mode to evaluate non-deterministic expressions
+to depth-first search. Usually, all non-deterministic values
+are printed with a depth-first strategy, but one can also
+print only the first value or all values by interactively requesting them
+(see below for these options).
+
+\item[\fbox{\code{bfs}}]\pindex{bfs}
+Similarly to \code{dfs} but use a breadth-first search strategy
+to compute and print the values of the given expression.
+
+\item[\fbox{\code{ids}}]\pindex{ids}
+Similarly to \code{dfs} but use an iterative-deepening strategy
+to compute and print the values of the initial expression.
+The initial depth bound is 100 and the depth-bound is
+doubled after each iteration.
+
+\item[\fbox{\code{ids $n$}}]\pindex{ids}
+Similarly to \code{ids} but use an initial depth bound of $n$.
+
+\item[\fbox{\code{par}}]\pindex{par}
+Similarly to \code{dfs} but use a parallel search strategy
+to compute and print the values of the initial expression.
+The system chooses an appropriate number
+of threads according the current number of available processors.
+
+\item[\fbox{\code{par $n$}}]\pindex{par}
+Similarly to \code{par} but use $n$ parallel threads.
+
+\item[\fbox{\code{choices $n$}}]\pindex{choices}
+Show the internal choice structure
+(according to the implementation described in
+\cite{BrasselHanusPeemoellerReck11})
+resulting from the complete evaluation of the main expression
+in a tree-like structure.
+This mode is only useful for debugging or
+understanding the implementation of non-deterministic
+evaluations used in \CYS.
+If the optional argument $n$ is provided,
+the tree is shown up to depth $n$.
+
+\item[\fbox{\code{supply $i$}}]\pindex{supply}
+(not available in global installations, see Section~\ref{sec-install})
+Use implementation $i$ as the identifier supply for choice structures
+(see \cite{BrasselHanusPeemoellerReck11} for a detailed explanation).
+Currently, the following values for $i$ are supported:
+\begin{description}
+\item[\code{integer}:]\pindex{integer}
+Use unbounded integers as choice identifiers.
+This implementation is described in \cite{BrasselHanusPeemoellerReck11}.
+\item[\code{ghc}:]\pindex{ghc}
+Use a more sophisticated implementation of choice
+identifiers (based on the ideas described in \cite{AugustssonRittriSynek94})
+provided by the Glasgow Haskell Compiler.
+\item[\code{pureio}:]\pindex{pureio}
+Use IO references (i.e., memory cells) for choice identifiers.
+This is the most efficient implementation for top-level depth-first search
+but cannot be used for more sophisticated search methods
+like encapsulated search.
+\item[\code{ioref} (default):]\pindex{ioref}
+Use a mixture of \code{ghc} and \code{pureio}.
+IO references are used for top-level depth-first search
+and \code{ghc} identifiers are used for encapsulated search methods.
+\end{description}
+
+\item[\fbox{\code{v$n$}}]\pindex{v}\index{verbosity}
+Set the verbosity level to $n$. The following values are allowed
+for $n$:
+\begin{description}
+\item[$n=0$:] Do not show any messages (except for errors).
+\item[$n=1$:] Show only messages of the front-end, like loading
+of modules.
+\item[$n=2$:]
+Show also messages of the back end, like compilation messages
+from the Haskell compiler.
+\item[$n=3$:]
+Show also intermediate messages and commands of the compilation
+process.
+\item[$n=4$:]
+Show also all intermediate results of the compilation process.
+\end{description}
+
+\item[\fbox{\code{prompt $p$}}]\pindex{prompt}
+Sets the user prompt which is shown when \CYS is waiting for input.
+If the parameter $p$ starts with a letter or a percent sign,
+the prompt is printed as the given parameter,
+where the sequence \ccode{\%s} is expanded to the list of
+currently loaded modules
+and \ccode{\%\%} is expanded to a percent sign.
+If the prompt starts with a double quote, it is read as a string and,
+therefore, also supports the normal escape sequences that can occur
+in Curry programs. The default setting is
+\begin{curry}
+:set prompt "%s> "
+\end{curry}
+
+\item[\fbox{\code{+/-interactive}}]\pindex{interactive}
+Turn on/off the interactive mode.
+In the interactive mode, the next non-deterministic value
+is only computed when the user requests it.
+Thus, one has also the possibility to terminate the
+enumeration of all values after having seen some values.
+
+\item[\fbox{\code{+/-first}}]\pindex{first}
+Turn on/off the first-only mode.
+In the first-only mode, only the first value
+of the main expression is printed (instead of all values).
+
+\item[\fbox{\code{+/-optimize}}]\pindex{optimize}
+Turn on/off the optimization of the target program.
+
+\item[\fbox{\code{+/-bindings}}]\pindex{bindings}
+Turn on/off the binding mode.
+If the binding mode is on (default),
+then the bindings of the free variables of the initial expression
+are printed together with the result of the expression.
+
+\item[\fbox{\code{+/-time}}]\pindex{time}
+Turn on/off the time mode. If the time mode is on,
+the cpu time and the elapsed time
+of the computation is always printed together with the result
+of an evaluation.
+
+\item[\fbox{\code{+/-ghci}}]\pindex{ghci}
+Turn on/off the ghci mode.
+In the ghci mode, the initial goal is send to the interactive version
+of the Glasgow Haskell Compiler. This might result in a slower
+execution but in a faster startup time since the linker
+to create the main executable is not used.
+
+\item[\fbox{\code{cmp $opts$}}]\pindex{cmp}
+Define additional options passed to the \CYS compiler.
+For instance, setting the option
+\begin{curry}
+:set cmp -O 0
+\end{curry}
+has the effect that all optimizations performed by the \CYS compiler
+are turned off.
+
+\item[\fbox{\code{ghc $opts$}}]\pindex{ghc}
+Define additional options passed to the Glasgow Haskell Compiler (GHC)
+when the generated Haskell programs are compiled.
+One has to be careful when using such options.
+For instance, in a global installation of \CYS
+(see Section~\ref{sec-install}), libraries are pre-compiled
+so that inconsistencies might occur if compilation options
+might be changed.
+
+It is safe to pass specific GHC linking options.
+For instance, to enforce the static linking of libraries
+in order to generate an executable (see command \ccode{:save})
+that can be executed in another environment, one could set the
+options
+\begin{curry}
+:set ghc -static -optl-static -optl-pthread
+\end{curry}
+
+Other options are useful for experimental purposes,
+but those should be used only in local installations
+(see Section~\ref{sec-install}) to avoid inconsistent
+target codes for different libraries.
+For instance, setting the option
+\begin{curry}
+:set ghc -DDISABLE_CS
+\end{curry}
+has the effect that the constraint store used to enable
+an efficient access to complex bindings is disabled.
+Similarly,
+\begin{curry}
+:set ghc -DSTRICT_VAL_BIND
+\end{curry}
+has the effect that expressions in a unification constraint
+(\code{=:=}) are always fully evaluated
+(instead of the evaluation to a head normal form only)
+before unifying both sides.
+Since these options influence the compilation of the run-time system,
+one should also enforce the recompilation of Haskell programs
+by the GHC option \ccode{-fforce-recomp}, e.g., one should set
+\begin{curry}
+:set ghc -DDISABLE_CS -fforce-recomp
+\end{curry}
+
+\item[\fbox{\code{rts $opts$}}]\pindex{rts}
+Define additional run-time options passed to the executable
+generated by the Glasgow Haskell Compiler, i.e., the parameters
+\ccode{+RTS $o$ -RTS} are passed to the executable.
+For instance, setting the option
+\begin{curry}
+:set rts -H512m
+\end{curry}
+has the effect that the minimum heap size is set to 512 megabytes.
+
+\item[\fbox{\code{args $arguments$}}]\pindex{args}
+Define run-time arguments passed to the executable
+generated by the Glasgow Haskell Compiler.
+For instance, setting the option
+\begin{curry}
+:set args first second
+\end{curry}
+has the effect that the I/O operation \code{getArgs}
+(see library \code{System} (Section~\ref{Library:System})
+returns the value \code{["first","second"]}.
+
+\end{description}
+
+
+\subsection{Source-File Options}
+
+If the evaluation of operations in some main module loaded into
+\CYS requires specific options, like an iterative-deepening
+search strategy, one can also put these options into the source
+code of this module in order to avoid setting these options
+every time when this module is loaded.
+Such
+{\bf source-file options}\index{source-file option}\index{option!in source file}
+must occur before the module header, i.e., before the first declaration
+(module header, imports, fixity declaration, defining rules, etc)
+occurring in the module.
+Each source file option must be in a line of the form
+\begin{curry}
+{-# KiCS2_OPTION $opt$ #-}
+\end{curry}
+where $opt$ is an option that can occur in a \ccode{:set} command
+(compare Section~\ref{sec:options}).
+Such a line in the source code (which is a comment according to
+the syntax of Curry)
+has the effect that this option is set by the \CYS command
+\ccode{:set $opt$} whenever this module is loaded (not reloaded!)
+as a main module. For instance, if a module starts with the
+lines
+\begin{curry}
+{-# KiCS2_OPTION ids #-}
+{-# KiCS2_OPTION +ghci #-}
+{-# KiCS2_OPTION v2 #-}
+module M where
+$\ldots$
+\end{curry}
+then the load command \ccode{:load M} will also
+set the options for iterative deepening, using \code{ghci}
+and verbosity level 2.
+
+
+\subsection{Command Line Editing}
+
+In order to have support for line editing or history functionality
+in the command line of \CYS (as often supported by the \code{readline}
+library), you should have the Unix command \code{rlwrap} installed
+on your local machine.
+If \code{rlwrap} is installed, it is used by \CYS if called on a terminal.
+If it should not be used (e.g., because it is executed
+in an editor with \code{readline} functionality), one can
+call \CYS with the parameter \ccode{--noreadline}
+(which must occur as the first parameter).
+
+
+\subsection{Customization}
+\label{sec-customization}
+
+In order to customize the behavior of \CYS to your own preferences,
+there is a configuration file which is read by \CYS when it is invoked.
+When you start \CYS for the first time, a standard version of
+this configuration file is copied with the name
+\ccode{.kics2rc}\pindex{kics2rc}\pindex{.kics2rc}
+into your home directory. The file contains definitions
+of various settings, e.g., about showing warnings, using Curry extensions,
+programs etc.
+After you have started \CYS for the first time, look into this file
+and adapt it to your own preferences.
+
+
+\subsection{Emacs Interface}
+
+Emacs is a powerful programmable editor suitable for program development.
+It is freely available for many platforms
+(see \url{http://www.emacs.org}).
+The distribution of \CYS contains also a special
+\emph{Curry mode}\index{Curry mode}\index{Emacs}
+that supports the development of Curry programs in
+the Emacs environment.
+This mode includes support for syntax highlighting,
+finding declarations in the current buffer, and
+loading Curry programs into \CYS
+in an Emacs shell.
+
+The Curry mode has been adapted from a similar mode for Haskell programs.
+Its installation is described in the file \code{README}
+in directory \ccode{\cyshome/tools/emacs} which also contains
+the sources of the Curry mode and a short description about
+the use of this mode.
