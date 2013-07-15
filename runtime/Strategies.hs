@@ -11,6 +11,7 @@ import MonadSearch
 
 instance MonadSearch SearchTree where
   constrainMSearch _ _ x = x
+  var              x _   = x
 
 -- |Breadth-first search
 bfsSearch :: SearchTree a -> [a]
