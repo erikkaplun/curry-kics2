@@ -118,3 +118,14 @@ testInf2 = assertEqual "Infinite set and argument"
                        False
 
 -------------------------------------------------------------------------
+-- Set functions that use higher order functions to smuggle
+-- non-determinism from outside into a set-function
+-- yields wrong results with the initial implementation
+
+
+applyUnit f = f ()
+
+testSmuggle = assertValues "Smuggle non-determinism"
+                   (let x = True ? False in
+                      (sortValues (set1 applyUnit (\_ -> x))))
+		   [[True],[False]]
