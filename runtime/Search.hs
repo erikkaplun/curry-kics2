@@ -459,12 +459,12 @@ computeWithIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
 computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth incrDepth4IDFS msingleton
 
 searchIDS :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchIDS initDepth incr cont goal = iter 0 initDepth
+searchIDS initDepth incr cont goal = iter (-1) initDepth
   where iter oldDepth newDepth = startIDS oldDepth newDepth cont goal
                             ++++ iter newDepth (incr newDepth)
 
 searchIDS2 :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> NonDetExpr a -> IO (IOList b)
-searchIDS2 initDepth incr cont goal = iter 0 initDepth
+searchIDS2 initDepth incr cont goal = iter (-1) initDepth
   where
   iter oldDepth newDepth = (getNormalForm goal >>= startIDS oldDepth newDepth cont)
                             ++++ iter newDepth (incr newDepth)
