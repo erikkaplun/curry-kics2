@@ -11,11 +11,12 @@ module RCFile (readRC, rcValue, setRCProperty) where
 import Char         (toLower, isSpace)
 import Directory    (getHomeDirectory, doesFileExist, copyFile, renameFile)
 import FilePath     (FilePath, (</>), (<.>))
+import Function     (first)
 import Installation (installDir)
 import PropertyFile
 import Sort         (mergeSort)
 
-import Utils        (liftIO, mapFst, strip, unless)
+import Utils        (strip, unless)
 
 defaultRC :: FilePath
 defaultRC = installDir </> "kics2rc.default"
@@ -26,7 +27,7 @@ defaultRC = installDir </> "kics2rc.default"
 --- current distribution. This file must have the usual format of
 --- property files (see description in module PropertyFile).
 rcFileName :: IO FilePath
-rcFileName = (</> ".kics2rc") `Utils.liftIO` getHomeDirectory
+rcFileName = (</> ".kics2rc") `liftIO` getHomeDirectory
 
 --- Reads the rc file. If it is not present, the standard file
 --- from the distribution will be copied.
@@ -69,4 +70,4 @@ setRCProperty pname pval = do
 --- string is returned for an undefined variable.
 rcValue :: [(String, String)] -> String -> String
 rcValue rcdefs var = strip $ maybe "" id $
-  lookup (map toLower var) (map (mapFst (map toLower)) rcdefs)
+  lookup (map toLower var) (map (first (map toLower)) rcdefs)

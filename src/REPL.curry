@@ -33,7 +33,7 @@ import GhciComm      (stopGhciComm)
 import qualified Installation as Inst
 import Names         (funcInfoFile)
 import RCFile
-import Utils         (liftIO, notNull, strip, unless)
+import Utils         (notNull, strip, unless)
 
 import Linker
 
@@ -72,7 +72,7 @@ defaultImportPaths rst = do
 
 defaultImportPathsWith :: ReplState -> String -> IO [String]
 defaultImportPathsWith rst dirs =
-  (splitPath dirs ++) `Utils.liftIO` defaultImportPaths rst
+  (splitPath dirs ++) `liftIO` defaultImportPaths rst
 
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []
@@ -347,7 +347,7 @@ execMain rst _ mainexp = do -- _ was cmpstatus
   writeVerboseInfo rst 3 $ "Executing: " ++ tcmd
   system tcmd >> done
  where
-  getTimeCmd | rst :> showTime = getTimeCmdForDist `Utils.liftIO` getDistribution
+  getTimeCmd | rst :> showTime = getTimeCmdForDist `liftIO` getDistribution
              | otherwise       = return ""
 
   -- Time command for specific distributions. It might be necessary

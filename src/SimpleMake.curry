@@ -2,7 +2,6 @@ module SimpleMake (smake) where
 
 import Directory
 import Time
-import Utils     (liftIO)
 
 smake :: String -> [String] -> IO a -> IO a -> IO a
 smake dest deps cmd alt = do
@@ -19,7 +18,7 @@ getDestTime :: String -> IO (Maybe ClockTime)
 getDestTime fn = do
   exists <- doesFileExist fn
   if exists
-    then Just `Utils.liftIO` getModificationTime fn
+    then Just `liftIO` getModificationTime fn
     else return Nothing
 
 getDepTimes :: [String] -> IO [ClockTime]

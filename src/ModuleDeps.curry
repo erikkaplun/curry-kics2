@@ -18,13 +18,13 @@ import FileGoodies (lookupFileInPath)
 import FilePath    (dropExtension, dropTrailingPathSeparator, takeBaseName)
 import FiniteMap   (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry   (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
+import Function    (second)
 import List        (intercalate, partition)
 import Maybe       (fromJust, isJust)
 
 import CompilerOpts
 import Files
 import SCC
-import Utils (foldIO, mapSnd)
 
 type ModuleIdent = String
 type FilePath = String
@@ -71,13 +71,13 @@ sourceDeps opts m fn mEnv = do
   fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn) $
                              setFullPath importPaths $
                              setQuiet quiet defaultParams
-  Utils.foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
+  foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
     where
       importPaths = "." : opts :> optImportPaths
       quiet       = (opts :> optVerbosity) < VerbFrontend
 
 filterMissing :: SourceEnv -> ([(ModuleIdent, Source)], [String])
-filterMissing env = (map (mapSnd fromJust) present, errs) where
+filterMissing env = (map (second fromJust) present, errs) where
   errs = map (\(m, _) -> "Module " ++ m ++ " could not be found") missing
   (present, missing) = partition (isJust . snd) $ fmToList env
 
