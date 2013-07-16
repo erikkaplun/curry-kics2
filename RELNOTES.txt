@@ -1,8 +1,24 @@
 Release Notes for KiCS2
 =======================
 
-Release notes for KiCS2 Version 0.2.4 (under development)
+Release notes for KiCS2 Version 0.3.0 (under development)
 ---------------------------------------------------------
+
+Changes to version 0.2.4:
+
+  * Compilation scheme changed so that each function has an additional
+    argument indicating the encapsulation level in order to obtain
+    a reasonable implementation of nested encapsulated set functions with
+    possible higher-order functions.
+  * Library `UnsafeSearchTree` added. This library is similarly to
+    `SearchTree` but does not evaluate unbound local variables
+    to their ground values. Thus, one can have results containing
+    unbound variables (which can be checked by the operations
+    `isVar` and `getVarId`).
+
+
+Release notes for KiCS2 Version 0.2.4
+-------------------------------------
 
 Changes to version 0.2.3:
 
