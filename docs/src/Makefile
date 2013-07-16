@@ -1,8 +1,9 @@
 # To format the KiCS2 User Manual and other documents
 
 TEXFILES = currybrowser.tex currydoc.tex currytest.tex erd2curry.tex \
-           extensions.tex external_ops.tex libraries.tex markdown_syntax.tex \
-           overview.tex preface.tex problems.tex usage.tex version.tex
+           extensions.tex syntax.tex external_ops.tex libraries.tex  \
+           markdown_syntax.tex overview.tex preface.tex problems.tex \
+           usage.tex version.tex
 
 HTMLFILES = ../markdown_syntax.html ../INSTALL.html \
             ../GITINSTALL.html ../RELNOTES.html
@@ -26,6 +27,8 @@ $(MANUAL): manual.pdf
 	pdflatex manual
 	rm -f $@
 	cp $< $@
+
+syntax.tex: syntax.sty
 
 # format markdown syntax description as LaTeX
 markdown_syntax.tex: markdown_syntax.txt
