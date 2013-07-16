@@ -105,11 +105,11 @@ on the case of identifiers.
 
 The following identifiers are recognized as keywords
 and cannot be used as an identifier:
-\begin{curry}
-case      data      do        else      external  fcase     foreign
+\begin{lstlisting}[escapechar=']
+case      data      do        else      external  fcase     '\extension{foreign}'
 free      if        import    in        infix     infixl    infixr
-let       module    newtype   of        then      type      where
-\end{curry}
+let       module    '\extension{newtype}'   of        then      type      where
+\end{lstlisting}
 % class instance deriving
 
 Note that the symbols \term{as}, \term{hiding}
@@ -119,9 +119,9 @@ and can be used as ordinary identifiers.
 
 The following symbols also have a special meaning and cannot
 be used as an infix operator identifier:
-\begin{curry}
-..    :     ::    =     \\     |     <-    ->    @     ~     =>
-\end{curry}
+\begin{lstlisting}[escapechar=']
+..    :     ::    =     \\     |     <-    ->    @     ~     =>    '\extension{:>}'    '\extension{:=}'
+\end{lstlisting}
 
 \subsubsection{Comments}
 
@@ -270,7 +270,7 @@ the indentation of the list terminates the entire list.
 Moreover, a list started by \term{let} is terminated by the
 keyword \code{in}. Thus, the sentence
 \begin{curry}
-f x = h x where \{ g y = y + 1 ; h z = (g z) * 2 \}
+f x = h x where { g y = y + 1 ; h z = (g z) * 2 }
 \end{curry}
 which is valid w.r.t.\ the context-free syntax, is written
 with the layout rules as
@@ -301,13 +301,14 @@ assumed to start in column 0.
 \lexicon{ModuleID}
 
 \production{Exports}{%
-  \term{(} \seq{Export}{,}{n} \term{)} \extension{\margin{n \geqslant 0}}
+  \term{(} \seq{Export}{,}{n} \term{)} \extension{\margin{n \geq 0}}
+
 }
 
 \production{Export}{%
   QFunctionName
   \alt QTypeConstrID
-  \extension{\opt{\term{(} \seq{DataConstrID}{,}{n} \term{)}} \margin{n \geqslant 0}}
+  \extension{\opt{\term{(} \seq{DataConstrID}{,}{n} \term{)}} \margin{n \geq 0}}
   \alt QTypeConstrID \term{(..)}
   \alt \term{module} ModuleID
 }
@@ -315,11 +316,12 @@ assumed to start in column 0.
 \production{Block}{%
   \term{\{}
   \opt{\seq{ImportDecl}{;}{k} \term{;}}
-  \extension{\nextline \margtext{no fixity declarations}}
+  \extension{\nextline \margtext{no fixity declarations here}}
   \nextline \phantom{\term{\{}}
   \seq{BlockDeclaration}{;}{n}
   \term{\}}
-  \margin{k,n \geqslant 0}
+  \margin{k,n \geq 0}
+
 }
 
 \production{ImportDecl}{%
@@ -329,15 +331,16 @@ assumed to start in column 0.
 
 \production{ImportRestr}{%
   \term{(} \seq{Import}{,}{n} \term{)}
-  \extension{\margin{n \geqslant 0}}
+  \extension{\margin{n \geq 0}}
   \alt \term{hiding} \term{(} \seq{Import}{,}{n} \term{)}
-  \extension{\margin{n \geqslant 0}}
+  \extension{\margin{n \geq 0}}
+
 }
 
 \production{Import}{%
   FunctionName
   \alt TypeConstrID
-  \extension{\opt{\term{(} \seq{DataConstrID}{,}{n} \term{)}} \margin{n \geqslant 0}}
+  \extension{\opt{\term{(} \seq{DataConstrID}{,}{n} \term{)}} \margin{n \geq 0}}
   \alt TypeConstrID \term{(..)}
 }
 
@@ -354,17 +357,20 @@ assumed to start in column 0.
 }
 
 \production{SimpleType}{%
-  TypeConstrID \seq{TypeVarID}{}{n} \margin{n \geqslant 0}
+  TypeConstrID \seq{TypeVarID}{}{n} \margin{n \geq 0}
+
 }
 
 \lexicon{TypeConstrID}
 
 \production{DataDeclaration}{%
   \term{data} SimpleType \term{=} \seq{ConstrDecl}{|}{n} \margin{n > 0}
+
 }
 
 \production{ConstrDecl}{%
-  DataConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geqslant 0}
+  DataConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}
+
 }
 
 \lexicon{DataConstrID}
@@ -372,10 +378,12 @@ assumed to start in column 0.
 \extension{
 \production{RecordType}{%
   \term{\{} \seq{LabelDecl}{,}{n} \term{\}} \margin{n > 0}
+
 }
 
 \production{LabelDecl}{%
   \seq{LabelID}{,}{n} \term{::} TypeExpr \margin{n > 0}
+
 }
 
 \lexicon{LabelID}
@@ -386,10 +394,10 @@ assumed to start in column 0.
 }
 
 \production{SimpleTypeExpr}{%
-  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geqslant 0}
+  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}
   \alt TypeVarID
-  \alt \term{\us}
-  \alt \term{()} \margin{\mbox{\it unit type}}
+  \alt \term{\us} \margtext{anonymous type variable}
+  \alt \term{()}  \margtext{unit type}
   \alt \term{(} \seq{TypeExpr}{,}{n} \term{)} \margcomb{tuple type}{n>1}
   \alt \term{[} TypeExpr \term{]} \margtext{list type}
   \alt \term{(} TypeExpr \term{)} \margtext{parenthesized type}
@@ -399,6 +407,7 @@ assumed to start in column 0.
 
 \production{FixityDeclaration}{%
   FixityKeyword Digit \seq{InfixOpID}{,}{n} \margin{n>0}
+
 }
 
 \production{FixityKeyword}{%
@@ -417,6 +426,7 @@ assumed to start in column 0.
 
 \production{FunctionNames}{%
   \seq{FunctionName}{,}{n} \margin{n>0}
+
 }
 
 \production{FunctionName}{%
@@ -430,10 +440,11 @@ assumed to start in column 0.
   FunLHS \term{=} \extension{TypedExpr} \opt{\term{where} LocalDefs}
   \alt FunLHS CondExprs \opt{\term{where} LocalDefs}
   \extension{\alt FunLHS \term{external} \margtext{externally defined function}}
+
 }
 
 \production{FunLHS}{%
-  FunctionName \seq{SimplePat}{}{n} \margin{n \geqslant 0}
+  FunctionName \seq{SimplePat}{}{n} \margin{n \geq 0}
   \alt SimplePat InfixOpID SimplePat
 }
 
@@ -450,11 +461,10 @@ assumed to start in column 0.
   \alt \term{()}
   \alt \term{(} \seq{Pattern}{,}{n} \term{)}
        \margin{n > 1}
-%  \alt \term{(} QDataConstrID \seq{Pattern}{}{n} \term{)} \margin{n > 0}
   \alt \term{(} Pattern \term{)}
        \extension{\margtext{parenthesized pattern}}
   \alt \term{[} \seq{Pattern}{,}{n} \term{]}
-       \margin{n \geqslant 0}
+       \margin{n \geq 0}
   \alt VariableID \term{@} SimplePat
        \margtext{as-pattern}
 \extension{
@@ -509,18 +519,18 @@ assumed to start in column 0.
 }
 
 \production{Expr}{%
-       \term{\bs} \seq{SimplePat}{}{n} \term{->} Expr
+       \term{\bs} \seq{SimplePat}{}{n} \term{->} TypedExpr
        \margcomb{lambda expression}{n > 0}
-  \alt \term{let} LocalDefs \term{in} Expr
+  \alt \term{let} LocalDefs \term{in} TypedExpr
        \margtext{let expression}
-  \alt \term{if} Expr \term{then} Expr \term{else} Expr
+  \alt \term{if} TypedExpr \term{then} TypedExpr \term{else} TypedExpr
        \margtext{conditional}
-  \alt \term{case} Expr \term{of} \offside{Alt}{;}{n}
-       \margcomb{case expression}{n \geqslant 0}
-  \alt \term{fcase} Expr \term{of} \offside{Alt}{;}{n}
-       \margcomb{fcase expression}{n \geqslant 0}
+  \alt \term{case} TypedExpr \term{of} \offside{Alt}{;}{n}
+       \margcomb{case expression}{n \geq 0}
+  \alt \term{fcase} TypedExpr \term{of} \offside{Alt}{;}{n}
+       \margcomb{fcase expression}{n \geq 0}
   \alt \term{do} \term{\{} \seq{Stmt}{;}{n} \term{;} Expr \term{\}}
-       \margcomb{do expression}{n \geqslant 0}
+       \margcomb{do expression}{n \geq 0}
   \alt FunctExpr
 }
 
@@ -550,14 +560,14 @@ assumed to start in column 0.
   \alt \term{(} \seq{Expr}{,}{n} \term{)}
        \margcomb{tuple}{n > 1}
   \alt \term{[} \seq{Expr}{,}{n} \term{]}
-       \margcomb{finite list}{n\geqslant 0}
+       \margcomb{finite list}{n\geq 0}
   \alt \term{[} Expr \opt{\term{,} Expr} \term{..} \opt{Expr} \term{]}
        \margtext{arithmetic sequence}
   \alt \term{[} Expr \term{|} \seq{Qual}{,}{n} \term{]}
-       \margcomb{list comprehension}{n\geqslant 1}
-  \alt \term{(} Expr \extension{QOpName} \term{)}
+       \margcomb{list comprehension}{n\geq 1}
+  \alt \term{(} InfixExpr \extension{QOpName} \term{)}
        \margtext{left section}
-  \alt \term{(} \extension{QOpName} Expr \term{)}
+  \alt \term{(} \extension{\without{QOpName}{\term{-}, \term{-.}} InfixExpr} \term{)}
        \margtext{right section}
 \extension{
   \alt \term{\{} \seq{LBind}{,}{n} \term{\}}
