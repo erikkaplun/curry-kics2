@@ -310,12 +310,12 @@ renameCons qn@(q, n) =
 
 transExprType :: Bool -> TypeExpr -> TypeExpr
 transExprType deterministic
-  | deterministic = transHOTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
+  | deterministic = transHOTypeExprWith (\t1 t2 -> FuncType t1 (FuncType nestingType (FuncType storeType t2)))
   | otherwise     = transHOTypeExprWith funcType
 
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
 transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1
-                                               (FuncType nestingType 
+                                               (FuncType nestingType
                                                   (FuncType storeType t2)))
                                   (FuncType nestingType .FuncType storeType)
 
@@ -355,11 +355,11 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) 
+  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx])
                   ++ [nestingIdx,constStoreVarIdx]) e'
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx]) 
+  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx])
                        ++ [nestingIdx,constStoreVarIdx] in
   returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
 
@@ -392,8 +392,8 @@ addUnifIntCharRule bs bs' =
       -- TODO: magic number
       _ -> Branch (Pattern (constr isInt) [5000])
                   (funcCall (matchFun isInt)
-                    [list2FCList $ map pair2FCPair 
-                                 $ reverse rules 
+                    [list2FCList $ map pair2FCPair
+                                 $ reverse rules
                     ,Var 5000, Var nestingIdx, Var constStoreVarIdx ])
           : bs2
     matchFun True  = (basics,"matchInteger")
@@ -435,9 +435,9 @@ newBranches qn' vs i pConsName =
   let Just pos = find (==i) vs
       suppVar = if dm then [] else [suppVarIdx]
       (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $ 
-                map Var (vs1 ++ v : vs2 
-                             ++ suppVar 
+      call v = funcCall qn' $
+                map Var (vs1 ++ v : vs2
+                             ++ suppVar
                              ++ [nestingIdx, constStoreVarIdx])
       -- pattern matching on guards will combine the new constraints with the given
       -- constraint store
@@ -451,7 +451,7 @@ newBranches qn' vs i pConsName =
       -- the expression (\z -> f x1 x2 z x3) in the module
       -- FlatCurry2AbstractHaskell.
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      lCall = lambdaCall qn' 
+      lCall = lambdaCall qn'
             $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++ [nestingIdx,constStoreVarIdx]) in
   returnM $
     [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002, 1003])
