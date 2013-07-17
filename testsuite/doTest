@@ -12,7 +12,7 @@ fi
 TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonLinearPattern testNonStrictUnif testFuncPattern testAsPattern testPolySubExp"
 
 # test for standard libraries
-TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testSetFunctions testSort testSystem testTraversal testUnsafeSearchTree"
+TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testSetFunctions testSort testSystem testTraversal testUnsafeSearchTree testExpTypeInference"
 # further tests for the future:
 # testGlobalVariable # not yet implemented
 # testFlatCurryXML # causes memory overflow
