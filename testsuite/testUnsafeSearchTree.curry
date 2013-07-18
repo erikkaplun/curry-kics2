@@ -16,17 +16,17 @@ testIsVar2 =
   assertTrue "isVar2" (isVar (fst (someValue (let x free in x =:= (_,_) &> x))))
 
 --------------------------------------------------------------------------------
--- Testing getVarId:
+-- Testing varId:
 
 testGetVarId1 =
-  assertTrue "getVarId1"
+  assertTrue "varId1"
    (let (a,b) = someValue (let x free in x =:= (_,_) &> x)
-     in (getVarId a /= getVarId b))
+     in (varId a /= varId b))
 
 testGetVarId2 =
-  assertTrue "getVarId2"
+  assertTrue "varId2"
    (let (a,b) = someValue (let x,y,z free in (x =:= (y,z) & y=:=z) &> x)
-     in (getVarId a == getVarId b))
+     in (varId a == varId b))
 
 --------------------------------------------------------------------------------
 -- The following tests also demonstrate why the encapsulated search
