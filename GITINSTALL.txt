@@ -40,7 +40,7 @@ Currently, there are at least two options:
  1. Bootstrapping with KiCS2 (the faster option)
 
     Download and install the KiCS2 distribution from the
-    [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download).
+    [KiCS2 download site](http://www-ps.informatik.uni-kiel.de/kics2/download.html).
     Be sure to use a different directory than `kics2` for this installation,
     e.g., install this in `/tmp/kics2`.
     If you successfully installed this distribution (note that you do not
