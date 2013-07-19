@@ -63,7 +63,7 @@ MAKELOG             = make.log
 
 # Dependencies for the kics2 libraries
 export LIBDEPS     = base directory network old-time parallel-tree-search \
-                     process time unbounded-delays
+                     process time
 # Dependencies for the kics2 runtime system
 export RUNTIMEDEPS = base containers ghc mtl parallel-tree-search tree-monad
 
