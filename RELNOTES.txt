@@ -6,6 +6,7 @@ Release notes for KiCS2 Version 0.3.0 (under development)
 
 Changes to version 0.2.4:
 
+  * The default search strategy has been changed to *breadth-first search*.
   * Fixed a bug in `IO.hGetLine` which caused an end-of-file error when
     reading a non-empty line without a newline termination.
   * Compilation scheme changed so that each function has an additional

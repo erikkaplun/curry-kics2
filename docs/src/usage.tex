@@ -240,24 +240,21 @@ for loading modules to $path$.
 Note that this search path is only used for loading modules
 inside this invocation of \CYS.
 
-\item[\fbox{\code{prdfs }}]\pindex{prdfs}
+\item[\fbox{\code{bfs}}]\pindex{bfs}
 Set the search mode to evaluate non-deterministic expressions
-to primitive depth-first search (which is usually the fastest method
-to print all non-deterministic values).
-
-\item[\fbox{\code{dfs}}]\pindex{dfs}
-Set the search mode to evaluate non-deterministic expressions
-to depth-first search. Usually, all non-deterministic values
-are printed with a depth-first strategy, but one can also
+to breadth-first search.
+This is the default search strategy.
+Usually, all non-deterministic values
+are enumerated and printed with a breadth-first strategy, but one can also
 print only the first value or all values by interactively requesting them
 (see below for these options).
 
-\item[\fbox{\code{bfs}}]\pindex{bfs}
-Similarly to \code{dfs} but use a breadth-first search strategy
-to compute and print the values of the given expression.
+\item[\fbox{\code{dfs}}]\pindex{dfs}
+Similarly to \code{bfs} but use a depth-first search strategy
+to compute and print the values of the initial expression.
 
 \item[\fbox{\code{ids}}]\pindex{ids}
-Similarly to \code{dfs} but use an iterative-deepening strategy
+Similarly to \code{bfs} but use an iterative-deepening strategy
 to compute and print the values of the initial expression.
 The initial depth bound is 100 and the depth-bound is
 doubled after each iteration.
@@ -266,13 +263,20 @@ doubled after each iteration.
 Similarly to \code{ids} but use an initial depth bound of $n$.
 
 \item[\fbox{\code{par}}]\pindex{par}
-Similarly to \code{dfs} but use a parallel search strategy
+Similarly to \code{bfs} but use a parallel search strategy
 to compute and print the values of the initial expression.
 The system chooses an appropriate number
 of threads according the current number of available processors.
 
 \item[\fbox{\code{par $n$}}]\pindex{par}
 Similarly to \code{par} but use $n$ parallel threads.
+
+\item[\fbox{\code{prdfs }}]\pindex{prdfs}
+Set the search mode to evaluate non-deterministic expressions
+to primitive depth-first search. This is usually the fastest method
+to print \emph{all} non-deterministic values.
+However, it does not support the evaluation of values
+by interactively requesting them.
 
 \item[\fbox{\code{choices $n$}}]\pindex{choices}
 Show the internal choice structure

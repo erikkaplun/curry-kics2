@@ -4,7 +4,7 @@
 --- and compiling this main file together with all compiled Curry modules.
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version June 2012
+--- @version July 2012
 --- --------------------------------------------------------------------------
 
 module Linker
@@ -72,7 +72,7 @@ initReplState =
   , addMods      := []
   , prompt       := "%s> "
   , optim        := True
-  , ndMode       := DFS
+  , ndMode       := BFS
   , firstSol     := False
   , interactive  := False
   , showBindings := True
