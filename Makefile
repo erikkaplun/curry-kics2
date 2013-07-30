@@ -21,9 +21,13 @@ COMPILERDATE   := $(shell git log -1 --format="%ci" | cut -c-10)
 INSTALLDATE    := $(shell date)
 # The name of the Curry system, needed for installation of currytools
 export CURRYSYSTEM = kics2
+# Windows operating system?
+ifneq (,$(findstring MINGW, $(shell uname)))
+export WINDOWS = 1
+endif
 
-# Paths used in this this installation
-# ------------------------------------
+# Paths used in this installation
+# -------------------------------
 
 # root directory of the installation
 export ROOT     = $(CURDIR)
@@ -38,8 +42,8 @@ export LOCALPKG = $(ROOT)/pkg
 # The path to the package database
 export PKGDB    = $(LOCALPKG)/kics2.conf.d
 
-# Special files and binaries used in this this installation
-# ---------------------------------------------------------
+# Special files and binaries used in this installation
+# ----------------------------------------------------
 
 # The compiler binary
 export COMP         = $(LOCALBIN)/kics2c
@@ -61,23 +65,31 @@ MAKELOG             = make.log
 # Cabal packages on which this installation depends
 # -------------------------------------------------
 
+# Dependencies for the kics2 runtime system
+export RUNTIMEDEPS = base containers ghc mtl parallel-tree-search tree-monad
 # Dependencies for the kics2 libraries
 export LIBDEPS     = base directory network old-time parallel-tree-search \
                      process time
-# Dependencies for the kics2 runtime system
-export RUNTIMEDEPS = base containers ghc mtl parallel-tree-search tree-monad
+# Dependency to system library
+ifdef WINDOWS
+export SYSTEMDEPS  = Win32
+else
+export SYSTEMDEPS  = unix
+endif
+# All dependencies. Note that "sort" also removes duplicates.
+export ALLDEPS     = $(sort $(RUNTIMEDEPS) $(LIBDEPS) $(SYSTEMDEPS))
 
-
-# Fancy GHC and CABAL configuration
-# ---------------------------------
+# GHC and CABAL configuration
+# ---------------------------
 
 # The path to the Glasgow Haskell Compiler and Cabal
 export GHC     := "$(shell which ghc)"
 export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
-export CABAL   =  cabal
+export CABAL    = cabal
 
-# Because of an API change in GHC 7.6, we need to distinguish
-# GHC < 7.6 and GHC >= 7.6
+# Because of an API change in GHC 7.6,
+# we need to distinguish GHC < 7.6 and GHC >= 7.6.
+# GHC 7.6 renamed the option "package-conf" to "package-db".
 
 # extract GHC version
 GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
@@ -92,14 +104,19 @@ else
 GHC_PKG_OPT = package-conf
 endif
 
-# Libraries shipped with GHC
+# Libraries installed with GHC
 GHC_LIBS := $(shell $(GHC-PKG) list --global --simple-output --names-only)
+# Packages used by the compiler
+GHC_PKGS  = $(foreach pkg,$(ALLDEPS),-package $(pkg))
 
-# Standard options for compiling target programs with ghc
-export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) $(PKGDB)
+# Standard options for compiling target programs with ghc.
+# Uses our own package db and explicitly exposes the packages
+# to avoid conflicts with globally installed ones.
+export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) $(PKGDB) \
+                        -hide-all-packages $(GHC_PKGS)
 # Command to unregister a package
 export GHC_UNREGISTER = $(GHC-PKG) unregister --$(GHC_PKG_OPT)=$(PKGDB)
-#
+# Command to install missing packages using cabal
 export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC)       \
                         --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) \
                         --global --package-db=$(PKGDB) -O2
@@ -160,7 +177,7 @@ endif
 $(PKGDB):
 	$(GHC-PKG) init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS), $(RUNTIMEDEPS) $(LIBDEPS))
+	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 .PHONY: scripts
 scripts: $(BINDIR)/cleancurry
@@ -255,7 +272,7 @@ endif
 	echo 'ghcExec = "\"$(shell utils/which $(GHC))\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
-	echo 'ghcOptions = "$(GHC_OPTS)"' >> $@
+	echo 'ghcOptions = "$(GHC_OPTS) -package kics2-runtime -package kics2-libraries"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
@@ -352,7 +369,7 @@ DEV_DIRS=benchmarks debug docs experiments talks
 .PHONY: cleandist
 cleandist:
 ifneq ($(CURDIR), $(TMPDIR))
-	$(error cleandist target called outside $(TMPDIR). Don't shoot yourself in the foot) # ') fix highlighting
+	$(error cleandist target called outside $(TMPDIR))
 endif
 	rm -rf .dist-modules .git .gitmodules .gitignore
 	cd lib        && rm -rf .git .gitignore

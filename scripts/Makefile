@@ -2,26 +2,13 @@
 # Installation of KICS2 shell scripts
 ##############################################################################
 
-UNAME := $(shell uname)
-
-ifeq ($(UNAME), Linux)
-# Linux
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(UNAME), Darwin)
-# Mac OS
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(UNAME), SunOS)
-# Sun OS
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(findstring MINGW, $(UNAME)), MINGW)
-# Windows
+ifdef WINDOWS
 BINS =
 BATS = $(patsubst %, $(BINDIR)/%, $(wildcard *.bat))
 else
-$(error "Unknown system '$(UNAME)')
+# Unixes
+BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
+BATS =
 endif
 
 .PHONY: all
