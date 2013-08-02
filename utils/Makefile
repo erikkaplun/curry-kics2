@@ -1,12 +1,12 @@
 # Makefile for building installation utils
 
-utils=pwd cleancurry which
+utils = $(foreach u, pwd cleancurry which, $(u)$(EXE_SUFFIX))
 
 .PHONY: all
 all: $(utils)
 
-%: %.hs
-	$(GHC) --make -Wall -O2 -o $@ $<
+%$(EXE_SUFFIX): %.hs
+	"$(GHC)" --make -Wall -O2 -o $@ $<
 
 .PHONY: clean
 clean:

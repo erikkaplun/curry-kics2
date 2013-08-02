@@ -23,36 +23,43 @@ INSTALLDATE    := $(shell date)
 export CURRYSYSTEM = kics2
 # Windows operating system?
 ifneq (,$(findstring MINGW, $(shell uname)))
-export WINDOWS = 1
+export WINDOWS    = 1
+export EXE_SUFFIX = .exe
+else
+export EXE_SUFFIX =
 endif
 
 # Paths used in this installation
 # -------------------------------
 
 # root directory of the installation
-export ROOT     = $(CURDIR)
+export ROOT          = $(CURDIR)
 # binary directory and executables
-export BINDIR   = $(ROOT)/bin
+export BINDIR        = $(ROOT)/bin
 # Directory where the libraries are located
-export LIBDIR   = $(ROOT)/lib
+export LIBDIR        = $(ROOT)/lib
 # Directory where local executables are stored
-export LOCALBIN = $(BINDIR)/.local
+export LOCALBIN      = $(BINDIR)/.local
+# installation prefix, may be overwritten
+export INSTALLPREFIX = $(ROOT)
 # Directory where local package installations are stored
-export LOCALPKG = $(ROOT)/pkg
+export LOCALPKG      = $(INSTALLPREFIX)/pkg
 # The path to the package database
-export PKGDB    = $(LOCALPKG)/kics2.conf.d
+export PKGDB         = $(LOCALPKG)/kics2.conf.d
 
 # Special files and binaries used in this installation
 # ----------------------------------------------------
 
 # The compiler binary
-export COMP         = $(LOCALBIN)/kics2c
+export COMP         = $(LOCALBIN)/kics2c$(EXE_SUFFIX)
 # The REPL binary, used for building the libraries
-export REPL         = $(LOCALBIN)/kics2i
+export REPL         = $(LOCALBIN)/kics2i$(EXE_SUFFIX)
 # The default options for the REPL, used for libraries and tools
 export REPL_OPTS    = :set v2 :set -ghci
 # The frontend binary
-export CYMAKE       = $(BINDIR)/cymake
+export CYMAKE       = $(BINDIR)/cymake$(EXE_SUFFIX)
+# The cleancurry binary
+export CLEANCURRY   = $(BINDIR)/cleancurry$(EXE_SUFFIX)
 # The Haskell installation info
 export INSTALLHS    = $(ROOT)/runtime/Installation.hs
 # The Curry installation info
@@ -61,6 +68,9 @@ export INSTALLCURRY = $(ROOT)/src/Installation.curry
 MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
 MAKELOG             = make.log
+# Utility programs
+PWD                 = utils/pwd$(EXE_SUFFIX)
+WHICH               = utils/which$(EXE_SUFFIX)
 
 # Cabal packages on which this installation depends
 # -------------------------------------------------
@@ -83,8 +93,8 @@ export ALLDEPS     = $(sort $(RUNTIMEDEPS) $(LIBDEPS) $(SYSTEMDEPS))
 # ---------------------------
 
 # The path to the Glasgow Haskell Compiler and Cabal
-export GHC     := "$(shell which ghc)"
-export GHC-PKG := "$(shell dirname $(GHC))/ghc-pkg"
+export GHC     := $(shell which ghc)
+export GHC-PKG := $(shell dirname "$(GHC)")/ghc-pkg
 export CABAL    = cabal
 
 # Because of an API change in GHC 7.6,
@@ -92,8 +102,8 @@ export CABAL    = cabal
 # GHC 7.6 renamed the option "package-conf" to "package-db".
 
 # extract GHC version
-GHC_MAJOR := $(shell $(GHC) --numeric-version | cut -d. -f1)
-GHC_MINOR := $(shell $(GHC) --numeric-version | cut -d. -f2)
+GHC_MAJOR := $(shell "$(GHC)" --numeric-version | cut -d. -f1)
+GHC_MINOR := $(shell "$(GHC)" --numeric-version | cut -d. -f2)
 # Is the GHC version >= 7.6 ?
 GHC_GEQ_76 = $(shell test $(GHC_MAJOR) -gt 7 -o \( $(GHC_MAJOR) -eq 7 \
               -a $(GHC_MINOR) -ge 6 \) ; echo $$?)
@@ -105,27 +115,27 @@ GHC_PKG_OPT = package-conf
 endif
 
 # Libraries installed with GHC
-GHC_LIBS := $(shell $(GHC-PKG) list --global --simple-output --names-only)
+GHC_LIBS := $(shell "$(GHC-PKG)" list --global --simple-output --names-only)
 # Packages used by the compiler
 GHC_PKGS  = $(foreach pkg,$(ALLDEPS),-package $(pkg))
 
 # Standard options for compiling target programs with ghc.
 # Uses our own package db and explicitly exposes the packages
 # to avoid conflicts with globally installed ones.
-export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) $(PKGDB) \
+export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) "$(PKGDB)" \
                         -hide-all-packages $(GHC_PKGS)
 # Command to unregister a package
-export GHC_UNREGISTER = $(GHC-PKG) unregister --$(GHC_PKG_OPT)=$(PKGDB)
+export GHC_UNREGISTER = "$(GHC-PKG)" unregister --$(GHC_PKG_OPT)="$(PKGDB)"
 # Command to install missing packages using cabal
-export CABAL_INSTALL  = $(CABAL) install --with-compiler=$(GHC)       \
-                        --with-hc-pkg=$(GHC-PKG) --prefix=$(LOCALPKG) \
-                        --global --package-db=$(PKGDB) -O2
+export CABAL_INSTALL  = "$(CABAL)" install --with-compiler="$(GHC)"       \
+                        --with-hc-pkg="$(GHC-PKG)" --prefix="$(LOCALPKG)" \
+                        --global --package-db="$(PKGDB)" -O2
 
 ########################################################################
 # The targets
 ########################################################################
 
-# main (default) target: starts installation with logging
+# main (default) target - starts installation with logging
 .PHONY: all
 all:
 	@rm -f ${MAKELOG}
@@ -143,11 +153,6 @@ install: kernel alltools
 	# make everything accessible:
 	chmod -R go+rX .
 
-.PHONY: alltools
-alltools:
-	cd currytools && $(MAKE) # various tools
-	cd tools      && $(MAKE) # various tools
-
 # install the benchmark system
 .PHONY: benchmarks
 benchmarks:
@@ -161,7 +166,8 @@ uninstall:
 
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
-kernel: $(PKGDB) $(INSTALLCURRY) frontend scripts
+kernel: $(PWD) $(WHICH) $(PKGDB) frontend scripts
+	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
@@ -173,40 +179,52 @@ ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) acy
 endif
 
+.PHONY: alltools
+alltools:
+	cd currytools && $(MAKE) # various tools
+	cd tools      && $(MAKE) # various tools
+
 # create package database
 $(PKGDB):
-	$(GHC-PKG) init $@
+	"$(GHC-PKG)" init $@
 	$(CABAL) update
 	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS),$(ALLDEPS))
-
-.PHONY: scripts
-scripts: $(BINDIR)/cleancurry
-	cd scripts && $(MAKE) ROOT=$(shell utils/pwd)
 
 .PHONY: frontend
 frontend:
 	cd frontend && $(MAKE)
 
+.PHONY: scripts
+scripts: $(PWD) $(CLEANCURRY)
+	cd scripts && $(MAKE) ROOT=$(shell $(PWD))
+
+$(CLEANCURRY): utils/cleancurry$(EXE_SUFFIX)
+	mkdir -p $(@D)
+	cp $< $@
+
+utils/%:
+	cd utils && $(MAKE) $(@F)
+
 .PHONY: clean
-clean: $(BINDIR)/cleancurry
+clean: $(CLEANCURRY)
 	rm -f *.log
-	rm -f ${INSTALLHS} ${INSTALLCURRY}
-	cd cpns       && ${MAKE} clean
+	rm -f $(INSTALLHS) $(INSTALLCURRY)
+	cd cpns       && $(MAKE) clean
 	@if [ -d lib/.curry/kics2 ] ; then \
 	  cd lib/.curry/kics2 && rm -f *.hi *.o ; \
 	fi
 	@if [ -d lib/meta/.curry/kics2 ] ; then \
 	  cd lib/meta/.curry/kics2 && rm -f *.hi *.o ; \
 	fi
-	cd runtime    && ${MAKE} clean
-	cd src        && ${MAKE} clean
-	cd currytools && ${MAKE} clean
-	cd frontend   && ${MAKE} clean
-	cd tools      && ${MAKE} clean
-	cd utils      && ${MAKE} clean
-	cd www        && ${MAKE} clean
+	cd runtime    && $(MAKE) clean
+	cd src        && $(MAKE) clean
+	cd currytools && $(MAKE) clean
+	cd frontend   && $(MAKE) clean
+	cd tools      && $(MAKE) clean
+	cd utils      && $(MAKE) clean
+	cd www        && $(MAKE) clean
 	@if [ -d benchmarks ] ; then \
-	  cd benchmarks && ${MAKE} clean ; \
+	  cd benchmarks && $(MAKE) clean ; \
 	fi
 
 # clean everything (including compiler binaries)
@@ -214,10 +232,10 @@ clean: $(BINDIR)/cleancurry
 cleanall: clean
 	cd src   && $(MAKE) cleanall
 	cd utils && $(MAKE) cleanall
-	$(BINDIR)/cleancurry -r
+	$(CLEANCURRY) -r
 	rm -rf ${LOCALBIN} $(CYMAKE) $(LOCALPKG)
 	cd scripts && $(MAKE) clean
-	rm $(BINDIR)/cleancurry
+	rm $(CLEANCURRY)
 
 .PHONY: maintainer-clean
 maintainer-clean: cleanall
@@ -227,12 +245,12 @@ maintainer-clean: cleanall
 # Building the compiler itself
 ##############################################################################
 
-# generate module with basic installation information:
-${INSTALLCURRY}: ${INSTALLHS}
+# generate module with basic installation information
+$(INSTALLCURRY): $(INSTALLHS)
 	cp $< $@
 
-${INSTALLHS}: Makefile utils/pwd utils/which
-ifneq ($(shell test -x $(GHC) ; echo $$?), 0)
+$(INSTALLHS): Makefile
+ifneq ($(shell test -x "$(GHC)" ; echo $$?), 0)
 	$(error "No executable 'ghc' found. You may use 'make <target> GHC=<path>')
 endif
 	echo "-- This file is automatically generated, do not change it!" > $@
@@ -242,7 +260,7 @@ endif
 	echo 'compilerName = "KiCS2 Curry -> Haskell Compiler"' >> $@
 	echo "" >> $@
 	echo 'installDir :: String' >> $@
-	echo 'installDir = "$(shell utils/pwd)"' >> $@
+	echo 'installDir = "$(INSTALLPREFIX)"' >> $@
 	echo "" >> $@
 	echo 'majorVersion :: Int' >> $@
 	echo 'majorVersion = $(MAJORVERSION)' >> $@
@@ -269,10 +287,10 @@ endif
 	echo 'runtimeMinor = $(GHC_MINOR)' >> $@
 	echo "" >> $@
 	echo 'ghcExec :: String' >> $@
-	echo 'ghcExec = "\"$(shell utils/which $(GHC))\""' >> $@
+	echo 'ghcExec = "\"$(GHC)\""' >> $@
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
-	echo 'ghcOptions = "$(GHC_OPTS) -package kics2-runtime -package kics2-libraries"' >> $@
+	echo 'ghcOptions = "$(subst ",\",$(GHC_OPTS)) -package kics2-runtime -package kics2-libraries"' >> $@
 	echo "" >> $@
 	echo 'installGlobal :: Bool' >> $@
 ifeq ($(GLOBALINSTALL),yes)
@@ -280,13 +298,6 @@ ifeq ($(GLOBALINSTALL),yes)
 else
 	echo 'installGlobal = False' >> $@
 endif
-
-$(BINDIR)/cleancurry: utils/cleancurry
-	mkdir -p $(@D)
-	cp $< $@
-
-utils/%:
-	cd utils && $(MAKE) $(@F)
 
 ##############################################################################
 # Create documentation for system libraries:
@@ -298,7 +309,7 @@ libdoc:
 	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
 	@rm -f ${MAKELOG}
 	@echo "Make libdoc started at `date`" > ${MAKELOG}
-	@cd lib && ${MAKE} doc 2>&1 | tee -a ../${MAKELOG}
+	@cd lib && $(MAKE) doc 2>&1 | tee -a ../${MAKELOG}
 	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
 	@echo "Make libdoc process logged in file ${MAKELOG}"
 
@@ -310,7 +321,7 @@ libdoc:
 manual:
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then \
-	  ${MAKE} ${MANUALVERSION} && cd docs/src && ${MAKE} install ; \
+	  $(MAKE) ${MANUALVERSION} && cd docs/src && $(MAKE) install ; \
 	fi
 
 ${MANUALVERSION}: Makefile
@@ -384,11 +395,11 @@ endif
 $(TARBALL): $(COMP)
 	rm -rf $(TMPDIR)
 	# initialise git repository
-	git clone . ${TMPDIR}
+	git clone . $(TMPDIR)
 	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(TMPDIR)/.gitmodules
-	cd ${TMPDIR} && git submodule init && git submodule update
+	cd $(TMPDIR) && git submodule init && git submodule update
 	# create local binary directory
-	mkdir -p ${TMPDIR}/bin/.local
+	mkdir -p $(TMPDIR)/bin/.local
 	# copy frontend binary into distribution
 	if [ -x $(CYMAKE) ] ; then \
 	  cp -pr $(CYMAKE) $(TMPDIR)/bin/ ; \
@@ -396,29 +407,29 @@ $(TARBALL): $(COMP)
 	  cd $(TMPDIR) && $(MAKE) frontend ; \
 	fi
 	# copy bootstrap compiler
-	cp $(COMP) ${TMPDIR}/bin/.local/
+	cp $(COMP) $(TMPDIR)/bin/.local/
 	# generate compile and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd ${TMPDIR} && ${MAKE} Compile       # translate compiler
-	cd ${TMPDIR} && ${MAKE} REPL          # translate REPL
-	cd ${TMPDIR} && ${MAKE} clean         # clean object files
-	cd ${TMPDIR} && ${MAKE} typeinference # precompile typeinference
-	cd ${TMPDIR} && ${MAKE} cleandist     # delete unnessary files
+	cd $(TMPDIR) && $(MAKE) Compile       # translate compiler
+	cd $(TMPDIR) && $(MAKE) REPL          # translate REPL
+	cd $(TMPDIR) && $(MAKE) clean         # clean object files
+	cd $(TMPDIR) && $(MAKE) typeinference # precompile typeinference
+	cd $(TMPDIR) && $(MAKE) cleandist     # delete unnessary files
 	# copy documentation
 	@if [ -f docs/Manual.pdf ] ; then \
-	  mkdir -p ${TMPDIR}/docs ; \
-	  cp docs/Manual.pdf ${TMPDIR}/docs ; \
+	  mkdir -p $(TMPDIR)/docs ; \
+	  cp docs/Manual.pdf $(TMPDIR)/docs ; \
 	fi
 	# update Makefile
 	cat Makefile | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d"         \
 	             | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL=yes|' \
 	             | sed 's|^COMPILERDATE *:=.*$$|COMPILERDATE =$(COMPILERDATE)|' \
-	             > ${TMPDIR}/Makefile
+	             > $(TMPDIR)/Makefile
 	# Zip it!
 	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
 	mv $(TMP)/$(TARBALL) ./$(TARBALL)
 	chmod 644 ./$(TARBALL)
-	rm -rf ${TMPDIR}
+	rm -rf $(TMPDIR)
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
@@ -436,7 +447,7 @@ BOOTLOG = boot.log
 bootstrapwithlogging:
 	@rm -f ${BOOTLOG}
 	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
-	${MAKE} bootstrap 2>&1 | tee -a ../${BOOTLOG}
+	$(MAKE) bootstrap 2>&1 | tee -a ../${BOOTLOG}
 	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
 	@echo "Bootstrap process logged in file ${BOOTLOG}"
 
@@ -447,11 +458,11 @@ bootstrap: $(PKGDB) $(INSTALLCURRY) frontend scripts
 
 .PHONY: Compile
 Compile: $(PKGDB) $(INSTALLCURRY) scripts
-	cd src && ${MAKE} CompileBoot
+	cd src && $(MAKE) CompileBoot
 
 .PHONY: REPL
 REPL: $(PKGDB) $(INSTALLCURRY) scripts
-	cd src && ${MAKE} REPLBoot
+	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
 typeinference:
