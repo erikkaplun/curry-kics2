@@ -92,7 +92,7 @@ and can be used as ordinary identifiers.
 
 The following symbols also have a special meaning and cannot
 be used as an infix operator identifier:
-\begin{lstlisting}[escapechar=']
+\begin{lstlisting}[escapechar=',literate=]
 ..    :     ::    =     \\     |     <-    ->    @     ~     '\extension{:>}'    '\extension{:=}'
 \end{lstlisting}
 
@@ -139,7 +139,9 @@ The precise syntax for both kinds is given below.
 \production{Hexit}{
  \term{0} \sor \term{1} \sor \term{2} \sor \term{3} \sor \term{4} \sor
  \term{5} \sor \term{6} \sor \term{7} \sor \term{8} \sor \term{9} \sor
- \term{A} \sor \term{B} \sor \term{C} \sor \term{D} \sor \term{E} \sor \term{F}
+ \term{A} \sor \term{B} \sor \term{C} \sor \term{D} \sor \term{E} \sor
+ \term{F} \sor \term{a} \sor \term{b} \sor \term{c} \sor \term{d} \sor
+ \term{e} \sor \term{f}
 }
 
 \production{Char}{
@@ -487,7 +489,7 @@ assumed to start in column 0.
        QVariableID
        \margtext{variable}
   \alt \term{\us}
-       \margtext{anonymous free variable}
+       \margtext{anonymous free variable}%
 \extension{
   \alt QFunctionName
        \margtext{qualified function}
