@@ -63,3 +63,4 @@ clean:
 .PHONY: cleanall
 cleanall: clean
 	rm -f manual.pdf $(MANUAL) $(HTMLFILES)
+	rm -f lib version.tex

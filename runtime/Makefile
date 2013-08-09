@@ -30,7 +30,8 @@ unregister:
 
 .PHONY: clean
 clean:
-	rm -rf *.hi *.o
+	rm -rf dist/
+	rm -f *.hi *.hi-boot */*.hi *.o *.o-boot */*.o
 	rm -f $(CABAL_FILE)
 
 $(CABAL_FILE): ../Makefile Makefile

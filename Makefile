@@ -229,6 +229,7 @@ clean: $(CLEANCURRY)
 # clean everything (including compiler binaries)
 .PHONY: cleanall
 cleanall: clean
+	cd lib   && $(MAKE) cleanall
 	cd src   && $(MAKE) cleanall
 	cd utils && $(MAKE) cleanall
 	$(CLEANCURRY) -r
