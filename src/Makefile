@@ -92,14 +92,17 @@ CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 # Although $(INSTALLCURRY) is used by the compiler it must not be included
 # in the dependencies because for the distribution installation it would
 # require a working KICS2 binary *during* installation.
-$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry)
+$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry) $(COMP)
 	$(KICS2C) $<
 
 # recompile installation information and the compiler
 .PHONY: updateInstallInfo
-updateInstallInfo:
+updateInstallInfo: $(COMP)
 	$(KICS2C) $(INSTALLCURRY)
 	$(MAKE) CompileBoot
+
+$(COMP):
+	cd .. && $(MAKE) $@
 
 ########################################################################
 # REPL
@@ -111,5 +114,5 @@ REPLBoot: REPLBoot.hs $(SUBDIR)/Curry_REPL.hs
 	mkdir -p $(LOCALBIN)
 	$(GHC_CALL) -o $(REPL) $<
 
-$(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY)
+$(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY) $(COMP)
 	$(KICS2C) $<

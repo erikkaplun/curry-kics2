@@ -60,6 +60,8 @@ export REPL_OPTS    = :set v2 :set -ghci
 export CYMAKE       = $(BINDIR)/cymake$(EXE_SUFFIX)
 # The cleancurry binary
 export CLEANCURRY   = $(BINDIR)/cleancurry$(EXE_SUFFIX)
+# The currydoc binary
+export CURRYDOC     = $(BINDIR)/currydoc$(EXE_SUFFIX)
 # The Haskell installation info
 export INSTALLHS    = $(ROOT)/runtime/Installation.hs
 # The Curry installation info
@@ -195,7 +197,7 @@ frontend:
 	cd frontend && $(MAKE)
 
 .PHONY: scripts
-scripts: $(PWD) $(CLEANCURRY)
+scripts: $(PWD)
 	cd scripts && $(MAKE) ROOT=$(shell $(PWD))
 
 $(CLEANCURRY): utils/cleancurry$(EXE_SUFFIX)
@@ -210,12 +212,8 @@ clean: $(CLEANCURRY)
 	rm -f *.log
 	rm -f $(INSTALLHS) $(INSTALLCURRY)
 	cd cpns       && $(MAKE) clean
-	@if [ -d lib/.curry/kics2 ] ; then \
-	  cd lib/.curry/kics2 && rm -f *.hi *.o ; \
-	fi
-	@if [ -d lib/meta/.curry/kics2 ] ; then \
-	  cd lib/meta/.curry/kics2 && rm -f *.hi *.o ; \
-	fi
+	-cd lib/.curry/kics2      && rm -f *.hi *.o
+	-cd lib/meta/.curry/kics2 && rm -f *.hi *.o
 	cd runtime    && $(MAKE) clean
 	cd src        && $(MAKE) clean
 	cd currytools && $(MAKE) clean
@@ -223,9 +221,8 @@ clean: $(CLEANCURRY)
 	cd tools      && $(MAKE) clean
 	cd utils      && $(MAKE) clean
 	cd www        && $(MAKE) clean
-	@if [ -d benchmarks ] ; then \
-	  cd benchmarks && $(MAKE) clean ; \
-	fi
+	-cd benchmarks && $(MAKE) clean
+	-cd docs/src && $(MAKE) clean
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -235,6 +232,7 @@ cleanall: clean
 	$(CLEANCURRY) -r
 	rm -rf ${LOCALBIN} $(CYMAKE) $(LOCALPKG)
 	cd scripts && $(MAKE) clean
+	-cd docs/src && $(MAKE) cleanall
 	rm $(CLEANCURRY)
 
 .PHONY: maintainer-clean
@@ -304,14 +302,18 @@ endif
 ##############################################################################
 
 .PHONY: libdoc
-libdoc:
-	@if [ ! -r $(BINDIR)/currydoc ] ; then \
-	  echo "Cannot create library documentation: currydoc not available!" ; exit 1 ; fi
+libdoc: $(CURRYDOC)
 	@rm -f ${MAKELOG}
 	@echo "Make libdoc started at `date`" > ${MAKELOG}
 	@cd lib && $(MAKE) doc 2>&1 | tee -a ../${MAKELOG}
 	@echo "Make libdoc finished at `date`" >> ${MAKELOG}
 	@echo "Make libdoc process logged in file ${MAKELOG}"
+
+.PHONY: currydoc
+currydoc: $(CURRYDOC)
+
+$(CURRYDOC):
+	cd currytools && $(MAKE) currydoc
 
 ##############################################################################
 # Create the KiCS2 manual
@@ -453,7 +455,7 @@ bootstrapwithlogging:
 
 # bootstrap the compiler
 .PHONY: bootstrap
-bootstrap: $(PKGDB) $(INSTALLCURRY) frontend scripts
+bootstrap: $(PKGDB) $(INSTALLCURRY) frontend scripts $(CLEANCURRY)
 	cd src && $(MAKE) bootstrap
 
 .PHONY: Compile
