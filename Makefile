@@ -236,6 +236,7 @@ cleanall: clean
 	rm -rf ${LOCALBIN} $(CYMAKE) $(LOCALPKG)
 	cd scripts && $(MAKE) clean
 	-cd docs/src && $(MAKE) cleanall
+	-cd talks    && $(MAKE) cleanall
 	rm $(CLEANCURRY)
 
 .PHONY: maintainer-clean
