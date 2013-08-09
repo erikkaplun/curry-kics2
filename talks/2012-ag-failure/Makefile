@@ -1,5 +1,5 @@
 styles := $(wildcard *.sty)
-pdfs := talk.pdf handout.pdf handoutA4.pdf
+pdfs   := talk.pdf handout.pdf handoutA4.pdf
 
 all: $(pdfs)
 
