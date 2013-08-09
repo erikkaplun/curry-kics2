@@ -4,7 +4,7 @@ CPNSD=CPNSD
 LOGFILE="/tmp/CurryPNSD.log"
 
 ${CPNSD}: ../lib/CPNS.curry
-	../bin/kics2 :set v2 :load CPNSD :save :q
+	$(KICS2) :set v2 :load CPNSD :save :q
 
 # Shows the currently registered ports:
 .PHONY: show
@@ -13,11 +13,11 @@ show: ${CPNSD}
 
 # Shows the log file of the demon:
 .PHONY: showlog
-showlog: 
+showlog:
 	cat ${LOGFILE}
 
 .PHONY: clean
-clean: 
+clean:
 	./stop
-	../bin/cleancurry
+	$(CLEANCURRY)
 	rm -f ${CPNSD}
