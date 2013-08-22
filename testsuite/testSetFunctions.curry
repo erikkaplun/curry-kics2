@@ -129,3 +129,18 @@ testSmuggle = assertValues "Smuggle non-determinism"
                    (let x = True ? False in
                       (sortValues (set1 applyUnit (\_ -> x))))
 		   [[True],[False]]
+
+
+-------------------------------------------------------------------------
+-- Set function that uses information from outside to determine
+-- the result of the set function
+-- Shows that narrowing of free variables from outside is necessary
+
+
+bindTo x = x =:= y &> y
+ where y free
+
+testBindToBound = assertEqual "Bind to bound"
+                    (x =:= True &> set1 bindTo x)
+                    (set0 True)
+ where x free
