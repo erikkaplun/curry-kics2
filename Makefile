@@ -182,6 +182,8 @@ kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) scripts
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
+	cd lib     && $(MAKE) unregister
+	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
 	cd lib     && $(MAKE) install
 	cd lib     && $(MAKE) acy
@@ -231,7 +233,7 @@ cleanall: clean
 	cd src   && $(MAKE) cleanall
 	cd utils && $(MAKE) cleanall
 	$(CLEANCURRY) -r
-	rm -rf ${LOCALBIN} $(CYMAKE) $(LOCALPKG)
+	rm -rf $(LOCALBIN) $(CYMAKE) $(LOCALPKG)
 	cd scripts && $(MAKE) clean
 	-cd docs/src && $(MAKE) cleanall
 	-cd talks    && $(MAKE) cleanall
