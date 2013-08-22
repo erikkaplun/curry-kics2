@@ -372,7 +372,7 @@ generableInstance hoResult (FC.Type qf _ tnums cdecls) =
 
     genCons (FC.Cons qn arity _ _) | lookupFM hoResult qn == Just HO
                                        = applyF (mkHoConsName qn) (consArgs2gen arity)
-                                   | otherwise 
+                                   | otherwise
                                        = applyF qn (consArgs2gen arity)
 
     arities = list2ac $ map (intc . consArity) cdecls
@@ -434,14 +434,14 @@ normalFormExtConsRules qf funcName choiceFunc choicesFunc =
                 [Var cont, Var cd, Var i, Var xs, Var d, Var cs]))
   , (funcName, simpleRule [PVar cont, mkGuardPattern qf, PVar d, PVar cs]
         (applyF (basics "guardCons")
-                [Var cd, Var c, 
-                 applyF funcName [Var cont, Var e  
+                [Var cd, Var c,
+                 applyF funcName [Var cont, Var e
                                  , Var d, applyF (basics "addCs") [Var c, Var cs]]]))
   , (funcName, simpleRule [PVar us, mkFailPattern qf, PVar us, PVar us]
                 (applyF (basics "failCons") [Var cd, Var info]))
   ]
 
- where [d, info, c, cs, cd, cont,i,x,y,e,xs ,us] 
+ where [d, info, c, cs, cd, cont,i,x,y,e,xs ,us]
           = newVars ["d", "info", "c", "cs", "cd", "cont","i","x","y","e","xs", "_"]
 
 -- Generate searchNF instance rule for a data constructor
@@ -528,7 +528,7 @@ unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
               (unifBody genFunc) )
     unifBody funcName
       | carity == 0 = constF (basics "C_Success")
-      | otherwise   = foldr1 (\x xs -> applyF (basics "&") 
+      | otherwise   = foldr1 (\x xs -> applyF (basics "&")
                              [x, xs, Var nestingDepth, Var cs])
                         (map (\i -> applyF funcName
                                [Var (i,'x':show i), Var (i,'y':show i)
@@ -579,7 +579,7 @@ bindFreeRule ::QName -> QName -> (QName, Rule)
 bindFreeRule qf funcName@(_,bname) = (funcName,
   simpleRule
     [ PVar d, PVar i, mkFreeChoicesPattern qf "j"]
-    (applyF (pre (bname ++ "OrNarrow")) [Var d, Var i, Var cd, Var j, Var xs])) 
+    (applyF (pre (bname ++ "OrNarrow")) [Var d, Var i, Var cd, Var j, Var xs]))
       where [d,i,j,cd, xs] = newVars  ["d","i","j", "cd", "xs"]
 
 -- bind i (Choices_TYPENAME j@(NarrowedID _ _) xs) = [ConstraintChoices j (map (bind i) xs)]
@@ -878,5 +878,3 @@ cover = basics "cover"
 
 incCover :: QName
 incCover = basics "incCover"
-
-

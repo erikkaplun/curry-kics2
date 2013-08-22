@@ -25,7 +25,7 @@ data Entity = Entity EName [Attribute]
 
 type EName = String
 
-data Attribute = Attribute AName Domain Key Null  
+data Attribute = Attribute AName Domain Key Null
 
 type AName = String
 
@@ -33,20 +33,20 @@ data Key = NoKey
          | PKey
          | Unique
 
-type Null = Bool 
+type Null = Bool
 
-data Domain = IntDom      (Maybe Int) 
+data Domain = IntDom      (Maybe Int)
             | FloatDom    (Maybe Float)
             | CharDom     (Maybe Char)
-            | StringDom   (Maybe String) 
+            | StringDom   (Maybe String)
             | BoolDom     (Maybe Bool)
             | DateDom     (Maybe CalendarTime)
             | UserDefined String (Maybe String)
             | KeyDom      String   -- later used for foreign keys
 
 
-data Relationship = Relationship RName [REnd] 
- 
+data Relationship = Relationship RName [REnd]
+
 type RName = String
 
 data REnd = REnd EName Role Cardinality
@@ -59,7 +59,7 @@ type Role = String
 --- or an interval (e.g., (Between 1 (Max 4)) representing the
 --- cardinality (1,4), or (Between 0 Infinite) representing the
 --- cardinality (0,n)).
-data Cardinality = Exactly Int            
+data Cardinality = Exactly Int
                  | Between Int MaxValue
                  | Range Int (Maybe Int) -- for backward compatibility
 
