@@ -38,6 +38,8 @@ export ROOT          = $(CURDIR)
 export BINDIR        = $(ROOT)/bin
 # Directory where the libraries are located
 export LIBDIR        = $(ROOT)/lib
+# Directory where the libraries are located
+export DOCDIR        = $(ROOT)/docs
 # Directory where local executables are stored
 export LOCALBIN      = $(BINDIR)/.local
 # installation prefix, may be overwritten
@@ -157,6 +159,11 @@ install: kernel alltools
 	# make everything accessible:
 	chmod -R go+rX .
 
+.PHONY: alltools
+alltools:
+	cd currytools && $(MAKE) # various tools
+#	cd tools      && $(MAKE) # various tools
+
 # install the benchmark system
 .PHONY: benchmarks
 benchmarks:
@@ -175,19 +182,10 @@ kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) scripts
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src && $(MAKE)
 ifeq ($(GLOBALINSTALL),yes)
-	cd lib     && $(MAKE) unregister
-	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
-	# compile all libraries for a global installation
-	cd lib     && $(MAKE) compilelibs
-	cd lib     && $(MAKE) installlibs
+	cd lib     && $(MAKE) install
 	cd lib     && $(MAKE) acy
 endif
-
-.PHONY: alltools
-alltools:
-	cd currytools && $(MAKE) # various tools
-	cd tools      && $(MAKE) # various tools
 
 # create package database
 $(PKGDB):
@@ -330,6 +328,7 @@ $(MANUAL):
 
 .PHONY: manual
 manual:
+	$(MAKE) $(CURRYDOC)
 	# generate manual, if necessary:
 	@if [ -d docs/src ] ; then \
 	  $(MAKE) ${MANUALVERSION} && cd docs/src && $(MAKE) install ; \
@@ -482,7 +481,7 @@ typeinference:
 .PHONY: roundtrip
 roundtrip:
 	$(MAKE) maintainer-clean
-	$(MAKE) bootstrap
+	$(MAKE) kernel
 	$(MAKE) dist
 	$(MAKE) testdist
 	mv $(TARBALL) $(FULLNAME)-$(shell date +%Y%m%d).tar.gz
