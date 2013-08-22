@@ -44,6 +44,7 @@ data Verbosity
 data DumpFormat
   = DumpFlat        -- dump flat curry
   | DumpTypedFlat   -- dump typed flat curry
+  | DumpExtImports  -- dump typed flat curry with extended import list
   | DumpLifted      -- dump flat curry after case lifting
   | DumpEliminated  -- dump flat curry after cond elimination
   | DumpDefaulted   -- dump flat curry after defaulting
@@ -64,8 +65,9 @@ data Extension
   | ExtUnknown String
 
 allDumps :: [DumpFormat]
-allDumps = [ DumpFlat, DumpTypedFlat, DumpLifted, DumpEliminated, DumpDefaulted
-           , DumpRenamed, DumpFunDecls, DumpTypeDecls, DumpAbstractHs]
+allDumps = [ DumpFlat      , DumpTypedFlat , DumpExtImports, DumpLifted
+           , DumpEliminated, DumpDefaulted , DumpRenamed   , DumpFunDecls
+           , DumpTypeDecls , DumpAbstractHs]
 
 defaultOptions :: Options
 defaultOptions =

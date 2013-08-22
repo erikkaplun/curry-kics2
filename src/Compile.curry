@@ -31,6 +31,7 @@ import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase (liftCases)
 import EliminateCond (eliminateCond)
 import DefaultPolymorphic (defaultPolymorphic)
+import MissingImports (fixMissingImports)
 import Inference (inferProgFromProgEnv)
 import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
 import ModuleDeps (ModuleIdent, Source, deps)
@@ -134,8 +135,12 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let afcy = either error id (inferProgFromProgEnv progs fcy)
   dump DumpTypedFlat opts typedName (show fcy')
 
+  showDetail opts "Extending imports"
+  let pExtImports = fixMissingImports afcy
+  dump DumpExtImports opts extImportsName (show pExtImports)
+
   showDetail opts "Lifting case expressions"
-  let pLifted = liftCases True afcy
+  let pLifted = liftCases True pExtImports
   dump DumpLifted opts liftedName (show pLifted)
 
   showDetail opts "Eliminate calls to cond"
@@ -180,14 +185,15 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   return state'
 
     where
-    fcyName        = fcyFile $ withBaseName (++ "Dump")      mid
-    typedName      = fcyFile $ withBaseName (++ "Typed")     mid
-    liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
-    elimName       = fcyFile $ withBaseName (++ "ElimCond")  mid
-    defaultedName  = fcyFile $ withBaseName (++ "Defaulted") mid
-    renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid
-    funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
-    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
+    fcyName        = fcyFile $ withBaseName (++ "Dump"      ) mid
+    typedName      = fcyFile $ withBaseName (++ "Typed"     ) mid
+    extImportsName = fcyFile $ withBaseName (++ "ExtImports") mid
+    liftedName     = fcyFile $ withBaseName (++ "Lifted"    ) mid
+    elimName       = fcyFile $ withBaseName (++ "ElimCond"  ) mid
+    defaultedName  = fcyFile $ withBaseName (++ "Defaulted" ) mid
+    renamedName    = fcyFile $ withBaseName (++ "Renamed"   ) mid
+    funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
+    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
     destination    = destFile (opts :> optOutputSubdir) fn
     funcInfo       = funcInfoFile (opts :> optOutputSubdir) fn

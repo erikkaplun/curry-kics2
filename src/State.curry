@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 --- This module provides an implementation of the state monad
 --- @author fre, bjp
---- @version July, 2013
+--- @version August 2013
 --------------------------------------------------------------------------------
 
 module State
@@ -13,6 +13,9 @@ module State
   , putS
   , modifyS
   , sequenceS
+  , sequenceS_
+  , mapS
+  , mapS_
   , runState
   , evalState
   , execState
@@ -25,8 +28,8 @@ infixl 1 `bindS`, `bindS_`
 type State s a = s -> (a, s)
 
 bindS :: State s a -> (a -> State s b) -> State s b
-bindS state f s = let (x, newS) = state s
-                  in f x newS
+bindS state f s = case state s of
+                    (x, newS) -> newS `seq` f x newS
 
 bindS_ :: State s a -> State s b -> State s b
 bindS_ a b = a `bindS` \_ -> b
@@ -49,6 +52,15 @@ sequenceS =
                    newS `bindS` \as ->
                    returnS (a:as))
        (returnS [])
+
+sequenceS_ :: [State s a] -> State s ()
+sequenceS_ = foldr bindS_ (returnS ())
+
+mapS :: (a -> State s b) -> [a] -> State s [b]
+mapS f = sequenceS . map f
+
+mapS_ :: (a -> State s b) -> [a] -> State s ()
+mapS_ f = sequenceS_ . map f
 
 runState :: State s a -> s -> (a, s)
 runState state s = state s

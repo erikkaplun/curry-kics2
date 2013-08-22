@@ -1,8 +1,8 @@
 --- ----------------------------------------------------------------------------
 --- This module provides a transformation for typed FlatCurry which changes
---- the type of locally polymorphic sub-expressions to `()`.
+--- the type of locally polymorphic sub-expressions to `()` (unit type).
 ---
---- A locally polymorphic sub-expression is an expression where its type
+--- A locally polymorphic sub-expression is an expression whose type
 --- contains one or more type variables which are not included in the type
 --- of the enclosing function declaration.
 ---
@@ -18,14 +18,14 @@
 ---    f :: Bool
 ---    f = null ([] :: [()])
 ---
---- This allows the above mentioned type of functions to be compiled into
+--- This allows the above mentioned kind of functions to be compiled into
 --- Haskell without typing errors.
 ---
 --- @author Björn Peemöller
 --- @version July 2013
 --- ----------------------------------------------------------------------------
 
-module DefaultPolymorphic where
+module DefaultPolymorphic (defaultPolymorphic) where
 
 import FiniteMap
 import List ((\\), nub)
@@ -65,9 +65,10 @@ dpRule e@(AExternal _ _) = returnS e
 
 --- Transform a single expression.
 --- Expressions are transformed in a bottom-up manner, such that the smallest
---- polymorphic expression `e` with type `ty` is replaced with an explicitly
---- typed expression `e :: ty'`, where `ty'` is `ty` with the type variables
---- replaced by `()`.
+--- polymorphic expression `e` with type `ty`, where `ty` contains local
+--- type variables, is replaced with an explicitly typed expression
+--- `e :: ty'`, where `ty'` is `ty` with the local type variables
+--- replaced by `()` (the default type).
 --- Because the substitutions made are collected, repetitive substitution
 --- of the same type variables is avoided. That is,
 ---
@@ -81,7 +82,7 @@ dpRule e@(AExternal _ _) = returnS e
 ---
 ---     null (([] :: [()]) ++ ([] :: [()]))
 ---
---- because both `[]` share the same type variable.
+--- because both `[]` expressions share the same local type variable.
 dpExpr :: AExpr TypeExpr -> DPM (AExpr TypeExpr)
 dpExpr = trExpr var lit cmb lat fre orr cse bra typ
   where
@@ -98,8 +99,8 @@ dpExpr = trExpr var lit cmb lat fre orr cse bra typ
   bra         p e = ABranch p `liftS` e
   typ ty    e ty2 = ((\e' -> ATyped ty e' ty2) `liftS` e) `bindS` default ty
 
---- Check whether the given `TypeExpr` contains new type variables and
---- replace them with `defaultType` in this case.
+--- Check whether the given `TypeExpr` contains new local type variables
+--- and replace them with the `defaultType` if necessary.
 default :: TypeExpr -> AExpr TypeExpr -> DPM (AExpr TypeExpr)
 default ty e
   = getS `bindS` \sub ->
