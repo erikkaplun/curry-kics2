@@ -14,7 +14,7 @@ GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)
 # Call to ghc binary
 GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
-KICS2C     = $(COMP) -v2 -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
+KICS2C     = $(COMP) -v1 -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
 # options for the bootstrapping compiler
 CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
 
@@ -39,16 +39,16 @@ bootstrap:
 	@echo "Compiling stage 1"
 	${MAKE} CompileInitial
 	cp ${COMP} ${LOCALBIN}/stage1
+	$(CLEANCURRY) -r
 
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
-	$(BINDIR)/cleancurry -r
 	${MAKE} CompileBoot
 	cp ${COMP} ${LOCALBIN}/stage2
+	$(CLEANCURRY) -r
 
 	# Create kics2 via kics2 (stage 3)
 	@echo "Compiling stage 3"
-	$(BINDIR)/cleancurry -r
 	${MAKE} CompileBoot
 	cp ${COMP} ${LOCALBIN}/stage3
 
@@ -92,17 +92,14 @@ CompileBoot: CompileBoot.hs $(SUBDIR)/Curry_Compile.hs
 # Although $(INSTALLCURRY) is used by the compiler it must not be included
 # in the dependencies because for the distribution installation it would
 # require a working KICS2 binary *during* installation.
-$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry) $(COMP)
+$(SUBDIR)/Curry_Compile.hs: Compile.curry $(COMPILE_DEPS:=.curry)
 	$(KICS2C) $<
 
 # recompile installation information and the compiler
 .PHONY: updateInstallInfo
-updateInstallInfo: $(COMP)
+updateInstallInfo:
 	$(KICS2C) $(INSTALLCURRY)
 	$(MAKE) CompileBoot
-
-$(COMP):
-	cd .. && $(MAKE) $@
 
 ########################################################################
 # REPL
@@ -114,5 +111,5 @@ REPLBoot: REPLBoot.hs $(SUBDIR)/Curry_REPL.hs
 	mkdir -p $(LOCALBIN)
 	$(GHC_CALL) -o $(REPL) $<
 
-$(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY) $(COMP)
+$(SUBDIR)/Curry_REPL.hs: REPL.curry $(REPL_DEPS:=.curry) $(INSTALLCURRY)
 	$(KICS2C) $<

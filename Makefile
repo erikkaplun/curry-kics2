@@ -150,43 +150,36 @@ all:
 	@echo "Make finished at `date`" >> ${MAKELOG}
 	@echo "Make process logged in file ${MAKELOG}"
 
-# install the complete system if the kics2 compiler is present
+# install the complete system
 .PHONY: install
-install: kernel alltools
-	cd cpns       && $(MAKE) # Curry Port Name Server demon
-	cd www        && $(MAKE) # scripts for dynamic web pages
-	$(MAKE) manual
-	# make everything accessible:
+install: kernel tools manual
 	chmod -R go+rX .
 
-.PHONY: alltools
-alltools:
-	cd currytools && $(MAKE) # various tools
-#	cd tools      && $(MAKE) # various tools
-
-# install the benchmark system
-.PHONY: benchmarks
-benchmarks:
-	cd benchmarks && $(MAKE)
-
-# uninstall globally installed cabal packages
+# remove files from user's home directory
 .PHONY: uninstall
 uninstall:
 	rm -rf $(HOME)/.kics2rc $(HOME)/.kics2rc.bak $(HOME)/.kics2i_history
 	@echo "Just remove this directory to finish uninstallation."
 
+# install additional tools
+.PHONY: tools
+tools:
+	cd currytools && $(MAKE) # shared tools
+	cd tools      && $(MAKE) # compiler specific tools
+	cd cpns       && $(MAKE) # Curry Port Name Server demon
+	cd www        && $(MAKE) # scripts for dynamic web pages
+
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
-kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) scripts
+kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts
 	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
-	cd src && $(MAKE)
+	cd src     && $(MAKE) # build compiler
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
 	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
-	cd lib     && $(MAKE) install
-	cd lib     && $(MAKE) acy
+	cd lib     && $(MAKE)
 endif
 
 # create package database
@@ -195,6 +188,7 @@ $(PKGDB):
 	$(CABAL) update
 	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
+# create frontend binary
 $(CYMAKE):
 	cd frontend && $(MAKE)
 
@@ -206,12 +200,13 @@ $(CLEANCURRY): utils/cleancurry$(EXE_SUFFIX)
 	mkdir -p $(@D)
 	cp $< $@
 
+# build installation utils
 utils/%:
 	cd utils && $(MAKE) $(@F)
 
 .PHONY: clean
 clean: $(CLEANCURRY)
-	rm -f *.log
+	rm -f $(MAKELOG)
 	rm -f $(INSTALLHS) $(INSTALLCURRY)
 	cd cpns       && $(MAKE) clean
 	-cd lib/.curry/kics2      && rm -f *.hi *.o
@@ -439,36 +434,20 @@ $(TARBALL): $(COMP) $(CYMAKE) $(MANUAL)
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
-
 ##############################################################################
 # Development targets
 ##############################################################################
 
-$(COMP):
-	$(MAKE) bootstrap
-
-BOOTLOG = boot.log
-
-# bootstrap the compiler with logging
-.PHONY: bootstrapwithlogging
-bootstrapwithlogging:
-	@rm -f ${BOOTLOG}
-	@echo "Bootstrapping started at `date`" > ${BOOTLOG}
-	$(MAKE) bootstrap 2>&1 | tee -a ../${BOOTLOG}
-	@echo "Bootstrapping finished at `date`" >> ${BOOTLOG}
-	@echo "Bootstrap process logged in file ${BOOTLOG}"
-
 # bootstrap the compiler
 .PHONY: bootstrap
-bootstrap: $(PKGDB) $(INSTALLCURRY) $(CYMAKE) scripts $(CLEANCURRY)
-	cd src && $(MAKE) bootstrap
+bootstrap: $(COMP)
+
+.PHONY: frontend
+frontend: $(CYMAKE)
 
 .PHONY: Compile
 Compile: $(PKGDB) $(INSTALLCURRY) scripts
 	cd src && $(MAKE) CompileBoot
-
-.PHONY: frontend
-frontend: $(CYMAKE)
 
 .PHONY: REPL
 REPL: $(PKGDB) $(INSTALLCURRY) scripts
@@ -478,11 +457,20 @@ REPL: $(PKGDB) $(INSTALLCURRY) scripts
 typeinference:
 	cd currytools && $(MAKE) typeinference
 
+# install the benchmark system
+.PHONY: benchmarks
+benchmarks:
+	cd benchmarks && $(MAKE)
+
+$(COMP): $(PKGDB) $(INSTALLCURRY) $(CYMAKE) scripts $(CLEANCURRY)
+	cd src && $(MAKE) bootstrap
+
 # Peform a full bootstrap - distribution - installation - uninstallation
 # lifecycle to test consistency of the whole process.
 .PHONY: roundtrip
 roundtrip:
 	$(MAKE) maintainer-clean
+	$(MAKE) bootstrap
 	$(MAKE) kernel
 	$(MAKE) dist
 	$(MAKE) testdist
