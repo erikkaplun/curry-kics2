@@ -126,29 +126,29 @@ loadAnalysis total state ((mid, (fn, _)), current) = do
 compileModule :: [(ModuleIdent, Prog)] -> Int -> State
               -> ((ModuleIdent, Source), Int) -> IO State
 compileModule progs total state ((mid, (fn, fcy)), current) = do
-  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn destination
+  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn dest
 
   let fcy' = filterPrelude opts fcy
   dump DumpFlat opts fcyName (show fcy')
 
   showDetail opts "Inferring types"
   let afcy = either error id (inferProgFromProgEnv progs fcy)
-  dump DumpTypedFlat opts typedName (show fcy')
-
-  showDetail opts "Extending imports"
-  let pExtImports = fixMissingImports afcy
-  dump DumpExtImports opts extImportsName (show pExtImports)
+  dump DumpTypedFlat opts typedName (show afcy)
 
   showDetail opts "Lifting case expressions"
-  let pLifted = liftCases True pExtImports
+  let pLifted = liftCases True afcy
   dump DumpLifted opts liftedName (show pLifted)
 
   showDetail opts "Eliminate calls to cond"
   let pElim = eliminateCond pLifted
   dump DumpEliminated opts elimName (show pElim)
 
+  showDetail opts "Extending imports"
+  let pExtImports = fixMissingImports pElim
+  dump DumpExtImports opts extImportsName (show pExtImports)
+
   showDetail opts "Default locally polymorphic sub-expressions"
-  let pDefaulted = defaultPolymorphic pElim
+  let pDefaulted = defaultPolymorphic pExtImports
   dump DumpDefaulted opts defaultedName (show pDefaulted)
 
   showDetail opts "Renaming symbols"
@@ -175,8 +175,8 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   showDetail opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  showDetail opts $ "Generating Haskell module " ++ destination
-  writeFileInDir destination integrated
+  showDetail opts $ "Generating Haskell module " ++ dest
+  writeFileInDir dest integrated
 
   showDetail opts $ "Writing auxiliary info file " ++ funcInfo
   writeQTermFileInDir funcInfo (extractFuncInfos funs)
@@ -195,11 +195,11 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
-    destination    = destFile (opts :> optOutputSubdir) fn
+    dest           = destFile (opts :> optOutputSubdir) fn
     funcInfo       = funcInfoFile (opts :> optOutputSubdir) fn
     opts           = state :> compOptions
-    fcyFile f = withExtension (const ".fcy") f
-    ahsFile f = withExtension (const ".ahs") f
+    fcyFile f      = withExtension (const ".fcy") f
+    ahsFile f      = withExtension (const ".ahs") f
 
 -- Extract some basic information (deterministic, IO) about all functions
 extractFuncInfos funs =
