@@ -15,8 +15,8 @@ endif
 all: $(BINS) $(BATS)
 	@echo "Scripts generated in directory $(<D)."
 
-.PHONY: clean
-clean:
+.PHONY: cleanall
+cleanall:
 	rm -f $(BINS) $(BATS)
 
 $(BINDIR)/%: %.sh

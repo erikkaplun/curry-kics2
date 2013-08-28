@@ -206,33 +206,31 @@ utils/%:
 
 .PHONY: clean
 clean: $(CLEANCURRY)
-	rm -f $(MAKELOG)
-	rm -f $(INSTALLHS) $(INSTALLCURRY)
-	cd cpns       && $(MAKE) clean
-	-cd lib/.curry/kics2      && rm -f *.hi *.o
-	-cd lib/meta/.curry/kics2 && rm -f *.hi *.o
-	cd runtime    && $(MAKE) clean
-	cd src        && $(MAKE) clean
-	cd currytools && $(MAKE) clean
-	cd frontend   && $(MAKE) clean
-	cd tools      && $(MAKE) clean
-	cd utils      && $(MAKE) clean
-	cd www        && $(MAKE) clean
 	-cd benchmarks && $(MAKE) clean
-	-cd docs/src && $(MAKE) clean
+	cd cpns        && $(MAKE) clean
+	cd currytools  && $(MAKE) clean
+	-cd docs/src   && $(MAKE) clean
+	cd frontend    && $(MAKE) clean
+	cd lib         && $(MAKE) clean
+	cd runtime     && $(MAKE) clean
+	cd src         && $(MAKE) clean
+	-cd talks      && $(MAKE) clean
+	cd tools       && $(MAKE) clean
+	cd utils       && $(MAKE) clean
+	cd www         && $(MAKE) clean
+	rm -f $(MAKELOG) rm -f $(INSTALLHS) $(INSTALLCURRY)
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
 cleanall: clean
-	cd lib   && $(MAKE) cleanall
-	cd src   && $(MAKE) cleanall
-	cd utils && $(MAKE) cleanall
-	$(CLEANCURRY) -r
-	rm -rf $(LOCALBIN) $(CYMAKE) $(LOCALPKG)
-	cd scripts && $(MAKE) clean
 	-cd docs/src && $(MAKE) cleanall
+	cd lib       && $(MAKE) cleanall
+	cd scripts   && $(MAKE) cleanall
+	cd src       && $(MAKE) cleanall
 	-cd talks    && $(MAKE) cleanall
-	rm $(CLEANCURRY)
+	cd utils     && $(MAKE) cleanall
+	rm -rf $(LOCALBIN) $(CYMAKE) $(LOCALPKG)
+	rm -f  $(CLEANCURRY)
 
 .PHONY: maintainer-clean
 maintainer-clean: cleanall
