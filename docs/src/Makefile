@@ -43,20 +43,20 @@ syntax.tex: syntax.sty
 
 # format markdown syntax description as LaTeX
 markdown_syntax.tex: markdown_syntax.txt
-	$(KICS2) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2LaTeX' :q
+	$(REPL) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2LaTeX' :q
 
 # format markdown syntax description as HTML page
 $(DOCDIR)/markdown_syntax.html: markdown_syntax.txt
-	$(KICS2) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "Markdown Syntax"' :q
+	$(REPL) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "Markdown Syntax"' :q
 
 # format installation description as HTML page
 $(DOCDIR)/INSTALL.html: $(ROOT)/INSTALL.txt
-	$(KICS2) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Installation"' :q
+	$(REPL) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Installation"' :q
 
 # format repository installation description as HTML page
 $(DOCDIR)/GITINSTALL.html: $(ROOT)/GITINSTALL.txt
-	$(KICS2) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Repository"' :q
+	$(REPL) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Repository"' :q
 
 # format release notes as HTML page
 $(DOCDIR)/RELNOTES.html: $(ROOT)/RELNOTES.txt
-	$(KICS2) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Release Notes"' :q
+	$(REPL) :add Markdown :eval 'readFile "$<" >>= writeFile "$@" . markdownText2CompleteHTML "KiCS2 Release Notes"' :q

@@ -7,7 +7,7 @@ erd2curry: erd2curry.curry \
 	  ERDGoodies.curry ERD2Graph.curry \
 	  ERD.curry
 	# create saved state for top-level function "main":
-	$(KICS2) ${REPL_OPTS} :set path ../../src :l erd2curry :save :q
+	$(REPL) $(REPL_OPTS) :set path $(ROOT)/src :l erd2curry :save :q
 	mv erd2curry $(BINDIR)/erd2curry
 
 .PHONY: clean

@@ -56,8 +56,6 @@ export PKGDB         = $(LOCALPKG)/kics2.conf.d
 export COMP         = $(LOCALBIN)/kics2c$(EXE_SUFFIX)
 # The REPL binary, used for building the libraries
 export REPL         = $(LOCALBIN)/kics2i$(EXE_SUFFIX)
-# The kics2 start script
-export KICS2        = $(BINDIR)/kics2
 # The default options for the REPL, used for libraries and tools
 export REPL_OPTS    = :set v2 :set -ghci
 # The frontend binary
