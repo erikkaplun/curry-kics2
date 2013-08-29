@@ -157,16 +157,17 @@ data LocalDecl
 
 --- Data type for representing Haskell expressions.
 data Expr
-  = Var      VarIName          -- variable (unique index / name)
-  | Lit      Literal           -- literal (Integer/Float/Char constant)
-  | Symbol   QName             -- a defined symbol with module and name
-  | Apply    Expr Expr         -- application (e1 e2)
-  | Lambda   [Pattern] Expr    -- lambda abstraction
-  | Let      [LocalDecl] Expr  -- local let declarations
-  | DoExpr   [Statement]       -- do expression
-  | ListComp Expr [Statement]  -- list comprehension
-  | Case     Expr [BranchExpr] -- case expression
-  | Typed    Expr TypeExpr     -- typed expression
+  = Var        VarIName          -- variable (unique index / name)
+  | Lit        Literal           -- literal (Integer/Float/Char constant)
+  | Symbol     QName             -- a defined symbol with module and name
+  | Apply      Expr Expr         -- application (e1 e2)
+  | Lambda     [Pattern] Expr    -- lambda abstraction
+  | Let        [LocalDecl] Expr  -- local let declarations
+  | DoExpr     [Statement]       -- do expression
+  | ListComp   Expr [Statement]  -- list comprehension
+  | Case       Expr [BranchExpr] -- case expression
+  | Typed      Expr TypeExpr     -- typed expression
+  | IfThenElse Expr Expr Expr    -- if-then-else expression
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
