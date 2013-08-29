@@ -172,19 +172,22 @@ renameSymbolInTypeExpr ren texp = case texp of
 
 renameSymbolInExpr :: (QName -> QName) -> Expr -> Expr
 renameSymbolInExpr ren exp = case exp of
-  Symbol qf        -> Symbol (ren qf)
-  Apply e1 e2      -> Apply (renameSymbolInExpr ren e1)
-                              (renameSymbolInExpr ren e2)
-  Lambda pats e    -> Lambda (map (renameSymbolInPat ren) pats)
-                               (renameSymbolInExpr ren e)
-  Let locals e     -> Let (map (renameSymbolInLocal ren) locals)
-                               (renameSymbolInExpr ren e)
-  DoExpr stats     -> DoExpr (map (renameSymbolInStat ren) stats)
-  ListComp e stats -> ListComp (renameSymbolInExpr ren e)
-                                 (map (renameSymbolInStat ren) stats)
-  Case e branches  -> Case (renameSymbolInExpr ren e)
-                             (map (renameSymbolInBranch ren) branches)
-  Typed e ty       -> Typed (renameSymbolInExpr ren e) ty
+  Symbol qf           -> Symbol (ren qf)
+  Apply e1 e2         -> Apply (renameSymbolInExpr ren e1)
+                                 (renameSymbolInExpr ren e2)
+  Lambda pats e       -> Lambda (map (renameSymbolInPat ren) pats)
+                                  (renameSymbolInExpr ren e)
+  Let locals e        -> Let (map (renameSymbolInLocal ren) locals)
+                                  (renameSymbolInExpr ren e)
+  DoExpr stats        -> DoExpr (map (renameSymbolInStat ren) stats)
+  ListComp e stats    -> ListComp (renameSymbolInExpr ren e)
+                                    (map (renameSymbolInStat ren) stats)
+  Case e branches     -> Case (renameSymbolInExpr ren e)
+                                (map (renameSymbolInBranch ren) branches)
+  Typed e ty          -> Typed (renameSymbolInExpr ren e) ty
+  IfThenElse e1 e2 e3 -> IfThenElse (renameSymbolInExpr ren e1)
+                                      (renameSymbolInExpr ren e2)
+                                        (renameSymbolInExpr ren e3)
   _ -> exp -- Var or Lit
 
 renameSymbolInPat :: (QName -> QName) -> Pattern -> Pattern

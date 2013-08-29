@@ -299,6 +299,10 @@ showExprOpt opts (Case expr branches)  =
           ++ showBlock (combineMap (showBranchExpr opts) branches "\n")
 showExprOpt opts (Typed e ty) = '(' : showExprOpt opts e ++ " :: "
                                 ++ showTypeExpr opts False ty ++ ")"
+showExprOpt opts (IfThenElse boolExpr expr1 expr2)  =
+  "if " ++ (showBoxedExpr opts boolExpr)
+        ++ "\n    then " ++ (showBoxedExpr opts expr1)
+        ++ "\n    else " ++ (showBoxedExpr opts expr2)
 
 showSymbol :: Options -> QName -> String
 showSymbol opts (modName, symName)
