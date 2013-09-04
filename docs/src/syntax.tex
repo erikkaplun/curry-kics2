@@ -337,7 +337,7 @@ assumed to start in column 0.
 \production{ConstrDecl}{
        \extension{DataConstr} \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}%
 \extension{
-  \alt SimpleTypeExpr ConsOp SimpleTypeExpr
+  \alt SimpleTypeExpr ConsOp TypeConsExpr
        \margtext{infix data constructor}
 }
 }
@@ -345,11 +345,16 @@ assumed to start in column 0.
 
 % Type expression
 \production{TypeExpr}{
-  SimpleTypeExpr \opt{\term{->} TypeExpr}
+  \extension{TypeConsExpr} \opt{\term{->} TypeExpr}
+}
+\extension{
+\production{TypeConsExpr}{
+  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}
+  \alt SimpleTypeExpr
+}
 }
 \production{SimpleTypeExpr}{
-  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}
-  \alt TypeVarID
+       TypeVarID
   \alt \term{()}  \margtext{unit type}
   \alt \term{(} \seq{TypeExpr}{,}{n} \term{)} \margcomb{tuple type}{n>1}
   \alt \term{[} TypeExpr \term{]} \margtext{list type}
