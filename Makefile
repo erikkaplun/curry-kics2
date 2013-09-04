@@ -368,7 +368,7 @@ testdist: $(TARBALL)
 	cp $(TARBALL) $(TMP)
 	rm -rf $(TMPDIR)
 	cd $(TMP) && tar xzfv $(TARBALL)
-	cd $(TMPDIR) && $(MAKE)
+	cd $(TMPDIR) && $(MAKE) install
 	rm -rf $(TMPDIR)
 	rm -rf $(TMP)/$(TARBALL)
 	@echo "Integration test successfully completed."
