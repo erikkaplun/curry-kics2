@@ -349,12 +349,13 @@ assumed to start in column 0.
 }
 \extension{
 \production{TypeConsExpr}{
-  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n \geq 0}
+  QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n > 0}
   \alt SimpleTypeExpr
 }
 }
 \production{SimpleTypeExpr}{
        TypeVarID
+  \extension{\alt QTypeConstrID}
   \alt \term{()}  \margtext{unit type}
   \alt \term{(} \seq{TypeExpr}{,}{n} \term{)} \margcomb{tuple type}{n>1}
   \alt \term{[} TypeExpr \term{]} \margtext{list type}
