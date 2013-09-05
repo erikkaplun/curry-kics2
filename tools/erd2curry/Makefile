@@ -1,6 +1,8 @@
 # Makefile for ERD -> Curry compiler
 
-erd2curry: erd2curry.curry \
+ERD2CURRY=$(BINDIR)/erd2curry
+
+$(ERD2CURRY): erd2curry.curry \
 	  CodeGeneration.curry \
 	  Transformation.curry \
 	  XML2ERD.curry \
@@ -8,9 +10,9 @@ erd2curry: erd2curry.curry \
 	  ERD.curry
 	# create saved state for top-level function "main":
 	$(REPL) $(REPL_OPTS) :set path $(ROOT)/src :l erd2curry :save :q
-	mv erd2curry $(BINDIR)/erd2curry
+	mv erd2curry $@
 
 .PHONY: clean
 clean:
 	$(CLEANCURRY)
-	rm -f $(BINDIR)/erd2curry
+	rm -f $(ERD2CURRY)
