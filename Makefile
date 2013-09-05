@@ -203,6 +203,7 @@ utils/%:
 	cd utils && $(MAKE) $(@F)
 
 # run the test suite to check the installation
+.PHONY: runtest
 runtest: testsuite/doTest
 	cd testsuite && ./doTest --nogui
 
@@ -377,6 +378,7 @@ testdist: $(TARBALL)
 	rm -rf $(TMPDIR)
 	cd $(TMP) && tar xzfv $(TARBALL)
 	cd $(TMPDIR) && $(MAKE) install
+	cd $(TMPDIR) && $(MAKE) runtest
 	rm -rf $(TMPDIR)
 	rm -rf $(TMP)/$(TARBALL)
 	@echo "Integration test successfully completed."
