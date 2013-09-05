@@ -202,6 +202,10 @@ $(CLEANCURRY): utils/cleancurry$(EXE_SUFFIX)
 utils/%:
 	cd utils && $(MAKE) $(@F)
 
+# run the test suite to check the installation
+runtest: testsuite/doTest
+	cd testsuite && ./doTest --nogui
+
 .PHONY: clean
 clean: $(CLEANCURRY)
 	-cd benchmarks && $(MAKE) clean
