@@ -120,7 +120,7 @@ printOneValue prt (Reset l _) = l >>= printOneValue prt
 
 -- Print all values of a IO monad list:
 printAllValues :: Show a => (a -> IO ()) -> IOList a -> IO ()
-printAllValues _   Nil            = putStrLn "No more values"
+printAllValues _   Nil            = return ()
 printAllValues _   Abort          = warnAbort
 printAllValues prt (Cons x getXs) = prt x >> getXs >>= printAllValues prt
 printAllValues prt (Reset    l _) = l >>= printAllValues prt
@@ -137,6 +137,7 @@ printValsOnDemand md prt rs = do
 warnAbort :: IO ()
 warnAbort = putStrLn "Warning: Search aborted (maximum depth reached)"
 
+-- Print all values of a IO monad list on request by the user:
 printInteractive :: Show a => Bool -> MoreDefault -> (a -> IO ()) -> IOList a -> IO ()
 printInteractive _        _  _   Abort          = warnAbort
 printInteractive _        _  _   Nil            = putStrLn "No more values"
