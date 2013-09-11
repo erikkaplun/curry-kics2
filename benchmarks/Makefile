@@ -8,7 +8,7 @@ all: Benchmarks
 # generate binary for Benchmarks program
 Benchmarks: Benchmarks.curry
 	$(CLEANCURRY)
-	$(KICS2) :l Benchmarks :save :q
+	$(REPL) $(REPL_OPTS) :load Benchmarks :save :q
 
 # publish all relevant benchmarks in the web
 .PHONY: publish

@@ -5,11 +5,11 @@ all: submitform Registry
 
 submitform: SubmitForm.curry $(LIBDIR)/HtmlCgi.curry \
 	    $(LIBDIR)/NamedSocket.curry $(LIBDIR)/CPNS.curry
-	$(KICS2) :set v2 :l SubmitForm :save :q
+	$(REPL) $(REPL_OPTS) :load SubmitForm :save :q
 	mv SubmitForm submitform
 
 Registry: Registry.curry $(LIBDIR)/HtmlCgi.curry
-	$(KICS2) :set v2 :l Registry :save :q
+	$(REPL) $(REPL_OPTS) :load Registry :save :q
 
 .PHONY: cleanServers
 cleanServers:

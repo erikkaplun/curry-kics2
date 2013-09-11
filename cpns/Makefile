@@ -4,7 +4,7 @@ CPNSD=CPNSD
 LOGFILE="/tmp/CurryPNSD.log"
 
 ${CPNSD}: ../lib/CPNS.curry
-	$(KICS2) :set v2 :load CPNSD :save :q
+	$(REPL) $(REPL_OPTS) :load CPNSD :save :q
 
 # Shows the currently registered ports:
 .PHONY: show

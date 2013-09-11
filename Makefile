@@ -356,7 +356,7 @@ FULLNAME = kics2-$(VERSION)
 TMPDIR   = $(TMP)/$(FULLNAME)
 TARBALL  = $(FULLNAME).tar.gz
 
-# generate a source distribution of KICS2
+# generate a source distribution of KiCS2
 .PHONY: dist
 dist:
 	# remove old distribution
