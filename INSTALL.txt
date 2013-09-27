@@ -19,7 +19,7 @@ in particular the [Glasgow Haskell Compiler] and [Cabal],
 a Haskell package management system. They are both shipped with the
 [Haskell Platform], a ready-to-use Haskell ecosystem.
 
-For instance, if you run Ubuntu Linux, you can easily install it by
+For instance, if you run Ubuntu Linux, you can easily install
 these packages by
 
     sudo apt-get install haskell-platform
@@ -53,7 +53,10 @@ Curry browser, unit tester, etc).
 When the installation is finished, the commands to use KiCS2
 are installed in the local directory `bin`.
 In order to use the system easily, add the directory `kics2home/bin`
-to your path, e.g., by the command `export PATH=$PATH:kics2home/bin`
+to your path, e.g., by the command
+
+    export PATH=kics2home/bin:$PATH
+
 in the `bash`.
 Now you can start KiCS2 via the command `kics2`.
 If you do no want to have the specific version number of KiCS2
@@ -69,7 +72,7 @@ Configuring the installation
 
 The normal installation as outlined above will use the
 [Glasgow Haskell Compiler] and the [Cabal] versions visible in the path.
-If you wish to use other versions, for example because you're
+If you wish to use other versions, for example because you are
 experimenting with different versions of GHC or Cabal,
 you can specify one or both of them by
 
