@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version September 2012
+--- @version September 2013
 --- --------------------------------------------------------------------------
 
 module REPL where
@@ -182,8 +182,9 @@ getAcyOfMainGoal rst = do
                       $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
                       $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
                         defaultParams
-  callFrontendWithParams ACY frontendParams mainGoalProg
-  prog <- tryReadACYFile acyMainGoalFile
+  prog <- catch (callFrontendWithParams ACY frontendParams mainGoalProg >>
+                 tryReadACYFile acyMainGoalFile)
+                (\_ -> return Nothing)
   removeFileIfExists acyMainGoalFile
   return prog
 --   acyExists <- doesFileExist acyMainGoalFile
