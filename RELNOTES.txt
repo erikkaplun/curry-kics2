@@ -6,6 +6,11 @@ Release notes for KiCS2 Version 0.3.1 (under development)
 
 Changes to version 0.3.0:
 
+  * REPL: new (experimental) options `prelude` (for defining the name
+    of the standard prelude) and `parser` (for setting additional
+    front-end options) included.
+  * Library `Distribution`: front-end parameters extended by supporting
+    "special" (i.e., aribrary) arguments.
   * Library `Distribution` and `FlatCurry`: after calling the front end,
     an exception is raised if the front end returns with an error
     (due to an illegal source program).

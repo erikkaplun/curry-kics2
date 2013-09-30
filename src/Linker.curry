@@ -37,7 +37,8 @@ type ReplState =
                                -- 3 = show intermediate messages, commands
                                -- 4 = show intermediate results
   , importPaths  :: [String]   -- additional directories to search for imports
-  , libPaths     :: [String]   -- direcoties containg the standard libraries
+  , libPaths     :: [String]   -- directories containg the standard libraries
+  , preludeName  :: String     -- the name of the standard prelude
   , outputSubdir :: String
   , mainMod      :: String     -- name of main module
   , addMods      :: [String]   -- names of additionally added modules
@@ -49,6 +50,7 @@ type ReplState =
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
   , useGhci      :: Bool       -- use ghci to evaluate main goal
+  , parseOpts    :: String     -- additional options for the front end
   , cmpOpts      :: String     -- additional options for calling kics2 compiler
   , ghcOpts      :: String     -- additional options for ghc compilation
   , rtsOpts      :: String     -- run-time options for ghc
@@ -67,6 +69,7 @@ initReplState =
   , verbose      := 1
   , importPaths  := []
   , libPaths     := map (Inst.installDir </>) ["lib", "lib" </> "meta"]
+  , preludeName  := "Prelude"
   , outputSubdir := ".curry" </> "kics2"
   , mainMod      := "Prelude"
   , addMods      := []
@@ -78,6 +81,7 @@ initReplState =
   , showBindings := True
   , showTime     := False
   , useGhci      := False
+  , parseOpts    := ""
   , cmpOpts      := ""
   , ghcOpts      := ""
   , rtsOpts      := ""
@@ -213,7 +217,9 @@ mainModule rst isdet isio mbBindings = unlines
   , if rst :> interactive then "import MonadList" else ""
   , "import Basics"
   , "import SafeExec"
-  , if mbBindings==Nothing then "" else "import Curry_Prelude"
+  , if mbBindings==Nothing
+    then ""
+    else ("import Curry_"++ rst :> preludeName)
   , "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"

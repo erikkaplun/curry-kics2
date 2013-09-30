@@ -66,11 +66,13 @@ lookupModule opts mod = lookupFileInPath mod [".curry", ".lcurry"]
                         (map dropTrailingPathSeparator importPaths)
   where importPaths = "." : opts :> optImportPaths
 
-sourceDeps ::Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
+sourceDeps :: Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts m fn mEnv = do
-  fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn) $
-                             setFullPath importPaths $
-                             setQuiet quiet defaultParams
+  fcy@(Prog _ imps _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn)
+                               $ setFullPath importPaths
+                               $ setQuiet quiet
+                               $ setSpecials (opts :> optParser)
+                                 defaultParams
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) imps
     where
       importPaths = "." : opts :> optImportPaths

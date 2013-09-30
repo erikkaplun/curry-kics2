@@ -30,6 +30,7 @@ type Options =
   , optOptimization       :: OptimLevel   -- level of optimization
   , optDump               :: [DumpFormat] -- dump intermediate results
   , optExtensions         :: [Extension]  -- language extensions
+  , optParser             :: String       -- additional front-end options
   }
 
 -- |Verbosity levels of the compiler
@@ -80,6 +81,7 @@ defaultOptions =
   , optOptimization := OptimStrictSupply
   , optDump         := []
   , optExtensions   := []
+  , optParser       := ""
   }
 
 debugOptions = { optVerbosity := VerbDetails
@@ -182,6 +184,9 @@ options =
       (ReqArg (\arg opts -> { optExtensions :=
         nub (parseExtension arg : opts :> optExtensions) | opts }) "EXT")
       "enable language extension EXT"
+  , Option [] ["parse-options"]
+      (ReqArg (\arg opts -> { optParser := arg | opts }) "OPTIONS")
+      "additional options for the parser"
   ]
 
 versionString :: String

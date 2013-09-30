@@ -1,5 +1,5 @@
 --- --------------------------------------------------------------------------
---- This is the main module of the interactice system.
+--- This is the main module of the interactive system.
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
@@ -177,11 +177,13 @@ getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
 getAcyOfMainGoal rst = do
   let mainGoalProg    = dropExtension mainGoalFile
       acyMainGoalFile = inCurrySubdir $ mainGoalProg <.> "acy"
-      frontendParams  = setQuiet    (rst :> verbose < 2)
-                      $ setFullPath    (loadPaths rst)
-                      $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
-                      $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
-                        defaultParams
+      frontendParams  =
+          setQuiet       (rst :> verbose < 1)
+        $ setFullPath    (loadPaths rst)
+        $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
+        $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
+        $ setSpecials    (rst :> parseOpts)
+          defaultParams
   prog <- catch (callFrontendWithParams ACY frontendParams mainGoalProg >>
                  tryReadACYFile acyMainGoalFile)
                 (\_ -> return Nothing)
@@ -230,7 +232,8 @@ getModuleOfFunction rst funname = do
         _ -> ""
 
 -- Compile main program with goal:
-compileProgramWithGoal :: ReplState -> Bool -> String -> IO (ReplState, MainCompile)
+compileProgramWithGoal :: ReplState -> Bool -> String
+                       -> IO (ReplState, MainCompile)
 compileProgramWithGoal rst createExecutable goal = do
   let infoFile = funcInfoFile (rst :> outputSubdir) mainGoalFile
   removeFileIfExists infoFile
@@ -325,10 +328,13 @@ compileCurryProgram rst curryprog = do
   system kics2Cmd
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
-  kics2Opts = unwords
-              [ "-v" ++ show (rst :> verbose)
-              , "-i" ++ intercalate ":" (loadPaths rst)
-              ]
+  kics2Opts = unwords $
+               [ "-v" ++ show (rst :> verbose)
+               , "-i" ++ intercalate ":" (loadPaths rst)
+               ] ++
+               (if null (rst :> parseOpts)
+                then []
+                else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
 
 --- Execute main program and show run time:
@@ -453,7 +459,7 @@ processLoad rst args = do
 --- Process :reload command
 processReload :: ReplState -> String -> IO (Maybe ReplState)
 processReload rst args
-  | rst :> mainMod == "Prelude"
+  | rst :> mainMod == rst :> preludeName
   = skipCommand "no program loaded!"
   | null (dropExtension args)
   = compileCurryProgram rst (rst :> mainMod) >> return (Just rst)
@@ -553,8 +559,8 @@ processUsedImports rst args = do
 
 processSave :: ReplState -> String -> IO (Maybe ReplState)
 processSave rst args
-  | rst :> mainMod == "Prelude" = skipCommand "no program loaded"
-  | otherwise                   = do
+  | rst :> mainMod == rst :> preludeName = skipCommand "no program loaded"
+  | otherwise = do
     (rst', status) <- compileProgramWithGoal rst True
                       (if null args then "main" else args)
     unless (status == MainError) $ do
@@ -565,14 +571,13 @@ processSave rst args
 
 processFork :: ReplState -> String -> IO (Maybe ReplState)
 processFork rst args
-  | rst :> mainMod == "Prelude" = skipCommand "no program loaded"
-  | otherwise                   = do
+  | rst :> mainMod == rst :> preludeName = skipCommand "no program loaded"
+  | otherwise = do
     (rst', status) <- compileProgramWithGoal rst True
                       (if null args then "main" else args)
     unless (status == MainError) $ do
       pid <- getPID
-      tmp <- getTemporaryDirectory
-      let execname = tmp </> "kics2fork" ++ show pid
+      let execname = "." </> rst' :> outputSubdir </> "kics2fork" ++ show pid
       renameFile ("." </> rst' :> outputSubdir </> "Main") execname
       writeVerboseInfo rst' 3 ("Starting executable '" ++ execname ++ "'...")
       system ("( "++execname++" && rm -f "++execname++ ") "++
@@ -626,6 +631,8 @@ replOptions =
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
+  , ("prelude"      , \r a -> return (Just { preludeName  := a     | r }))
+  , ("parser"       , \r a -> return (Just { parseOpts    := a     | r }))
   , ("cmp"          , \r a -> return (Just { cmpOpts      := a     | r }))
   , ("ghc"          , \r a -> return (Just { ghcOpts      := a     | r }))
   , ("rts"          , \r a -> return (Just { rtsOpts      := a     | r }))
@@ -691,10 +698,12 @@ printOptions rst = putStrLn $ unlines
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show execution time"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
-  , "cmp <opts>      - additional options passed to KiCS2 compiler"
-  , "ghc <opts>      - additional options passed to GHC"
-  , "rts <opts>      - run-time options for ghc (+RTS <opts> -RTS)"
-  , "args <args>     - run-time arguments passed to main program"
+  , "prelude <name>  - name of the standard prelude"
+  , "parser  <opts>  - additional options passed to parser (front end)"
+  , "cmp     <opts>  - additional options passed to KiCS2 compiler"
+  , "ghc     <opts>  - additional options passed to GHC"
+  , "rts     <opts>  - run-time options for ghc (+RTS <opts> -RTS)"
+  , "args    <args>  - run-time arguments passed to main program"
   , showCurrentOptions rst
   ]
 
@@ -716,8 +725,10 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
          Par s         -> "parallel search with "++show s++" threads"
       ) ++ "\n" ++
   "idsupply          : " ++ rst :> idSupply ++ "\n" ++
+  "prelude           : " ++ rst :> preludeName ++ "\n" ++
+  "parser options    : " ++ rst :> parseOpts ++ "\n" ++
   "compiler options  : " ++ rst :> cmpOpts ++ "\n" ++
-  "ghc options       : " ++ rst:>ghcOpts ++ "\n" ++
+  "ghc options       : " ++ rst :> ghcOpts ++ "\n" ++
   "run-time options  : " ++ rst :> rtsOpts ++ "\n" ++
   "run-time arguments: " ++ rst :> rtsArgs ++ "\n" ++
   "verbosity         : " ++ show (rst :> verbose) ++ "\n" ++
