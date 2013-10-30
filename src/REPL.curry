@@ -611,7 +611,7 @@ replOptions =
   , ("prdfs"        , \r _ -> return (Just { ndMode       := PrDFS | r }))
   , ("choices"      , setOptionNDMode PrtChoices 10                      )
   , ("ids"          , setOptionNDMode IDS        100                     )
-  , ("par"          , setOptionNDMode Par        0                       )
+  , ("parallel"     , setOptionNDMode Par        0                       )
   , ("supply"       , setOptionSupply                                    )
   , ("v0"           , \r _ -> return (Just { verbose      := 0     | r }))
   , ("v1"           , \r _ -> return (Just { verbose      := 1     | r }))
@@ -684,7 +684,7 @@ printOptions rst = putStrLn $ unlines
   , "dfs             - set search mode to depth-first search"
   , "bfs             - set search mode to breadth-first search"
   , "ids [<n>]       - set search mode to iterative deepening (initial depth <n>)"
-  , "par [<n>]       - set search mode to parallel search with <n> threads"
+  , "parallel [<n>]  - set search mode to parallel search with <n> threads"
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
