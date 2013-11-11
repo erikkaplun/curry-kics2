@@ -23,6 +23,7 @@ Curry_Main_Goal.curry
 *.ind
 *.tpt
 *.backup
+*.synctex.gz
 *~
 
 # intermediate files

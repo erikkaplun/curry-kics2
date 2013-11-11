@@ -91,6 +91,13 @@ M.~Hanus.
   on Principles and Practice of Declarative Programming (PPDP'06)}, pages
   27--38. ACM Press, 2006.
 
+\bibitem{HanusKoschnicke10PADL}
+M.~Hanus and S.~Koschnicke.
+\newblock An {ER-based} framework for declarative web programming.
+\newblock In {\em Proc. of the 12th International Symposium on Practical
+  Aspects of Declarative Languages (PADL 2010)}, pages 201--216. Springer LNCS
+  5937, 2010.
+
 \bibitem{HanusSteiner98PLILP}
 M.~Hanus and F.~Steiner.
 \newblock Controlling search in declarative programs.

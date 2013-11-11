@@ -14,6 +14,8 @@ Changes to version 0.3.0:
   * Library `Distribution` and `FlatCurry`: after calling the front end,
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
+  * Tool `erd2curry` updated to support easier installation.
+  * Tool `spicey` (web framework) added.
 
 
 Release notes for KiCS2 Version 0.3.0
