@@ -2,8 +2,6 @@
 
 .PHONY: all
 all:
-	cd erd2curry && $(MAKE)
 
 .PHONY: clean
 clean:
-	cd erd2curry && $(MAKE) clean
