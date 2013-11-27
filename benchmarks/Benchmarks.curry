@@ -484,8 +484,7 @@ kics2Compile mod hooptim ghcoptim idsupply mainexp = do
                           , mainexp
                           ]
   -- show to put parentheses around the source code
-  let mainCmd = ("echo", [show mainCode, ">", mainFile])
-  traceCmd mainCmd
+  writeFile mainFile mainCode
 
   -- 3. Call the GHC
   let ghcImports = [ kics2Home ++ "/runtime"
