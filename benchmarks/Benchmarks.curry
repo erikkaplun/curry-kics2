@@ -207,7 +207,7 @@ timeCmd (cmd, args) = do
  where
   timeFile    = ".time"
   timeCommand = "/usr/bin/time"
-  timeArgs    = [ "--quiet", "--verbose", "-o", timeFile ] ++ cmd : args
+  timeArgs    = [ "--verbose", "-o", timeFile ] ++ cmd : args
   extractInfo = map (splitInfo . trim) . lines
   trim        = reverse . dropWhile isSpace . reverse . dropWhile isSpace
   splitInfo s@[]       = ([], s)
