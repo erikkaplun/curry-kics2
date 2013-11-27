@@ -493,7 +493,10 @@ kics2Compile mod hooptim ghcoptim idsupply mainexp = do
                    ,".curry/kics2"
                    , kics2Home ++ "/lib/.curry/kics2"
                    ]
-      ghcCmd = ("ghc" , [ if ghcoptim then "-O2" else ""
+      ghcPkgDbOpts = "-no-user-package-db -package-db " ++ 
+                     kics2Home ++ "/pkg/kics2.conf.d"
+      ghcCmd = ("ghc" , [ ghcPkgDbOpts 
+                        , if ghcoptim then "-O2" else ""
                         , "--make"
                         , if doTrace then "" else "-v0"
                         , "-package ghc"
