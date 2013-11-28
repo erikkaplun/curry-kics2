@@ -332,7 +332,7 @@ data Strategy
   | MPLUSDFS | MPLUSBFS | MPLUSIDS Int String | MPLUSPar          -- MonadPlus
   | EncDFS   | EncBFS   | EncIDS                                  -- encapsulated
 
-data Goal   = Goal Bool String String -- non-det? / main-expr / module
+data Goal   = Goal Bool String String -- non-det? / module / main-expr
 data Output = All | One | Interactive | Count
 
 detGoal :: String -> String -> Goal
