@@ -380,6 +380,7 @@ mainExpr s o (Goal True  _ goal) = searchExpr s
     Interactive -> "printInteractive"
     Count       -> "countAll"
 
+kics2 :: Bool -> Bool -> Supply -> Strategy -> Output -> Goal -> [Benchmark]
 kics2 hoOpt ghcOpt supply strategy output gl@(Goal _ mod goal)
   = kics2Benchmark tag hoOpt ghcOpt (chooseSupply supply) mod goal (mainExpr strategy output gl)
  where tag = concat [ "KICS2"
