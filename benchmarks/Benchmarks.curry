@@ -371,8 +371,8 @@ mainExpr s o (Goal True  _ goal) = searchExpr s
   searchExpr EncBFS           = wrapEnc "BFS"
   searchExpr EncIDS           = wrapEnc "IDS"
   wrapEnc strat      = "import qualified Curry_SearchTree as ST\n"
-    ++ "main = prdfs print (\\i c -> ST.d_C_allValues" ++ strat
-    ++ " (ST.d_C_someSearchTree (nd_C_" ++ goal ++ " i c) c) c)"
+    ++ "main = prdfs print (\\i cov cs -> ST.d_C_allValues" ++ strat
+    ++ " cov cs (ST.d_C_someSearchTree (nd_C_" ++ goal ++ " i cov cs) cov cs) cov cs)"
   searchComb search  = "main = " ++ comb ++ " " ++ search ++ " $ " ++ "nd_C_" ++ goal
   comb = case o of
     All         -> "printAll"
@@ -501,7 +501,7 @@ kics2Compile mod hooptim ghcoptim idsupply mainexp = do
                         , if doTrace then "" else "-v0"
                         , "-package ghc"
                         , "-cpp" -- use the C preprocessor
-                        , "-DDISABLE_CS" -- disable constraint store
+--                         , "-DDISABLE_CS" -- disable constraint store
                         --,"-DSTRICT_VAL_BIND" -- strict value bindings
                         , "-XMultiParamTypeClasses","-XFlexibleInstances"
 --                         , "-fforce-recomp"
