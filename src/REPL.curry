@@ -352,7 +352,9 @@ execMain rst _ mainexp = do -- _ was cmpstatus
       tcmd    = timecmd ++ maincmd
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
   writeVerboseInfo rst 3 $ "Executing: " ++ tcmd
-  system tcmd >> done
+  cmdstatus <- system tcmd
+  unless (cmdstatus == 0) $
+    putStrLn ("Evaluation terminated with non-zero status " ++ show cmdstatus)
  where
   getTimeCmd | rst :> showTime = getTimeCmdForDist `liftIO` getDistribution
              | otherwise       = return ""
