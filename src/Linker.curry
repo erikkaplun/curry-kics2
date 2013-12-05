@@ -182,10 +182,10 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
   , if isParSearch                 then "-threaded"      else ""
   , if withRtsOpts                 then "-rtsopts"       else ""
   , if recompile                   then "-fforce-recomp" else ""
-  , rst :> ghcOpts
       -- XRelaxedPolyRec due to problem in FlatCurryShow
   , "-XMultiParamTypeClasses", "-XFlexibleInstances", "-XRelaxedPolyRec"
 --   , "-cpp" -- use the C pre processor -- TODO WHY?
+  , rst :> ghcOpts
   , "-i" ++ (intercalate ":" ghcImports)
   , mainFile
   ]
