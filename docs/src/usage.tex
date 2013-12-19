@@ -391,7 +391,10 @@ are turned off.
 \item[\fbox{\code{ghc $opts$}}]\pindex{ghc}
 Define additional options passed to the Glasgow Haskell Compiler (GHC)
 when the generated Haskell programs are compiled.
-One has to be careful when using such options.
+Many options necessary to compile Curry programs
+are already set (you can see them by setting the verbosity
+level to 2 or greater).
+One has to be careful when providing additional options.
 For instance, in a global installation of \CYS
 (see Section~\ref{sec-install}), libraries are pre-compiled
 so that inconsistencies might occur if compilation options
