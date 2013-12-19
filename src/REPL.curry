@@ -77,9 +77,11 @@ defaultImportPathsWith rst dirs =
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []
   | rst :> quit = cleanUpRepl rst
-  | otherwise   = do getBanner >>= writeVerboseInfo rst 1
-                     writeVerboseInfo rst 1 "Type \":h\" for help"
-                     repl rst
+  | otherwise   = do
+      getBanner >>= writeVerboseInfo rst 1
+      writeVerboseInfo rst 1
+        "Type \":h\" for help  (contact: kics2@curry-language.org)"
+      repl rst
 processArgsAndStart rst (arg:args) =
   if head arg /= ':'
   then writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
