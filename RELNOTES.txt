@@ -15,7 +15,8 @@ Changes to version 0.3.0:
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
   * Tool `erd2curry` updated to support easier installation.
-  * Tool `spicey` (web framework) added.
+  * Tool `spicey` (web framework) added and updated with a RESTful interface
+    for entities.
 
 
 Release notes for KiCS2 Version 0.3.0
