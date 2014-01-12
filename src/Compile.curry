@@ -40,7 +40,7 @@ import SimpleMake
 -- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (when, notNull)
+import Utils (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()

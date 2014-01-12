@@ -16,7 +16,7 @@ import Installation (installDir)
 import PropertyFile
 import Sort         (mergeSort)
 
-import Utils        (strip, unless)
+import Utils        (strip)
 
 defaultRC :: FilePath
 defaultRC = installDir </> "kics2rc.default"

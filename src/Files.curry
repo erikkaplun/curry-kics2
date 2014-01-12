@@ -25,7 +25,6 @@ import FilePath
   )
 import List         (last, scanl1)
 import ReadShowTerm (writeQTermFile)
-import Utils        (unless, when)
 
 --- Apply functions to all parts of a file name
 withComponents :: (String -> String) -- change path

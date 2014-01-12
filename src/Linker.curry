@@ -25,7 +25,7 @@ import qualified Installation as Inst
 import GhciComm
 import Names         (funcInfoFile)
 import RCFile
-import Utils         (notNull, strip, unless)
+import Utils         (notNull, strip)
 
 type ReplState =
   { kics2Home    :: String     -- installation directory of the system

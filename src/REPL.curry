@@ -33,7 +33,7 @@ import GhciComm      (stopGhciComm)
 import qualified Installation as Inst
 import Names         (funcInfoFile)
 import RCFile
-import Utils         (notNull, strip, unless)
+import Utils         (notNull, strip)
 
 import Linker
 
