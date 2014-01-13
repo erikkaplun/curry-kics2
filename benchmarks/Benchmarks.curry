@@ -11,7 +11,7 @@
 import Char
 import IO
 import IOExts
-import List (isPrefixOf, isInfixOf, intersperse, last)
+import List (isPrefixOf, isInfixOf, init, intercalate, intersperse, last, scanl)
 import Maybe
 import System
 import Time
@@ -43,23 +43,6 @@ monInstalled = False -- is the monadic curry compiler installed?
 -- ---------------------------------------------------------------------------
 -- Helper
 -- ---------------------------------------------------------------------------
-
-init :: [a] -> [a]
-init []       = []
-init [_]      = []
-init (x:y:zs) = x : init (y : zs)
-
-intercalate :: [a] -> [[a]] -> [a]
-intercalate xs xss = concat (intersperse xs xss)
-
-scanl :: (a -> b -> a) -> a -> [b] -> [a]
-scanl f q ls =  q : (case ls of
-  []   -> []
-  x:xs -> scanl f (f q x) xs)
-
--- lift a pure function into the IO monad
-liftIO :: (a -> b) -> IO a -> IO b
-liftIO f act = act >>= return . f
 
 -- Like `mapIO`, but with flipped arguments.
 --

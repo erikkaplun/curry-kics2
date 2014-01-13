@@ -15,6 +15,8 @@ Changes to version 0.3.0:
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
   * Library `HTML`: `formMetaInfo` added, HTML header changed to HTML5.
+  * Library `List`: Improved version of `inits` added.
+  * Library `Prelude`: Functions `forIO`, `forIO_`, `when`, `unless` added.
   * Tool `erd2curry` updated to support easier installation.
     Bug fix in code generation w.r.t. checking of cardinality constraints.
   * Tool `spicey` (web framework) added and updated with a RESTful interface
