@@ -4,7 +4,7 @@
 --- and compiling this main file together with all compiled Curry modules.
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version July 2012
+--- @version January 2014
 --- --------------------------------------------------------------------------
 
 module Linker
@@ -50,6 +50,7 @@ type ReplState =
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
   , useGhci      :: Bool       -- use ghci to evaluate main goal
+  , safeExec     :: Bool       -- safe execution mode without I/O actions
   , parseOpts    :: String     -- additional options for the front end
   , cmpOpts      :: String     -- additional options for calling kics2 compiler
   , ghcOpts      :: String     -- additional options for ghc compilation
@@ -81,6 +82,7 @@ initReplState =
   , showBindings := True
   , showTime     := False
   , useGhci      := False
+  , safeExec     := False
   , parseOpts    := ""
   , cmpOpts      := ""
   , ghcOpts      := ""

@@ -17,7 +17,8 @@ import FilePath
   , splitSearchPath, splitFileName, splitExtension
   )
 import FileGoodies   (lookupFileInPath, splitPath)
-import FlatCurry     (flatCurryFileName)
+import FlatCurry     (flatCurryFileName, readFlatCurryFile)
+import FlatCurryGoodies(progImports)
 import IO
 import IOExts
 import List          (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
@@ -143,12 +144,42 @@ processInput rst g
 
 --- Evaluate an expression w.r.t. currently loaded modules
 evalExpression :: ReplState -> String -> IO ReplState
-evalExpression rst expr = do
-  (rst', status) <- compileProgramWithGoal rst (not (rst :> useGhci)) expr
-  unless (status == MainError || (rst' :> useGhci && not (rst' :> interactive)))
-         (execMain rst' status expr)
-  cleanMainGoalFile rst'
-  return rst'
+evalExpression rst expr =
+  if (rst :> safeExec)
+  then do -- check for imports of Unsafe
+    unsafeused <- hasUnsafeImported rst
+    if unsafeused then return rst
+                  else evalExp rst expr
+  else evalExp rst expr
+ where
+  evalExp rst expr = do
+    (rst', status) <- compileProgramWithGoal rst (not (rst :> useGhci)) expr
+    unless (status==MainError || (rst' :> useGhci && not (rst' :> interactive)))
+           (execMain rst' status expr)
+    cleanMainGoalFile rst'
+    return rst'
+
+-- Check whether the main module import the module "Unsafe".
+hasUnsafeImported rst =
+  if "Unsafe" `elem` (rst :> addMods)
+  then return True
+  else do
+    let fcyMainModFile = inCurrySubdir $ rst :> mainMod <.> "fcy"
+        frontendParams = currentFrontendParams rst
+    catch (callFrontendWithParams FCY frontendParams (rst :> mainMod) >>
+           readFlatCurryFile fcyMainModFile >>= \p ->
+           return ("Unsafe" `elem` progImports p))
+          (\_ -> return True) -- just to be safe
+
+-- Compute the front-end parameters for the current state:
+currentFrontendParams :: ReplState -> FrontendParams
+currentFrontendParams rst =
+    setQuiet       (rst :> verbose < 1)
+  $ setFullPath    (loadPaths rst)
+  $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
+  $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
+  $ setSpecials    (rst :> parseOpts)
+    defaultParams
 
 -- ---------------------------------------------------------------------------
 -- Main goal file stuff
@@ -179,13 +210,7 @@ getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
 getAcyOfMainGoal rst = do
   let mainGoalProg    = dropExtension mainGoalFile
       acyMainGoalFile = inCurrySubdir $ mainGoalProg <.> "acy"
-      frontendParams  =
-          setQuiet       (rst :> verbose < 1)
-        $ setFullPath    (loadPaths rst)
-        $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
-        $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
-        $ setSpecials    (rst :> parseOpts)
-          defaultParams
+      frontendParams  = currentFrontendParams rst
   prog <- catch (callFrontendWithParams ACY frontendParams mainGoalProg >>
                  tryReadACYFile acyMainGoalFile)
                 (\_ -> return Nothing)
@@ -262,32 +287,37 @@ compileProgramWithGoal rst createExecutable goal = do
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
 -- The status of the main goal is returned.
-insertFreeVarsInMainGoal :: ReplState -> String -> Maybe CurryProg -> IO GoalCompile
+insertFreeVarsInMainGoal :: ReplState -> String -> Maybe CurryProg
+                         -> IO GoalCompile
 insertFreeVarsInMainGoal _ _ Nothing = return GoalError
-insertFreeVarsInMainGoal rst goal (Just prog@(CurryProg _ _ _ [mfunc@(CFunc _ _ _ ty _)] _)) = do
+insertFreeVarsInMainGoal rst goal
+          (Just prog@(CurryProg _ _ _ [mfunc@(CFunc _ _ _ ty _)] _)) = do
   let freevars           = freeVarsInFuncRule mfunc
       (exp, whereclause) = break (== "where") (words goal)
-  if null freevars
-      || not (rst :> showBindings)
-      || isPrtChoices (rst :> ndMode)
-      || isIOType ty
-      || length freevars > 10 -- due to limited size of tuples used
-                              -- in PrintBindings
-      || null whereclause
-    then return (GoalWithoutBindings prog)
-    else do
-      let newgoal = unwords $
-            ["("] ++ exp ++ [",["] ++
-            intersperse "," (map (\v-> "\"" ++ v ++ "\"") freevars) ++
-            ["]"] ++ map (\v->',':v) freevars ++ ")":whereclause
-      writeVerboseInfo rst 2 $
-        "Adding printing of bindings for free variables: " ++
-          intercalate "," freevars
-      writeSimpleMainGoalFile rst newgoal
-      mbprog <- getAcyOfMainGoal rst
-      return (maybe GoalError
-                    (\p -> GoalWithBindings p (length freevars) newgoal)
-                    mbprog)
+  if (rst :> safeExec) && isIOType ty
+    then return GoalError
+    else
+      if null freevars
+          || not (rst :> showBindings)
+          || isPrtChoices (rst :> ndMode)
+          || isIOType ty
+          || length freevars > 10 -- due to limited size of tuples used
+                                  -- in PrintBindings
+          || null whereclause
+        then return (GoalWithoutBindings prog)
+        else do
+          let newgoal = unwords $
+                ["("] ++ exp ++ [",["] ++
+                intersperse "," (map (\v-> "\"" ++ v ++ "\"") freevars) ++
+                ["]"] ++ map (\v->',':v) freevars ++ ")":whereclause
+          writeVerboseInfo rst 2 $
+            "Adding printing of bindings for free variables: " ++
+              intercalate "," freevars
+          writeSimpleMainGoalFile rst newgoal
+          mbprog <- getAcyOfMainGoal rst
+          return (maybe GoalError
+                        (\p -> GoalWithBindings p (length freevars) newgoal)
+                        mbprog)
  where
   isPrtChoices c = case c of
     PrtChoices _ -> True
@@ -635,6 +665,8 @@ replOptions =
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
+  , ("+safe"        , \r _ -> return (Just { safeExec     := True  | r }))
+  , ("-safe"        , \r _ -> return (Just { safeExec     := False | r }))
   , ("prelude"      , \r a -> return (Just { preludeName  := a     | r }))
   , ("parser"       , \r a -> return (Just { parseOpts    := a     | r }))
   , ("cmp"          , \r a -> return (Just { cmpOpts      := a     | r }))
@@ -702,6 +734,7 @@ printOptions rst = putStrLn $ unlines
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show execution time"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
+  , "+/-safe         - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
   , "parser  <opts>  - additional options passed to parser (front end)"
   , "cmp     <opts>  - additional options passed to KiCS2 compiler"
@@ -742,7 +775,8 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst :> optim       ) ++ "optimize "    ++
   showOnOff (rst :> showBindings) ++ "bindings "    ++
   showOnOff (rst :> showTime    ) ++ "time "        ++
-  showOnOff (rst :> useGhci     ) ++ "ghci "
+  showOnOff (rst :> useGhci     ) ++ "ghci "        ++
+  showOnOff (rst :> safeExec    ) ++ "safe "
  where
    showOnOff b = if b then "+" else "-"
 
