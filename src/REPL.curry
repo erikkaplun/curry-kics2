@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version September 2013
+--- @version January 2014
 --- --------------------------------------------------------------------------
 
 module REPL where
@@ -25,7 +25,7 @@ import List          (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
 import ReadNumeric   (readNat)
 import ReadShowTerm  (readsTerm)
 import Sort          (mergeSort)
-import System        (system, getArgs, getEnviron, setEnviron, getPID)
+import System        (system, getArgs, getEnviron, setEnviron, getPID, exitWith)
 import Time
 
 import AbstractCurryGoodies
@@ -129,13 +129,15 @@ calcPrompt rst = subst (rst :> prompt)
 
 -- Clean resources of REPL before terminating it.
 cleanUpRepl :: ReplState -> IO ()
-cleanUpRepl rst = terminateSourceProgGUIs rst >> done
+cleanUpRepl rst = do
+  terminateSourceProgGUIs rst
+  exitWith (rst :> exitStatus)
 
 processInput :: ReplState -> String -> IO ()
 processInput rst g
   | null g      = repl rst
   | isCommand g = do mbrst <- processCommand rst (strip (tail g))
-                     maybe (repl rst)
+                     maybe (repl (setExitStatus 1 rst))
                            (\rst' -> if (rst':>quit) then cleanUpRepl rst'
                                                      else repl rst')
                            mbrst
@@ -144,23 +146,17 @@ processInput rst g
 
 --- Evaluate an expression w.r.t. currently loaded modules
 evalExpression :: ReplState -> String -> IO ReplState
-evalExpression rst expr =
-  if (rst :> safeExec)
-  then do -- check for imports of Unsafe
-    unsafeused <- hasUnsafeImported rst
-    if unsafeused then return rst
-                  else evalExp rst expr
-  else evalExp rst expr
- where
-  evalExp rst expr = do
-    (rst', status) <- compileProgramWithGoal rst (not (rst :> useGhci)) expr
-    unless (status==MainError || (rst' :> useGhci && not (rst' :> interactive)))
-           (execMain rst' status expr)
-    cleanMainGoalFile rst'
-    return rst'
+evalExpression rst expr = do
+  (rst', status) <- compileProgramWithGoal rst (not (rst :> useGhci)) expr
+  rst'' <-
+    if status==MainError || (rst' :> useGhci && not (rst' :> interactive))
+    then return rst'
+    else execMain rst' status expr
+  cleanMainGoalFile rst''
+  return rst''
 
 -- Check whether the main module import the module "Unsafe".
-hasUnsafeImported rst =
+importUnsafeModule rst =
   if "Unsafe" `elem` (rst :> addMods)
   then return True
   else do
@@ -261,28 +257,37 @@ getModuleOfFunction rst funname = do
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> Bool -> String
                        -> IO (ReplState, MainCompile)
-compileProgramWithGoal rst createExecutable goal = do
-  let infoFile = funcInfoFile (rst :> outputSubdir) mainGoalFile
-  removeFileIfExists infoFile
-  removeFileIfExists $ flatCurryFileName mainGoalFile
-  writeSimpleMainGoalFile rst goal
-  goalstate <- getAcyOfMainGoal rst >>= insertFreeVarsInMainGoal rst goal
-  if goalstate == GoalError
-    then return (rst, MainError)
-    else do
-      let (newprog, newgoal, bindings) =
-            case goalstate of
-              GoalWithBindings p n g -> (p, g   , Just n )
-              GoalWithoutBindings p  -> (p, goal, Nothing)
-      typeok <- makeMainGoalMonomorphic rst newprog newgoal
-      if typeok
-        then do
-          status <- compileCurryProgram rst mainGoalFile
-          exinfo <- doesFileExist infoFile
-          if status == 0 && exinfo
-            then createAndCompileMain rst createExecutable goal bindings
-            else return (rst, MainError)
-        else return (rst, MainError)
+compileProgramWithGoal rst createExecutable goal =
+  if (rst :> safeExec)
+  then do -- check for imports of Unsafe
+    unsafeused <- importUnsafeModule rst
+    if unsafeused then do writeErrorMsg "Operation not allowed in safe mode!"
+                          return (setExitStatus 1 rst, MainError)
+                  else compileProgGoal
+  else compileProgGoal
+ where
+  compileProgGoal = do
+    let infoFile = funcInfoFile (rst :> outputSubdir) mainGoalFile
+    removeFileIfExists infoFile
+    removeFileIfExists $ flatCurryFileName mainGoalFile
+    writeSimpleMainGoalFile rst goal
+    goalstate <- getAcyOfMainGoal rst >>= insertFreeVarsInMainGoal rst goal
+    if goalstate == GoalError
+      then return (setExitStatus 1 rst, MainError)
+      else do
+        let (newprog, newgoal, bindings) =
+              case goalstate of
+                GoalWithBindings p n g -> (p, g   , Just n )
+                GoalWithoutBindings p  -> (p, goal, Nothing)
+        typeok <- makeMainGoalMonomorphic rst newprog newgoal
+        if typeok
+          then do
+            status <- compileCurryProgram rst mainGoalFile
+            exinfo <- doesFileExist infoFile
+            if status == 0 && exinfo
+              then createAndCompileMain rst createExecutable goal bindings
+              else return (setExitStatus 1 rst, MainError)
+          else return (setExitStatus 1 rst, MainError)
 
 -- Insert free variables occurring in the main goal as components
 -- of the main goal so that their bindings are shown
@@ -295,7 +300,8 @@ insertFreeVarsInMainGoal rst goal
   let freevars           = freeVarsInFuncRule mfunc
       (exp, whereclause) = break (== "where") (words goal)
   if (rst :> safeExec) && isIOType ty
-    then return GoalError
+    then do writeErrorMsg "Operation not allowed in safe mode!"
+            return GoalError
     else
       if null freevars
           || not (rst :> showBindings)
@@ -370,7 +376,7 @@ compileCurryProgram rst curryprog = do
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
 
 --- Execute main program and show run time:
-execMain :: ReplState -> MainCompile -> String -> IO ()
+execMain :: ReplState -> MainCompile -> String -> IO ReplState
 execMain rst _ mainexp = do -- _ was cmpstatus
   timecmd <- getTimeCmd
   let paropts = case rst :> ndMode of
@@ -387,6 +393,7 @@ execMain rst _ mainexp = do -- _ was cmpstatus
   cmdstatus <- system tcmd
   unless (cmdstatus == 0) $
     putStrLn ("Evaluation terminated with non-zero status " ++ show cmdstatus)
+  return (setExitStatus cmdstatus rst)
  where
   getTimeCmd | rst :> showTime = getTimeCmdForDist `liftIO` getDistribution
              | otherwise       = return ""
@@ -514,7 +521,7 @@ processAdd rst args = do
 
 --- Process expression evaluation
 processEval :: ReplState -> String -> IO (Maybe ReplState)
-processEval rst args = evalExpression rst args >> return (Just rst)
+processEval rst args = evalExpression rst args >>= return . Just
 
 --- Process :type command
 processType :: ReplState -> String -> IO (Maybe ReplState)

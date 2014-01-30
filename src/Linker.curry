@@ -9,6 +9,7 @@
 
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
+  , setExitStatus
   , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain
   ) where
 
@@ -57,6 +58,7 @@ type ReplState =
   , rtsOpts      :: String     -- run-time options for ghc
   , rtsArgs      :: String     -- run-time arguments passed to main application
   , quit         :: Bool       -- terminate the REPL?
+  , exitStatus   :: Int        -- exit status (set in case of REPL errors)
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
   , ghcicomm     :: Maybe GhciComm -- possible ghci comm. info
   }
@@ -89,12 +91,17 @@ initReplState =
   , rtsOpts      := ""
   , rtsArgs      := ""
   , quit         := False
+  , exitStatus   := 0
   , sourceguis   := []
   , ghcicomm     := Nothing
   }
 
 loadPaths :: ReplState -> [String]
 loadPaths rst = "." : rst :> importPaths ++ rst :> libPaths
+
+--- Sets the exit status in the REPL state.
+setExitStatus :: Int -> ReplState -> ReplState
+setExitStatus s rst = { exitStatus := s | rst }
 
 -- ---------------------------------------------------------------------------
 
@@ -156,8 +163,10 @@ createAndCompileMain rst createExecutable mainExp bindings = do
   (rst'', status) <- if useGhci
                       then compileWithGhci rst' ghcCompile mainExp
                       else system ghcCompile >>= \stat -> return (rst', stat)
-  return (rst'', if status > 0 then MainError else
-                 if isdet || isio then MainDet else MainNonDet)
+  return (if status > 0
+          then (setExitStatus 1 rst'', MainError)
+          else (setExitStatus 0 rst'',
+                if isdet || isio then MainDet else MainNonDet))
  where
   mainFile = "." </> rst :> outputSubdir </> "Main.hs"
   -- option parsing
