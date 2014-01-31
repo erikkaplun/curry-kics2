@@ -165,7 +165,7 @@ importUnsafeModule rst =
     catch (callFrontendWithParams FCY frontendParams (rst :> mainMod) >>
            readFlatCurryFile fcyMainModFile >>= \p ->
            return ("Unsafe" `elem` progImports p))
-          (\_ -> return True) -- just to be safe
+          (\_ -> return (rst :> mainMod /= "Prelude")) -- just to be safe
 
 -- Compute the front-end parameters for the current state:
 currentFrontendParams :: ReplState -> FrontendParams
@@ -261,9 +261,10 @@ compileProgramWithGoal rst createExecutable goal =
   if (rst :> safeExec)
   then do -- check for imports of Unsafe
     unsafeused <- importUnsafeModule rst
-    if unsafeused then do writeErrorMsg "Operation not allowed in safe mode!"
-                          return (setExitStatus 1 rst, MainError)
-                  else compileProgGoal
+    if unsafeused
+      then do writeErrorMsg "Import of 'Unsafe' not allowed in safe mode!"
+              return (setExitStatus 1 rst, MainError)
+      else compileProgGoal
   else compileProgGoal
  where
   compileProgGoal = do
@@ -680,8 +681,7 @@ replOptions =
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
-  , ("+safe"        , \r _ -> return (Just { safeExec     := True  | r }))
-  , ("-safe"        , \r _ -> return (Just { safeExec     := False | r }))
+  , ("safe"         , \r _ -> return (Just { safeExec     := True  | r }))
   , ("prelude"      , \r a -> return (Just { preludeName  := a     | r }))
   , ("parser"       , \r a -> return (Just { parseOpts    := a     | r }))
   , ("cmp"          , \r a -> return (Just { cmpOpts      := a     | r }))
@@ -749,7 +749,7 @@ printOptions rst = putStrLn $ unlines
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show execution time"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
-  , "+/-safe         - safe execution mode without I/O actions"
+  , "safe            - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
   , "parser  <opts>  - additional options passed to parser (front end)"
   , "cmp     <opts>  - additional options passed to KiCS2 compiler"
@@ -790,8 +790,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst :> optim       ) ++ "optimize "    ++
   showOnOff (rst :> showBindings) ++ "bindings "    ++
   showOnOff (rst :> showTime    ) ++ "time "        ++
-  showOnOff (rst :> useGhci     ) ++ "ghci "        ++
-  showOnOff (rst :> safeExec    ) ++ "safe "
+  showOnOff (rst :> useGhci     ) ++ "ghci "
  where
    showOnOff b = if b then "+" else "-"
 

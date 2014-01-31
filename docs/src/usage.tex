@@ -379,15 +379,19 @@ of the Glasgow Haskell Compiler. This might result in a slower
 execution but in a faster startup time since the linker
 to create the main executable is not used.
 
-\item[\fbox{\code{+/-safe}}]\pindex{safe}
-Turn on/off the safe execution mode.
+\item[\fbox{\code{safe}}]\pindex{safe}
+Turn on the safe execution mode.
 In the safe execution mode, the initial goal is
 not allowed to be of type \code{IO} and the program should not
 import the module \code{Unsafe}.
 Furthermore, the allowed commands are
 \code{eval}, \code{load}, \code{quit}, and \code{reload}.
 This mode is useful to use \CYS in uncontrolled environments,
-like a computation service in a web page.
+like a computation service in a web page, where \CYS could
+be invoked by
+\begin{curry}
+kics2 :set safe
+\end{curry}
 
 \item[\fbox{\code{cmp $opts$}}]\pindex{cmp}
 Define additional options passed to the \CYS compiler.
