@@ -30,7 +30,7 @@
   <!-- dashes introducing a currydoc comment -->
   <!ENTITY currydoc    "---" >
 ]>
-<language name="Curry" version="0.3" kateversion="2.3"
+<language name="Curry" version="0.3.1" kateversion="2.3"
           section="Sources" extensions="*.curry" mimetype="text/x-curry"
           author="Björn Peemöller (bjp@informatik.uni-kiel.de)" license="LGPL"
           indenter="haskell">
@@ -251,9 +251,10 @@
 
     <!-- A single characters, with escape sequences -->
     <context name="Char" attribute="Char" lineEndContext="CharSyntaxError" >
-      <DetectChar attribute="Syntax Error" context="#pop"       char="'" />
-      <DetectChar attribute="Char"         context="CharEscape" char="\" />
-      <RegExpr    attribute="Char"         context="CharEnd"    String="[^'&backslash;]" />
+      <Detect2Chars attribute="Char"         context="#pop"       char="'" char1="'" />
+      <DetectChar   attribute="Syntax Error" context="#pop"       char="'" />
+      <DetectChar   attribute="Char"         context="CharEscape" char="\" />
+      <RegExpr      attribute="Char"         context="CharEnd"    String="[^'&backslash;]" />
     </context>
 
     <!-- Character escape sequence -->

@@ -60,3 +60,5 @@ a'
 stringUnknownEscape = "\FOO"
 stringNewline       = "
 a"
+
+tickChar = '''
