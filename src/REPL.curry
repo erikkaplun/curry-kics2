@@ -424,13 +424,21 @@ execMain rst _ mainexp = do -- _ was cmpstatus
 processCommand :: ReplState -> String -> IO (Maybe ReplState)
 processCommand rst cmds
   | null cmds        = skipCommand "unknown command"
-  | head cmds == '!' = processSysCall rst (strip $ tail cmds)
+  | head cmds == '!' = unsafeExec rst $ processSysCall rst (strip $ tail cmds)
   | otherwise        = case matchedCmds of
       []            -> skipCommand $ "unknown command: ':" ++ cmds ++ "'"
-      [(_, act)]    -> act rst (strip args)
+      [(fcmd, act)] -> if fcmd `elem` ["eval","load","quit","reload"]
+                       then act rst (strip args)
+                       else unsafeExec rst $ act rst (strip args)
       (_:_:_)       -> skipCommand $ "ambiguous command: ':" ++ cmds ++ "'"
  where (cmd, args) = break (==' ') cmds
        matchedCmds = filter (isPrefixOf (map toLower cmd) . fst) replCommands
+
+unsafeExec :: ReplState -> IO (Maybe ReplState) -> IO (Maybe ReplState)
+unsafeExec rst act =
+  if rst :> safeExec
+  then skipCommand "Operation not allowed in safe mode!"
+  else act
 
 -- all available REPL commands
 replCommands :: [(String, ReplState -> String -> IO (Maybe ReplState))]
