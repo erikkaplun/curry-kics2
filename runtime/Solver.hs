@@ -57,6 +57,8 @@ solveOne cd (i :=: cc) e = lookupDecision i >>= follow cc
   -- 1st param: the (new) Choice which should be stored for i
   -- 2nd param: the (old) Choice for i in the store
   follow (LazyBind  _) NoDecision    = mkDecision i cc e
+  follow (LazyBind cs1)(LazyBind cs2)= mkDecision i NoDecision 
+                                     $ guardCons cd (StructConstr (concatMap makeStrictCList (cs1++cs2))) e
   follow _             (LazyBind cs) = mkDecision i cc
                                      $ guardCons cd (StructConstr cs) e
   follow (LazyBind cs) _             = mkSolution

@@ -8,7 +8,7 @@ module ID
     -- * Cover
   , Cover, incCover, decCover, initCover
     -- * Constraints
-  , Constraint (..), Constraints(..), getConstrList
+  , Constraint (..), Constraints(..), getConstrList, makeStrictCList
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
@@ -87,6 +87,15 @@ instance Show Constraints where
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
 
+-- transforms a constraint to a list of constraints that are not lazy
+makeStrictCList :: Constraint -> [Constraint]
+makeStrictCList (_ :=: (LazyBind cs)) = concatMap makeStrictCList cs
+makeStrictCList binding@(_ :=: _)     = [binding]
+makeStrictCList u@(Unsolvable _)      = [u]
+makeStrictCList (ConstraintChoice cd i csl csr) 
+  = [ConstraintChoice cd i (concatMap makeStrictCList csl)(concatMap makeStrictCList csr)]
+makeStrictCList (ConstraintChoices cd i css) 
+  = [ConstraintChoices cd i (map (concatMap makeStrictCList) css)]
 -- ---------------------------------------------------------------------------
 -- Decision
 -- ---------------------------------------------------------------------------
