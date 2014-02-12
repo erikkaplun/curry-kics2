@@ -10,6 +10,8 @@
 --  ~/.kics2rc or ~/.pakcsrc
 --------------------------------------------------------------------------------
 
+import Maybe
+
 import Assertion
 import AllSolutions
 
@@ -110,3 +112,46 @@ test10 = assertValues "test10"
 test11 = assertValues "test11"
                       (y =:<= [True] &> x =:<= ([False]?[]) &> x=:=y &> x) []
   where x,y free
+
+mkSamePair x = (x,x)
+
+fpair (mkSamePair x) = x
+
+gpair (mkSamePair x) y = y
+
+test12 = assertValues "test12" (isJust (fpair (y, gpair (y, Just failed) z))) []
+  where y, z free
+
+
+-------------------------------------------------------------------------------
+-- Function Pattern tests by Michael
+-------------------------------------------------------------------------------
+
+data Nat = O | S Nat
+
+g x y = (x,y)
+
+pair x | g y y =:<= x = success where y free
+
+test13 = assertValues "test13" (pair (0,1)) []
+
+test14 = assertValues "test14" (pair (0,0)) [success]
+
+-- This call should fail due to an occure check
+-- However, an occure check is not yet implemented
+-- test15 = assertValues "test15"  (pair (x, S x)) []
+--   where x free 
+
+test16 = assertValues "test16" (pair (x,failed)) []
+  where x free 
+
+f x | g (const 0 y) y =:<= x = success where y free
+
+test17 = assertValues "test17" (f (x,failed)) [success]
+  where x free 
+
+h x | g (id y) y =:<= x = success where y free
+
+test18 = assertValues "test18" (h (x,failed)) []
+  where x free
+
