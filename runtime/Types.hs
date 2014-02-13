@@ -119,12 +119,16 @@ narrows _  _    (ChoiceID          _) _ _  = internalError "Types.narrows: Choic
 
 
 bindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
-bindOrNarrow cd i d j@(FreeID p s) xs | d < cd    = [ConstraintChoices cd (NarrowedID p s) (map (bind cd i) xs)]
-				      | otherwise = [ i :=: BindTo j]
+bindOrNarrow cd i d j@(FreeID p s) xs
+  | d < cd    = [ConstraintChoices cd (NarrowedID p s) (map (bind cd i) xs)]
+  | otherwise = [ i :=: BindTo j]
+bindOrNarrow _  _ _ j _ = internalError $ "Types.bindOrNarrow: " ++ show j
 
 lazyBindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
-lazyBindOrNarrow cd i d j@(FreeID p s) xs | d < cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind cd i) xs)]
-					  | otherwise    = [ i :=: BindTo j ]
+lazyBindOrNarrow cd i d j@(FreeID p s) xs
+  | d < cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind cd i) xs)]
+  | otherwise    = [ i :=: BindTo j ]
+lazyBindOrNarrow _  _ _ j _ = internalError $ "Types.lazyBindOrNarrow: " ++ show j
 
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
