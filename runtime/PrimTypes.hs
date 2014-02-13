@@ -88,10 +88,10 @@ instance Unifiable BinInt where
   bind _  i Zero = ((i :=: (ChooseN 1 0)):(concat []))
   bind cd i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
   bind cd i (Choice_BinInt d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
   bind cd i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
   bind _  _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
-  bind _  _ (Fail_BinInt cd info) = [Unsolvable info]
+  bind _  _ (Fail_BinInt _ info) = [Unsolvable info]
   bind cd i (Guard_BinInt _ cs e) = (getConstrList cs) ++ (bind cd i e)
   lazyBind cd i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
   lazyBind _  i Zero = [(i :=: (ChooseN 1 0))]
@@ -141,7 +141,7 @@ instance NonDet Nat where
   match f _ _ _ _ _ (Choice_Nat cd i x y) = f cd i x y
   match _ f _ _ _ _ (Choices_Nat cd i@(NarrowedID _ _) xs) = f cd i xs
   match _ _ f _ _ _ (Choices_Nat cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_Nat cd i@(ChoiceID _) _) = internalError ("Prelude.Nat.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ _ _ _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.match: Choices with ChoiceID " ++ (show i))
   match _ _ _ f _ _ (Fail_Nat cd info) = f cd info
   match _ _ _ _ f _ (Guard_Nat cd cs e) = f cd cs e
   match _ _ _ _ _ f x = f x
@@ -227,7 +227,7 @@ instance NonDet (Func t0 t1) where
   match f _ _ _ _ _ (Choice_Func cd i x y) = f cd i x y
   match _ f _ _ _ _ (Choices_Func cd i@(NarrowedID _ _) xs) = f cd i xs
   match _ _ f _ _ _ (Choices_Func cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_Func cd i _) = internalError ("Prelude.Func.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ _ _ _ (Choices_Func _ i _) = internalError ("Prelude.Func.match: Choices with ChoiceID " ++ (show i))
   match _ _ _ f _ _ (Fail_Func cd info) = f cd info
   match _ _ _ _ f _ (Guard_Func cd cs e) = f cd cs e
   match _ _ _ _ _ f x = f x
@@ -328,7 +328,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind cd i (Choices_C_IO d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
   lazyBind cd i (Choices_C_IO d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _  _ (Choices_C_IO _ i@(ChoiceID _) _) = internalError ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _  _ (Fail_C_IO cd info) = [Unsolvable info]
+  lazyBind _  _ (Fail_C_IO _ info) = [Unsolvable info]
   lazyBind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 -- END GENERATED FROM PrimTypes.curry
 

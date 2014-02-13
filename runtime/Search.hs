@@ -641,13 +641,13 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
   smpFail d info  = szero d info
   smpVal v        = searchNF (searchMSearch' cd) cont v
 
-  smpChoice d i x y = lookupDecision i >>= follow
+  smpChoice d i a b = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = searchMSearch' cd cont x
-    follow ChooseRight = searchMSearch' cd cont y
-    follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
+    follow ChooseLeft  = searchMSearch' cd cont a
+    follow ChooseRight = searchMSearch' cd cont b
+    follow NoDecision  = decide i ChooseLeft a `plus` decide i ChooseRight b
     follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
-    plus = if isCovered d then splus d i else mplus 
+    plus = if isCovered d then splus d i else mplus
 
   smpFree d i xs = lookupDecisionID i >>= follow
     where
@@ -657,8 +657,9 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID pns _ -> pns
-           NarrowedID pns _ -> pns
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
     sumF j | isCovered d  = svar d i
            | otherwise    = var (cont (choicesCons d j xs))
 
@@ -670,15 +671,13 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID pns _ -> pns
-           NarrowedID pns _ -> pns
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
     sumF | isCovered d = ssum d i
-         | otherwise   = msum 
+         | otherwise   = msum
 
-
-
-
-  smpGuard d cs e 
+  smpGuard d cs e
    | isCovered d = constrainMSearch d cs (searchMSearch' cd cont e)
    | otherwise = solve cd cs e >>= maybe (szero d defFailInfo) (searchMSearch' cd cont . snd)
 

@@ -45,8 +45,8 @@ d_apply f a cd cs = f a cd cs
 nd_apply :: NonDet b => Func a b -> a -> IDSupply -> Cover -> ConstStore -> b
 nd_apply fun a s cd cs = d_dollar_bang apply fun cd cs
   where
-  apply (Func f) cd cs' = f a s cd cs'
-  apply _        _  _ = internalError "Basics.nd_apply.apply: no ground term"
+  apply (Func f) cd' cs' = f a s cd' cs'
+  apply _        _   _   = internalError "Basics.nd_apply.apply: no ground term"
 
 -- ---------------------------------------------------------------------------
 -- Auxilaries for normalforms
@@ -122,14 +122,14 @@ mapFst f (a, b) = (f a, b)
 (&) :: C_Success -> C_Success -> Cover -> ConstStore -> C_Success
 (&) s1 s2 _ cs = amp s1 s2 cs
   where
-   amp C_Success                   s _  = s
-   amp x@(Fail_C_Success _ _)      _ _  = x
-   amp (Guard_C_Success cd c e)    s cs = 
-         Guard_C_Success   cd c (amp e s $! addCs c cs)
-   amp (Choice_C_Success cd i a b) s cs = 
-         Choice_C_Success  cd i (amp a s cs) (amp b s cs)
-   amp (Choices_C_Success cd i xs) s cs = 
-         Choices_C_Success cd (narrowID i) (map (\x -> amp x s cs) xs)
+   amp C_Success                   s _   = s
+   amp x@(Fail_C_Success _ _)      _ _   = x
+   amp (Guard_C_Success cd c e)    s cs' = 
+         Guard_C_Success   cd c (amp e s $! addCs c cs')
+   amp (Choice_C_Success cd i a b) s cs' =
+         Choice_C_Success  cd i (amp a s cs') (amp b s cs')
+   amp (Choices_C_Success cd i xs) s cs' = 
+         Choices_C_Success cd (narrowID i) (map (\x -> amp x s cs') xs)
 
 {- interleaved (&) from Bernd
 (&) :: C_Success -> C_Success -> C_Success
