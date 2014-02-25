@@ -122,11 +122,11 @@ getNormalForm goal = do
   s <- initSupply
   return $ ((\x _ _ -> x) $!! goal s initCover emptyCs) initCover emptyCs
 
- -- |Evaluate a deterministic expression without search
+-- |Evaluate a deterministic expression without search
 evalD :: Show a => DetExpr a -> IO ()
 evalD goal = print (goal initCover emptyCs)
 
- -- |Evaluate a non-deterministic expression without search
+-- |Evaluate a non-deterministic expression without search
 eval :: Show a => NonDetExpr a -> IO ()
 eval goal = initSupply >>= \s -> print (goal s initCover emptyCs)
 
@@ -214,7 +214,7 @@ prdfs prt goal = getNormalForm goal >>=
 #else
    printValsDFSMatch False prt
 #endif
-  
+
 -- The first argument backTrack indicates whether backtracking is needed
 printValsDFSMatch :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
 printValsDFSMatch backTrack cont goal = do

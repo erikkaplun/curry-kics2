@@ -6,13 +6,14 @@
 SUBDIR     = .curry/kics2
 TYPEINFDIR = $(ROOT)/currytools/typeinference
 # ghc options
-GHC_OPTS  += -O2 --make -v1 -cpp -package ghc
+# see https://ghc.haskell.org/trac/ghc/ticket/7068
+GHC_OPTS2  = -O2 --make -v1 -cpp -fno-spec-constr
 # ghc language extensions for compiling translated Curry programs
 GHC_EXTS   = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translated Curry programs
 GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR):$(LIBDIR)/$(SUBDIR):$(LIBDIR)/meta/$(SUBDIR):$(TYPEINFDIR)/$(SUBDIR)
 # Call to ghc binary
-GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
+GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_OPTS2) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
 KICS2C     = $(COMP) -v1 -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
 # options for the bootstrapping compiler
