@@ -306,7 +306,7 @@ constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_Success
 #ifdef TRY
 (=:<=) = lazyTry
 #else
-(=:<=) = unifyMatch
+(=:<=) = lazyMatch
 #endif
 
 lazyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
