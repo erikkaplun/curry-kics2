@@ -45,7 +45,7 @@ import Utils (notNull)
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
 main = do
-  (opts, files) <- compilerOpts
+  (opts, files) <- getCompilerOpts
   mapIO_ (build opts) files
 
 --- Load the module, resolve the dependencies and compile the source files
@@ -170,7 +170,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
-  dump DumpAbstractHs opts abstractHsName (show ahsPatched)
+  dump DumpTranslated opts abstractHsName (show ahsPatched)
 
   showDetail opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
@@ -235,7 +235,7 @@ filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
   | noPrelude = Prog m (filter (/= prelude) imps) td fd od
   | otherwise = p
-  where noPrelude = ExtNoImplicitPrelude `elem` opts :> optExtensions
+  where noPrelude = NoImplicitPrelude `elem` opts :> optExtensions
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String

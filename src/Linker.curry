@@ -32,11 +32,11 @@ type ReplState =
   { kics2Home    :: String     -- installation directory of the system
   , rcvars       :: [(String, String)] -- content of rc file
   , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
-  , verbose      :: Int        -- verbosity level: 0 = quiet,
-                               -- 1 = show frontend (module) compile/load
-                               -- 2 = show backend (Haskell) compile/load
-                               -- 3 = show intermediate messages, commands
-                               -- 4 = show intermediate results
+  , verbose      :: Int        -- verbosity level:
+                               -- 0 = errors and warnings
+                               -- 1 = show backend (Haskell) compile/load
+                               -- 2 = show intermediate messages, commands
+                               -- 3 = show intermediate results
   , importPaths  :: [String]   -- additional directories to search for imports
   , libPaths     :: [String]   -- directories containg the standard libraries
   , preludeName  :: String     -- the name of the standard prelude

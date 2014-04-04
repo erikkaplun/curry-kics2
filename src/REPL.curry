@@ -170,7 +170,7 @@ importUnsafeModule rst =
 -- Compute the front-end parameters for the current state:
 currentFrontendParams :: ReplState -> FrontendParams
 currentFrontendParams rst =
-    setQuiet       (rst :> verbose < 1)
+    setQuiet       True
   $ setFullPath    (loadPaths rst)
   $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
   $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
@@ -667,7 +667,6 @@ replOptions =
   , ("v1"           , \r _ -> return (Just { verbose      := 1     | r }))
   , ("v2"           , \r _ -> return (Just { verbose      := 2     | r }))
   , ("v3"           , \r _ -> return (Just { verbose      := 3     | r }))
-  , ("v4"           , \r _ -> return (Just { verbose      := 4     | r }))
   , ("prompt"       , setPrompt                                          )
   , ("+interactive" , \r _ -> return (Just { interactive  := True  | r }))
   , ("-interactive" , \r _ -> return (Just { interactive  := False | r }))
@@ -739,9 +738,11 @@ printOptions rst = putStrLn $ unlines
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
-  , "v<n>            - verbosity level (0: quiet; 1: front end messages;"
-  , "                  2: backend messages, 3: intermediate messages and commands;"
-  , "                  4: all intermediate results)"
+  , "v<n>            - verbosity level"
+  , "                    0: quiet (errors and warnings only)"
+  , "                    1: status messages (default)"
+  , "                    2: intermediate messages and commands"
+  , "                    3: all intermediate results"
   , "prompt <prompt> - set the user prompt"
   , "+/-interactive  - turn on/off interactive execution of main goal"
   , "+/-first        - turn on/off printing only first solution"
