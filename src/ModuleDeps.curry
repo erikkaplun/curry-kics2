@@ -1,21 +1,22 @@
-{-  Computation of dependendies between Curry modules
-
-    This module implements the functions to compute the dependency
-    information between Curry modules.
-
-    Copyright (c) 2002-2004, Wolfgang Lux
-    See LICENSE for the full license.
-
-    Modified by Martin Engelke (men@informatik.uni-kiel.de)
-    Extended by Sebastian Fischer (sebf@informatik.uni-kiel.de)
--}
+--- --------------------------------------------------------------------------
+--- Computation of dependendies between Curry modules
+---
+--- This module implements the functions to compute the dependency
+--- information between Curry modules.
+---
+--- Copyright (c) 2002-2004, Wolfgang Lux
+--- See LICENSE for the full license.
+---
+--- Modified by Martin Engelke (men@informatik.uni-kiel.de)
+--- Extended by Sebastian Fischer (sebf@informatik.uni-kiel.de)
+--- --------------------------------------------------------------------------
 
 module ModuleDeps (ModuleIdent, Source, deps) where
 
 import Directory
 import Distribution
 import FileGoodies (lookupFileInPath)
-import FilePath    (dropExtension, dropTrailingPathSeparator, takeBaseName)
+import FilePath    (FilePath, dropExtension, dropTrailingPathSeparator, takeBaseName)
 import FiniteMap   (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry   (readFlatCurryWithParseOptions, Prog (..),flatCurryFileName)
 import Function    (second)
@@ -27,10 +28,13 @@ import Files
 import SCC
 
 type ModuleIdent = String
-type FilePath = String
 type Source = (FilePath, Prog) -- file name, code
 type SourceEnv = FM ModuleIdent (Maybe Source)
 
+--- Compute all dependendies for a given module
+--- @param opts - compiler options
+--- @param fn   - file name of the module
+--- @return     - topologically sorted list of all dependendies
 deps :: Options -> String -> IO ([(ModuleIdent, Source)], [String])
 deps opts fn = do
   mEnv <- sourceDeps opts (dropExtension $ takeBaseName fn) fn (emptyFM (<))
@@ -83,9 +87,8 @@ filterMissing env = (map (second fromJust) present, errs) where
   errs = map (\(m, _) -> "Module " ++ m ++ " could not be found") missing
   (present, missing) = partition (isJust . snd) $ fmToList env
 
-{-  Convert the dependency map into a topologically sorted dependency list
-    and a list of errors for cyclic imports.
--}
+-- Convert the dependency map into a topologically sorted dependency list
+-- and a list of errors for cyclic imports.
 flattenDeps :: [(ModuleIdent, Source)] -> ([(ModuleIdent, Source)], [String])
 flattenDeps = fdeps . sortDeps where
 
