@@ -474,8 +474,9 @@ transCompleteExpr e =
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
-              []  -> e'
-              [v] ->  letIdVar strict [(v, Var suppVarIdx)] e' in
+              []      -> e'
+              [v]     -> letIdVar strict [(v, Var suppVarIdx)] e'
+              (_:_:_) -> error "TransFunctions.transCompleteExpr" in
   setNextID i `bindM_` -- and reset it variable id
   returnM e''
 

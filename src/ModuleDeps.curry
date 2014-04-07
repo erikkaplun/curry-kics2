@@ -107,5 +107,6 @@ flattenDeps = fdeps . sortDeps where
   cyclicError ms = "Cylic import dependency between modules " ++
                    intercalate ", " inits ++ " and " ++ last where
     (inits, last)      = splitLast ms
+    splitLast []       = error "ModuleDeps.splitLast: empty list"
     splitLast (x:[])   = ([]  , x)
     splitLast (x:y:ys) = (x:xs, z) where (xs, z) = splitLast (y:ys)

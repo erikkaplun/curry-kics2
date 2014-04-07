@@ -161,6 +161,7 @@ ordHelp2 functype arity orderMap = if arity == 0
             let func1 = (ordHelp2 x 0 orderMap)
                 funcRest = (ordHelp2 y (arity-1) orderMap)
             in (hoOr func1 funcRest)
+        _            -> error "Analysis.ordHelp2"
 
 --------------------------------------------------------------------------------
 -- Visibility analysis
