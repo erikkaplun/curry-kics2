@@ -3,7 +3,6 @@ module Message where
 import IO (hPutStrLn, stderr)
 
 import CompilerOpts
-import Utils (unless)
 
 putErrLn :: String -> IO ()
 putErrLn msg = hPutStrLn stderr msg

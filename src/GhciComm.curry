@@ -13,8 +13,6 @@ import IO     (Handle, hClose, hFlush, hGetLine, hPutStrLn)
 import IOExts (connectToCommand)
 import Time   (calendarTimeToString, getLocalTime)
 
-import Utils (unless, when)
-
 --- Information for communication with ghci
 --- (ghc(i) command with arguments, handle, verbosity flag)
 data GhciComm = GhciComm String Handle Bool

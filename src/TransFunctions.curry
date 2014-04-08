@@ -208,10 +208,8 @@ transProg p@(Prog m is ts fs _) =
   returnM $ (Prog m is [] (concat fss) [], (visType , visNDRes, visHOFun, visHOCons))
 
 -- Register the types of constructors to be able to retrieve the types for
--- constructors used in case patterns.
--- TODO: This becomes needless if the type could be computed from the
--- function's type expression, which in turn requires the case lifting to
--- provide correct types for lifted case expressions instead of TVar (-42).
+-- constructors used in case patterns. May be needless now because the case
+-- lifting now also creates correct types.
 getConsMap :: [TypeDecl] -> TypeMap
 getConsMap ts = listToFM (<)
               $ concatMap (\ (Type qn _ _ cs) -> map (\c -> (consName c,qn)) cs)
@@ -256,14 +254,16 @@ transFunc f@(Func qn _ _ _ _) =
                        renameFun qn          `bindM` \newqn ->
                        renameFun fname       `bindM` \newfname ->
                        returnM $
-                         [Func newqn 1 vis (check42 (transTypeExpr 0) t)
-                          (Rule [0] (Comb FuncCall (mkGlobalName qn) []))
+                         [Func newqn 2 vis (transTypeExpr 0 t)
+                          (Rule [0,1] (Comb FuncCall (mkGlobalName qn) []))
                          ,Func (mkGlobalName qn) 0 Private t
                           (Rule [] (Comb FuncCall newfname
                                    [Let [(constStoreVarIdx
-                                         ,Comb FuncCall (basics,"emptyCs") [] )]
+                                         ,Comb FuncCall (basics,"emptyCs") [] )
+                                        ,(nestingIdx,Comb FuncCall (basics,"initCover") [])]
                                         trVal
                                    ,Comb ConsCall cname []
+                                   ,Comb FuncCall (basics, "initCover") []
                                    ,Comb FuncCall (basics,"emptyCs") []]))]
                  else  transPureFunc f `bindM` (returnM . (:[]))
 
@@ -282,14 +282,14 @@ transPureFunc :: FuncDecl -> M FuncDecl
 transPureFunc (Func qn a v t r) = doInDetMode True $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' (a + 1) v (check42 (transTypeExpr a) t) r')
+  returnM (Func qn' (a + 1) v (transTypeExpr a t) r')
 
 -- translate into non-deterministic function
 transNDFunc :: FuncDecl -> M FuncDecl
 transNDFunc (Func qn a v t r) = doInDetMode False $
   renameFun qn `bindM` \qn' ->
   transRule (Func qn' a v t r) `bindM` \r' ->
-  returnM (Func qn' (a + 2) v (check42 (transNDTypeExpr a) t) r')
+  returnM (Func qn' (a + 2) v (transNDTypeExpr a t) r')
 
 -- renaming of functions respective to their order and the determinism mode
 renameFun :: QName -> M QName
@@ -306,22 +306,25 @@ renameCons qn@(q, n) =
   getConsHOClass qn `bindM` \hoCl ->
   returnM (q, (consPrefix dm hoCl) ++ n)
 
-check42 :: (TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
-check42 f t = case t of
-  (TVar (-42)) -> t
-  _            -> f t
+-- translate a type expressen by inserting an additional ConstStore and
+-- EncapsulationDepth type
 
--- translate a type expressen by inserting an additional ConstStore type
+transExprType :: Bool -> TypeExpr -> TypeExpr
+transExprType deterministic
+  | deterministic = transHOTypeExprWith (\t1 t2 -> FuncType t1 (FuncType nestingType (FuncType storeType t2)))
+  | otherwise     = transHOTypeExprWith funcType
 
 transTypeExpr :: Int -> TypeExpr -> TypeExpr
-transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1 (FuncType storeType t2))
-                                  (FuncType storeType)
+transTypeExpr = transTypeExprWith (\t1 t2 -> FuncType t1
+                                               (FuncType nestingType
+                                                  (FuncType storeType t2)))
+                                  (FuncType nestingType .FuncType storeType)
 
 -- translate a type expression by replacing (->) with Funcs and inserting
--- additional IDSupply and ConstStore types
+-- additional IDSupply, ConstStore and EncapsulationDepth types
 transNDTypeExpr :: Int -> TypeExpr -> TypeExpr
 transNDTypeExpr  = transTypeExprWith funcType
-                                     (FuncType supplyType . FuncType storeType)
+                   (FuncType supplyType . FuncType nestingType. FuncType storeType)
 
 transTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr)
                     -> (TypeExpr -> TypeExpr)
@@ -348,16 +351,18 @@ transHOTypeExprWith combFunc (TCons qn ts)    =
   TCons qn (map (transHOTypeExprWith combFunc) ts)
 
 -- translate a single rule of a function adds a supply argument
--- to non-deterministic versions and a constStore argument to all functions
+-- to non-deterministic versions and a constStore and nesting index argument to all functions
 transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx]) ++ [constStoreVarIdx]) (failCheck qn vs e')
+  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx])
+                  ++ [nestingIdx,constStoreVarIdx]) (failCheck qn vs e')
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs      = [1 .. a]
-      vsExtra = vs ++ (if dm then [] else [suppVarIdx]) ++ [constStoreVarIdx] in
+  let vs = [1 .. a]
+      vsExtra = vs ++ (if dm then [] else [suppVarIdx])
+                   ++ [nestingIdx,constStoreVarIdx] in
   returnM $ Rule vsExtra $ failCheck qn vs $ funcCall (externalFunc qn) (map Var vsExtra)
 
 transBody :: QName -> [Int] -> Expr -> M Expr
@@ -389,7 +394,9 @@ addUnifIntCharRule bs bs' =
       -- TODO: magic number
       _ -> Branch (Pattern (constr isInt) [5000])
                   (funcCall (matchFun isInt)
-                    [list2FCList $ map pair2FCPair $ reverse rules ,Var 5000,Var constStoreVarIdx ])
+                    [list2FCList $ map pair2FCPair
+                                 $ reverse rules
+                    ,Var 5000, Var nestingIdx, Var constStoreVarIdx ])
           : bs2
     matchFun True  = (basics,"matchInteger")
     matchFun False = (basics,"matchChar")
@@ -430,10 +437,13 @@ newBranches qn' vs i pConsName =
   let Just pos = find (==i) vs
       suppVar = if dm then [] else [suppVarIdx]
       (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $ map Var (vs1 ++ v : vs2 ++ suppVar ++ [constStoreVarIdx])
+      call v = funcCall qn' $
+                map Var (vs1 ++ v : vs2
+                             ++ suppVar
+                             ++ [nestingIdx, constStoreVarIdx])
       -- pattern matching on guards will combine the new constraints with the given
       -- constraint store
-      guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar))
+      guardCall cVar valVar = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar ++ [nestingIdx]))
                                  (combConstr cVar constStoreVarIdx)
       combConstr cVar constVar = funcCall combConstrName [Var cVar, Var constVar]
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
@@ -443,7 +453,8 @@ newBranches qn' vs i pConsName =
       -- the expression (\z -> f x1 x2 z x3) in the module
       -- FlatCurry2AbstractHaskell.
       -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      lCall = lambdaCall qn' $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++  [constStoreVarIdx]) in
+      lCall = lambdaCall qn'
+            $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++ [nestingIdx,constStoreVarIdx]) in
   returnM $
     [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002, 1003])
              (liftOr [Var 1000, Var 1001, call 1002, call 1003])
@@ -465,8 +476,9 @@ transCompleteExpr e =
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
-              []  -> e'
-              [v] ->  letIdVar strict [(v, Var suppVarIdx)] e' in
+              []      -> e'
+              [v]     -> letIdVar strict [(v, Var suppVarIdx)] e'
+              (_:_:_) -> error "TransFunctions.transCompleteExpr" in
   setNextID i `bindM_` -- and reset it variable id
   returnM e''
 
@@ -504,9 +516,9 @@ transExpr (Comb FuncCall qn es) =
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
   if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
-    then genIds g (Comb FuncCall qn' (es' ++ [Var constStoreVarIdx]))
+    then genIds g (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
     else takeNextID `bindM` \i ->
-         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var constStoreVarIdx]))
+         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
@@ -542,6 +554,11 @@ transExpr (Free vs e) =
 -- case -- TODO give reasonable implementation
 transExpr e@(Case _ _ _) = returnM ([], e)
 
+transExpr (Typed e ty) =
+  isDetMode `bindM` \dm ->
+  transExpr e `bindM` \(g, e') ->
+  genIds g (Typed e' (transExprType dm ty))
+
 genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
 genIds [] expr = returnM ([], expr)
 genIds ns@(_:_) expr =
@@ -571,6 +588,9 @@ idVar      = 2000
 
 -- Variable index for supply variable
 suppVarIdx = 3000
+
+-- Variable index for nesting level
+nestingIdx = 3250
 
 -- Variable index for constraint store
 constStoreVarIdx = 3500
@@ -649,6 +669,9 @@ tConstraint = TCons (basics, "Constraint") []
 
 supplyType :: TypeExpr
 supplyType  = TCons (basics, "IDSupply") []
+
+nestingType :: TypeExpr
+nestingType = TCons (basics, "Cover") []
 
 storeType :: TypeExpr
 storeType = TCons (basics, "ConstStore") []
@@ -730,10 +753,9 @@ splitSupply = funcCall (basics, "splitSupply")
 initSupply  = funcCall (basics, "initIDSupply") []
 leftSupply  = funcCall (basics, "leftSupply")
 rightSupply = funcCall (basics, "rightSupply")
-generate i  = funcCall (basics, "generate") [i]
+generate i  = funcCall (basics, "generate") [i, Var nestingIdx]
 
 defFailInfo = funcCall (basics, "defFailInfo") []
-defCover    = funcCall (basics, "defCover") []
 
 -- ---------------------------------------------------------------------------
 -- Helper functions

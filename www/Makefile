@@ -3,13 +3,13 @@
 .PHONY: all
 all: submitform Registry
 
-submitform: SubmitForm.curry ../lib/HtmlCgi.curry ../lib/NamedSocket.curry \
-	    ../lib/CPNS.curry
-	../bin/kics2 :set v2 :l SubmitForm :save :q
+submitform: SubmitForm.curry $(LIBDIR)/HtmlCgi.curry \
+	    $(LIBDIR)/NamedSocket.curry $(LIBDIR)/CPNS.curry
+	$(REPL) $(REPL_OPTS) :load SubmitForm :save :q
 	mv SubmitForm submitform
 
-Registry: Registry.curry ../lib/HtmlCgi.curry
-	../bin/kics2 :set v2 :l Registry :save :q
+Registry: Registry.curry $(LIBDIR)/HtmlCgi.curry
+	$(REPL) $(REPL_OPTS) :load Registry :save :q
 
 .PHONY: cleanServers
 cleanServers:
@@ -40,6 +40,6 @@ kill:
 	./Registry kill
 
 .PHONY: clean
-clean: 
-	rm -f submitform
-	../bin/cleancurry
+clean:
+	rm -f submitform Registry
+	$(CLEANCURRY)

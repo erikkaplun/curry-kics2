@@ -2,35 +2,22 @@
 # Installation of KICS2 shell scripts
 ##############################################################################
 
-UNAME := $(shell uname)
-
-ifeq ($(UNAME), Linux)
-# Linux
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(UNAME), Darwin)
-# Mac OS
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(UNAME), SunOS)
-# Sun OS
-BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
-BATS =
-else ifeq ($(findstring MINGW, $(UNAME)), MINGW)
-# Windows
-BINS = $(patsubst %.sh, $(BINDIR)/%, makecurrycgi.sh)
+ifdef WINDOWS
+BINS =
 BATS = $(patsubst %, $(BINDIR)/%, $(wildcard *.bat))
 else
-$(error "Unknown system '$(UNAME)')
+# Unixes
+BINS = $(patsubst %.sh, $(BINDIR)/%, $(wildcard *.sh))
+BATS =
 endif
 
 .PHONY: all
 all: $(BINS) $(BATS)
 	@echo "Scripts generated in directory $(<D)."
 
-.PHONY: clean
-clean:
-	rm -f $(BINS)
+.PHONY: cleanall
+cleanall:
+	rm -f $(BINS) $(BATS)
 
 $(BINDIR)/%: %.sh
 	mkdir -p $(@D)

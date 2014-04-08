@@ -1,0 +1,43 @@
+\addcontentsline{toc}{section}{Preface}
+\section*{Preface}
+
+This document describes \CYS (\textbf{Ki}el \textbf{C}urry \textbf{S}ystem
+Version \textbf{2}),
+an implementation of the multi-paradigm language Curry
+\cite{Hanus97POPL,Hanus06Curry} that is
+based on compiling Curry programs into Haskell programs.
+Curry is a universal programming language aiming at the amalgamation
+of the most important declarative programming paradigms,
+namely functional programming and logic programming.
+Curry combines in a seamless way features from functional programming
+(nested expressions, lazy evaluation, higher-order functions),
+logic programming (logical variables, partial data structures,
+built-in search), and concurrent programming (concurrent evaluation
+of constraints with synchronization on logical variables).
+The current \CYS implementation does not support concurrent
+constraints. Alternatively, one can write distributed applications
+by the use of sockets that can be registered and accessed
+with symbolic names.
+Moreover, \CYS also supports
+the high-level implementation of
+graphical user interfaces and web services
+(as described in more detail in
+\cite{Hanus99PPDP,Hanus00PADL,Hanus01PADL,Hanus06PPDP}).
+
+We assume familiarity with the ideas and features
+of Curry as described in the Curry language definition \cite{Hanus12Curry}.
+Therefore, this document only explains the use of the different
+components of \CYS
+and the differences and restrictions of \CYS
+(see Section~\ref{sec-restrictions})
+compared with the language Curry (Version 0.8.3).
+The basic ideas of the implementation of \CYS
+can be found in
+\cite{BrasselHanusPeemoellerReck11,BrasselHanusPeemoellerReck11WLP}.
+
+\bigskip
+
+\subsection*{Acknowledgements}
+
+This work has been supported in part by the
+DFG grants Ha 2457/5-1 and Ha 2457/5-2.

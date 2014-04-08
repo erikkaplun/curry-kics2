@@ -1,0 +1,204 @@
+\section{Overview of \CYS}
+
+\subsection{Installation}
+\label{sec-install}
+
+This version of \CYS has been developed and
+tested on Linux systems.
+In principle, it should be also executable on other
+platforms on which a Haskell implementation (Glasgow Haskell Compiler
+and Cabal) exists, like in many Linux distributions, Sun Solaris,
+or Mac OS X systems.
+
+Installation instructions for \CYS can be found in
+the file \code{INSTALL.txt} stored in the \CYS installation directory.
+Note that there are two possibilities to install \CYS:
+\begin{description}
+\item[Global installation:]\index{global installation}\index{installation!global}
+\CYS is installed in some global system directory where users
+have no write permission. In this case, some options for experimenting
+with \CYS (like \code{supply} or \code{ghc}, see below)
+are not available (since they require the recompilation of parts of
+the installed system).
+\item[Local installation:]\index{local installation}\index{installation!local}
+\CYS is installed in some local user directory where the user
+has write permission and the option \code{GLOBALINSTALL}
+in the \code{Makefile} of the \CYS installation is set as follows:
+\begin{lstlisting}
+GLOBALINSTALL=no
+\end{lstlisting}
+In this case, all options of \CYS are available.
+\end{description}
+In the following, \cyshome denotes the installation directory
+of the \CYS installation.
+
+
+\subsection{General Use}
+\label{sec-general}
+
+All executables required to use the different components
+of \CYS are stored in the directory \code{\cyshome/bin}.
+You should add this directory
+to your path (e.g., by the \code{bash} command
+\ccode{export PATH=\cyshome/bin:\$PATH}).
+
+The source code of the Curry program
+must be stored in a file with the suffix \ccode{.curry},
+e.g., \code{prog.curry}.
+Literate programs must be stored in files with the extension \ccode{.lcurry}.
+
+Since the translation of Curry programs with \CYS creates
+some auxiliary files (see Section~\ref{sec-auxfiles} for details),
+you need write permission
+in the directory where you have stored your Curry programs.
+Moreover, the current implementation also recompiles
+system libraries according to the setting of some options.
+Therefore, the \CYS system should be locally installed
+in your user account.
+The auxiliary files for all Curry programs in the current
+directory can be deleted by the command\pindex{cleancurry}
+\begin{curry}
+cleancurry
+\end{curry}
+(this is a shell script stored in the \code{bin} directory of the
+\CYS installation, see above).
+The command
+\begin{curry}
+cleancurry -r
+\end{curry}
+also deletes the auxiliary files in all subdirectories.
+
+
+
+\subsection{Restrictions}
+\label{sec-restrictions}
+
+There are a few minor restrictions on Curry programs
+when they are processed with \CYS:
+\begin{itemize}
+\item
+\index{singleton variables}\index{variables!singleton}
+\emph{Singleton pattern variables}, i.e., variables that occur only once
+in a rule, should be denoted as an anonymous variable \ccode{_},
+otherwise the parser will print a warning since this is a
+typical source of programming errors.
+\item
+\CYS translates all \emph{local declarations} into global functions with
+additional arguments (``lambda lifting'', see Appendix~D of the
+Curry language report).
+Thus, in the various run-time systems, the definition of
+functions with local declarations look different from
+their original definition (in order to see the result
+of this transformation, you can use the \cb, see
+Section~\ref{sec-currybrowser}).
+\item \index{tabulator stops}
+Tabulator stops instead of blank spaces in source files are
+interpreted as stops at columns 9, 17, 25, 33, and so on.
+In general, tabulator stops should be avoided in source programs.
+\item
+Encapsulated search\index{encapsulated search}:
+The general definition of encapsulated search of the Curry report
+\cite{HanusSteiner98PLILP} is not supported.
+Thus, the corresponding prelude operations like
+\code{try}\pindex{try},
+\code{solveAll}\pindex{solveAll},
+\code{once}\pindex{once},
+\code{findall}\pindex{findall}, or
+\code{best}\pindex{best}
+are not defined in the \CYS prelude.
+However, \CYS supports appropriate alternatives
+to encapsulate non-deterministic computations:
+\begin{description}
+\item[Strong encapsulation:]
+This means that all potential
+non-determinism is encapsulated. Since this might
+result in dependencies on the evaluation strategy
+(see \cite{BrasselHanusHuch04JFLP} for a detailed discussion),
+this kind of encapsulation is only available as I/O operations.
+For instance, the library \code{AllSolutions}\pindex{AllSolutions}
+(Section~\ref{Library:AllSolutions})
+defines the operation
+\begin{curry}
+getAllValues :: a -> IO [a]
+\end{curry}
+to compute all values of a given argument expression.
+There is also the library \code{SearchTree}\pindex{SearchTree}
+(Section~\ref{Library:SearchTree})
+which supports user-programmable search strategies
+and contains some predefined strategies
+like depth-first, breadth-first, iterative deepening search.
+\item[Weak encapsulation:]
+This means that only the non-determinism
+defined inside an encapsulation operator is encapsulated.
+Conceptually, these operators are offered as
+\emph{set functions}\index{set functions} \cite{AntoyHanus09}
+which compute the set of all results but do not encapsulate
+non-determinism in the actual arguments.
+See the library \code{SetFunctions}
+(Section~\ref{Library:SetFunctions}) for more details.
+\end{description}
+\item
+Concurrent computations\index{concurrency}
+based on the suspension of expressions
+containing free variables are not yet supported.
+\CYS supports \emph{value generators} for free variables
+so that a free variable is instantiated when its value is demanded.
+For instance, the initial expression
+\begin{curry}
+x == True where x free
+\end{curry}
+is non-deterministically evaluated to \code{False} and \code{True}
+by instantiating \code{x} to \code{False} and \code{True}, respectively.
+Thus, a computation is never suspended due to free variables.
+This behavior also applies to free variables of primitive types
+like integers. For instance, the initial expression
+\begin{curry}
+x*y=:=1 where x,y free
+\end{curry}
+is non-deterministically evaluated to the two solutions
+\begin{curry}
+{x = -1, y = -1} Success
+{x = 1, y = 1} Success
+\end{curry}
+\item
+Unification is performed without an occur check.
+\item
+There is currently no general connection to external constraint solvers.
+\end{itemize}
+
+
+\subsection{Modules in \CYS}
+\label{sec-modules}
+
+The current implementation of \CYS supports only flat module names,
+i.e., the notation \code{Dir.Mod.f} is not supported.\index{modules}
+In order to allow the structuring of modules in different directories,
+\CYS searches for imported modules in various directories.
+By default, imported modules are searched in the directory
+of the main program and the system module directories
+\ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
+This search path can be extended
+by setting the environment variable \code{CURRYPATH}\pindex{CURRYPATH}
+(which can be also set in a \CYS session by the option
+\ccode{:set path}\pindex{path}\pindex{:set path},
+see below)
+to a list of directory names separated by colons (\ccode{:}).
+In addition, a local standard search path
+can be defined in the \ccode{.kics2rc} file
+(see Section~\ref{sec-customization}).
+Thus, modules to be loaded are searched in the following
+directories (in this order, i.e., the first occurrence of a module file
+in this search path is imported):
+\begin{enumerate}
+\item Current working directory (\ccode{.}) or directory prefix
+of the main module (e.g., directory \ccode{/home/joe/curryprogs}
+if one loads the Curry program \ccode{/home/joe/curryprogs/main}).
+\item The directories enumerated in the environment variable \code{CURRYPATH}.
+\item The directories enumerated in the \ccode{.kics2rc} variable
+      \ccode{libraries}.
+\item The directories \ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
+\end{enumerate}
+Note that the standard prelude (\code{\cyshome/lib/Prelude.curry})
+will be always implicitly imported to all modules if a module
+does not contain an explicit import declaration for the module
+\code{Prelude}.

@@ -6,16 +6,18 @@
 --- --------------------------------------------------------------------------
 module Compile where
 
-import FiniteMap
 import Char             (isSpace)
 import Maybe            (fromJust)
 import List             (isPrefixOf)
 import Directory        (doesFileExist)
 import FilePath         ((</>), dropExtension, normalise)
 import FileGoodies      (lookupFileInPath)
+import FiniteMap
 import FlatCurry
 import FlatCurryGoodies (updQNamesInProg)
 import ReadShowTerm     (readQTermFile)
+
+import AnnotatedFlatCurryGoodies (unAnnProg)
 
 import qualified AbstractHaskell as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
@@ -28,6 +30,9 @@ import Files
 import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase (liftCases)
 import EliminateCond (eliminateCond)
+import DefaultPolymorphic (defaultPolymorphic)
+import MissingImports (fixMissingImports)
+import Inference (inferProgFromProgEnv)
 import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
 import ModuleDeps (ModuleIdent, Source, deps)
 import Names
@@ -35,12 +40,12 @@ import SimpleMake
 -- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (when, foldIO, notNull)
+import Utils (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
 main = do
-  (opts, files) <- compilerOpts
+  (opts, files) <- getCompilerOpts
   mapIO_ (build opts) files
 
 --- Load the module, resolve the dependencies and compile the source files
@@ -67,18 +72,18 @@ locateCurryFile fn = do
   exists <- doesFileExist fn
   if exists
     then return (Just fn)
-    else lookupFileInPath fn [".curry", ".lcurry"] ["."] 
+    else lookupFileInPath fn [".curry", ".lcurry"] ["."]
 
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State
 makeModule mods state mod@((_, (fn, fcy)), _)
-  | opts :> optForce  = compileModule modCnt state mod
+  | opts :> optForce  = compileModule progs modCnt state mod
   | otherwise         = do
                         depFiles <- getDepFiles
                         smake (destFile (opts :> optOutputSubdir) fn)
                               depFiles
-                              (compileModule modCnt state mod)
+                              (compileModule progs modCnt state mod)
                               (loadAnalysis modCnt state mod)
   where
     getDepFiles = do
@@ -90,6 +95,7 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     extFile = externalFile fn
     (Prog _ imps _ _ _) = fcy
     modCnt = length mods
+    progs = [ (m, p) | (m, (_, p)) <- mods]
     opts = state :> compOptions
 
 storeAnalysis :: State -> AnalysisResult -> String -> IO ()
@@ -117,23 +123,36 @@ loadAnalysis total state ((mid, (fn, _)), current) = do
       ndaFile = analysisFile (opts :> optOutputSubdir) fn
       opts = state :> compOptions
 
-compileModule :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
-compileModule total state ((mid, (fn, fcy)), current) = do
-  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn destination
+compileModule :: [(ModuleIdent, Prog)] -> Int -> State
+              -> ((ModuleIdent, Source), Int) -> IO State
+compileModule progs total state ((mid, (fn, fcy)), current) = do
+  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn dest
 
   let fcy' = filterPrelude opts fcy
   dump DumpFlat opts fcyName (show fcy')
 
+  showDetail opts "Inferring types"
+  let afcy = either error id (inferProgFromProgEnv progs fcy)
+  dump DumpTypedFlat opts typedName (show afcy)
+
   showDetail opts "Lifting case expressions"
-  let pLifted = liftCases True fcy'
+  let pLifted = liftCases True afcy
   dump DumpLifted opts liftedName (show pLifted)
 
   showDetail opts "Eliminate calls to cond"
   let pElim = eliminateCond pLifted
   dump DumpEliminated opts elimName (show pElim)
 
+  showDetail opts "Extending imports"
+  let pExtImports = fixMissingImports pElim
+  dump DumpExtImports opts extImportsName (show pExtImports)
+
+  showDetail opts "Default locally polymorphic sub-expressions"
+  let pDefaulted = defaultPolymorphic pExtImports
+  dump DumpDefaulted opts defaultedName (show pDefaulted)
+
   showDetail opts "Renaming symbols"
-  let renamed@(Prog _ _ ts _ _)  = rename pElim
+  let renamed@(Prog _ _ ts _ _)  = rename (unAnnProg pDefaulted)
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
@@ -151,13 +170,13 @@ compileModule total state ((mid, (fn, fcy)), current) = do
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
-  dump DumpAbstractHs opts abstractHsName (show ahsPatched)
+  dump DumpTranslated opts abstractHsName (show ahsPatched)
 
   showDetail opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
 
-  showDetail opts $ "Generating Haskell module " ++ destination
-  writeFileInDir destination integrated
+  showDetail opts $ "Generating Haskell module " ++ dest
+  writeFileInDir dest integrated
 
   showDetail opts $ "Writing auxiliary info file " ++ funcInfo
   writeQTermFileInDir funcInfo (extractFuncInfos funs)
@@ -166,18 +185,21 @@ compileModule total state ((mid, (fn, fcy)), current) = do
   return state'
 
     where
-    fcyName        = fcyFile $ withBaseName (++ "Dump")      mid
-    liftedName     = fcyFile $ withBaseName (++ "Lifted")    mid
-    elimName       = fcyFile $ withBaseName (++ "ElimCond")  mid
-    renamedName    = fcyFile $ withBaseName (++ "Renamed")   mid
-    funDeclName    = ahsFile $ withBaseName (++ "FunDecls")  mid
-    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls") mid
+    fcyName        = fcyFile $ withBaseName (++ "Dump"      ) mid
+    typedName      = fcyFile $ withBaseName (++ "Typed"     ) mid
+    extImportsName = fcyFile $ withBaseName (++ "ExtImports") mid
+    liftedName     = fcyFile $ withBaseName (++ "Lifted"    ) mid
+    elimName       = fcyFile $ withBaseName (++ "ElimCond"  ) mid
+    defaultedName  = fcyFile $ withBaseName (++ "Defaulted" ) mid
+    renamedName    = fcyFile $ withBaseName (++ "Renamed"   ) mid
+    funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
+    typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
-    destination    = destFile (opts :> optOutputSubdir) fn
+    dest           = destFile (opts :> optOutputSubdir) fn
     funcInfo       = funcInfoFile (opts :> optOutputSubdir) fn
     opts           = state :> compOptions
-    fcyFile f = withExtension (const ".fcy") f
-    ahsFile f = withExtension (const ".ahs") f
+    fcyFile f      = withExtension (const ".fcy") f
+    ahsFile f      = withExtension (const ".ahs") f
 
 -- Extract some basic information (deterministic, IO) about all functions
 extractFuncInfos funs =
@@ -213,7 +235,7 @@ filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
   | noPrelude = Prog m (filter (/= prelude) imps) td fd od
   | otherwise = p
-  where noPrelude = ExtNoImplicitPrelude `elem` opts :> optExtensions
+  where noPrelude = NoImplicitPrelude `elem` opts :> optExtensions
 
 --
 integrateExternals :: Options -> AH.Prog -> String -> IO String
@@ -229,7 +251,7 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
     ]
  where
   defaultPragmas :: String
-  defaultPragmas = 
+  defaultPragmas =
       "{-# LANGUAGE MagicHash #-}\n"
    ++ "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
 

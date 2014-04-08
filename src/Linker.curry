@@ -4,42 +4,46 @@
 --- and compiling this main file together with all compiled Curry modules.
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version June 2012
+--- @version January 2014
 --- --------------------------------------------------------------------------
 
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
+  , setExitStatus
   , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain
   ) where
 
 import AbstractCurry
-import PropertyFile
-import ReadShowTerm  (readQTermFile)
-import IO            (Handle, hFlush, stdout)
 import Directory
 import FilePath      ((</>), dropExtension)
+import IO            (Handle, hFlush, stdout)
+import List          (intercalate)
+import PropertyFile
+import ReadShowTerm  (readQTermFile)
 import System
 
 import qualified Installation as Inst
 import GhciComm
 import Names         (funcInfoFile)
 import RCFile
-import Utils
+import Utils         (notNull, strip)
 
 type ReplState =
   { kics2Home    :: String     -- installation directory of the system
   , rcvars       :: [(String, String)] -- content of rc file
   , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
-  , verbose      :: Int        -- verbosity level: 0 = quiet,
-                               -- 1 = show frontend (module) compile/load
-                               -- 2 = show backend (Haskell) compile/load
-                               -- 3 = show intermediate messages, commands
-                               -- 4 = show intermediate results
+  , verbose      :: Int        -- verbosity level:
+                               -- 0 = errors and warnings
+                               -- 1 = show backend (Haskell) compile/load
+                               -- 2 = show intermediate messages, commands
+                               -- 3 = show intermediate results
   , importPaths  :: [String]   -- additional directories to search for imports
-  , libPaths     :: [String]   -- direcoties containg the standard libraries
+  , libPaths     :: [String]   -- directories containg the standard libraries
+  , preludeName  :: String     -- the name of the standard prelude
   , outputSubdir :: String
   , mainMod      :: String     -- name of main module
   , addMods      :: [String]   -- names of additionally added modules
+  , prompt       :: String     -- repl prompt shown in front of user input
   , optim        :: Bool       -- compile with optimization
   , ndMode       :: NonDetMode -- mode for non-deterministic main goal
   , firstSol     :: Bool       -- print only first solution to nd main goal?
@@ -47,11 +51,14 @@ type ReplState =
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
   , useGhci      :: Bool       -- use ghci to evaluate main goal
+  , safeExec     :: Bool       -- safe execution mode without I/O actions
+  , parseOpts    :: String     -- additional options for the front end
   , cmpOpts      :: String     -- additional options for calling kics2 compiler
   , ghcOpts      :: String     -- additional options for ghc compilation
   , rtsOpts      :: String     -- run-time options for ghc
   , rtsArgs      :: String     -- run-time arguments passed to main application
   , quit         :: Bool       -- terminate the REPL?
+  , exitStatus   :: Int        -- exit status (set in case of REPL errors)
   , sourceguis   :: [(String,(String,Handle))] -- handles to SourceProgGUIs
   , ghcicomm     :: Maybe GhciComm -- possible ghci comm. info
   }
@@ -65,21 +72,26 @@ initReplState =
   , verbose      := 1
   , importPaths  := []
   , libPaths     := map (Inst.installDir </>) ["lib", "lib" </> "meta"]
+  , preludeName  := "Prelude"
   , outputSubdir := ".curry" </> "kics2"
   , mainMod      := "Prelude"
   , addMods      := []
+  , prompt       := "%s> "
   , optim        := True
-  , ndMode       := DFS
+  , ndMode       := BFS
   , firstSol     := False
   , interactive  := False
   , showBindings := True
   , showTime     := False
   , useGhci      := False
+  , safeExec     := False
+  , parseOpts    := ""
   , cmpOpts      := ""
   , ghcOpts      := ""
   , rtsOpts      := ""
   , rtsArgs      := ""
   , quit         := False
+  , exitStatus   := 0
   , sourceguis   := []
   , ghcicomm     := Nothing
   }
@@ -87,13 +99,11 @@ initReplState =
 loadPaths :: ReplState -> [String]
 loadPaths rst = "." : rst :> importPaths ++ rst :> libPaths
 
--- ---------------------------------------------------------------------------
+--- Sets the exit status in the REPL state.
+setExitStatus :: Int -> ReplState -> ReplState
+setExitStatus s rst = { exitStatus := s | rst }
 
---- Location of the system configuration file.
---- Currently, user-defined ghc options are stored here in order
---- to force the recompilation of target programs if ghc options are changed.
-scFileName :: String
-scFileName = Inst.installDir </> ".kics2sc"
+-- ---------------------------------------------------------------------------
 
 --- File name of created Main file
 mainGoalFile :: String
@@ -124,15 +134,18 @@ getGoalInfo rst = do
   return (isdet, isio)
 
 -- Checks whether user-defined ghc options have been changed.
-updateGhcOptions :: String -> IO Bool
-updateGhcOptions newOpts = do
-  oldOpts <- readPropertyFile scFileName >>= return . flip rcValue key
+updateGhcOptions :: ReplState -> IO (ReplState,Bool)
+updateGhcOptions rst =
   if oldOpts == newOpts
-    then return False
+    then return (rst,False)
     else do
-      updatePropertyFile scFileName key newOpts
-      return True
- where key = "GHC_OPTIONS"
+      setRCProperty key newOpts
+      rcDefs <- readRC
+      return ({ rcvars := rcDefs | rst }, True)
+ where
+   key = "ghc_options"
+   oldOpts = rcValue (rst :> rcvars) key
+   newOpts = rst :> ghcOpts
 
 --- Result of compiling main program
 data MainCompile = MainError | MainDet | MainNonDet
@@ -142,16 +155,18 @@ createAndCompileMain :: ReplState -> Bool -> String -> Maybe Int
                      -> IO (ReplState, MainCompile)
 createAndCompileMain rst createExecutable mainExp bindings = do
   (isdet, isio) <- getGoalInfo rst
-  wasUpdated    <- updateGhcOptions (rst :> ghcOpts)
-  writeFile mainFile $ mainModule rst isdet isio bindings
+  (rst',wasUpdated) <- updateGhcOptions rst
+  writeFile mainFile $ mainModule rst' isdet isio bindings
 
-  let ghcCompile = ghcCall rst useGhci wasUpdated mainFile
-  writeVerboseInfo rst 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
-  (rst', status) <- if useGhci
-                      then compileWithGhci rst ghcCompile mainExp
-                      else system ghcCompile >>= \stat -> return (rst, stat)
-  return (rst', if status > 0 then MainError else
-                if isdet || isio then MainDet else MainNonDet)
+  let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
+  writeVerboseInfo rst' 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  (rst'', status) <- if useGhci
+                      then compileWithGhci rst' ghcCompile mainExp
+                      else system ghcCompile >>= \stat -> return (rst', stat)
+  return (if status > 0
+          then (setExitStatus 1 rst'', MainError)
+          else (setExitStatus 0 rst'',
+                if isdet || isio then MainDet else MainNonDet))
  where
   mainFile = "." </> rst :> outputSubdir </> "Main.hs"
   -- option parsing
@@ -178,10 +193,10 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
   , if isParSearch                 then "-threaded"      else ""
   , if withRtsOpts                 then "-rtsopts"       else ""
   , if recompile                   then "-fforce-recomp" else ""
-  , rst :> ghcOpts
       -- XRelaxedPolyRec due to problem in FlatCurryShow
   , "-XMultiParamTypeClasses", "-XFlexibleInstances", "-XRelaxedPolyRec"
 --   , "-cpp" -- use the C pre processor -- TODO WHY?
+  , rst :> ghcOpts
   , "-i" ++ (intercalate ":" ghcImports)
   , mainFile
   ]
@@ -213,7 +228,9 @@ mainModule rst isdet isio mbBindings = unlines
   , if rst :> interactive then "import MonadList" else ""
   , "import Basics"
   , "import SafeExec"
-  , if mbBindings==Nothing then "" else "import Curry_Prelude"
+  , if mbBindings==Nothing
+    then ""
+    else ("import Curry_"++ rst :> preludeName)
   , "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"

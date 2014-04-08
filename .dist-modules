@@ -1,0 +1,15 @@
+[submodule "lib"]
+  path = lib
+  url = ROOT/lib
+
+[submodule "curry-base"]
+  path = frontend/curry-base
+  url = ROOT/frontend/curry-base
+
+[submodule "curry-frontend"]
+  path = frontend/curry-frontend
+  url = ROOT/frontend/curry-frontend
+
+[submodule "currytools"]
+  path = currytools
+  url = ROOT/currytools

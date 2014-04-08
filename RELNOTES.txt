@@ -1,0 +1,134 @@
+Release Notes for KiCS2
+=======================
+
+Release notes for KiCS2 Version 0.3.1 (under development)
+---------------------------------------------------------
+
+Changes to version 0.3.0:
+
+  * REPL: new (experimental) options `prelude` (for defining the name
+    of the standard prelude) and `parser` (for setting additional
+    front-end options) included.
+  * Library `Distribution`: front-end parameters extended by supporting
+    "special" (i.e., aribrary) arguments.
+  * Library `Distribution` and `FlatCurry`: after calling the front end,
+    an exception is raised if the front end returns with an error
+    (due to an illegal source program).
+  * Library `HTML`: `formMetaInfo` added, HTML header changed to HTML5.
+  * Library `List`: Improved version of `inits` added.
+  * Library `Prelude`: Functions `forIO`, `forIO_`, `when`, `unless` added.
+  * Tool `erd2curry` updated to support easier installation.
+    Bug fix in code generation w.r.t. checking of cardinality constraints.
+  * Tool `spicey` (web framework) added and updated with a RESTful interface
+    for entities.
+
+
+Release notes for KiCS2 Version 0.3.0
+-------------------------------------
+
+Changes to version 0.2.4:
+
+  * Front-end updated (it writes and reads new kinds of interface files
+    with the suffix `.icurry`).
+  * The default search strategy has been changed to *breadth-first search*.
+  * Fixed a bug in `IO.hGetLine` which caused an end-of-file error when
+    reading a non-empty line without a newline termination.
+  * Compilation scheme changed so that each function has an additional
+    argument indicating the encapsulation level in order to obtain
+    a reasonable implementation of nested encapsulated set functions with
+    possible higher-order functions.
+  * Library `UnsafeSearchTree` added. This library is similarly to
+    `SearchTree` but does not evaluate unbound local variables
+    to their ground values. Thus, one can have results containing
+    unbound variables (which can be checked by the operations
+    `isVar` and `getVarId`).
+
+
+Release notes for KiCS2 Version 0.2.4
+-------------------------------------
+
+Changes to version 0.2.3:
+
+  * Fixed a long standing bug which occured in combination with locally
+    polymorphic sub-expressions. For example, in the rule
+    `f = fst (3, id)` the identifier `id` has type `forall a . a -> a`,
+    but the type variable `a` does not occur in the type of `f`.
+    This lead to a type error in the generated Haskell sources.
+    The compiler now solves this problem by replacing such type variables
+    with the unit type `()`, thus the above mentioned rule becomes
+    `f = fst (3, id :: () -> ())`.
+  * The compiler now uses type inference for FlatCurry programs to
+    improve the generated Haskell files.
+  * Library `Function` added.
+  * The installation process now uses `cabal`'s capabilities to install
+    all required and locally generated Haskell packages into the installation
+    directory, inside a new directory `pkg`.
+    As a consequence, the installation process no longer depends on packages
+    to be installed for the user.
+    Furthermore, different versions of the KiCS2 compiler can now
+    be installed in parallel, even when they are configured
+    to use different versions of GHC.
+  * Library `Prelude`: operations for encapsulated search omitted
+    since the base primitive `try` is not implemented.
+    Use libraries `AllSolutions`, `SearchTree`, and `SetFunctions`
+    for encapsulated search.
+  * Library `SearchTree`: operation `getAllValuesWith` added,
+    operation `someValueBy` slightly changed and renamed to `someValueWith`.
+  * Internal constructor in library FiniteMap changed.
+    As a consequence, compiler intermediate (analysis) files produced
+    by previous KiCS2 versions are incompatible to this version.
+  * CASS tool (Curry Analysis Server System) added and integrated
+    into currydoc.
+  * Library `HTML`: default (white) background for body of generated
+    web pages removed (since this is usually defined in css files).
+  * Type inference tool (see `currytools/typeinference`) added.
+    This tool can be used to annotate expressions in FlatCurry programs
+    with their type.
+
+
+Release notes for KiCS2 Version 0.2.3
+-------------------------------------
+
+Changes to version 0.2.2:
+
+  * The KiCS2 REPL now supports the configuration of the user prompt
+    via `:set prompt <prompt>`.
+
+  * Syntax highlighting for KDE's editor component `katepart` added,
+    supporting Curry and Literate Curry.
+
+  * A frontend bug leading to an internal erroe when using as patterns
+    inside functional patterns is fixed.
+
+  * Some bugs regarding the combination of functional patterns and
+    nonlinear left-hand-sides are fixed. The parser also accepts
+    as-patterns inside functional patterns.
+
+  * The GHC and cabal binaries used for installation can now be
+    explicitly set. See the installation instructions for details.
+
+  * Windows support for kernel installation.
+
+    The KiCS2 kernel system (`kics2c`, `kics2`, `cleancurry`, `cymake`) can
+    now be installed under Windows using MinGW. See the installation
+    instructions for details.
+
+  * Library module `Directory` updated and extended.
+
+    - Replacement of `String` by `FilePath`
+    - Added new function `createDirectoryIfMissing :: Bool -> FilePath -> IO ()`
+    - Added new function `getHomeDirectory :: IO FilePath`
+    - Added new function `getTemporaryDirectory :: IO FilePath`
+    - Added new function `copyFile :: FilePath -> FilePath -> IO ()`
+
+  * Library `SetFunctions`: Operations `choose` and `select` added.
+
+  * The front end accepts typed expressions of the form "Expr :: TypeExpr".
+    Such type annotations are considered by the compiler.
+    For instance, `(unknown :: Bool)` evaluates to `False` or `True`.
+
+  * Library `FlatCurry` extended to represent typed expressions
+    by a new constructor `Typed`.
+
+-------------------------------------------------------------------------
+

@@ -3,26 +3,28 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( -- * Cover
-    Cover, incCover, decCover, defCover, isCovered
+  ( -- * FailInfo
+    FailInfo, defFailInfo
+    -- * Cover
+  , Cover, incCover, decCover, initCover
     -- * Constraints
-  , Constraint (..), Constraints(..), getConstrList
+  , Constraint (..), Constraints(..), getConstrList, makeStrictCList
     -- * Decisions
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
-  , ID (..), leftID, rightID, narrowID, getKey, mkInteger
+  , ID (..), leftID, rightID, narrowID, getKey, mkInteger, isNarrowed
   , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision
-  , nextNIDs, Store (..), Coverable (..)
+  , nextNIDs, Store (..)
   ) where
 
-import Control.Monad (liftM, when, zipWithM_)
+import           Control.Monad   (liftM, when, zipWithM_)
 
-import Debug
-import FailInfo (FailInfo)
-import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
+import           Debug
+import           FailInfo        (FailInfo)
+import           IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
 import qualified IDSupply
 
 -- ---------------------------------------------------------------------------
@@ -41,13 +43,8 @@ incCover = (+ 1)
 decCover :: Cover -> Cover
 decCover = flip (-) 1
 
--- |Default covering depth (corresponds to no covering)
-defCover :: Cover
-defCover = 0
-
--- |Is the non-determinism covered?
-isCovered :: Cover -> Bool
-isCovered x = x > 0
+initCover :: Cover
+initCover = 0
 
 -- ---------------------------------------------------------------------------
 -- Constraint
@@ -84,6 +81,15 @@ instance Show Constraints where
 instance Eq Constraints where
  c1 == c2 = getConstrList c1 == getConstrList c2
 
+-- transforms a constraint to a list of constraints that are not lazy
+makeStrictCList :: Constraint -> [Constraint]
+makeStrictCList (_ :=: (LazyBind cs)) = concatMap makeStrictCList cs
+makeStrictCList binding@(_ :=: _)     = [binding]
+makeStrictCList u@(Unsolvable _)      = [u]
+makeStrictCList (ConstraintChoice cd i csl csr) 
+  = [ConstraintChoice cd i (concatMap makeStrictCList csl)(concatMap makeStrictCList csr)]
+makeStrictCList (ConstraintChoices cd i css) 
+  = [ConstraintChoices cd i (map (concatMap makeStrictCList) css)]
 -- ---------------------------------------------------------------------------
 -- Decision
 -- ---------------------------------------------------------------------------
@@ -188,16 +194,10 @@ getUnique (ChoiceID          u) = u
 getUnique (FreeID          _ s) = unique s
 getUnique (NarrowedID      _ s) = unique s
 
+isNarrowed :: ID -> Bool
+isNarrowed (NarrowedID _ _) = True
+isNarrowed _                = False
 
--- ---------------------------------------------------------------------------
--- Covering Choices for SetFunctions
---- --------------------------------------------------------------------------
-
-class Coverable a where
-  -- Transformes all identifier of choices in the data-structures
-  -- to covered identifiers
-  cover :: a -> a
-  cover = internalError "cover is undefined"
 
 -- ---------------------------------------------------------------------------
 -- Tracing

@@ -1,0 +1,209 @@
+\section{External Operations}
+\label{sec:external-operations}
+
+\index{operation!external}\index{external operation}
+Currently, \CYS has no general interface to external operations,
+i.e., operations whose semantics is not defined by program rules
+in a Curry program but by some code written in another programming
+language.
+Thus, if an external operation should be added
+to the system, this operation must be declared as \code{external}
+in the Curry source code
+and an implementation for this external operation
+must be provided for the run-time system.
+An external operation is defined as follows in the Curry source code:
+\begin{enumerate}
+\item
+Add a type declaration for the external operation somewhere
+in a module defining this operation (usually, the prelude
+or some system module).
+\item
+For external operations it is not allowed to define any
+rule since their semantics is determined by an external implementation.
+Instead of the defining rules, you have to write
+\begin{curry}
+f external
+\end{curry}
+below the type declaration for the external operation \code{f}.
+\end{enumerate}
+Furthermore, an implementation of the external operation
+must be provided in the target language of the \CYS compiler,
+i.e., in Haskell, and inserted in the compiled code.
+In order to simplify this task, \CYS follows some code
+conventions that are described in the following.
+
+Assume you want to implement your own concatenation
+for strings in a module \code{String}.
+The name and type of this string concatenation should be
+\begin{curry}
+sconc :: String -> String -> String
+\end{curry}
+Since the primitive Haskell implementation of this operation
+does not now anything about the operational mechanism of Curry
+(e.g., needed narrowing, non-deterministic rewriting),
+the arguments need to be completely evaluated before
+the primitive implementation is called.
+This can be easily obtained by the prelude operation \code{(\$\#\#)}
+that applies an operation to the \emph{normal form} of the given
+argument, i.e., this operation evaluates the argument
+to its normal form before applying the operation to it.\footnote{%
+There is also a similar prelude operation \code{(\$\#)}
+which evaluates the argument only to head-normal form.
+This is a bit more efficient and can be used for unstructured
+types like \code{Bool}.}
+Thus, we define \code{sconc} by
+\begin{currynomath}
+sconc :: String -> String -> String
+sconc s1 s2 = (prim_sconc $## s1) $## s2
+
+prim_sconc :: String -> String -> String
+prim_sconc external
+\end{currynomath}
+so that it is ensured that the external operation \code{prim_sconc}
+is always called with complete evaluated arguments.
+
+In order to define the Haskell code implementing \code{prim_sconc},
+one has to satisfy the naming conventions of \CYS.
+The \CYS compiler generates the following code for the
+external operation \code{prim_sconc} (note that the generated
+Haskell code for the module \code{String} is stored in the file
+\code{.curry/kics2/Curry_String.hs}):
+\begin{curry}
+d_C_prim_sconc :: Curry_Prelude.OP_List Curry_Prelude.C_Char
+               -> Curry_Prelude.OP_List Curry_Prelude.C_Char
+               -> ConstStore
+               -> Curry_Prelude.OP_List Curry_Prelude.C_Char
+d_C_prim_sconc x1 x2 x3500 = external_d_C_prim_sconc x1 x2 x3500
+\end{curry}
+The type constructors \code{OP_List} and \code{C_Char}
+of the prelude \code{Curry_Prelude}\footnote{Note that all
+translated Curry modules are imported in the Haskell code fully qualified
+in order to avoid name conflicts.}
+correspond to the Curry type constructors for lists and characters.
+The Haskell operation \code{external_d_C_prim_sconc}
+is the external operation to be implemented in Haskell by the programmer.
+The additional argument of type \code{ConstStore}
+represents the current set of constraints when this
+operation is called. This argument is intended to provide
+a more efficient access to binding constraints and can be
+ignored in standard operations.
+
+If \code{String.curry} contains the code
+of the Curry function \code{sconc} described above,
+the Haskell code implementing the external operations
+occurring in the module \code{String} must be in the
+file \code{External_String.hs} which is located in the same
+directory as the file \code{String.curry}.
+The \CYS compiler appends the code contained in
+\code{External_String.hs} to the generated code
+stored in the file \code{.curry/kics2/Curry_String.hs}.\footnote{%
+If the file \code{External_String.hs} contains also
+some import declarations at the beginning, these import declarations
+are put after the generated import declarations.}
+
+In order to complete our example, we have to write into the
+file \code{External_String.hs} a definition of the Haskell function
+\code{external_d_C_prim_sconc}.
+Thus, we start with the following definitions:
+\begin{curry}
+import qualified Curry_Prelude as CP
+
+external_d_C_prim_sconc :: CP.OP_List CP.C_Char -> CP.OP_List CP.C_Char
+                        -> ConstStore -> CP.OP_List CP.C_Char
+\end{curry}
+First, we import the standard prelude with the name \code{CP}
+in order to shorten the writing of type declarations.
+In order to write the final code of this operation,
+we have to convert the Curry-related types
+(like \code{C_Char}) into the corresponding Haskell types (like \code{Char}).
+Note that the Curry-related types contain information about
+non-deterministic or constrained values
+(see \cite{BrasselHanusPeemoellerReck11,BrasselHanusPeemoellerReck11WLP})
+that are meaningless in Haskell.
+To solve this conversion problem, the implementation of \CYS
+provides a family of operations to perform these conversions
+for the predefined types occurring in the standard prelude.
+For instance, \code{fromCurry} converts a Curry type into the
+corresponding Haskell type, and \code{toCurry} converts
+the Haskell type into the corresponding Curry type.
+Thus, we complete our example with the definition
+(note that we simply ignore the final argument representing the
+constraint store)
+\begin{curry}
+external_d_C_prim_sconc s1 s2 _ =
+  toCurry ((fromCurry s1 ++ fromCurry s2) :: String)
+\end{curry}
+Here, we use Haskell's concatenation operation \ccode{++}
+to concatenate the string arguments.
+The type annotation \ccode{:: String} is necessary
+because \ccode{++} is a polymorphic function
+so that the type inference system of Haskell
+has problems to determine the right instance of the conversion
+function.
+
+The conversion between Curry types and Haskell types,
+i.e., the family of conversion operation \code{fromCurry}
+and \code{toCurry}, is defined in the \CYS implementation
+for all standard data types.
+In particular, it is also defined on function types so that one can
+easily implement external Curry I/O actions by using
+Haskell I/O actions.
+For instance, if we want to implement
+an external operation to print some string as an output line,
+we start by declaring the external operations in the Curry module \code{String}:
+\begin{currynomath}
+printString :: String -> IO ()
+printString s = prim_printString $## s
+
+prim_printString :: String -> IO ()
+prim_printString external
+\end{currynomath} % $
+Next we add the corresponding implementation in the file
+\code{External_String.hs} (where \code{C_IO} and \code{OP_Unit} are the names
+of the Haskell representation of the Curry type constructor \code{IO}
+and the Curry data type \ccode{()}, respectively):
+\begin{curry}
+external_d_C_prim_printString :: CP.OP_List CP.C_Char -> ConstStore
+                              -> CP.C_IO CP.OP_Unit
+external_d_C_prim_printString s _ = toCurry putStrLn s
+\end{curry}
+Here, Haskell's I/O action \code{putStrLn} of type \ccode{String -> IO ()}
+is transformed into a Curry I/O action \ccode{toCurry putStrLn}
+which has the type
+\begin{curry}
+CP.OP_List CP.C_Char -> CP.C_IO CP.OP_Unit
+\end{curry}
+When we compile the Curry module \code{String},
+\CYS combines these definitions in the target program so that
+we can immediately use the externally defined operation
+\code{printString} in Curry programs.
+
+As we have seen, \CYS transforms a name like
+\code{primOP} of an external operation into the name
+\code{external_d_C_primOP} for the Haskell operation
+to be implemented, i.e., only a specific prefix is added.
+However, this is only valid if no special characters occur
+in the Curry names.
+Otherwise (in order to generate a correct Haskell program),
+special characters are translated into specific
+names prefixed by \ccode{OP_}. For instance,
+if we declare the external operation
+\begin{curry}
+(<&>) :: Int -> Int -> Int
+(<&>) external
+\end{curry}
+the generated Haskell module contains the code
+\begin{curry}
+d_OP_lt_ampersand_gt :: Curry_Prelude.C_Int -> Curry_Prelude.C_Int
+                     -> ConstStore -> Curry_Prelude.C_Int
+d_OP_lt_ampersand_gt x1 x2 x3500 = external_d_OP_lt_ampersand_gt x1 x2 x3500
+\end{curry}
+so that one has to implement the operation
+\code{external_d_OP_lt_ampersand_gt} in Haskell.
+If in doubt, one should look into the generated Haskell code
+about the names and types of the operations to be implemented.
+
+Finally, note that this method to connect functions implemented in Haskell
+to Curry programs provides the opportunity to connect
+also operations written in other programming languages
+to Curry via Haskell's foreign function interface.

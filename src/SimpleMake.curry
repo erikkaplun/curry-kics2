@@ -2,7 +2,6 @@ module SimpleMake (smake) where
 
 import Directory
 import Time
-import Utils
 
 smake :: String -> [String] -> IO a -> IO a -> IO a
 smake dest deps cmd alt = do

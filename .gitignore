@@ -5,6 +5,7 @@
 *.o-boot
 *.icurry
 .curry
+Curry_Main_Goal.curry
 
 # tex temporary files
 *.aux
@@ -22,6 +23,7 @@
 *.ind
 *.tpt
 *.backup
+*.synctex.gz
 *~
 
 # intermediate files
@@ -36,6 +38,8 @@ lib/kics2-libraries.cabal
 runtime/dist
 runtime/kics2-runtime.cabal
 docs/src/version.tex
+cabal-dev/
+pkg/
 
 # binaries
 benchmarks/Benchmarks
@@ -60,6 +64,7 @@ lib/CDOC
 lib/TEXDOC
 docs/INSTALL.html
 docs/GITINSTALL.html
+docs/RELNOTES.html
 docs/src/lib
 docs/markdown_syntax.html
 docs/src/markdown_syntax.tex

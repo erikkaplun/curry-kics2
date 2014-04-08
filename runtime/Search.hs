@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, CPP#-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Search where
 
@@ -46,16 +46,16 @@ ioIDS2 :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
 ioIDS2 initDepth incr goal = searchIDS2 initDepth incr msingleton goal
 
 mplusDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMSearch
+mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMSearch initCover
 
 mplusBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch
+mplusBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch initCover
 
 mplusIDS :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
-mplusIDS initDepth incr goal = getNormalForm goal >>= fromList . idsSearch initDepth incr . searchMSearch
+mplusIDS initDepth incr goal = getNormalForm goal >>= fromList . idsSearch initDepth incr . searchMSearch initCover
 
 mplusPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
+mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch initCover
 
 -- ---------------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ toIO (C_IO             io) _     = io
 toIO (Fail_C_IO       _ _) _     = throwFail "IO action failed"
 toIO (Choice_C_IO _ _ _ _) _     = throwNondet "Non-determinism in IO occured"
 toIO (Guard_C_IO  _  cs e) store = do
-  mbSolution <- solve cs e
+  mbSolution <- solve initCover cs e
   case mbSolution of
     Nothing       -> throwFail "IO action failed"
     Just (_, val) -> do
@@ -92,7 +92,7 @@ followToIO i xs store = do
   case c of
     ChooseN idx _ -> toIO (xs !! idx) store
     NoDecision      -> throwNondet "Non-determinism in IO occured"
-    LazyBind cs   -> toIO (guardCons defCover (StructConstr cs) (choicesCons defCover i xs)) store
+    LazyBind cs   -> toIO (guardCons initCover (StructConstr cs) (choicesCons initCover i xs)) store
     _             -> internalError $ "followToIO: " ++ show c
 
 fromIO :: IO a -> C_IO a
@@ -115,13 +115,13 @@ printWithBindings bindings result = putStrLn $
 -- Simple evaluation without search or normal form computation
 -- ---------------------------------------------------------------------------
 
-type DetExpr    a =             ConstStore -> a
-type NonDetExpr a = IDSupply -> ConstStore -> a
+type DetExpr    a =             Cover -> ConstStore -> a
+type NonDetExpr a = IDSupply -> Cover -> ConstStore -> a
 
 getNormalForm :: NormalForm a => NonDetExpr a -> IO a
 getNormalForm goal = do
   s <- initSupply
-  return $ const $!! goal s emptyCs $ emptyCs
+  return $ ((\x _ _ -> x) $!! goal s initCover emptyCs) initCover emptyCs
 
 -- |Evaluate a deterministic expression without search, but trace failures
 failtraceD :: NormalForm a => DetExpr a -> IO ()
@@ -137,21 +137,20 @@ failtraceDIO goal = case try (goal emptyCs) of
   Fail _ info   -> failTrace info
   x             -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
 
- -- |Evaluate a deterministic expression without search
-evalD :: NormalForm a => DetExpr a -> IO ()
-evalD = failtraceD
--- evalD goal = print (goal emptyCs)
+-- |Evaluate a deterministic expression without search
+evalD :: Show a => DetExpr a -> IO ()
+evalD goal = print (goal initCover emptyCs)
 
- -- |Evaluate a non-deterministic expression without search
+-- |Evaluate a non-deterministic expression without search
 eval :: Show a => NonDetExpr a -> IO ()
-eval goal = initSupply >>= \s -> print (goal s emptyCs)
+eval goal = initSupply >>= \s -> print (goal s initCover emptyCs)
 
 evalDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
-evalDIO goal = toIO (goal emptyCs) emptyCs >> return ()
+evalDIO goal = toIO (goal initCover emptyCs) emptyCs >> return ()
 
 -- TODO: switch back to computeWithDFS
 evalIO :: NormalForm a => NonDetExpr (C_IO a) -> IO ()
-evalIO goal = initSupply >>= \s -> toIO (goal s emptyCs) emptyCs >> return ()
+evalIO goal = initSupply >>= \s -> toIO (goal s initCover emptyCs) emptyCs >> return ()
 
 -- evalIO goal = computeWithDFS goal >>= execIOList
 -- execIOList :: IOList (C_IO a) -> IO ()
@@ -224,20 +223,25 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
 -- which is internally expanded to apply the constructors encountered during
 -- search.
 prdfs :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
-prdfs prt goal = getNormalForm goal >>= printValsDFS False prt
+prdfs prt goal = getNormalForm goal >>= 
+#ifdef Try
+  printValsDFSTry False prt
+#else
+   printValsDFSMatch False prt
+#endif
 
 -- The first argument backTrack indicates whether backtracking is needed
-printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
-printValsDFS backTrack cont goal = do
+printValsDFSMatch :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFSMatch backTrack cont goal = do
   trace $ "prdfs: " ++ take 200 (show goal)
   match prChoice prNarrowed prFree prFail prGuard prVal goal
   where
   prFail _ _       = return ()
-  prVal v          = searchNF (printValsDFS backTrack) cont v
+  prVal v          = searchNF (printValsDFSMatch backTrack) cont v
   prChoice _ i x y = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = printValsDFS backTrack cont x
-    follow ChooseRight = printValsDFS backTrack cont y
+    follow ChooseLeft  = printValsDFSMatch backTrack cont x
+    follow ChooseRight = printValsDFSMatch backTrack cont y
     follow NoDecision  = if backTrack then do decide True ChooseLeft  x
                                               decide True ChooseRight y
                                               setDecision i NoDecision
@@ -246,44 +250,104 @@ printValsDFS backTrack cont goal = do
       -- Assumption 1: Binary choices can only be set to one of
       -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
       -- be ignored in between
-      where decide bt c a = setDecision i c >> printValsDFS bt cont a
+      where decide bt c a = setDecision i c >> printValsDFSMatch bt cont a
     follow c           = internalError $ "Search.prChoice: " ++ show c
 
   prFree _ i xs   = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
-    follow (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
+    follow (ChooseN c _, _) = printValsDFSMatch backTrack cont (xs !! c)
     follow (NoDecision , j) = cont $ choicesCons defCover j xs
     follow c                = internalError $ "Search.prFree: " ++ show c
 
   prNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs) = processLB backTrack cs i xs
-    follow (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
+    follow (ChooseN c _) = printValsDFSMatch backTrack cont (xs !! c)
     follow NoDecision
       | backTrack        = do
         foldr1 (>>) $ zipWith3 (decide True) [0 ..] xs pns
         setDecision i NoDecision
       | otherwise        = foldr1 (>>) $
         zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
-      where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
+      where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFSMatch bt cont a
     follow c           = internalError $ "Search.prNarrowed: Bad choice " ++ show c
   prNarrowed _ i _ = internalError $ "Search.prNarrowed: Bad narrowed ID " ++ show i
 
-  prGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
+  prGuard _ cs e = solve initCover cs e >>= \mbSltn -> case mbSltn of
     Nothing                      -> return ()
-    Just (reset, e') | backTrack -> printValsDFS True  cont e' >> reset
-                     | otherwise -> printValsDFS False cont e'
+    Just (reset, e') | backTrack -> printValsDFSMatch True  cont e' >> reset
+                     | otherwise -> printValsDFSMatch False cont e'
 
   processLB True cs i xs = do
     reset <- setUnsetDecision i NoDecision
-    printValsDFS backTrack cont
-      (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs)
+    printValsDFSMatch backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
     reset
   processLB False cs i xs = do
     setDecision i NoDecision
-    printValsDFS backTrack cont
-      (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs)
+    printValsDFSMatch backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+
+
+
+printValsDFSTry :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFSTry backTrack cont goal = do
+  trace $ "prdfs: " ++ take 200 (show goal)
+  case try goal of
+    Fail _ _ ->  return ()
+    Val v    ->  searchNF (printValsDFSTry backTrack) cont v
+    Choice _ i x y -> lookupDecision i >>= follow
+     where
+       follow ChooseLeft  = printValsDFSTry backTrack cont x
+       follow ChooseRight = printValsDFSTry backTrack cont y
+       follow NoDecision  = if backTrack then do decide True ChooseLeft  x
+                                                 decide True ChooseRight y
+                                                 setDecision i NoDecision
+                                         else do decide True  ChooseLeft x
+                                                 decide False ChooseRight y
+         -- Assumption 1: Binary choices can only be set to one of
+         -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
+         -- be ignored in between
+         where decide bt c a = setDecision i c >> printValsDFSTry bt cont a
+       follow c           = error $ "Search.prChoice: " ++ show c
+
+    Free _ i xs   -> lookupDecisionID i >>= follow
+      where
+      follow (LazyBind cs, _) = processLB backTrack cs i xs
+      follow (ChooseN c _, _) = printValsDFSTry backTrack cont (xs !! c)
+      follow (NoDecision , j) = cont $ choicesCons initCover j xs
+      follow c                = error $ "Search.prFree: " ++ show c
+
+    Narrowed _ i@(NarrowedID pns _) xs -> lookupDecision i >>= follow
+      where
+      follow (LazyBind cs) = processLB backTrack cs i xs
+      follow (ChooseN c _) = printValsDFSTry backTrack cont (xs !! c)
+      follow NoDecision
+        | backTrack        = do
+          foldr1 (>>) $ zipWith3 (decide True) [0 ..] xs pns
+          setDecision i NoDecision
+        | otherwise        = foldr1 (>>) $
+          zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
+        where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFSTry bt cont a
+      follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
+    Narrowed _ i _ -> error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
+
+    Guard _ cs e -> solve initCover cs e >>= \mbSltn -> case mbSltn of
+      Nothing                      -> return ()
+      Just (reset, e') | backTrack -> printValsDFSTry True  cont e' >> reset
+                       | otherwise -> printValsDFSTry False cont e'
+ where 
+  processLB True cs i xs = do
+    reset <- setUnsetDecision i NoDecision
+    printValsDFSTry backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+    reset
+  processLB False cs i xs = do
+    setDecision i NoDecision
+    printValsDFSTry backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+
 
 -- |Apply the first ternary function to the zipping of three lists, but
 -- take the second function for the last triple.
@@ -354,12 +418,12 @@ searchDFS act goal = do
       follow c             = internalError $ "Search.dfsNarrowed: Bad choice " ++ show c
     dfsNarrowed _ i _ = internalError $ "Search.dfsNarrowed: Bad narrowed ID " ++ show i
 
-    dfsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
+    dfsGuard _ cs e = solve initCover cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> dfs cont e' |< reset
 
     processLB i cs xs = decide i NoDecision
-                      $ guardCons defCover (StructConstr cs) $ choicesCons defCover i xs
+                      $ guardCons initCover (StructConstr cs) $ choicesCons initCover i xs
 
     decide i c y = do
       reset <- setUnsetDecision i c
@@ -387,7 +451,7 @@ printBFSi ud prt goal = computeWithBFS goal >>= printValsOnDemand ud prt
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
 computeWithBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
 -- computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
-computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch
+computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch initCover
 
 searchBFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
 searchBFS act goal = do
@@ -428,7 +492,7 @@ searchBFS act goal = do
       follow (NoDecision , j) = reset >> (cont (choicesCons defCover j zs) +++ (next cont xs ys))
       follow c                = internalError $ "Search.bfsFree: Bad choice " ++ show c
 
-    bfsGuard _ cs e = set >> solve cs e >>= \mbSltn -> case mbSltn of
+    bfsGuard _ cs e = set >> solve initCover cs e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
       Just (newReset, a) -> bfs cont xs ys set (newReset >> reset) a
 
@@ -439,7 +503,7 @@ searchBFS act goal = do
     processLB i cs zs = do
       newReset <- setUnsetDecision i NoDecision
       bfs cont xs ys set (reset >> newReset)
-        (guardCons defCover (StructConstr cs) (choicesCons defCover i zs))
+        (guardCons initCover (StructConstr cs) (choicesCons initCover i zs))
 
     decide i c y = ( setDecision i c          >> set
                    , setDecision i NoDecision >> reset
@@ -475,12 +539,12 @@ computeWithIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
 computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth incrDepth4IDFS msingleton
 
 searchIDS :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> a -> IO (IOList b)
-searchIDS initDepth incr cont goal = iter 0 initDepth
+searchIDS initDepth incr cont goal = iter (-1) initDepth
   where iter oldDepth newDepth = startIDS oldDepth newDepth cont goal
                             ++++ iter newDepth (incr newDepth)
 
 searchIDS2 :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> NonDetExpr a -> IO (IOList b)
-searchIDS2 initDepth incr cont goal = iter 0 initDepth
+searchIDS2 initDepth incr cont goal = iter (-1) initDepth
   where
   iter oldDepth newDepth = (getNormalForm goal >>= startIDS oldDepth newDepth cont)
                             ++++ iter newDepth (incr newDepth)
@@ -512,7 +576,7 @@ startIDS olddepth newdepth act goal = do
       where
       follow (LazyBind cs, _) = processLB i cs xs
       follow (ChooseN c _, _) = ids n cont (xs !! c)
-      follow (NoDecision , j) = cont $ choicesCons defCover j xs
+      follow (NoDecision , j) = cont $ choicesCons initCover j xs
       follow c                = internalError $ "Search.idsFree: Bad choice " ++ show c
 
     idsNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
@@ -524,7 +588,7 @@ startIDS olddepth newdepth act goal = do
       follow c             = internalError $ "Search.idsNarrowed: Bad choice " ++ show c
     idsNarrowed _ i _ = internalError $ "Search.idsNarrowed: Bad narrowed ID " ++ show i
 
-    idsGuard _ cs e = solve cs e >>= \mbSltn -> case mbSltn of
+    idsGuard _ cs e = solve initCover cs e >>= \mbSltn -> case mbSltn of
       Nothing          -> mnil
       Just (reset, e') -> ids n cont e' |< reset
 
@@ -532,7 +596,7 @@ startIDS olddepth newdepth act goal = do
 
     processLB i cs xs = do
       reset <- setUnsetDecision i NoDecision
-      ids n cont (guardCons defCover (StructConstr cs) $ choicesCons defCover i xs) |< reset
+      ids n cont (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs) |< reset
 
     decide i c y = do
       reset <- setUnsetDecision i c
@@ -559,15 +623,15 @@ printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
 computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
-computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch
+computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch initCover
 
 -- ---------------------------------------------------------------------------
 -- Encapsulated search
 -- ---------------------------------------------------------------------------
 
  -- |Collect results of a non-deterministic computation in a monadic structure
-encapsulatedSearch :: (MonadSearch m, NormalForm a) => a -> ConstStore -> m a
-encapsulatedSearch x store = searchMSearch $ const $!! x $ store
+encapsulatedSearch :: (MonadSearch m, NormalForm a) => a -> Cover -> ConstStore -> m a
+encapsulatedSearch x cd store = searchMSearch cd $ ((\y _ _ -> y) $!! x) cd store
 
 -- ---------------------------------------------------------------------------
 -- Generic search using MonadPlus instances for the result
@@ -583,42 +647,57 @@ instance Monad m => Store (StateT DecisionMap m) where
     | otherwise           = modify $ Map.insert (mkInteger u) c
   unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
 
-searchMSearch :: (MonadSearch m, NormalForm a) => a -> m a
-searchMSearch x = evalStateT (searchMSearch' return x) (Map.empty :: DecisionMap)
+searchMSearch :: (MonadSearch m, NormalForm a) => Cover -> a -> m a
+searchMSearch cd x = evalStateT (searchMSearch' cd return x) (Map.empty :: DecisionMap)
 
-searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => (a -> m b) -> a -> m b
-searchMSearch' cont = match smpChoice smpChoices smpChoices smpFail smpGuard smpVal
+searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => Cover -> (a -> m b) -> a -> m b
+searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal x
   where
-  smpFail cd info = if isCovered cd then szero (decCover cd) info else mzero
-  smpVal v        = searchNF searchMSearch' cont v
+  smpFail d info  = szero d info
+  smpVal v        = searchNF (searchMSearch' cd) cont v
 
-  smpChoice cd i x y = lookupDecision i >>= follow
+  smpChoice d i a b = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = searchMSearch' cont x
-    follow ChooseRight = searchMSearch' cont y
-    follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
+    follow ChooseLeft  = searchMSearch' cd cont a
+    follow ChooseRight = searchMSearch' cd cont b
+    follow NoDecision  = decide i ChooseLeft a `plus` decide i ChooseRight b
     follow c           = internalError $ "Search.smpChoice: Bad decision " ++ show c
-    plus = if isCovered cd then splus (decCover cd) i else mplus 
+    plus = if isCovered d then splus d i else mplus
 
-  smpChoices cd i xs = lookupDecision i >>= follow
+  smpFree d i xs = lookupDecisionID i >>= follow
     where
-    follow (LazyBind cs)  = processLB cd i cs xs
-    follow (ChooseN c _)  = searchMSearch' cont (xs !! c)
-    follow NoDecision     = sumF $
+    follow (LazyBind cs,_)  = processLB d i cs xs
+    follow (ChooseN c _,_)  = searchMSearch' cd cont (xs !! c)
+    follow (NoDecision ,j)  = sumF j $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = internalError $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID     pns' _ -> pns'
-           NarrowedID pns' _ -> pns'
-           _                 -> internalError $ "Search.smpChoices: " ++ show i
-    sumF = if isCovered cd then ssum (decCover cd) i else msum
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> internalError "Search.smpFree.pns: ChoiceID"
+    sumF j | isCovered d  = svar d i
+           | otherwise    = var (cont (choicesCons d j xs))
 
+  smpNarrowed d i xs = lookupDecision i >>= follow
+    where
+    follow (LazyBind cs)  = processLB d i cs xs
+    follow (ChooseN c _)  = searchMSearch' cd cont (xs !! c)
+    follow NoDecision     = sumF $
+      zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
+    follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
+    pns = case i of
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
+    sumF | isCovered d = ssum d i
+         | otherwise   = msum
 
-  smpGuard cd cs e 
-   | isCovered cd = constrainMSearch (decCover cd) cs (searchMSearch' cont e)
-   | otherwise = solve cs e >>= maybe mzero (searchMSearch' cont . snd)
+  smpGuard d cs e
+   | isCovered d = constrainMSearch d cs (searchMSearch' cd cont e)
+   | otherwise = solve cd cs e >>= maybe (szero d defFailInfo) (searchMSearch' cd cont . snd)
 
-  processLB cd i cs xs = decide i NoDecision
-                        $ guardCons cd (StructConstr cs) (choicesCons cd i xs)
+  processLB d i cs xs = decide i NoDecision
+                        $ guardCons d (StructConstr cs) (choicesCons d i xs)
 
-  decide i c y = setDecision i c >> searchMSearch' cont y
+  decide i c y = setDecision i c >> searchMSearch' cd cont y
+  isCovered d = d < cd

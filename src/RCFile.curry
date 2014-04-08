@@ -3,22 +3,22 @@
 --- that is stored in $HOME/.kics2rc
 ---
 --- @author  Michael Hanus
---- @version July 2012
+--- @version January 2013
 ----------------------------------------------------------------------
 
 module RCFile (readRC, rcValue, setRCProperty) where
 
 import Char         (toLower, isSpace)
-import Directory    (doesFileExist, renameFile)
-import FilePath     ((</>))
+import Directory    (getHomeDirectory, doesFileExist, copyFile, renameFile)
+import FilePath     (FilePath, (</>), (<.>))
+import Function     (first)
 import Installation (installDir)
 import PropertyFile
 import Sort         (mergeSort)
-import System       (system, getEnviron)
 
-import Utils        (liftIO, mapFst, strip, unless)
+import Utils        (strip)
 
-defaultRC :: String
+defaultRC :: FilePath
 defaultRC = installDir </> "kics2rc.default"
 
 --- Location of the rc file of a user.
@@ -26,8 +26,8 @@ defaultRC = installDir </> "kics2rc.default"
 --- The name of the file specifying configuration parameters of the
 --- current distribution. This file must have the usual format of
 --- property files (see description in module PropertyFile).
-rcFileName :: IO String
-rcFileName = (</> ".kics2rc") `liftIO` getEnviron "HOME"
+rcFileName :: IO FilePath
+rcFileName = (</> ".kics2rc") `liftIO` getHomeDirectory
 
 --- Reads the rc file. If it is not present, the standard file
 --- from the distribution will be copied.
@@ -35,10 +35,8 @@ readRC :: IO [(String, String)]
 readRC = do
   rcName   <- rcFileName
   rcExists <- doesFileExist rcName
-  if rcExists
-   then updateRC >> readPropertyFile rcName
-   else do system $ "cp " ++ defaultRC ++ ' ': rcName
-           readPropertyFile rcName
+  if rcExists then updateRC else copyFile defaultRC rcName
+  readPropertyFile rcName
 
 rcKeys :: [(String, String)] -> [String]
 rcKeys = mergeSort (<=) . map fst
@@ -53,8 +51,8 @@ updateRC = do
   distprops <- readPropertyFile defaultRC
   unless (rcKeys userprops == rcKeys distprops) $ do
     putStrLn $ "Updating \"" ++ rcName ++ "\"..."
-    renameFile rcName $ rcName ++ ".bak"
-    system $ "cp " ++ defaultRC ++ ' ': rcName
+    renameFile rcName $ rcName <.> "bak"
+    copyFile defaultRC rcName
     mapIO_ (\ (n, v) -> maybe done
               (\uv -> unless (uv == v) $ updatePropertyFile rcName n uv)
               (lookup n userprops))
@@ -72,4 +70,4 @@ setRCProperty pname pval = do
 --- string is returned for an undefined variable.
 rcValue :: [(String, String)] -> String -> String
 rcValue rcdefs var = strip $ maybe "" id $
-  lookup (map toLower var) (map (mapFst (map toLower)) rcdefs)
+  lookup (map toLower var) (map (first (map toLower)) rcdefs)

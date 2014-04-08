@@ -1,7 +1,7 @@
 {- |
     Module      :  $Header$
     Description :  cleancurry binary
-    Copyright   :  2012 Björn Peemöller
+    Copyright   :  2012 - 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -13,16 +13,18 @@
 
 module Main where
 
-import Control.Monad         (filterM, liftM, when)
+import Control.Exception as E (catch, throwIO)
+import Control.Monad          (filterM, liftM, when)
 import System.Console.GetOpt
 import System.Directory
 import System.FilePath
-import System.IO             (hPutStrLn, stderr)
-import System.Environment    (getArgs, getProgName)
-import System.Exit           (exitFailure, exitSuccess)
+import System.IO              (hPutStrLn, stderr)
+import System.IO.Error        (isDoesNotExistError, isPermissionError)
+import System.Environment     (getArgs, getProgName)
+import System.Exit            (exitFailure, exitSuccess)
 
 version :: String
-version = "0.1"
+version = "0.2"
 
 -- |cleancurry options
 data Options = Options
@@ -67,10 +69,10 @@ printUsage prog = do
     where header = "usage: " ++ prog ++ " [OPTION] ... MODULE ..."
 
 badUsage :: String -> [String] -> IO a
-badUsage prog []         = do
+badUsage prog errs = do
+  mapM_ (hPutStrLn stderr) errs
   hPutStrLn stderr $ "Try '" ++ prog ++ " --help' for more information"
   exitFailure
-badUsage prog (err:errs) = hPutStrLn stderr err >> badUsage prog errs
 
 processOpts :: String -> (Options, [String], [String])
             -> IO (Options, [String])
@@ -136,7 +138,7 @@ srcExts :: [String]
 srcExts = [".curry", ".lcurry"]
 
 cyExts :: [String]
-cyExts = ["fcy", "fint", "acy", "uacy"]
+cyExts = ["fcy", "fint", "acy", "uacy", "icurry"]
 
 hasNoPath :: String -> Bool
 hasNoPath = (== ".") . takeDirectory
@@ -161,7 +163,13 @@ findCurryModules dir = filter ((`elem` srcExts) . takeExtension)
                        `liftM` getUsefulContents dir
 
 isDirectory :: FilePath -> IO Bool
-isDirectory = liftM searchable . getPermissions
+isDirectory f = E.catch (searchable `liftM` getPermissions f) handler
+  where
+  handler :: IOError -> IO Bool
+  handler e | isDoesNotExistError e = return False
+            | isPermissionError   e = return False
+            | otherwise             = E.throwIO e
+
 
 getUsefulContents :: FilePath -> IO [String]
 getUsefulContents dir = filter (`notElem` [".", ".."])

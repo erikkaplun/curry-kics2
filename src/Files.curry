@@ -7,8 +7,6 @@
 module Files
   ( -- File name modification
     withComponents, withDirectory, withBaseName, withExtension
-    -- directory creation
-  , createDirectoryIfMissing
     -- file creation
   , writeFileInDir, writeQTermFileInDir
     -- file deletion
@@ -16,16 +14,15 @@ module Files
   ) where
 
 import Directory
-  ( createDirectory, doesDirectoryExist
+  ( createDirectory, createDirectoryIfMissing, doesDirectoryExist
   , doesFileExist, removeFile
   )
 import FilePath
   ( extSeparator, pathSeparator, (</>), (<.>)
   , splitFileName, splitExtension, splitDirectories, takeDirectory
   )
-import List         (last)
+import List         (last, scanl1)
 import ReadShowTerm (writeQTermFile)
-import Utils
 
 --- Apply functions to all parts of a file name
 withComponents :: (String -> String) -- change path
@@ -46,22 +43,7 @@ withBaseName f fn = withComponents id f id fn
 
 --- Apply a function to the extension component of a file path
 withExtension :: (String -> String) -> String -> String
-withExtension f fn =withComponents id id f fn
-
---- Create a directory if it does not exist. The flag signals if all missing
---- parent directories should also be created
-createDirectoryIfMissing :: Bool -> String -> IO ()
-createDirectoryIfMissing createParents path
-  | createParents = createDirs parents
-  | otherwise     = createDirs [last parents]
-  where
-    parents = scanl1 (</>) $ splitDirectories $ path
-
-    createDirs [] = done
-    createDirs (dir:dirs) = do
-      dde <- doesDirectoryExist dir
-      unless dde $ createDirectory dir
-      createDirs dirs
+withExtension f fn = withComponents id id f fn
 
 --- write the 'String' into a file where the file name may contain a path.
 --- The corresponding directories are created first if missing.

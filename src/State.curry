@@ -1,53 +1,78 @@
--------------------------------------------------------------------
--- This module provides an implementation of the state monad
--- @author fre
--- @version January 3, 2012
--------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--- This module provides an implementation of the state monad
+--- @author fre, bjp
+--- @version August 2013
+--------------------------------------------------------------------------------
 
-module State ( State 
-             , bindS
-             , returnS
-             , getS
-             , setS
-             , runState
-             , evalState
-             , execState
-             , sequenceS
-             , modifyS
-             ) where
+module State
+  ( State
+  , bindS
+  , bindS_
+  , returnS
+  , getS
+  , putS
+  , modifyS
+  , sequenceS
+  , sequenceS_
+  , mapS
+  , mapS_
+  , runState
+  , evalState
+  , execState
+  , liftS
+  , liftS2
+  ) where
 
-type State a s = s -> (a, s)
+infixl 1 `bindS`, `bindS_`
 
-bindS :: State a s -> (a -> State b s) -> State b s
-bindS state f s = let (x, newS) = state s
-                  in f x newS 
+type State s a = s -> (a, s)
 
-returnS :: a -> State a s
-returnS x s = (x,s)
+bindS :: State s a -> (a -> State s b) -> State s b
+bindS state f s = case state s of
+                    (x, newS) -> newS `seq` f x newS
 
-sequenceS :: [State a s] -> State [a] s
-sequenceS = 
- foldr (\s newS -> s    `bindS` \a  -> 
-                   newS `bindS` \as -> 
+bindS_ :: State s a -> State s b -> State s b
+bindS_ a b = a `bindS` \_ -> b
+
+returnS :: a -> State s a
+returnS x s = (x, s)
+
+getS :: State s s
+getS s = (s, s)
+
+putS :: s -> State s ()
+putS newState _ = ((), newState)
+
+modifyS :: (s -> s) -> State s ()
+modifyS f s = ((), f s)
+
+sequenceS :: [State s a] -> State s [a]
+sequenceS =
+ foldr (\s newS -> s    `bindS` \a  ->
+                   newS `bindS` \as ->
                    returnS (a:as))
        (returnS [])
-       
-getS :: State s s
-getS s = (s,s)
 
-setS :: s -> State () s
-setS newState _ = ((),newState)
+sequenceS_ :: [State s a] -> State s ()
+sequenceS_ = foldr bindS_ (returnS ())
 
-modifyS :: (s -> s) -> State () s
-modifyS f s = ((),f s)
+mapS :: (a -> State s b) -> [a] -> State s [b]
+mapS f = sequenceS . map f
 
-runState :: State a s -> s -> (a,s)
+mapS_ :: (a -> State s b) -> [a] -> State s ()
+mapS_ f = sequenceS_ . map f
+
+runState :: State s a -> s -> (a, s)
 runState state s = state s
 
-evalState :: State a s -> s -> a
+evalState :: State s a -> s -> a
 evalState state s = fst (runState state s)
 
-execState :: State a s -> s -> s
+execState :: State s a -> s -> s
 execState state s = snd (runState state s)
 
+liftS :: (a -> b) -> State s a -> State s b
+liftS f act = act `bindS` returnS . f
 
+liftS2 :: (a -> b -> c) -> State s a -> State s b -> State s c
+liftS2 f a b  = a `bindS` \x -> b `bindS` \y -> returnS (f x y)

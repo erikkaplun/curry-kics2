@@ -195,6 +195,7 @@ showTypeSig opts fname (CType ctxt texp) =
   ++ " :: " ++ showContext opts ctxt ++ showTypeExpr opts False texp ++ "\n"
 
 -- Show a1,a2,a3 as a_1,a_2,a_3 (due to bug in PAKCS front-end):
+showTypeVar []     = []
 showTypeVar (c:cs) =
   if c == 'a' && not (null cs) && all isDigit cs
   then c:'_':cs
@@ -297,6 +298,12 @@ showExprOpt opts (ListComp expr stmts) =
 showExprOpt opts (Case expr branches)  =
   "case " ++ (showBoxedExpr opts expr) ++ " of\n"
           ++ showBlock (combineMap (showBranchExpr opts) branches "\n")
+showExprOpt opts (Typed e ty) = '(' : showExprOpt opts e ++ " :: "
+                                ++ showTypeExpr opts False ty ++ ")"
+showExprOpt opts (IfThenElse boolExpr expr1 expr2)  =
+  "if " ++ (showBoxedExpr opts boolExpr)
+        ++ "\n    then " ++ (showBoxedExpr opts expr1)
+        ++ "\n    else " ++ (showBoxedExpr opts expr2)
 
 showSymbol :: Options -> QName -> String
 showSymbol opts (modName, symName)
@@ -382,14 +389,16 @@ showPatternList opts p
   = showAsPatternList opts p
   | otherwise = "(" ++ concat (intersperse ":" (showPatListElems opts p))++")"
 
-showPatListElems opts (PComb (_,":") [x,xs])
-  = showPattern opts x : showPatListElems opts xs
-showPatListElems _ (PComb (_,"[]") []) = []
-showPatListElems opts (PVar v)         = [showPattern opts (PVar v)]
-showPatListElems opts (PAs name p)     = [showPattern opts (PAs name p)]
+showPatListElems opts pat = case pat of
+  (PComb (_,":")  [x,xs]) -> showPattern opts x : showPatListElems opts xs
+  (PComb (_,"[]") [])     -> []
+  (PVar v)                -> [showPattern opts (PVar v)]
+  (PAs name p)            -> [showPattern opts (PAs name p)]
+  _                       -> error "AbstractHaskellPrinter.showPatListElems"
 
-showAsPatternList opts (PAs (_,name) p) =
-  name ++ "@" ++ "(" ++ intercalate ":" (showPatListElems opts p) ++ ")"
+showAsPatternList opts pat = case pat of
+  (PAs (_,name) p) -> name ++ "@" ++ "(" ++ intercalate ":" (showPatListElems opts p) ++ ")"
+  _                -> error "AbstractHaskellPrinter.showAsPatternList"
 
 showBranchExpr :: Options -> BranchExpr -> String
 showBranchExpr opts (Branch pattern expr)
@@ -410,13 +419,15 @@ showFloat :: Float -> String
 showFloat f = if f>=0 then show f else '-':show (negateFloat f)
 
 showCharc :: Literal -> String
-showCharc (Charc c) | c=='\n'   = "\\n"
-                    | c=='\r'   = "\\r"
-                    | c=='\t'   = "\\t"
-                    | c=='\\'   = "\\\\"
-                    | c=='\"'   = "\\\""
-                    | c=='\''   = "\\\'"
-                    | otherwise = [c]
+showCharc lit = case lit of
+  (Charc c) | c=='\n'   -> "\\n"
+            | c=='\r'   -> "\\r"
+            | c=='\t'   -> "\\t"
+            | c=='\\'   -> "\\\\"
+            | c=='\"'   -> "\\\""
+            | c=='\''   -> "\\\'"
+            | otherwise -> [c]
+  _                     -> error "AbstractHaskellPrinter.showCharc"
 
 showBlock :: String -> String
 showBlock text
@@ -473,53 +484,56 @@ showListApplication opts appl
     = "(" ++ (showSimpleListApplication opts appl) ++ ")"
 
 showCharListApplication :: Options -> Expr -> String
-showCharListApplication opts (Apply (Apply _ (Lit c)) tail) = case tail of
-  (Symbol _) -> showCharc c
-  _          -> showCharc c ++ showCharListApplication opts tail
+showCharListApplication opts expr = case expr of
+  (Apply (Apply _ (Lit c)) tail) -> case tail of
+    (Symbol _) -> showCharc c
+    _          -> showCharc c ++ showCharListApplication opts tail
+  _                              -> error "AbstractHaskellPrinter.showCharListApplication"
 
 showConsListApplication :: Options -> Expr -> String
-showConsListApplication opts (Apply (Apply _ head) tail) = case tail of
-  (Symbol _) -> showBoxedExpr opts head
-  _           -> (showBoxedExpr opts head) ++ ","
-                  ++ (showConsListApplication opts tail)
+showConsListApplication opts expr = case expr of
+  (Apply (Apply _ head) tail) -> case tail of
+    (Symbol _) -> showBoxedExpr opts head
+    _          -> (showBoxedExpr opts head) ++ "," ++ (showConsListApplication opts tail)
+  _                           -> error "AbstractHaskellPrinter.showConsListApplication"             
 
 showSimpleListApplication :: Options -> Expr -> String
-showSimpleListApplication opts (Apply (Apply _ head) tail) = case tail of
-  (Symbol _) -> showBoxedExpr opts head ++ ":[]"
-  _           -> showBoxedExpr opts head ++ ":" ++ showBoxedExpr opts tail
-showSimpleListApplication opts (Apply (Symbol (_,str)) tail) =
-  showBoxedExpr opts tail ++ str
+showSimpleListApplication opts expr = case expr of
+  (Apply (Apply _ head) tail)   -> case tail of
+    (Symbol _) -> showBoxedExpr opts head ++ ":[]"
+    _          -> showBoxedExpr opts head ++ ":" ++ showBoxedExpr opts tail
+  (Apply (Symbol (_,str)) tail) -> showBoxedExpr opts tail ++ str
+  _                             -> error "AbstractHaskellPrinter.showSimpleListApplication"
 
 showInfixApplication :: Options -> QName -> Expr -> String
-showInfixApplication opts infixop (Apply func arg2) = case func of
-  (Apply f arg1) -> case f of
-    (Apply _ arg0) ->
-        "(" ++ showBoxedExpr opts arg0 ++ " " ++
-          showSymbol opts infixop ++ " " ++
-          showBoxedExpr opts arg1 ++ ") " ++
-          showBoxedExpr opts arg2
-    _ -> showBoxedExpr opts arg1 ++ " "
-        ++ showSymbol opts infixop
-        ++ " " ++ showBoxedExpr opts arg2
-  _ -> "(" ++ showSymbol opts infixop ++ ") " ++ (showBoxedExpr opts arg2)
+showInfixApplication opts infixop expr = case expr of
+  (Apply func arg2) -> case func of
+    (Apply f arg1) -> case f of
+      (Apply _ _) -> "(" ++ showInfixApplication opts infixop func ++ ") " ++ showBoxedExpr opts arg2
+      _           -> showBoxedExpr opts arg1 ++ " "
+                     ++ showSymbol opts infixop
+                     ++ " " ++ showBoxedExpr opts arg2
+    _              -> "(" ++ showSymbol opts infixop ++ ") " ++ (showBoxedExpr opts arg2)
+  _                 -> error "AbstractHaskellPrinter.showInfixApplication"
 
 showITEApplication :: Options -> Expr -> String
-showITEApplication opts (Apply (Apply (Apply (Symbol _) condExpr)
-                                                        thenExpr)
-                                                        elseExpr)
-   =    "if " ++ (showExprOpt opts condExpr) ++ " then "
-     ++ (showExprOpt opts thenExpr) ++ " else "
-     ++ (showExprOpt opts elseExpr)
-showITEApplication opts (Apply e@(Apply (Apply (Apply _ _) _) _) e')
-   = "("++showITEApplication opts e ++ ") "++showBoxedExpr opts e'
+showITEApplication opts expr = case expr of
+  (Apply (Apply (Apply (Symbol _) condExpr) thenExpr) elseExpr) ->
+      "if " ++ (showExprOpt opts condExpr) ++ " then "
+        ++ (showExprOpt opts thenExpr) ++ " else "
+        ++ (showExprOpt opts elseExpr)
+  (Apply e@(Apply (Apply (Apply _ _) _) _) e')                  ->
+      "("++showITEApplication opts e ++ ") "++showBoxedExpr opts e'
+  _                                                             ->
+      error "AbstractHaskellPrinter.showITEApplication"
 
 showTupleApplication :: Options -> Expr -> String
 showTupleApplication opts appl = "(" ++ (p_showTuple appl) ++ ")"
   where
-   p_showTuple (Apply (Symbol _) arg)
-      = showExprOpt opts arg
-   p_showTuple (Apply (Apply e1 e2) arg)
-      = (p_showTuple (Apply e1 e2)) ++ "," ++ (showExprOpt opts arg)
+   p_showTuple expr = case expr of
+      (Apply (Symbol _) arg)    -> showExprOpt opts arg
+      (Apply (Apply e1 e2) arg) -> (p_showTuple (Apply e1 e2)) ++ "," ++ (showExprOpt opts arg)
+      _                         -> error "AbstractHaskellPrinter.showTupleApplication"
 
 showSimpleApplication :: Options -> Expr -> String
 showSimpleApplication opts appl = case appl of
@@ -550,6 +564,7 @@ combineMap _ [] _     = ""
 combineMap f (x:xs) s = (f x) ++ (prefixMap f xs s)
 
 dropTags :: String -> String
+dropTags []     = []
 dropTags (x:xs) = case x of
   '\"' -> dropTags $ tail $ dropWhile (/= '\"') xs
   '>'  -> xs
@@ -559,17 +574,21 @@ dropTags (x:xs) = case x of
 --- tests for various properties of AbstractHaskell constructs
 ------------------------------------------------------------------------------
 
-isClosedPatternList (PComb (m,":") [_, xs]) =
-  m == prelude && isClosedPatternList xs
-isClosedPatternList (PComb (m,"[]") []) = m == prelude
-isClosedPatternList (PVar _) = False
-isClosedPatternList (PAs _ p) = isClosedPatternList p
+isClosedPatternList :: Pattern -> Bool
+isClosedPatternList pat = case pat of
+  (PComb (m,":") [_, xs]) -> m == prelude && isClosedPatternList xs
+  (PComb (m,"[]") [])     -> m == prelude
+  (PVar _)                -> False
+  (PAs _ p)               -> isClosedPatternList p
+  _                       -> error "AbstractHaskellPrinter.isClosedPatternList"
 
-isClosedStringPattern (PComb (m,":") [x,xs])
-  = m == prelude && isCharPattern x && isClosedStringPattern xs
-isClosedStringPattern (PComb (m,"[]") []) = m == prelude
-isClosedStringPattern (PVar _)  = False
-isClosedStringPattern (PAs _ _) = False
+isClosedStringPattern :: Pattern -> Bool
+isClosedStringPattern pat = case pat of
+  (PComb (m,":") [x,xs]) -> m == prelude && isCharPattern x && isClosedStringPattern xs
+  (PComb (m,"[]") [])    -> m == prelude
+  (PVar _)               -> False
+  (PAs _ _)              -> False
+  _                      -> error "AbstractHaskellPrinter.isClosedStringPattern"
 
 isCharPattern p = case p of
   PLit (Charc _) -> True
@@ -584,11 +603,13 @@ isInfixOpName = all (`elem` infixIDs)
 
 -- TODO: Does this still work?
 isStringList :: Expr -> Bool
-isStringList (Symbol (mod,name)) = mod == prelude && name == "[]"
-isStringList (Var _)             = False
-isStringList (Apply head tail)   = case head of
-  (Apply _ (Lit (Charc _))) -> isStringList tail
-  _                         -> False
+isStringList expr = case expr of
+  (Symbol (mod,name)) -> mod == prelude && name == "[]"
+  (Var _)             -> False
+  (Apply head tail)   -> case head of
+    (Apply _ (Lit (Charc _))) -> isStringList tail
+    _                         -> False
+  _                   -> error "AbstractHaskellPrinter.isStringList"
 
 isClosedList :: Expr -> Bool
 isClosedList expr = case expr of

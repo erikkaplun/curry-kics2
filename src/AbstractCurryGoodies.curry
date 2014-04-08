@@ -7,9 +7,9 @@ module AbstractCurryGoodies
   ) where
 
 import AbstractCurry
-import List          (union)
+import List          (intercalate, union)
 
-import Utils         (intercalate, notNull)
+import Utils         (notNull)
 
 --- Returns true if the type expression contains type variables.
 isPolyType :: CTypeExpr -> Bool
