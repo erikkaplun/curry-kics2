@@ -553,8 +553,8 @@ unifiableInstance hoResult tdecl = case tdecl of
        ]
        where targs = map fcy2absTVar tnums
              ctype = TCons qf (map TVar targs)
-             newFail qn = (qn, simpleRule [PVar (1,"a"), PVar (2,"b"), PVar (3, "_")]
-                                (applyF (basics "Fail_C_Success") [defCover, applyF (basics "unificationFail") [applyF (basics "showCons") [Var (1,"a")], applyF (basics "showCons") [Var (2,"b")]]])
+             newFail qn = (qn, simpleRule [PVar (1,"a"), PVar (2,"b"), PVar (3, "cd"), PVar (4, "_")]
+                                (applyF (basics "Fail_C_Success") [Var (3, "cd"), applyF (basics "unificationFail") [applyF (basics "showCons") [Var (1,"a")], applyF (basics "showCons") [Var (2,"b")]]])
                           )
   _ -> error "TransTypes.unifiableInstance"
 

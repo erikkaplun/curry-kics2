@@ -169,6 +169,9 @@ doInDetMode dm action =
   setDetMode oldDm `bindM_`
   returnM retVal
 
+isFailCheck :: M Bool
+isFailCheck = getState `bindM` \st -> returnM (st :> compOptions :> optFailCheck)
+
 -- add a message to the transformation report
 -- addToReport :: String -> M ()
 -- addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
@@ -356,14 +359,20 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx])
-                  ++ [nestingIdx,constStoreVarIdx]) (failCheck qn vs e')
+  isFailCheck `bindM` \fc ->
+  let vs' = vs ++ (if dm then [] else [suppVarIdx])
+               ++ [nestingIdx, constStoreVarIdx]
+      e'' = if fc then failCheck qn vs e' else e'
+  in  returnM $ Rule vs' e''
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = [1 .. a]
-      vsExtra = vs ++ (if dm then [] else [suppVarIdx])
-                   ++ [nestingIdx,constStoreVarIdx] in
-  returnM $ Rule vsExtra $ failCheck qn vs $ funcCall (externalFunc qn) (map Var vsExtra)
+  isFailCheck `bindM` \fc ->
+  let vs  = [1 .. a]
+      vs' = vs ++ (if dm then [] else [suppVarIdx])
+                   ++ [nestingIdx,constStoreVarIdx]
+      e   = funcCall (externalFunc qn) (map Var vs')
+      e'  = if fc then failCheck qn vs e else e
+  in returnM $ Rule vs' e'
 
 transBody :: QName -> [Int] -> Expr -> M Expr
 transBody qn vs exp = case exp of
@@ -463,7 +472,7 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
              (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
-             (liftFail [Var 1000, Var 1001])
+             (traceFail (Var 1000) qn' (map Var vs) (Var 1001))
     , Branch (Pattern ("", "_") [])
              (consFail qn' (Var i))
     ] -- TODO Magic numbers?
@@ -732,8 +741,17 @@ failCheck qn vars e
     , e
     ]
 
+traceFail cd qn args fail = liftFail
+  [ cd
+  , funcCall (basics, "traceFail")
+    [ showQName qn
+    , list2FCList (map (\a -> funcCall (prelude, "show") [a]) args)
+    , fail
+    ]
+  ]
+
 consFail qn arg = liftFail
-  [ defCover
+  [ funcCall (basics, "initCover") []
   , funcCall (basics, "consFail")
     [ showQName $ unRenameQName qn
     , funcCall (basics, "showCons") [arg]

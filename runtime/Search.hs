@@ -15,6 +15,7 @@ import Solver
 import Strategies
 import Types
 import MonadSearch
+import FailInfo    (defFailInfo)
 import FailTrace
 
 -- ---------------------------------------------------------------------------
@@ -125,14 +126,14 @@ getNormalForm goal = do
 
 -- |Evaluate a deterministic expression without search, but trace failures
 failtraceD :: NormalForm a => DetExpr a -> IO ()
-failtraceD goal = case try (goal emptyCs) of
+failtraceD goal = case try (goal initCover emptyCs) of
   Val v       -> print v
   Fail _ info -> failTrace info
   x           -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
 
 -- |Evaluate a deterministic expression without search, but trace failures
 failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
-failtraceDIO goal = case try (goal emptyCs) of
+failtraceDIO goal = case try (goal initCover emptyCs) of
   Val (C_IO io) -> io >> return ()
   Fail _ info   -> failTrace info
   x             -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
@@ -257,7 +258,7 @@ printValsDFSMatch backTrack cont goal = do
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
     follow (ChooseN c _, _) = printValsDFSMatch backTrack cont (xs !! c)
-    follow (NoDecision , j) = cont $ choicesCons defCover j xs
+    follow (NoDecision , j) = cont $ choicesCons initCover j xs
     follow c                = internalError $ "Search.prFree: " ++ show c
 
   prNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
@@ -489,7 +490,7 @@ searchBFS act goal = do
       where
       follow (LazyBind cs, _) = processLB i cs zs
       follow (ChooseN c _, _) = bfs cont xs ys set reset (zs !! c)
-      follow (NoDecision , j) = reset >> (cont (choicesCons defCover j zs) +++ (next cont xs ys))
+      follow (NoDecision , j) = reset >> (cont (choicesCons initCover j zs) +++ (next cont xs ys))
       follow c                = internalError $ "Search.bfsFree: Bad choice " ++ show c
 
     bfsGuard _ cs e = set >> solve initCover cs e >>= \mbSltn -> case mbSltn of

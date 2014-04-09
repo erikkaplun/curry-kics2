@@ -38,6 +38,7 @@ type Options =
   , optExtensions         :: [Extension]  -- language extensions
   , optDump               :: [DumpFormat] -- dump intermediate results
   , optParser             :: String       -- additional front-end options
+  , optFailCheck          :: Bool
   }
 
 --- Default compiler options
@@ -53,6 +54,7 @@ defaultOptions =
   , optExtensions   := []
   , optDump         := []
   , optParser       := ""
+  , optFailCheck    := False
   }
 
 --- Verbosity levels of the compiler

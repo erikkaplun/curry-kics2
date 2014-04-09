@@ -3,10 +3,8 @@
 -- ID module
 -- ---------------------------------------------------------------------------
 module ID
-  ( -- * FailInfo
-    FailInfo, defFailInfo
-    -- * Cover
-  , Cover, incCover, decCover, initCover
+  ( -- * Cover
+    Cover, incCover, decCover, initCover
     -- * Constraints
   , Constraint (..), Constraints(..), getConstrList, makeStrictCList
     -- * Decisions
