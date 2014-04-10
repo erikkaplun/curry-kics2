@@ -147,22 +147,37 @@ ordHelp1 orderMap (TCons qn tys)
   = hoOr (fromMaybe FO (lookupFM orderMap qn))
          (foldr (\ty order -> hoOr order (ordHelp1 orderMap ty)) FO tys)
 
+
+-- Determines, if a Function is a higher order function.
+-- In our context, a function with arity n is higher order (HO),
+-- if one of its arguments has a higher order type. 
+-- If the result is a m-ary function type and neither
+-- the argument types nor the result type is a higher order type,
+-- then the function has a higher order result with arity m (HORes m)
+-- Otherwise, it is first order (FO)
 isHOFunc orderMap arity ty
-  | arity == 0 = HORes (typeArity ty) -- FO -- isHOType orderMap ty
+  | arity == 0 = foldr (\ty order -> hoOr order (isHOType orderMap ty))
+                       (if numArgs > 0 then HORes numArgs  else FO)
+                       types  --isHOType orderMap ty  -- FO 
   | otherwise  = case ty of
       FuncType x y -> isHOType orderMap x `hoOr` isHOFunc orderMap (arity - 1) y
       _            -> error "Analysis.isHOFunc"
+ where types = splitFuncType ty
+       numArgs = length types - 1
 
+-- Determines, if a type expression involves a function type (->)
+-- or a type that has a constructor which involves a function type. 
 isHOType orderMap ty = case ty of
   TVar _          -> FO
   FuncType   _ _  -> HO
   TCons    qn tys -> foldr hoOr (fromMaybe FO (lookupFM orderMap qn))
                                 (map (isHOType orderMap) tys)
 
-typeArity :: TypeExpr -> Int
-typeArity (TVar        _) = 0
-typeArity (FuncType _ ty) = 1 + typeArity ty
-typeArity (TCons     _ _) = 0
+-- splits a function Type in the type-expressions of the arguments and the result
+splitFuncType :: TypeExpr -> [TypeExpr]
+splitFuncType t@(TVar        _) = [t]
+splitFuncType (FuncType at rt) = at : splitFuncType rt
+splitFuncType t@(TCons     _ _) = [t]
 
 --------------------------------------------------------------------------------
 -- Visibility analysis

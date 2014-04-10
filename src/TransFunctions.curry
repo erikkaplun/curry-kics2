@@ -240,7 +240,7 @@ transFunc f@(Func qn _ _ _ _) =
             returnM [fd, fn]
 
           -- create deterministic function
-          HORes _ -> transPureFunc f `bindM` \ fn -> returnM [fn]
+          HORes _ -> transPureFunc f `bindM` \ fd -> returnM [fd]
 
           FO ->  case f of
             -- check if the Function is intended to represent a global variable
@@ -250,12 +250,12 @@ transFunc f@(Func qn _ _ _ _) =
             -- global_C_name = d_C_global (let 3500 = emptyCs in (tr val))
             --                            C_Temporary emptyCs
             -- to make it a constant
-            (Func _ 0 vis t (Rule [] (Comb FuncCall f [val, Comb ConsCall c []])))
-              | f == renameQName ("Global","global")
+            (Func _ 0 vis t (Rule [] (Comb FuncCall fname [val, Comb ConsCall c []])))
+              | fname == renameQName ("Global","global")
              && c == renameQName ("Global","Temporary")
               ->  transCompleteExpr val `bindM` \trVal ->
                   renameFun qn          `bindM` \newqn ->
-                  renameFun f       `bindM` \newfname ->
+                  renameFun fname       `bindM` \newfname ->
                   returnM $
                     [Func newqn 2 vis (transTypeExpr 0 t)
                     (Rule [0,1] (Comb FuncCall (mkGlobalName qn) []))
@@ -508,17 +508,17 @@ transExpr (Comb FuncCall qn es) =
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  if ndCl == ND || not opt
+  if ndCl == ND || not opt || (hoCl == HO && not dm)
+   -- for non-deterministic functions and higher-order functions in non-determinism mode
+   -- we just call the function with the additional arguments (idsupply, capsule nesting depth
+   -- and the constraint store
     then takeNextID `bindM` \i ->
          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
+    -- for deterministic functions with higher-order result in non-determinism mode
+    -- we need to wrap the result in order to accept the additional arguments
     else genIds g $ case hoCl of
-      HORes i | not dm -> (myWrap dm True D FO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx])))
+      HORes i | not dm -> wrapDHO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
       _                -> (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
-
---   if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
---     then genIds g (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
---     else takeNextID `bindM` \i ->
---          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
@@ -528,12 +528,7 @@ transExpr (Comb (FuncPartCall i) qn es) =
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
-  case ndCl of
-    _ -> genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
-
-    -- TODO: we do not care about higher order calls to nd functions right now
-    -- _    -> takeNextID `bindM` \i ->
-    --   genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
+  genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
 
 -- let expressions
 transExpr (Let vses e) =
@@ -605,10 +600,23 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- Wrapping
 -- ---------------------------------------------------------------------------
 
+-- wrapping the higher order result of deterministic function calls
+-- from nondeterministic context
+wrapDHO :: Int -> Expr -> Expr
+wrapDHO a e = newWrap a wrapDX e
+
+-- wrapping the result of partial applications in order to
+-- accept the aditional elements
 myWrap :: Bool -> Bool -> NDClass -> HOClass -> Int -> Expr -> Expr
 myWrap True  _   _  _  a e = wrapCs a e
-myWrap False opt nd ho a e = newWrap a iw (wrapCs a e)
-  where iw = if opt && nd == D {-&& ho == FO-} then wrapDX else wrapNX
+myWrap False opt nd ho a e = newWrap (a + resArity) iw (wrapCs a e)
+  where iw = if opt && nd == D && not isHO then wrapDX else wrapNX
+        isHO = case ho of
+                 HO -> True
+                 _  -> False
+        resArity = case ho of
+                     HORes i -> i
+                     _       -> 0
 
 -- adding Constraintstore arguments after every argument of a higher order funchtion
 wrapCs :: Int -> Expr -> Expr
