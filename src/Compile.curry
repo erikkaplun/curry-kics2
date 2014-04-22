@@ -8,7 +8,7 @@ module Compile where
 
 import Char             (isSpace)
 import Maybe            (fromJust)
-import List             (isPrefixOf)
+import List             (intercalate, isPrefixOf)
 import Directory        (doesFileExist)
 import FilePath         ((</>), dropExtension, normalise)
 import FileGoodies      (lookupFileInPath)
@@ -19,28 +19,26 @@ import ReadShowTerm     (readQTermFile)
 
 import AnnotatedFlatCurryGoodies (unAnnProg)
 
-import qualified AbstractHaskell as AH
+import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
-import AbstractHaskellPrinter (showModuleHeader, showDecls)
+import AbstractHaskellPrinter    (showModuleHeader, showDecls)
 import CompilerOpts
-import Files
-  ( withBaseName, withDirectory, withExtension
-  , writeFileInDir, writeQTermFileInDir
-  )
+import Files                     ( withBaseName, withDirectory, withExtension
+                                 , writeFileInDir, writeQTermFileInDir
+                                 )
 import FlatCurry2AbstractHaskell (fcy2abs)
-import LiftCase (liftCases)
-import EliminateCond (eliminateCond)
-import DefaultPolymorphic (defaultPolymorphic)
-import MissingImports (fixMissingImports)
-import Inference (inferProgFromProgEnv)
-import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
-import ModuleDeps (ModuleIdent, Source, deps)
+import LiftCase                  (liftCases)
+import EliminateCond             (eliminateCond)
+import DefaultPolymorphic        (defaultPolymorphic)
+import MissingImports            (fixMissingImports)
+import Inference                 (inferProgFromProgEnv)
+import Message                   (putErrLn, showStatus, showDetail)
+import ModuleDeps                (ModuleIdent, Source, deps)
 import Names
 import SimpleMake
--- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (notNull)
+import Utils                      (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
@@ -242,7 +240,7 @@ integrateExternals :: Options -> AH.Prog -> String -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
-  return $ unlines $ filter notNull
+  return $ intercalate "\n\n" $ filter notNull
     [ unlines (defaultPragmas : pragmas)
     , showModuleHeader m td fd imps
     , unlines extimps

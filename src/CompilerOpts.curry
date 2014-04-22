@@ -58,16 +58,18 @@ defaultOptions =
 --- Verbosity levels of the compiler
 data Verbosity
   = VerbQuiet    -- be quiet
-  | VerbStatus   -- show compilation status
+  | VerbFrontend -- show frontend status
+  | VerbStatus   -- show own compilation status
   | VerbAnalysis -- additionally show analysis infos
   | VerbDetails  -- additionally show current transformation for each module
 
 --- Description and flag of verbosities
 verbosities :: [(Verbosity, String, String)]
-verbosities = [ (VerbQuiet   , "0", "quiet"   )
-              , (VerbStatus  , "1", "status"  )
-              , (VerbAnalysis, "2", "analysis")
-              , (VerbDetails , "3", "details" )
+verbosities = [ (VerbQuiet   , "0", "quiet"           )
+              , (VerbFrontend, "1", "frontend status" )
+              , (VerbStatus  , "2", "own status"      )
+              , (VerbAnalysis, "3", "analysis"        )
+              , (VerbDetails , "4", "details"         )
               ]
 
 --- Levels of optimization
