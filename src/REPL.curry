@@ -668,6 +668,7 @@ replOptions =
   , ("v1"           , \r _ -> return (Just { verbose      := 1     | r }))
   , ("v2"           , \r _ -> return (Just { verbose      := 2     | r }))
   , ("v3"           , \r _ -> return (Just { verbose      := 3     | r }))
+  , ("v4"           , \r _ -> return (Just { verbose      := 4     | r }))
   , ("prompt"       , setPrompt                                          )
   , ("+interactive" , \r _ -> return (Just { interactive  := True  | r }))
   , ("-interactive" , \r _ -> return (Just { interactive  := False | r }))
@@ -743,9 +744,10 @@ printOptions rst = putStrLn $ unlines
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
   , "v<n>            - verbosity level"
   , "                    0: quiet (errors and warnings only)"
-  , "                    1: status messages (default)"
-  , "                    2: intermediate messages and commands"
-  , "                    3: all intermediate results"
+  , "                    1: frontend status messages (default)"
+  , "                    2: kics2c status messages"
+  , "                    3: ghc status messages"
+  , "                    4: analysis information"
   , "prompt <prompt> - set the user prompt"
   , "+/-interactive  - turn on/off interactive execution of main goal"
   , "+/-first        - turn on/off printing only first solution"

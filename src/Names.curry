@@ -19,22 +19,24 @@ import Files           (withComponents)
 -- Renaming file names
 -- ---------------------------------------------------------------------------
 
-renameFile :: String -> String
-renameFile = renameModule -- until hierarchical module names are supported
+renameFile :: Bool -> String -> String
+renameFile trace
+  | trace     = addTrace . renameModule
+  | otherwise = renameModule -- until hierarchical module names are supported
 
 externalFile :: String -> String
 externalFile = withComponents id ("External_" ++) (const "hs")
 
-destFile :: String-> String -> String
-destFile subdir = withComponents (</> subdir) renameFile (const "hs")
+destFile :: Bool -> String -> String -> String
+destFile trace subdir = withComponents (</> subdir) (renameFile trace) (const "hs")
 
 analysisFile :: String -> String -> String
-analysisFile subdir = withComponents (</> subdir) renameFile (const "nda")
+analysisFile subdir = withComponents (</> subdir) (renameFile False) (const "nda")
 
 --- Auxiliary file containing some basic information about functions
 --- (might become unnecessary in the future)
 funcInfoFile :: String -> String -> String
-funcInfoFile subdir = withComponents (</> subdir) renameFile (const "info")
+funcInfoFile subdir = withComponents (</> subdir) (renameFile False) (const "info")
 
 -- ---------------------------------------------------------------------------
 -- Renaming modules
@@ -47,10 +49,16 @@ basics :: String
 basics = "Basics"
 
 curryPrelude :: String
-curryPrelude = renameModule "Prelude"
+curryPrelude = renameModule prelude
 
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
+
+addTrace :: String -> String
+addTrace = renameModule . ("Trace_" ++) . unRenameModule
+
+removeTrace :: String -> String
+removeTrace = renameModule . dropPrefix "Trace_" . unRenameModule
 
 unRenameModule :: String -> String
 unRenameModule = dropPrefix "Curry_"
@@ -118,6 +126,10 @@ consPrefix False HO = "HO_"
 -- General renaming of functions and constructors
 -- ---------------------------------------------------------------------------
 
+renameQNameTrace :: QName -> QName
+renameQNameTrace qn = if isCurryModule (fst qn) then withQName addTrace id qn
+                                                else qn
+
 renameQName :: QName -> QName
 renameQName = withQName renameModule genRename
 
@@ -128,7 +140,7 @@ externalFunc :: QName -> QName
 externalFunc = withQName id ("external_" ++)
 
 fromExternalFunc :: QName -> QName
-fromExternalFunc = withQName id (dropPrefix "global_")
+fromExternalFunc = withQName id (dropPrefix "external_")
 
 mkGlobalName :: QName -> QName
 mkGlobalName = withQName id ("global_" ++)

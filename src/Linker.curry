@@ -233,7 +233,9 @@ mainModule rst isdet isio isTF mbBindings = unlines
   , if mbBindings==Nothing
     then ""
     else ("import Curry_"++ rst :> preludeName)
-  , "import Curry_" ++ dropExtension mainGoalFile
+  , if (rst :> traceFailure)
+      then "import Curry_Trace_" ++ dropExtension mainGoalFile
+      else "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"
   , mainExpr "kics2MainGoal" isdet isio isTF (rst :> ndMode) evalMode mbBindings

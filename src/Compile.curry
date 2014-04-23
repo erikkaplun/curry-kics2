@@ -20,7 +20,7 @@ import ReadShowTerm     (readQTermFile)
 import AnnotatedFlatCurryGoodies (unAnnProg)
 
 import qualified AbstractHaskell as AH
-import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
+import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, typeOf)
 import AbstractHaskellPrinter (showModuleHeader, showDecls)
 import CompilerOpts
 import Files
@@ -28,19 +28,19 @@ import Files
   , writeFileInDir, writeQTermFileInDir
   )
 import FlatCurry2AbstractHaskell (fcy2abs)
-import LiftCase (liftCases)
-import EliminateCond (eliminateCond)
-import DefaultPolymorphic (defaultPolymorphic)
-import MissingImports (fixMissingImports)
-import Inference (inferProgFromProgEnv)
-import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
-import ModuleDeps (ModuleIdent, Source, deps)
+import LiftCase                  (liftCases)
+import EliminateCond             (eliminateCond)
+import DefaultPolymorphic        (defaultPolymorphic)
+import MissingImports            (fixMissingImports)
+import Inference                 (inferProgFromProgEnv)
+import Message                   (putErrLn, showStatus, showDetail)
+import ModuleDeps                (ModuleIdent, Source, deps)
 import Names
 import SimpleMake
 -- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (notNull)
+import Utils                     (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
@@ -81,7 +81,8 @@ makeModule mods state mod@((_, (fn, fcy)), _)
   | opts :> optForce  = compileModule progs modCnt state mod
   | otherwise         = do
                         depFiles <- getDepFiles
-                        smake (destFile (opts :> optOutputSubdir) fn)
+                        smake (destFile (opts :> optTraceFailure)
+                                        (opts :> optOutputSubdir) fn)
                               depFiles
                               (compileModule progs modCnt state mod)
                               (loadAnalysis modCnt state mod)
@@ -89,7 +90,8 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     getDepFiles = do
       hasExternals <- doesFileExist extFile
       let ownModule = fn : if hasExternals then [extFile] else []
-      let imported  = map (\i -> destFile (opts :> optOutputSubdir)
+      let imported  = map (\i -> destFile (opts :> optTraceFailure)
+                                          (opts :> optOutputSubdir)
                                $ fst $ fromJust $ lookup i mods) imps
       return $ ownModule ++ imported
     extFile = externalFile fn
@@ -172,8 +174,11 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
   dump DumpTranslated opts abstractHsName (show ahsPatched)
 
+  showDetail opts "Renaming tracing module"
+  let final = if (opts :> optTraceFailure) then renameTrace ahsPatched else ahsPatched
+
   showDetail opts "Integrating external declarations"
-  integrated <- integrateExternals opts ahsPatched fn
+  integrated <- integrateExternals opts final fn
 
   showDetail opts $ "Generating Haskell module " ++ dest
   writeFileInDir dest integrated
@@ -195,7 +200,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
-    dest           = destFile (opts :> optOutputSubdir) fn
+    dest           = destFile (opts :> optTraceFailure) (opts :> optOutputSubdir) fn
     funcInfo       = funcInfoFile (opts :> optOutputSubdir) fn
     opts           = state :> compOptions
     fcyFile f      = withExtension (const ".fcy") f
@@ -205,13 +210,13 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 extractFuncInfos funs =
   map (\fd -> (AHG.funcName fd, isIO (AHG.typeOf fd))) funs
  where
-  isIO AH.Untyped = False
-  isIO (AH.FType texp) = withIOResult texp
-  isIO (AH.CType _ texp) = withIOResult texp
+  isIO AH.Untyped      = False
+  isIO (AH.FType   ty) = withIOResult ty
+  isIO (AH.CType _ ty) = withIOResult ty
 
-  withIOResult (AH.TVar _) = False
-  withIOResult (AH.FuncType _ texp) = withIOResult texp
-  withIOResult (AH.TCons tc _) = tc == (curryPrelude, "C_IO")
+  withIOResult (AH.TVar        _) = False
+  withIOResult (AH.FuncType _ ty) = withIOResult ty
+  withIOResult (AH.TCons    tc _) = tc == (curryPrelude, "C_IO")
 
 -- Patch Prelude in order to add some exports for predefined items
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
@@ -263,7 +268,7 @@ lookupExternals opts fn = do
   exists <- doesFileExist extName
   if exists
     then showDetail opts    "External file found" >> readFile extName
-    else showDetail opts "No External file found" >> return ""
+    else showDetail opts "No external file found" >> return ""
     where extName = externalFile fn
 
 -- Split an external file into a pragma String, a list of imports and the rest
@@ -290,3 +295,6 @@ rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
   Prog (renameModule name) (map renameModule imports) td fd od where
   (Prog _ _ td fd od) = updQNamesInProg renameQName p
+
+renameTrace :: AH.Prog -> AH.Prog
+renameTrace p = AHG.renameSymbolInProg renameQNameTrace p
