@@ -15,89 +15,57 @@ import Solver
 import Strategies
 import Types
 import MonadSearch
-import FailInfo    (defFailInfo)
+import FailInfo    (FailInfo (failCause), defFailInfo, customFail, nondetIO)
 import FailTrace
+
+type DetExpr    a =             Cover -> ConstStore -> a
+type NonDetExpr a = IDSupply -> Cover -> ConstStore -> a
+type Strategy   a = NonDetExpr a -> IO (IOList a)
 
 -- ---------------------------------------------------------------------------
 -- Search combinators for top-level search in the IO monad
 -- ---------------------------------------------------------------------------
 
-countAll :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+countAll :: NormalForm a => Strategy a -> NonDetExpr a -> IO ()
 countAll search goal = search goal >>= countValues
 
-printAll :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printAll :: NormalForm a => Strategy a -> NonDetExpr a -> IO ()
 printAll search goal = search goal >>= printAllValues print
 
-printOne :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printOne :: NormalForm a => Strategy a -> NonDetExpr a -> IO ()
 printOne search goal = search goal >>= printOneValue print
 
-printInteractive :: NormalForm a => (NonDetExpr a -> IO (IOList a)) -> NonDetExpr a -> IO ()
+printInteractive :: NormalForm a => Strategy a -> NonDetExpr a -> IO ()
 printInteractive search goal = search goal >>= printOneValue print
 
-ioDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+ioDFS :: NormalForm a => Strategy a
 ioDFS goal = getNormalForm goal >>= searchDFS msingleton
 
-ioBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+ioBFS :: NormalForm a => Strategy a
 ioBFS goal = getNormalForm goal >>= searchBFS msingleton
 
-ioIDS :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
-ioIDS initDepth incr goal = getNormalForm goal >>= searchIDS initDepth incr msingleton
+ioIDS :: NormalForm a => Int -> (Int -> Int) -> Strategy a
+ioIDS initDepth incr goal = getNormalForm goal >>=
+  searchIDS initDepth incr msingleton
 
-ioIDS2 :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
+ioIDS2 :: NormalForm a => Int -> (Int -> Int) -> Strategy a
 ioIDS2 initDepth incr goal = searchIDS2 initDepth incr msingleton goal
 
-mplusDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusDFS goal = getNormalForm goal >>= fromList . dfsSearch . searchMSearch initCover
+mplusDFS :: NormalForm a => Strategy a
+mplusDFS goal = getNormalForm goal >>=
+  fromList . dfsSearch . searchMSearch initCover
 
-mplusBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch initCover
+mplusBFS :: NormalForm a => Strategy a
+mplusBFS goal = getNormalForm goal >>=
+  fromList . bfsSearch . searchMSearch initCover
 
-mplusIDS :: NormalForm a => Int -> (Int -> Int) -> NonDetExpr a -> IO (IOList a)
-mplusIDS initDepth incr goal = getNormalForm goal >>= fromList . idsSearch initDepth incr . searchMSearch initCover
+mplusIDS :: NormalForm a => Int -> (Int -> Int) -> Strategy a
+mplusIDS initDepth incr goal = getNormalForm goal >>=
+  fromList . idsSearch initDepth incr . searchMSearch initCover
 
-mplusPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
-mplusPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch initCover
-
--- ---------------------------------------------------------------------------
-
-toIO :: C_IO a -> ConstStore -> IO a
-toIO (C_IO             io) _     = io
-toIO (Fail_C_IO       _ _) _     = throwFail "IO action failed"
-toIO (Choice_C_IO _ _ _ _) _     = throwNondet "Non-determinism in IO occured"
-toIO (Guard_C_IO  _  cs e) store = do
-  mbSolution <- solve initCover cs e
-  case mbSolution of
-    Nothing       -> throwFail "IO action failed"
-    Just (_, val) -> do
-      -- add the constraint to the global constraint store to make it
-      -- available to subsequent operations.
-      -- This is valid because no backtracking is done in IO
-      addToGlobalCs cs
-      toIO val (cs `addCs` store)
-
--- TODO@fre: lookup value in constraint map and global map?
-toIO (Choices_C_IO _  (ChoiceID     _)  _) _  = internalError "choices with ChoiceID"
-toIO (Choices_C_IO _ i@(NarrowedID _ _) xs) cs = followToIO i xs cs
-toIO (Choices_C_IO _ i@(FreeID     _ _) xs) cs = do
-  -- bindings of free variables are looked up first in the local
-  -- constraint store and then in the global constraint store
-  lookupCs cs i (flip toIO cs) tryGlobal
- where
-  tryGlobal = do
-    csg <- lookupGlobalCs
-    lookupCs csg i (flip toIO cs) (followToIO i xs cs)
-
-followToIO :: ID -> [C_IO a] -> ConstStore -> IO a
-followToIO i xs store = do
-  c <- lookupDecision i
-  case c of
-    ChooseN idx _ -> toIO (xs !! idx) store
-    NoDecision      -> throwNondet "Non-determinism in IO occured"
-    LazyBind cs   -> toIO (guardCons initCover (StructConstr cs) (choicesCons initCover i xs)) store
-    _             -> internalError $ "followToIO: " ++ show c
-
-fromIO :: IO a -> C_IO a
-fromIO io = C_IO io
+mplusPar :: NormalForm a => Strategy a
+mplusPar goal = getNormalForm goal >>=
+  fromList . parSearch . searchMSearch initCover
 
 -- |This function is used to print the main expression with the bindings of
 -- free variables.
@@ -113,30 +81,50 @@ printWithBindings bindings result = putStrLn $
   ++ show result
 
 -- ---------------------------------------------------------------------------
+
+searchIO :: ConstStore -> C_IO a -> IO (Either FailInfo a)
+searchIO s act = case act of
+  C_IO              io -> io
+  Fail_C_IO     _ info -> fail info
+  Choice_C_IO  _ i _ _ -> fail $ nondetIO (show i)
+  Choices_C_IO  _ i xs -> case i of
+    ChoiceID     _ -> internalError "searchIO: choices with ChoiceID"
+    NarrowedID _ _ -> followToIO i xs s
+    FreeID     _ _ -> lookupCs s i (searchIO s) $
+      lookupGlobalCs >>= \gs -> lookupCs gs i (searchIO s) (followToIO i xs s)
+  -- bindings of free variables are looked up first in the local
+  -- constraint store and then in the global constraint store
+  Guard_C_IO    _ cs e -> solve initCover cs e >>= \mbSol -> case mbSol of
+    Nothing       -> fail $ customFail "Unsatisfiable constraint"
+    Just (_, val) -> do
+      -- add the constraint to the global constraint store to make it
+      -- available to subsequent operations.
+      -- This is valid because no backtracking is done in IO.
+      addToGlobalCs cs
+      searchIO (cs `addCs` s) val
+  where
+  fail = return . Left
+  followToIO i xs s = lookupDecision i >>= \c -> case c of
+    ChooseN idx _ -> searchIO s (xs !! idx)
+    NoDecision    -> fail $ nondetIO (show i)
+    LazyBind cs   -> searchIO s
+                   $ guardCons initCover (StructConstr cs)
+                   $ choicesCons initCover i xs
+    _             -> internalError $ "followToIO: " ++ show c
+
+toIO :: ConstStore -> C_IO a -> IO a
+toIO s act = searchIO s act >>= \res -> case res of
+  Left info -> throwFail $ "IO action failed: " ++ failCause info
+  Right val -> return val
+
+-- ---------------------------------------------------------------------------
 -- Simple evaluation without search or normal form computation
 -- ---------------------------------------------------------------------------
-
-type DetExpr    a =             Cover -> ConstStore -> a
-type NonDetExpr a = IDSupply -> Cover -> ConstStore -> a
 
 getNormalForm :: NormalForm a => NonDetExpr a -> IO a
 getNormalForm goal = do
   s <- initSupply
   return $ ((\x _ _ -> x) $!! goal s initCover emptyCs) initCover emptyCs
-
--- |Evaluate a deterministic expression without search, but trace failures
-failtraceD :: NormalForm a => DetExpr a -> IO ()
-failtraceD goal = case try (goal initCover emptyCs) of
-  Val v       -> print v
-  Fail _ info -> failTrace info
-  x           -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
-
--- |Evaluate a deterministic expression without search, but trace failures
-failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
-failtraceDIO goal = case try (goal initCover emptyCs) of
-  Val (C_IO io) -> io >> return ()
-  Fail _ info   -> failTrace info
-  x             -> internalError $ "Search.failtraceD: non-determinism: " ++ show x
 
 -- |Evaluate a deterministic expression without search
 evalD :: Show a => DetExpr a -> IO ()
@@ -146,19 +134,32 @@ evalD goal = print (goal initCover emptyCs)
 eval :: Show a => NonDetExpr a -> IO ()
 eval goal = initSupply >>= \s -> print (goal s initCover emptyCs)
 
+-- |Evaluate a deterministic IO action without search
 evalDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
-evalDIO goal = toIO (goal initCover emptyCs) emptyCs >> return ()
+evalDIO goal = toIO emptyCs (goal initCover emptyCs) >> return ()
 
--- TODO: switch back to computeWithDFS
+-- |Evaluate a non-deterministic IO action with simple search
 evalIO :: NormalForm a => NonDetExpr (C_IO a) -> IO ()
-evalIO goal = initSupply >>= \s -> toIO (goal s initCover emptyCs) emptyCs >> return ()
+evalIO goal = do
+  s <- initSupply
+  _ <- toIO emptyCs (goal s initCover emptyCs)
+  return ()
 
--- evalIO goal = computeWithDFS goal >>= execIOList
--- execIOList :: IOList (C_IO a) -> IO ()
--- execIOList MNil                 = return ()
--- execIOList (MCons xact getRest) = toIO xact emptyCs >> getRest >>= execIOList
--- execIOList (WithReset l _)      = l >>= execIOList
--- execIOList Abort                = return ()
+-- |Evaluate a deterministic expression without search, but trace failures
+failtraceD :: NormalForm a => DetExpr a -> IO ()
+failtraceD goal = case try (goal initCover emptyCs) of
+  Fail _ info -> failTrace info
+  Val v       -> print v
+  x           -> internalError $ "Search.failtraceD: non-determinism: "
+                 ++ show x
+
+-- |Evaluate a deterministic expression without search, but trace failures
+failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
+failtraceDIO goal = do
+  res <- searchIO emptyCs (goal initCover emptyCs)
+  case res of
+    Left err -> failTrace err
+    Right x  -> return ()
 
 -- ---------------------------------------------------------------------------
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)
@@ -188,9 +189,12 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
       Fail _ _        -> showChar '!'
-      Choice  _ i x y -> shows i  . nl . showsChildren d l [("L", try x), ("R", try y)]
-      Narrowed _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
-      Free     _ i xs -> shows i  . nl . showsChildren d l (zip (map show [(0 :: Int) ..]) (map try xs))
+      Choice  _ i x y -> shows i  . nl . showsChildren d l
+                         [("L", try x), ("R", try y)]
+      Narrowed _ i xs -> shows i  . nl . showsChildren d l
+                         (zip (map show [(0 :: Int) ..]) (map try xs))
+      Free     _ i xs -> shows i  . nl . showsChildren d l
+                         (zip (map show [(0 :: Int) ..]) (map try xs))
       Guard    _ cs e -> shows cs . nl . showsChildren d l [("", try e)]
 
   indent []      _ = id
@@ -211,7 +215,8 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
 
   showsChildren _ _ []          = id
   showsChildren d l [(k,v)]     = showsTree (d-1) (True :l) k v
-  showsChildren d l ((k,v):kvs) = showsTree (d-1) (False:l) k v . showsChildren d l kvs
+  showsChildren d l ((k,v):kvs) = showsTree (d-1) (False:l) k v
+                                . showsChildren d l kvs
 
 -- ---------------------------------------------------------------------------
 -- Printing all results of a computation in a depth-first manner
@@ -224,7 +229,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
 -- which is internally expanded to apply the constructors encountered during
 -- search.
 prdfs :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
-prdfs prt goal = getNormalForm goal >>= 
+prdfs prt goal = getNormalForm goal >>=
 #ifdef Try
   printValsDFSTry False prt
 #else
@@ -381,7 +386,7 @@ printDFSi :: NormalForm a => MoreDefault -> (a -> IO ()) -> NonDetExpr a -> IO (
 printDFSi ud prt goal = computeWithDFS goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a depth-first manner:
-computeWithDFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+computeWithDFS :: NormalForm a => Strategy a
 computeWithDFS goal = getNormalForm goal >>= searchDFS msingleton
 
 searchDFS :: NormalForm a => (a -> IO (IOList b)) -> a -> IO (IOList b)
@@ -450,7 +455,7 @@ printBFSi :: NormalForm a => MoreDefault -> (a -> IO ()) -> NonDetExpr a -> IO (
 printBFSi ud prt goal = computeWithBFS goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a breadth-first manner:
-computeWithBFS :: NormalForm a => NonDetExpr a -> IO (IOList a)
+computeWithBFS :: NormalForm a => Strategy a
 -- computeWithBFS goal = getNormalForm goal >>= searchBFS msingleton
 computeWithBFS goal = getNormalForm goal >>= fromList . bfsSearch . searchMSearch initCover
 
@@ -536,7 +541,7 @@ printIDSi ud initdepth prt goal = computeWithIDS initdepth goal >>= printValsOnD
 
 -- Compute all values of a non-deterministic goal with a iterative
 -- deepening strategy:
-computeWithIDS :: NormalForm a => Int -> NonDetExpr a -> IO (IOList a)
+computeWithIDS :: NormalForm a => Int -> Strategy a
 computeWithIDS initDepth goal = getNormalForm goal >>= searchIDS initDepth incrDepth4IDFS msingleton
 
 searchIDS :: NormalForm a => Int -> (Int -> Int) -> (a -> IO (IOList b)) -> a -> IO (IOList b)
@@ -623,7 +628,7 @@ printPari :: NormalForm a => MoreDefault -> (a -> IO ()) -> NonDetExpr a -> IO (
 printPari ud prt goal = computeWithPar goal >>= printValsOnDemand ud prt
 
 -- Compute all values of a non-deterministic goal in a parallel manner:
-computeWithPar :: NormalForm a => NonDetExpr a -> IO (IOList a)
+computeWithPar :: NormalForm a => Strategy a
 computeWithPar goal = getNormalForm goal >>= fromList . parSearch . searchMSearch initCover
 
 -- ---------------------------------------------------------------------------

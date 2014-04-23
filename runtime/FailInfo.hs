@@ -32,3 +32,7 @@ unificationFail arg1 arg2 = FailInfo [] msg
 -- trace a failure in an argument position
 traceFail :: String -> [String] -> FailInfo -> FailInfo
 traceFail fun args fi = fi { failTrace = (fun, args) : failTrace fi }
+
+nondetIO :: String -> FailInfo
+nondetIO v = FailInfo [] msg
+  where msg = "Non-determinism in IO occured for variable " ++ v

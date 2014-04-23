@@ -270,7 +270,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 data C_IO t0
-     = C_IO (IO t0)
+     = C_IO (IO (Either FailInfo t0))
      | Choice_C_IO Cover ID (C_IO t0) (C_IO t0)
      | Choices_C_IO Cover ID ([C_IO t0])
      | Fail_C_IO Cover FailInfo
@@ -334,9 +334,13 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
+-- Convert an IO action to a Curry IO action without converting the result.
+fromIO :: IO a -> C_IO a
+fromIO io = C_IO (io >>= return . Right)
+
 instance ConvertCurryHaskell ca ha => ConvertCurryHaskell (C_IO ca) (IO ha)
   where
-  toCurry io  = C_IO (io >>= return . toCurry)
+  toCurry io  = C_IO (io >>= return . Right . toCurry)
   fromCurry _ = internalError "C_IO.fromCurry: Use top-level search instead."
 
 -- ---------------------------------------------------------------------------
