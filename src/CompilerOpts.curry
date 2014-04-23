@@ -38,7 +38,7 @@ type Options =
   , optExtensions         :: [Extension]  -- language extensions
   , optDump               :: [DumpFormat] -- dump intermediate results
   , optParser             :: String       -- additional front-end options
-  , optFailCheck          :: Bool
+  , optTraceFailure       :: Bool         -- trace failures
   }
 
 --- Default compiler options
@@ -54,7 +54,7 @@ defaultOptions =
   , optExtensions   := []
   , optDump         := []
   , optParser       := ""
-  , optFailCheck    := False
+  , optTraceFailure := False
   }
 
 --- Verbosity levels of the compiler
@@ -208,6 +208,9 @@ options =
   , Option [] ["parse-options"]
       (ReqArg (onOptsArg $ \arg opts -> { optParser := arg | opts }) "options")
       "additional options for the parser"
+  , Option [] ["trace-failure"]
+      (NoArg (onOpts $ \opts -> { optTraceFailure := True | opts }))
+      "Trace failures in deterministic program"
   ]
 
 --- Verbosity descriptions

@@ -169,8 +169,9 @@ doInDetMode dm action =
   setDetMode oldDm `bindM_`
   returnM retVal
 
-isFailCheck :: M Bool
-isFailCheck = getState `bindM` \st -> returnM (st :> compOptions :> optFailCheck)
+isTraceFailure :: M Bool
+isTraceFailure = getState `bindM` \st ->
+                 returnM (st :> compOptions :> optTraceFailure)
 
 -- add a message to the transformation report
 -- addToReport :: String -> M ()
@@ -359,14 +360,14 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  isFailCheck `bindM` \fc ->
+  isTraceFailure `bindM` \fc ->
   let vs' = vs ++ (if dm then [] else [suppVarIdx])
                ++ [nestingIdx, constStoreVarIdx]
       e'' = if fc then failCheck qn vs e' else e'
   in  returnM $ Rule vs' e''
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  isFailCheck `bindM` \fc ->
+  isTraceFailure `bindM` \fc ->
   let vs  = [1 .. a]
       vs' = vs ++ (if dm then [] else [suppVarIdx])
                    ++ [nestingIdx,constStoreVarIdx]
@@ -441,6 +442,7 @@ transPattern l@(LPattern _) = returnM l
 newBranches :: QName -> [Int] -> Int -> QName -> M [BranchExpr]
 newBranches qn' vs i pConsName =
   isDetMode `bindM` \ dm ->
+  isTraceFailure `bindM` \fc ->
   -- lookup type name to create appropriate constructor names
   getType pConsName `bindM` \ typeName ->
   let Just pos = find (==i) vs
@@ -472,7 +474,8 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
              (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
-             (traceFail (Var 1000) qn' (map Var vs) (Var 1001))
+              (if fc then liftFail [Var 1000, Var 1001]
+                     else traceFail (Var 1000) qn' (map Var vs) (Var 1001))
     , Branch (Pattern ("", "_") [])
              (consFail qn' (Var i))
     ] -- TODO Magic numbers?
