@@ -199,7 +199,7 @@ $(CLEANCURRY): utils/cleancurry$(EXE_SUFFIX)
 	cp $< $@
 
 # build installation utils
-utils/%:
+utils/%: .FORCE
 	cd utils && $(MAKE) $(@F)
 
 # run the test suite to check the installation
