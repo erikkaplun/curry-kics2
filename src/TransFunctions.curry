@@ -231,16 +231,23 @@ transFunc f@(Func qn _ _ _ _) =
     -- translate all functions as non-deterministic by default
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
-      getNDClass qn `bindM` \ndCl ->
+      getNDClass    qn `bindM` \ndCl ->
       getFunHOClass qn `bindM` \hoCl ->
       liftIO (showAnalysis opts (snd qn ++ " is " ++ show (ndCl, hoCl))) `bindM_`
       case ndCl of
-        ND ->
-          -- create non-deterministic function
-          transNDFunc   f `bindM` \ fn ->
-          returnM [fn]
-        D -> case hoCl of
-          FO ->
+        -- create non-deterministic function
+        ND -> transNDFunc f `bindM` \ fn -> returnM [fn]
+        D  -> case hoCl of
+          -- create deterministic as well as non-deterministic function
+          HO ->
+            transPureFunc f `bindM` \ fd ->
+            transNDFunc   f `bindM` \ fn ->
+            returnM [fd, fn]
+
+          -- create deterministic function
+          HORes _ -> transPureFunc f `bindM` \ fd -> returnM [fd]
+
+          FO ->  case f of
             -- check if the Function is intended to represent a global variable
             -- i.e. has the form name = global val Temporary
             -- this will be translated into
@@ -248,38 +255,26 @@ transFunc f@(Func qn _ _ _ _) =
             -- global_C_name = d_C_global (let 3500 = emptyCs in (tr val))
             --                            C_Temporary emptyCs
             -- to make it a constant
-            case f of
-             (Func _ 0 vis t (Rule [] (Comb FuncCall fname
-                                   [val, Comb ConsCall cname []])))
-              ->
-                 if fname == renameQName ("Global","global")
-                    && cname == renameQName ("Global","Temporary")
-                 then  transCompleteExpr val `bindM` \trVal ->
-                       renameFun qn          `bindM` \newqn ->
-                       renameFun fname       `bindM` \newfname ->
-                       returnM $
-                         [Func newqn 2 vis (transTypeExpr 0 t)
-                          (Rule [0,1] (Comb FuncCall (mkGlobalName qn) []))
-                         ,Func (mkGlobalName qn) 0 Private t
-                          (Rule [] (Comb FuncCall newfname
-                                   [Let [(constStoreVarIdx
-                                         ,Comb FuncCall (basics,"emptyCs") [] )
-                                        ,(nestingIdx,Comb FuncCall (basics,"initCover") [])]
-                                        trVal
-                                   ,Comb ConsCall cname []
-                                   ,Comb FuncCall (basics, "initCover") []
-                                   ,Comb FuncCall (basics,"emptyCs") []]))]
-                 else  transPureFunc f `bindM` (returnM . (:[]))
-
-             _ ->
-              -- create deterministic function
-              transPureFunc f `bindM` (returnM . (:[]))
-          HO ->
-            -- create deterministic as well as non-deterministic function
-            transPureFunc f `bindM` \ fd ->
-            transNDFunc   f `bindM` \ fn ->
-            returnM [fd, fn]
-
+            (Func _ 0 vis t (Rule [] (Comb FuncCall fname [val, Comb ConsCall c []])))
+              | fname == renameQName ("Global","global")
+             && c == renameQName ("Global","Temporary")
+              ->  transCompleteExpr val `bindM` \trVal ->
+                  renameFun qn          `bindM` \newqn ->
+                  renameFun fname       `bindM` \newfname ->
+                  returnM $
+                    [Func newqn 2 vis (transTypeExpr 0 t)
+                    (Rule [0,1] (Comb FuncCall (mkGlobalName qn) []))
+                    ,Func (mkGlobalName qn) 0 Private t
+                    (Rule [] (Comb FuncCall newfname
+                              [Let [(constStoreVarIdx
+                                    ,Comb FuncCall (basics,"emptyCs") [] )
+                                  ,(nestingIdx,Comb FuncCall (basics,"initCover") [])]
+                                  trVal
+                              ,Comb ConsCall c []
+                              ,Comb FuncCall (basics, "initCover") []
+                              ,Comb FuncCall (basics,"emptyCs") []]))]
+             -- create deterministic function
+            _ -> transPureFunc f `bindM` \ fn -> returnM [fn]
 
 -- translate into deterministic function
 transPureFunc :: FuncDecl -> M FuncDecl
@@ -298,8 +293,8 @@ transNDFunc (Func qn a v t r) = doInDetMode False $
 -- renaming of functions respective to their order and the determinism mode
 renameFun :: QName -> M QName
 renameFun qn@(q, n) =
-  isDetMode `bindM` \dm ->
-  getNDClass qn `bindM` \ndCl ->
+  isDetMode        `bindM` \dm   ->
+  getNDClass qn    `bindM` \ndCl ->
   getFunHOClass qn `bindM` \hoCl ->
   returnM (q, (funcPrefix dm ndCl hoCl) ++ n)
 
@@ -331,8 +326,8 @@ transNDTypeExpr  = transTypeExprWith funcType
                    (FuncType supplyType . FuncType nestingType. FuncType storeType)
 
 transTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr)
-                    -> (TypeExpr -> TypeExpr)
-                    -> Int -> TypeExpr -> TypeExpr
+                  -> (TypeExpr -> TypeExpr)
+                  -> Int -> TypeExpr -> TypeExpr
 transTypeExprWith combFunc addArgs n t
     -- all arguments are applied
   | n == 0 = addArgs (transHOTypeExprWith combFunc t)
@@ -347,11 +342,11 @@ transTypeExprWith combFunc addArgs n t
 -- transforms higher order type expressions using a function that combines
 -- the two type-expressions of FuncTypes.
 transHOTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
-transHOTypeExprWith _        t@(TVar _)       = t
+transHOTypeExprWith _        t@(TVar       _) = t
 transHOTypeExprWith combFunc (FuncType t1 t2)
   = combFunc (transHOTypeExprWith combFunc t1)
              (transHOTypeExprWith combFunc t2)
-transHOTypeExprWith combFunc (TCons qn ts)    =
+transHOTypeExprWith combFunc (TCons    qn ts) =
   TCons qn (map (transHOTypeExprWith combFunc) ts)
 
 -- translate a single rule of a function adds a supply argument
@@ -488,11 +483,11 @@ transCompleteExpr e =
   getNextID `bindM` \i -> -- save current variable id
   transExpr e `bindM` \(g, e') ->
   let e'' = case g of
-              []      -> e'
-              [v]     -> letIdVar strict [(v, Var suppVarIdx)] e'
-              (_:_:_) -> error "TransFunctions.transCompleteExpr" in
-  setNextID i `bindM_` -- and reset it variable id
-  returnM e''
+              []  -> e'
+              [v] ->  letIdVar strict [(v, Var suppVarIdx)] e'
+              _   -> error "TransFunctions.transCompleteExpr"
+  in  setNextID i `bindM_` -- and reset it variable id
+      returnM e''
 
 -- transform an expression into a list of new supply variables to be bound
 -- and the new expression
@@ -527,10 +522,17 @@ transExpr (Comb FuncCall qn es) =
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  if ndCl == D && opt && (hoCl == FO || (hoCl == HO && dm))
-    then genIds g (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
-    else takeNextID `bindM` \i ->
+  if ndCl == ND || not opt || (hoCl == HO && not dm)
+   -- for non-deterministic functions and higher-order functions in non-determinism mode
+   -- we just call the function with the additional arguments (idsupply, capsule nesting depth
+   -- and the constraint store
+    then takeNextID `bindM` \i ->
          genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
+    -- for deterministic functions with higher-order result in non-determinism mode
+    -- we need to wrap the result in order to accept the additional arguments
+    else genIds g $ case hoCl of
+      HORes i | not dm -> wrapDHO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
+      _                -> (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
@@ -540,12 +542,7 @@ transExpr (Comb (FuncPartCall i) qn es) =
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
-  case ndCl of
-    _ -> genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
-
-    -- TODO: we do not care about higher order calls to nd functions right now
-    -- _    -> takeNextID `bindM` \i ->
-    --   genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i]))
+  genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
 
 -- let expressions
 transExpr (Let vses e) =
@@ -617,10 +614,23 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 -- Wrapping
 -- ---------------------------------------------------------------------------
 
+-- wrapping the higher order result of deterministic function calls
+-- from nondeterministic context
+wrapDHO :: Int -> Expr -> Expr
+wrapDHO a e = newWrap a wrapDX e
+
+-- wrapping the result of partial applications in order to
+-- accept the aditional elements
 myWrap :: Bool -> Bool -> NDClass -> HOClass -> Int -> Expr -> Expr
 myWrap True  _   _  _  a e = wrapCs a e
-myWrap False opt nd ho a e = newWrap a iw (wrapCs a e)
-  where iw = if opt && nd == D && ho == FO then wrapDX else wrapNX
+myWrap False opt nd ho a e = newWrap (a + resArity) iw (wrapCs a e)
+  where iw = if opt && nd == D && not isHO then wrapDX else wrapNX
+        isHO = case ho of
+                 HO -> True
+                 _  -> False
+        resArity = case ho of
+                     HORes i -> i
+                     _       -> 0
 
 -- adding Constraintstore arguments after every argument of a higher order funchtion
 wrapCs :: Int -> Expr -> Expr

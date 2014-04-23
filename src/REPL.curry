@@ -363,12 +363,12 @@ makeMainGoalMonomorphic rst (CurryProg _ _ _ [(CFunc _ _ _ ty _)] _) goal
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> IO Int
 compileCurryProgram rst curryprog = do
-  writeVerboseInfo rst 3 $ "Executing: " ++ kics2Cmd
+  writeVerboseInfo rst 2 $ "Executing: " ++ kics2Cmd
   system kics2Cmd
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
-    [ "-v" ++ show (rst :> verbose)
+    [ "-v" ++ show (transVerbose (rst :> verbose))
     , "-i" ++ intercalate ":" (loadPaths rst)
     ] ++
     (if null (rst :> parseOpts)
@@ -376,6 +376,9 @@ compileCurryProgram rst curryprog = do
     else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
       ++ (if rst :> traceFailure then ["--trace-failure"] else [])
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
+  transVerbose n | n == 3    = 2
+                 | n >= 4    = 3
+                 | otherwise = n
 
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ReplState

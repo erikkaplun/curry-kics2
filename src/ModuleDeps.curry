@@ -62,7 +62,7 @@ moduleDeps opts mEnv m = case lookupFM mEnv m of
     mbFile <- lookupModule opts m
     case mbFile of
       Nothing -> return $ addToFM mEnv m Nothing
-      Just fn -> sourceDeps opts m fn mEnv
+      Just fn -> sourceDeps { optVerbosity := VerbQuiet | opts } m fn mEnv
 
 lookupModule :: Options -> String -> IO (Maybe String)
 lookupModule opts mod = lookupFileInPath mod [".curry", ".lcurry"]
@@ -73,7 +73,7 @@ sourceDeps :: Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts m fn mEnv = do
   fcy@(Prog _ is _ _ _) <- readFlatCurryWithParseOptions (dropExtension fn)
                          $ setFullPath importPaths
-                         $ setQuiet True
+                         $ setQuiet (opts :> optVerbosity == VerbQuiet)
                          $ setSpecials (opts :> optParser)
                            defaultParams
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) is

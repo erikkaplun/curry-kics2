@@ -10,7 +10,6 @@
 
     Command line tool for cleaning up Curry directories.
 -}
-
 module Main where
 
 import Control.Exception as E (catch, throwIO)
@@ -169,7 +168,6 @@ isDirectory f = E.catch (searchable `liftM` getPermissions f) handler
   handler e | isDoesNotExistError e = return False
             | isPermissionError   e = return False
             | otherwise             = E.throwIO e
-
 
 getUsefulContents :: FilePath -> IO [String]
 getUsefulContents dir = filter (`notElem` [".", ".."])

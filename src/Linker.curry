@@ -34,9 +34,10 @@ type ReplState =
   , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
   , verbose      :: Int        -- verbosity level:
                                -- 0 = errors and warnings
-                               -- 1 = show backend (Haskell) compile/load
-                               -- 2 = show intermediate messages, commands
-                               -- 3 = show intermediate results
+                               -- 1 = show frontend compilation status
+                               -- 2 = show also kics2c compilation status
+                               -- 3 = show also ghc compilation status
+                               -- 4 = show analysis information
   , importPaths  :: [String]   -- additional directories to search for imports
   , libPaths     :: [String]   -- directories containg the standard libraries
   , preludeName  :: String     -- the name of the standard prelude
@@ -130,7 +131,7 @@ getGoalInfo rst = do
       isio  = snd (head (filter (\i -> snd (fst i) ==
                            (if isdet then "d" else "nd") ++ "_C_kics2MainGoal")
                         infos))
-  writeVerboseInfo rst 3 $ "Initial goal is " ++
+  writeVerboseInfo rst 2 $ "Initial goal is " ++
                 (if isdet then "" else "non-") ++ "deterministic and " ++
                 (if isio  then "" else "not ") ++ "of IO type..."
   return (isdet, isio)
@@ -161,7 +162,7 @@ createAndCompileMain rst createExecutable mainExp bindings = do
   writeFile mainFile $ mainModule rst' isdet isio (rst :> traceFailure) bindings
 
   let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
-  writeVerboseInfo rst' 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  writeVerboseInfo rst' 3 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
   (rst'', status) <- if useGhci
                       then compileWithGhci rst' ghcCompile mainExp
                       else system ghcCompile >>= \stat -> return (rst', stat)
