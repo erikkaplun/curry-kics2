@@ -121,6 +121,7 @@ cleanModule dir mdl = do
   when sdExists $ do
     removeFiles $ map (subdir </>) mainFiles
     removeFiles $ map ((subdir </> "Curry_" ++ mdl) <.>) kics2Exts
+    removeFiles $ map ((subdir </> "Curry_Trace_" ++ mdl) <.>) kics2Exts
     rmdirIfEmpty subdir
   cyExists <- doesDirectoryExist cydir
   when cyExists $ do
