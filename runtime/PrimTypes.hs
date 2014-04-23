@@ -276,7 +276,8 @@ data C_IO t0
      | Fail_C_IO Cover FailInfo
      | Guard_C_IO Cover Constraints (C_IO t0)
 
-instance Show (C_IO a) where show = internalError "show for C_IO"
+instance Show (C_IO a) where
+  show _ = "<<IO action>>"
 
 instance Read (C_IO a) where readsPrec = internalError "readsPrec for C_IO"
 

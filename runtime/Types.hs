@@ -510,7 +510,6 @@ instance Unifiable C_Success where
 -- Higher Order functions
 instance Show (a -> b) where
   show _ = "<<function>>"
---   show = internalError "show for function is undefined"
 
 instance Read (a -> b) where
   readsPrec = internalError "read for function is undefined"
