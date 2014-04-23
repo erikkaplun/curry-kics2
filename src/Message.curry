@@ -1,11 +1,17 @@
+--- --------------------------------------------------------------------------
+--- Output of compiler messages.
+---
+--- @author  Björn Peemöller
+--- @version April 2014
+--- --------------------------------------------------------------------------
 module Message where
 
-import IO (hPutStrLn, stderr)
+import IO (hFlush, hPutStrLn, stderr, stdout)
 
 import CompilerOpts
 
 putErrLn :: String -> IO ()
-putErrLn msg = hPutStrLn stderr msg
+putErrLn msg = hPutStrLn stderr msg >> hFlush stderr
 
 showStatus :: Options -> String -> IO ()
 showStatus opts msg = showLevel VerbStatus opts msg
@@ -18,4 +24,4 @@ showDetail opts msg = showLevel VerbDetails opts msg
 
 showLevel :: Verbosity -> Options -> String -> IO ()
 showLevel level opts msg = unless (opts :> optVerbosity < level)
-                                  (putStrLn msg)
+                                  (putStrLn msg >> hFlush stdout)
