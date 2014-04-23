@@ -28,12 +28,15 @@ failTrace (FailInfo calls cause) = do
   putStrLn "A failure occured for the following reason:"
   putStrLn cause
   blank
-  k <- askUserKey "yn\n" "Do you want to see the call stack? [Y(es)/n(o)] "
-  case toLower k of
-    'n' -> return ()
-    _   -> do
-    let stack = map augmentCall calls
-    printStack stack >> inspect stack
+  if null calls
+    then putStrLn "No call stack is available. Try enabling the trace option."
+    else do
+    k <- askUserKey "yn\n" "Do you want to see the call stack? [Y(es)/n(o)] "
+    case toLower k of
+      'n' -> return ()
+      _   -> do
+      let stack = map augmentCall calls
+      printStack stack >> inspect stack
 
 printStack :: CallStack -> IO ()
 printStack stack = do
