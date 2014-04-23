@@ -50,6 +50,7 @@ type ReplState =
   , interactive  :: Bool       -- interactive execution of goal?
   , showBindings :: Bool       -- show free variables in main goal in output?
   , showTime     :: Bool       -- show execution of main goal?
+  , traceFailure :: Bool       -- trace failure in deterministic expression
   , useGhci      :: Bool       -- use ghci to evaluate main goal
   , safeExec     :: Bool       -- safe execution mode without I/O actions
   , parseOpts    :: String     -- additional options for the front end
@@ -83,6 +84,7 @@ initReplState =
   , interactive  := False
   , showBindings := True
   , showTime     := False
+  , traceFailure := False
   , useGhci      := False
   , safeExec     := False
   , parseOpts    := ""
@@ -156,7 +158,7 @@ createAndCompileMain :: ReplState -> Bool -> String -> Maybe Int
 createAndCompileMain rst createExecutable mainExp bindings = do
   (isdet, isio) <- getGoalInfo rst
   (rst',wasUpdated) <- updateGhcOptions rst
-  writeFile mainFile $ mainModule rst' isdet isio bindings
+  writeFile mainFile $ mainModule rst' isdet isio (rst :> traceFailure) bindings
 
   let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
   writeVerboseInfo rst' 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
@@ -222,8 +224,8 @@ data EvalMode    = All | One | Interactive MoreDefault -- | Count
 data MoreDefault = MoreYes | MoreNo | MoreAll
 
 -- Create the Main.hs program containing the call to the initial expression:
-mainModule :: ReplState -> Bool -> Bool -> Maybe Int -> String
-mainModule rst isdet isio mbBindings = unlines
+mainModule :: ReplState -> Bool -> Bool -> Bool -> Maybe Int -> String
+mainModule rst isdet isio isTF mbBindings = unlines
   [ "module Main where"
   , if rst :> interactive then "import MonadList" else ""
   , "import Basics"
@@ -234,7 +236,7 @@ mainModule rst isdet isio mbBindings = unlines
   , "import Curry_" ++ dropExtension mainGoalFile
   , ""
   , "main :: IO ()"
-  , mainExpr "kics2MainGoal" isdet isio (rst :> ndMode) evalMode mbBindings
+  , mainExpr "kics2MainGoal" isdet isio isTF (rst :> ndMode) evalMode mbBindings
   ]
  where
   evalMode
@@ -247,16 +249,18 @@ mainModule rst isdet isio mbBindings = unlines
     "all" -> MoreAll
     _     -> MoreYes
 
-mainExpr :: String -> Bool -> Bool -> NonDetMode -> EvalMode -> Maybe Int -> String
-mainExpr goal isdet isio ndMode evalMode mbBindings
+mainExpr :: String -> Bool -> Bool -> Bool -> NonDetMode -> EvalMode -> Maybe Int -> String
+mainExpr goal isdet isio isTF ndMode evalMode mbBindings
   = "main = " ++ mainOperation ++ ' ' : detPrefix ++ goal
  where
   detPrefix = if isdet then "d_C_" else "nd_C_"
   mainOperation
-    | isio && isdet = "evalDIO"
-    | isdet         = "evalD"
-    | isio          = "evalIO"
-    | otherwise     = case ndMode of
+    | isio && isdet && isTF = "failtraceDIO"
+    | isio && isdet         = "evalDIO"
+    | isio                  = "evalIO"
+    | isdet && isTF         = "failtraceD"
+    | isdet                 = "evalD"
+    | otherwise             = case ndMode of
       PrDFS        -> searchExpr $ "prdfs"
       DFS          -> searchExpr $ "printDFS" ++ searchSuffix
       BFS          -> searchExpr $ "printBFS" ++ searchSuffix

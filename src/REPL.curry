@@ -368,12 +368,13 @@ compileCurryProgram rst curryprog = do
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
-               [ "-v" ++ show (rst :> verbose)
-               , "-i" ++ intercalate ":" (loadPaths rst)
-               ] ++
-               (if null (rst :> parseOpts)
-                then []
-                else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
+    [ "-v" ++ show (rst :> verbose)
+    , "-i" ++ intercalate ":" (loadPaths rst)
+    ] ++
+    (if null (rst :> parseOpts)
+    then []
+    else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
+      ++ (if rst :> traceFailure then ["--trace-failure"] else [])
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
 
 --- Execute main program and show run time:
@@ -678,6 +679,8 @@ replOptions =
   , ("-bindings"    , \r _ -> return (Just { showBindings := False | r }))
   , ("+time"        , \r _ -> return (Just { showTime     := True  | r }))
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
+  , ("+trace"       , \r _ -> return (Just { traceFailure := True  | r }))
+  , ("-trace"       , \r _ -> return (Just { traceFailure := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
   , ("safe"         , \r _ -> return (Just { safeExec     := True  | r }))
@@ -749,6 +752,7 @@ printOptions rst = putStrLn $ unlines
   , "+/-optimize     - turn on/off optimization"
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show execution time"
+  , "+/-trace        - trace failure in deterministic expression"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
   , "safe            - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
@@ -791,6 +795,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst :> optim       ) ++ "optimize "    ++
   showOnOff (rst :> showBindings) ++ "bindings "    ++
   showOnOff (rst :> showTime    ) ++ "time "        ++
+  showOnOff (rst :> traceFailure) ++ "trace "       ++
   showOnOff (rst :> useGhci     ) ++ "ghci "
  where
    showOnOff b = if b then "+" else "-"
