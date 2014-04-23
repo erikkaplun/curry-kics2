@@ -187,7 +187,7 @@ $(PKGDB):
 	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 # create frontend binary
-$(CYMAKE):
+$(CYMAKE): .FORCE
 	cd frontend && $(MAKE)
 
 .PHONY: scripts
@@ -238,6 +238,9 @@ cleanall: clean
 .PHONY: maintainer-clean
 maintainer-clean: cleanall
 	rm -rf $(BINDIR)
+
+.PHONY: .FORCE
+.FORCE:
 
 ##############################################################################
 # Building the compiler itself

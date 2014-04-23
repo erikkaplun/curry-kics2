@@ -2,8 +2,11 @@
 # Installation of frontend
 ##############################################################################
 
+# Retrieve all Haskell modules as dependencies for cymake
+DEPS := $(shell find curry-base/src/ curry-frontend/src/ -type f)
+
 # install the sources of the front end from its repository
-$(CYMAKE):
+$(CYMAKE): $(DEPS)
 	mkdir -p $(@D)
 	cd curry-base     && $(CABAL_INSTALL)
 	cd curry-frontend && $(CABAL_INSTALL) --bindir=$(@D)
