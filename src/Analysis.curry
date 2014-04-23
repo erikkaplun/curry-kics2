@@ -156,7 +156,7 @@ ordHelp1 orderMap (TCons qn tys)
 -- then the function has a higher order result with arity m (HORes m)
 -- Otherwise, it is first order (FO)
 isHOFunc orderMap arity ty
-  | arity == 0 = foldr (\ty order -> hoOr order (isHOType orderMap ty))
+  | arity == 0 = foldr (\ty' order -> hoOr order (isHOType orderMap ty'))
                        (if numArgs > 0 then HORes numArgs  else FO)
                        types  --isHOType orderMap ty  -- FO 
   | otherwise  = case ty of
