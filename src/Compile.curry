@@ -249,7 +249,7 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
     [ unlines (defaultPragmas : pragmas)
     , showModuleHeader m td fd imps
     , unlines extimps
-    , showDecls m od td fd
+    , showDecls (opts :> optTraceFailure) m od td fd
     , unlines extdecls
     ]
  where
