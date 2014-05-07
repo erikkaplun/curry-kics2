@@ -172,11 +172,8 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
   dump DumpTranslated opts abstractHsName (show ahsPatched)
 
-  showDetail opts "Renaming tracing module"
-  let final = if (opts :> optTraceFailure) then renameTrace ahsPatched else ahsPatched
-
   showDetail opts "Integrating external declarations"
-  integrated <- integrateExternals opts final fn
+  integrated <- integrateExternals opts ahsPatched fn
 
   showDetail opts $ "Generating Haskell module " ++ dest
   writeFileInDir dest integrated
@@ -247,8 +244,8 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   let (pragmas, extimps, extdecls) = splitExternals exts
   return $ intercalate "\n\n" $ filter notNull
     [ unlines (defaultPragmas ++ pragmas)
-    , showModuleHeader m td fd imps
-    , unlines (defaultImports ++ extimps)
+    , showModuleHeader (opts :> optTraceFailure) m td fd imps
+    , unlines extimps
     , showDecls (opts :> optTraceFailure) m od td fd
     , unlines extdecls
     ]
@@ -256,11 +253,6 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   defaultPragmas = [ "{-# LANGUAGE MagicHash #-}"
                    , "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
                    ]
-  defaultImports
-    | removeTrace m == curryPrelude = []
-    | opts :> optTraceFailure       = [ "import qualified Curry_Trace_Prelude as CP" ]
-    | otherwise                     = [ "import qualified Curry_Prelude as CP" ]
-
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -296,6 +288,3 @@ rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
   Prog (renameModule name) (map renameModule imports) td fd od where
   (Prog _ _ td fd od) = updQNamesInProg renameQName p
-
-renameTrace :: AH.Prog -> AH.Prog
-renameTrace p = AHG.renameSymbolInProg renameQNameTrace p

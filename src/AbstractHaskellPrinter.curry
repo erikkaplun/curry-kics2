@@ -41,19 +41,19 @@ defaultOptions = { currentModule := "", traceFailure := False }
 showProg ::Bool ->  Prog -> String
 showProg trace (Prog m imports typedecls funcdecls opdecls) =
   intercalate "\n\n" $ filter (not . null) $
-    [ showModuleHeader m typedecls funcdecls imports
+    [ showModuleHeader trace m typedecls funcdecls imports
     , showDecls trace m opdecls typedecls funcdecls
     ]
 
-showModuleHeader :: String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
-showModuleHeader m typedecls funcdecls imps = concat
-  [ "module " ++ m
+showModuleHeader :: Bool -> String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
+showModuleHeader trace m typedecls funcdecls imps = concat
+  [ "module " ++ (if trace then addTrace m else m)
   , " (" ++ exports ++ ")"
   , " where"
   , if null imports then "" else "\n\n" ++ imports
   ]
   where exports = showExports typedecls funcdecls
-        imports = showImports imps
+        imports = showImports trace imps
 
 showDecls :: Bool -> String -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> String
 showDecls trace m opdecls typedecls funcdecls
@@ -101,13 +101,14 @@ showExports types funcs =
     getFuncName (Func _ (_,name) _ _ _ _) =
       if isInfixOpName name then "(" ++ name ++ ")" else name
 
-showImports :: [String] -> String
-showImports imports = prefixInter showImport imports "\n"
+showImports :: Bool -> [String] -> String
+showImports trace imports = prefixInter showImport imports "\n"
   where
   showImport imp
       -- Haskell modules are imported unqualified
     | isHaskellModule imp = "import " ++ imp
       -- all Curry modules are imported qualified
+    | trace               = "import qualified " ++ addTrace imp ++ " as " ++ imp
     | otherwise           = "import qualified " ++ imp
 
 -- ---------------------------------------------------------------------------
@@ -367,10 +368,9 @@ showLitPattern :: Options -> Literal -> String
 showLitPattern opts l = '(' : cons ++ ' ' : showLiteral l ++ "#)"
   where
   cons = showSymbol opts $ case l of
-    Intc   _ -> (prel, "C_Int"  )
-    Floatc _ -> (prel, "C_Float")
-    Charc  _ -> (prel, "C_Char" )
-  prel = if opts :> traceFailure then addTrace curryPrelude else curryPrelude
+    Intc   _ -> (curryPrelude, "C_Int"  )
+    Floatc _ -> (curryPrelude, "C_Float")
+    Charc  _ -> (curryPrelude, "C_Char" )
 
 showPreludeCons :: Options -> Pattern -> String
 showPreludeCons opts p
