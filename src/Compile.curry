@@ -246,17 +246,20 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
   return $ intercalate "\n\n" $ filter notNull
-    [ unlines (defaultPragmas : pragmas)
+    [ unlines (defaultPragmas ++ pragmas)
     , showModuleHeader m td fd imps
-    , unlines extimps
+    , unlines (defaultImports ++ extimps)
     , showDecls (opts :> optTraceFailure) m od td fd
     , unlines extdecls
     ]
  where
-  defaultPragmas :: String
-  defaultPragmas =
-      "{-# LANGUAGE MagicHash #-}\n"
-   ++ "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
+  defaultPragmas = [ "{-# LANGUAGE MagicHash #-}"
+                   , "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
+                   ]
+  defaultImports
+    | removeTrace m == curryPrelude = []
+    | opts :> optTraceFailure       = [ "import qualified Curry_Trace_Prelude as CP" ]
+    | otherwise                     = [ "import qualified Curry_Prelude as CP" ]
 
 
 -- lookup an external file for a module and return either the content or an
