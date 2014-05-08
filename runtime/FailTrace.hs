@@ -1,10 +1,10 @@
-module FailTrace where
+module FailTrace (failTrace) where
 
 import Control.Monad (liftM, unless)
 import Data.Char     (isDigit, toLower)
 import Data.List     (intercalate)
 import System.IO     (hFlush, stdin, stdout, hGetEcho, hSetEcho
-                     ,hGetBuffering, hSetBuffering, BufferMode (..))
+                     , hGetBuffering, hSetBuffering, BufferMode (..))
 
 import FailInfo
 
