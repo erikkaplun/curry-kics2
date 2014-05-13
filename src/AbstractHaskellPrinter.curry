@@ -8,7 +8,7 @@
 ---         Parissa Sadeghi, Bjoern Peemoeller
 --- @version April 2011
 ------------------------------------------------------------------------------
-
+{-# LANGUAGE Records #-}
 module AbstractHaskellPrinter
   ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl
   , showTypeExpr, showFuncDecl

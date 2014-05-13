@@ -6,7 +6,7 @@
 --- @author Michael Hanus, Bjoern Peemoeller
 --- @version January 2014
 --- --------------------------------------------------------------------------
-
+{-# LANGUAGE Records #-}
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , setExitStatus

@@ -4,6 +4,7 @@
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version July 2012
 --- --------------------------------------------------------------------------
+{-# LANGUAGE Records #-}
 module Compile where
 
 import Char             (isSpace)

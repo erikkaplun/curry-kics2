@@ -1,3 +1,4 @@
+{-# LANGUAGE Records #-}
 module TransFunctions where
 
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM

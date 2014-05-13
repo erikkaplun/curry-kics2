@@ -7,7 +7,7 @@
 --- @author  Björn Peemöller, Fabian Skrlac
 --- @version April 2014
 --- --------------------------------------------------------------------------
-
+{-# LANGUAGE Records #-}
 module ModuleDeps (ModuleIdent, Source, deps) where
 
 import Directory
