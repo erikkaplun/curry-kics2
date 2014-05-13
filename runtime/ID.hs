@@ -20,11 +20,10 @@ module ID
   , nextNIDs, Store (..)
   ) where
 
-import Control.Monad (liftM, when, zipWithM_)
-import Data.List (partition)
+import           Control.Monad   (liftM, when, zipWithM_)
 
-import Debug
-import IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
+import           Debug
+import           IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
 import qualified IDSupply
 
 -- ---------------------------------------------------------------------------

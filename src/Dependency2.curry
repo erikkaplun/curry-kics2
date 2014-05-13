@@ -1,8 +1,9 @@
------------------------------------------------------------------------------
--- A few base functions for analysing dependencies in FlatCurry programs:
---
--- Michael Hanus, June 2005
------------------------------------------------------------------------------
+--- --------------------------------------------------------------------------
+--- A few base functions for analysing dependencies in FlatCurry programs:
+---
+--- @author Michael Hanus
+--- @version June 2005
+--- --------------------------------------------------------------------------
 
 module Dependency2(analyseWithDependencies, indirectlyDependent,
                   funcsInExpr, callsDirectly, callsDirectly2, externalDependent,
@@ -14,10 +15,10 @@ import SetRBT
 import Sort(leqString)
 import Maybe(fromJust)
 
--- Generic global function analysis where the property of each function is a combination
--- of a property of the function and all its dependent functions.
--- 1. parameter: a function that associates a property to each function declaration
--- 2. parameter: an operation to combine the properties of function/dependent functions
+--- Generic global function analysis where the property of each function is a combination
+--- of a property of the function and all its dependent functions.
+--- @param funproperty - a function that associates a property to each function declaration
+--- @param combine     - an operation to combine the properties of function/dependent functions
 analyseWithDependencies :: (FuncDecl->a) -> ([a]->a) -> [FuncDecl] -> [(QName,a)]
 analyseWithDependencies funproperty combine funs = map anaFun alldeps
   where
@@ -33,7 +34,7 @@ analyseWithDependencies funproperty combine funs = map anaFun alldeps
     funcName (Func fname _ _ _ _) = fname
 
 
--- external functions on which a function depends
+--- external functions on which a function depends
 externalDependent :: [FuncDecl] -> [(QName,[QName])]
 externalDependent funcs =
   map (\ (f,fs)->(f,filter (`elem` externalFuncs) fs))
@@ -45,15 +46,15 @@ externalDependent funcs =
    getExternal (Func f _ _ _ (External _)) = [f]
 
 
--- Computes the list of indirect dependencies for all functions.
--- Argument: a list of function declarations
--- Result: a list of pairs of qualified functions names and the corresponding
---         called functions
+--- Computes the list of indirect dependencies for all functions.
+--- @param funs - a list of function declarations
+--- @return     - a list of pairs of qualified functions names and the corresponding
+---               called functions
 indirectlyDependent :: [FuncDecl] -> [(QName,[QName])]
 indirectlyDependent funs = map (\ (f,ds) -> (f,setRBT2list ds))
                                (depsClosure (map directlyDependent funs))
 
--- list of direct dependencies for a function
+--- list of direct dependencies for a function
 callsDirectly :: FuncDecl -> [QName]
 callsDirectly fun = setRBT2list (snd (directlyDependent fun))
 
@@ -74,11 +75,11 @@ depsClosure directdeps = map (\(f,ds)->(f,closure ds (setRBT2list ds)))
                           (setRBT2list (maybe emptySet id (lookup f directdeps)))
       in closure (foldr insertRBT olddeps newdeps) (newdeps++fs)
 
--- Computes the list of all direct dependencies for all functions.
--- This is useful to represent the dependency graph for each function.
--- Argument: a list of function declarations
--- Result: a list of pairs of qualified functions names and the corresponding list of
---         direct dependencies for all functions on which this functions depend
+--- Computes the list of all direct dependencies for all functions.
+--- This is useful to represent the dependency graph for each function.
+--- @param funs - a list of function declarations
+--- @return     - a list of pairs of qualified functions names and the corresponding list of
+---               direct dependencies for all functions on which this functions depend
 dependencyGraphs :: [FuncDecl] -> [(QName,[(QName,[QName])])]
 dependencyGraphs funs =
   let directdeps = map directlyDependent funs
@@ -86,13 +87,13 @@ dependencyGraphs funs =
                              (setRBT2list (insertRBT f ds))))
           (depsClosure directdeps)
 
--- Computes for all functions the list of all direct local dependencies, i.e.,
--- dependencies occurring in the module where the function is defined.
--- Thus, dependencies outside the module are not represented.
--- This is useful to represent the local dependency graph for each function.
--- Argument: a list of function declarations
--- Result: a list of pairs of qualified functions names and the corresponding list of
---         direct local dependencies for all functions on which this functions depend
+--- Computes for all functions the list of all direct local dependencies, i.e.,
+--- dependencies occurring in the module where the function is defined.
+--- Thus, dependencies outside the module are not represented.
+--- This is useful to represent the local dependency graph for each function.
+--- @param funs - a list of function declarations
+--- @return     - a list of pairs of qualified functions names and the corresponding list of
+---               direct local dependencies for all functions on which this functions depend
 localDependencyGraphs :: [FuncDecl] -> [(QName,[(QName,[QName])])]
 localDependencyGraphs funs =
   let directdeps = map directlyDependent funs
@@ -116,8 +117,8 @@ localDepsClosure directdeps =
        in closure mod (foldr insertRBT olddeps newdeps) (newdeps++fs)
    | otherwise = closure mod olddeps fs
 
--- Gets a list of all functions (including partially applied functions)
--- called in an expression:
+--- Gets a list of all functions (including partially applied functions)
+--- called in an expression:
 funcsInExpr :: Expr -> [QName]
 funcsInExpr e = setRBT2list (funcSetOfExpr e)
 

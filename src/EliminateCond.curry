@@ -142,5 +142,7 @@ unboundVars e = nub (trExpr var lit comb leT freE oR casE branch typed e)
  freE _ vs = filter (\v -> fst v `notElem` (map fst) vs)
  oR   _       = (++)
  casE _ _ vars  bVars  = concat (vars:bVars)
- branch (APattern _ _ vs) vars = filter (\v -> fst v `notElem` map fst vs) vars
+ branch pat vars = case pat of
+   (APattern _ _ vs) -> filter (\v -> fst v `notElem` map fst vs) vars
+   _                 -> error "EliminateCond.unboundVars"
  typed _ vs _ = vs

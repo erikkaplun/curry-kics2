@@ -4,13 +4,14 @@
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version July 2012
 --- --------------------------------------------------------------------------
+{-# LANGUAGE Records #-}
 module Compile where
 
 import Char             (isSpace)
 import Maybe            (fromJust)
-import List             (isPrefixOf)
+import List             (intercalate, isPrefixOf)
 import Directory        (doesFileExist)
-import FilePath         ((</>), dropExtension, normalise)
+import FilePath         (FilePath, (</>), dropExtension, normalise)
 import FileGoodies      (lookupFileInPath)
 import FiniteMap
 import FlatCurry
@@ -19,33 +20,31 @@ import ReadShowTerm     (readQTermFile)
 
 import AnnotatedFlatCurryGoodies (unAnnProg)
 
-import qualified AbstractHaskell as AH
+import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
-import AbstractHaskellPrinter (showModuleHeader, showDecls)
+import AbstractHaskellPrinter    (showModuleHeader, showDecls)
 import CompilerOpts
-import Files
-  ( withBaseName, withDirectory, withExtension
-  , writeFileInDir, writeQTermFileInDir
-  )
+import Files                     ( withBaseName, withDirectory, withExtension
+                                 , writeFileInDir, writeQTermFileInDir
+                                 )
 import FlatCurry2AbstractHaskell (fcy2abs)
-import LiftCase (liftCases)
-import EliminateCond (eliminateCond)
-import DefaultPolymorphic (defaultPolymorphic)
-import MissingImports (fixMissingImports)
-import Inference (inferProgFromProgEnv)
-import Message (putErrLn, showStatus, showDetail) --, showAnalysis)
-import ModuleDeps (ModuleIdent, Source, deps)
+import LiftCase                  (liftCases)
+import EliminateCond             (eliminateCond)
+import DefaultPolymorphic        (defaultPolymorphic)
+import MissingImports            (fixMissingImports)
+import Inference                 (inferProgFromProgEnv)
+import Message                   (putErrLn, showStatus, showDetail)
+import ModuleDeps                (ModuleIdent, Source, deps)
 import Names
 import SimpleMake
--- import Splits (mkSplits)
 import TransFunctions
 import TransTypes
-import Utils (notNull)
+import Utils                      (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
 main = do
-  (opts, files) <- compilerOpts
+  (opts, files) <- getCompilerOpts
   mapIO_ (build opts) files
 
 --- Load the module, resolve the dependencies and compile the source files
@@ -67,7 +66,7 @@ build opts fn = do
 --- returns the actual file path
 --- @param fn - the (relative) path to the Curry file with or without extension
 --- @return `Just path` if the module was found, `Nothing` if not
-locateCurryFile :: String -> IO (Maybe String)
+locateCurryFile :: String -> IO (Maybe FilePath)
 locateCurryFile fn = do
   exists <- doesFileExist fn
   if exists
@@ -98,7 +97,7 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     progs = [ (m, p) | (m, (_, p)) <- mods]
     opts = state :> compOptions
 
-storeAnalysis :: State -> AnalysisResult -> String -> IO ()
+storeAnalysis :: State -> AnalysisResult -> FilePath -> IO ()
 storeAnalysis state (types, ndAna, hoFunAna, hoConsAna) fn = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
   writeQTermFileInDir ndaFile (ndAnaStr, hoFuncAnaStr, hoConsAnaStr, typesStr)
@@ -112,7 +111,7 @@ storeAnalysis state (types, ndAna, hoFunAna, hoConsAna) fn = do
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
-  showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
+  showStatus opts $ compMessage (current, total) "Analyzing" mid (fn, ndaFile)
   (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
   return { ndResult     := (state :> ndResult    ) `plusFM` readFM (<) ndAnalysis
          , hoResultFun  := (state :> hoResultFun ) `plusFM` readFM (<) hoFuncAnalysis
@@ -126,7 +125,7 @@ loadAnalysis total state ((mid, (fn, _)), current) = do
 compileModule :: [(ModuleIdent, Prog)] -> Int -> State
               -> ((ModuleIdent, Source), Int) -> IO State
 compileModule progs total state ((mid, (fn, fcy)), current) = do
-  showStatus opts $ compMessage current total ("Compiling " ++ mid) fn dest
+  showStatus opts $ compMessage (current, total) "Compiling" mid (fn, dest)
 
   let fcy' = filterPrelude opts fcy
   dump DumpFlat opts fcyName (show fcy')
@@ -170,7 +169,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
   let ahsPatched = patchCurryTypeClassIntoPrelude ahs
-  dump DumpAbstractHs opts abstractHsName (show ahsPatched)
+  dump DumpTranslated opts abstractHsName (show ahsPatched)
 
   showDetail opts "Integrating external declarations"
   integrated <- integrateExternals opts ahsPatched fn
@@ -221,28 +220,28 @@ patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
  where
   curryDecl = AH.Type (curryPrelude, "Curry") AH.Public [] []
 
-compMessage :: Int -> Int -> String -> String -> String -> String
-compMessage curNum maxNum msg fn dest
-  =  '[' : fill max sCurNum ++ " of " ++ sMaxNum  ++ "]"
-  ++ ' ' : msg  ++ " ( " ++ normalise fn ++ ", " ++ normalise dest ++ " )"
-    where
-      sCurNum = show curNum
-      sMaxNum = show maxNum
-      max = length $ sMaxNum
-      fill n s = replicate (n - length s) ' ' ++ s
+compMessage :: (Int, Int) -> String -> String -> (FilePath, FilePath) -> String
+compMessage (curNum, maxNum) what m (src, dst)
+  =  '[' : lpad (length sMaxNum) (show curNum) ++ " of " ++ sMaxNum  ++ "]"
+  ++ ' ' : rpad 9 what ++ ' ' : rpad 16 m
+  ++ " ( " ++ normalise src ++ ", " ++ normalise dst ++ " )"
+  where
+  sMaxNum  = show maxNum
+  lpad n s = replicate (n - length s) ' ' ++ s
+  rpad n s = s ++ replicate (n - length s) ' '
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
   | noPrelude = Prog m (filter (/= prelude) imps) td fd od
   | otherwise = p
-  where noPrelude = ExtNoImplicitPrelude `elem` opts :> optExtensions
+  where noPrelude = NoImplicitPrelude `elem` opts :> optExtensions
 
 --
-integrateExternals :: Options -> AH.Prog -> String -> IO String
+integrateExternals :: Options -> AH.Prog -> FilePath -> IO String
 integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
-  return $ unlines $ filter notNull
+  return $ intercalate "\n\n" $ filter notNull
     [ unlines (defaultPragmas : pragmas)
     , showModuleHeader m td fd imps
     , unlines extimps
@@ -258,7 +257,7 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
-lookupExternals :: Options -> String -> IO String
+lookupExternals :: Options -> FilePath -> IO String
 lookupExternals opts fn = do
   exists <- doesFileExist extName
   if exists
@@ -281,7 +280,7 @@ splitExternals content = (pragmas, imports, decls)
                      && not ("-- #endimport" `isPrefixOf` line)
 
 -- Dump an intermediate result to a file
-dump :: DumpFormat -> Options -> String -> String -> IO ()
+dump :: DumpFormat -> Options -> FilePath -> String -> IO ()
 dump format opts file src = when (format `elem` opts :> optDump) $ do
   showDetail opts $ "Dumping " ++ file
   writeFileInDir (withDirectory (</> opts :> optOutputSubdir) file) src

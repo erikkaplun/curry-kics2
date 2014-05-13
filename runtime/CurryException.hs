@@ -2,7 +2,7 @@
 module CurryException where
 
 import Control.Exception (Exception (..), throw)
-import Data.Typeable (Typeable (..))
+import Data.Typeable     (Typeable)
 
 throwFail :: String -> a
 throwFail = throw . FailException

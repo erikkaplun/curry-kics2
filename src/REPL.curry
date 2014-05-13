@@ -5,7 +5,7 @@
 --- @author Michael Hanus, Bjoern Peemoeller
 --- @version January 2014
 --- --------------------------------------------------------------------------
-
+{-# LANGUAGE Records #-}
 module REPL where
 
 import AbstractCurry
@@ -170,7 +170,7 @@ importUnsafeModule rst =
 -- Compute the front-end parameters for the current state:
 currentFrontendParams :: ReplState -> FrontendParams
 currentFrontendParams rst =
-    setQuiet       (rst :> verbose < 1)
+    setQuiet       True
   $ setFullPath    (loadPaths rst)
   $ setExtended    (rcValue (rst :> rcvars) "curryextensions" /= "no")
   $ setOverlapWarn (rcValue (rst :> rcvars) "warnoverlapping" /= "no")
@@ -280,6 +280,7 @@ compileProgramWithGoal rst createExecutable goal =
               case goalstate of
                 GoalWithBindings p n g -> (p, g   , Just n )
                 GoalWithoutBindings p  -> (p, goal, Nothing)
+                _                      -> error "REPL.compileProgramWithGoal"
         typeok <- makeMainGoalMonomorphic rst newprog newgoal
         if typeok
           then do
@@ -295,42 +296,44 @@ compileProgramWithGoal rst createExecutable goal =
 -- The status of the main goal is returned.
 insertFreeVarsInMainGoal :: ReplState -> String -> Maybe CurryProg
                          -> IO GoalCompile
-insertFreeVarsInMainGoal _ _ Nothing = return GoalError
-insertFreeVarsInMainGoal rst goal
-          (Just prog@(CurryProg _ _ _ [mfunc@(CFunc _ _ _ ty _)] _)) = do
-  let freevars           = freeVarsInFuncRule mfunc
-      (exp, whereclause) = break (== "where") (words goal)
-  if (rst :> safeExec) && isIOType ty
-    then do writeErrorMsg "Operation not allowed in safe mode!"
-            return GoalError
-    else
-      if null freevars
-          || not (rst :> showBindings)
-          || isPrtChoices (rst :> ndMode)
-          || isIOType ty
-          || length freevars > 10 -- due to limited size of tuples used
-                                  -- in PrintBindings
-          || null whereclause
-        then return (GoalWithoutBindings prog)
-        else do
-          let newgoal = unwords $
-                ["("] ++ exp ++ [",["] ++
-                intersperse "," (map (\v-> "\"" ++ v ++ "\"") freevars) ++
-                ["]"] ++ map (\v->',':v) freevars ++ ")":whereclause
-          writeVerboseInfo rst 2 $
-            "Adding printing of bindings for free variables: " ++
-              intercalate "," freevars
-          writeSimpleMainGoalFile rst newgoal
-          mbprog <- getAcyOfMainGoal rst
-          return (maybe GoalError
-                        (\p -> GoalWithBindings p (length freevars) newgoal)
-                        mbprog)
+insertFreeVarsInMainGoal _   _    Nothing     = return GoalError
+insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
+  CurryProg _ _ _ [mfunc@(CFunc _ _ _ ty _)] _ -> do
+    let freevars           = freeVarsInFuncRule mfunc
+        (exp, whereclause) = break (== "where") (words goal)
+    if (rst :> safeExec) && isIOType ty
+      then do writeErrorMsg "Operation not allowed in safe mode!"
+              return GoalError
+      else
+        if null freevars
+            || not (rst :> showBindings)
+            || isPrtChoices (rst :> ndMode)
+            || isIOType ty
+            || length freevars > 10 -- due to limited size of tuples used
+                                    -- in PrintBindings
+            || null whereclause
+          then return (GoalWithoutBindings prog)
+          else do
+            let newgoal = unwords $
+                  ["("] ++ exp ++ [",["] ++
+                  intersperse "," (map (\v-> "\"" ++ v ++ "\"") freevars) ++
+                  ["]"] ++ map (\v->',':v) freevars ++ ")":whereclause
+            writeVerboseInfo rst 2 $
+              "Adding printing of bindings for free variables: " ++
+                intercalate "," freevars
+            writeSimpleMainGoalFile rst newgoal
+            mbprog <- getAcyOfMainGoal rst
+            return (maybe GoalError
+                          (\p -> GoalWithBindings p (length freevars) newgoal)
+                          mbprog)
+  _ -> error "REPL.insertFreeVarsInMainGoal"
  where
   isPrtChoices c = case c of
     PrtChoices _ -> True
     _            -> False
-  freeVarsInFuncRule (CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls])) =
-    concatMap lvarName ldecls
+  freeVarsInFuncRule f = case f of
+    CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls]) -> concatMap lvarName ldecls
+    _ -> error "REPL.insertFreeVarsInMainGoal.freeVarsInFuncRule"
 
   lvarName ldecl = case ldecl of CLocalVar (_,v) -> [v]
                                  _               -> []
@@ -341,40 +344,45 @@ insertFreeVarsInMainGoal rst goal
 --- and t is not a function, then ">>= print" is added to the goal.
 --- The result is False if the main goal contains some error.
 makeMainGoalMonomorphic :: ReplState -> CurryProg -> String -> IO Bool
-makeMainGoalMonomorphic rst (CurryProg _ _ _ [(CFunc _ _ _ ty _)] _) goal
-  | isFunctionalType ty
-  = writeErrorMsg "expression is of functional type" >> return False
-  | isPolyType ty = do
-    writeMainGoalFile rst (modsOfType ty) (Just $ showMonoTypeExpr True ty)
-                          goal
-    writeVerboseInfo rst 2 $
-      "Type of main expression \"" ++ showMonoTypeExpr False ty
-      ++ "\" made monomorphic"
-    writeVerboseInfo rst 1
-      "Type variables of main expression replaced by \"()\""
-    return True
-  | otherwise = do
-    unless (newgoal == goal) $ writeSimpleMainGoalFile rst newgoal
-    return True
- where newgoal = if isIOReturnType ty
+makeMainGoalMonomorphic rst prog goal = case prog of
+  CurryProg _ _ _ [(CFunc _ _ _ ty _)] _
+    | isFunctionalType ty
+    -> writeErrorMsg "expression is of functional type" >> return False
+    | isPolyType ty -> do
+      writeMainGoalFile rst (modsOfType ty) (Just $ showMonoTypeExpr True ty)
+                            goal
+      writeVerboseInfo rst 2 $
+        "Type of main expression \"" ++ showMonoTypeExpr False ty
+        ++ "\" made monomorphic"
+      writeVerboseInfo rst 1
+        "Type variables of main expression replaced by \"()\""
+      return True
+    | otherwise -> do
+      unless (newgoal ty == goal) $ writeSimpleMainGoalFile rst (newgoal ty)
+      return True
+  _ -> error "REPL.makeMainGoalMonomorphic"
+ where newgoal ty = if isIOReturnType ty
                     then '(' : goal ++ ") >>= print"
                     else goal
 
 -- Compile a Curry program with IDC compiler:
 compileCurryProgram :: ReplState -> String -> IO Int
 compileCurryProgram rst curryprog = do
-  writeVerboseInfo rst 3 $ "Executing: " ++ kics2Cmd
+  writeVerboseInfo rst 2 $ "Executing: " ++ kics2Cmd
   system kics2Cmd
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
-               [ "-v" ++ show (rst :> verbose)
+               [ "-v" ++ show (transVerbose (rst :> verbose))
                , "-i" ++ intercalate ":" (loadPaths rst)
                ] ++
                (if null (rst :> parseOpts)
                 then []
                 else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
+  transVerbose n | n == 3    = 2
+                 | n >= 4    = 3
+                 | otherwise = n
 
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ReplState
@@ -667,7 +675,6 @@ replOptions =
   , ("v1"           , \r _ -> return (Just { verbose      := 1     | r }))
   , ("v2"           , \r _ -> return (Just { verbose      := 2     | r }))
   , ("v3"           , \r _ -> return (Just { verbose      := 3     | r }))
-  , ("v4"           , \r _ -> return (Just { verbose      := 4     | r }))
   , ("prompt"       , setPrompt                                          )
   , ("+interactive" , \r _ -> return (Just { interactive  := True  | r }))
   , ("-interactive" , \r _ -> return (Just { interactive  := False | r }))
@@ -739,9 +746,11 @@ printOptions rst = putStrLn $ unlines
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
-  , "v<n>            - verbosity level (0: quiet; 1: front end messages;"
-  , "                  2: backend messages, 3: intermediate messages and commands;"
-  , "                  4: all intermediate results)"
+  , "v<n>            - verbosity level"
+  , "                    0: quiet (errors and warnings only)"
+  , "                    1: status messages (default)"
+  , "                    2: intermediate messages and commands"
+  , "                    3: all intermediate results"
   , "prompt <prompt> - set the user prompt"
   , "+/-interactive  - turn on/off interactive execution of main goal"
   , "+/-first        - turn on/off printing only first solution"

@@ -6,7 +6,7 @@
 --- @author Michael Hanus, Bjoern Peemoeller
 --- @version January 2014
 --- --------------------------------------------------------------------------
-
+{-# LANGUAGE Records #-}
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , setExitStatus
@@ -32,11 +32,12 @@ type ReplState =
   { kics2Home    :: String     -- installation directory of the system
   , rcvars       :: [(String, String)] -- content of rc file
   , idSupply     :: String     -- IDSupply implementation (ioref, integer or ghc)
-  , verbose      :: Int        -- verbosity level: 0 = quiet,
-                               -- 1 = show frontend (module) compile/load
-                               -- 2 = show backend (Haskell) compile/load
-                               -- 3 = show intermediate messages, commands
-                               -- 4 = show intermediate results
+  , verbose      :: Int        -- verbosity level:
+                               -- 0 = errors and warnings
+                               -- 1 = show frontend compilation status
+                               -- 2 = show also kics2c compilation status
+                               -- 3 = show also ghc compilation status
+                               -- 4 = show analysis information
   , importPaths  :: [String]   -- additional directories to search for imports
   , libPaths     :: [String]   -- directories containg the standard libraries
   , preludeName  :: String     -- the name of the standard prelude
@@ -128,7 +129,7 @@ getGoalInfo rst = do
       isio  = snd (head (filter (\i -> snd (fst i) ==
                            (if isdet then "d" else "nd") ++ "_C_kics2MainGoal")
                         infos))
-  writeVerboseInfo rst 3 $ "Initial goal is " ++
+  writeVerboseInfo rst 2 $ "Initial goal is " ++
                 (if isdet then "" else "non-") ++ "deterministic and " ++
                 (if isio  then "" else "not ") ++ "of IO type..."
   return (isdet, isio)
@@ -159,7 +160,7 @@ createAndCompileMain rst createExecutable mainExp bindings = do
   writeFile mainFile $ mainModule rst' isdet isio bindings
 
   let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
-  writeVerboseInfo rst' 2 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  writeVerboseInfo rst' 3 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
   (rst'', status) <- if useGhci
                       then compileWithGhci rst' ghcCompile mainExp
                       else system ghcCompile >>= \stat -> return (rst', stat)

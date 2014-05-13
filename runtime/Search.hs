@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, CPP#-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Search where
 
@@ -122,11 +122,11 @@ getNormalForm goal = do
   s <- initSupply
   return $ ((\x _ _ -> x) $!! goal s initCover emptyCs) initCover emptyCs
 
- -- |Evaluate a deterministic expression without search
+-- |Evaluate a deterministic expression without search
 evalD :: Show a => DetExpr a -> IO ()
 evalD goal = print (goal initCover emptyCs)
 
- -- |Evaluate a non-deterministic expression without search
+-- |Evaluate a non-deterministic expression without search
 eval :: Show a => NonDetExpr a -> IO ()
 eval goal = initSupply >>= \s -> print (goal s initCover emptyCs)
 
@@ -208,20 +208,25 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
 -- which is internally expanded to apply the constructors encountered during
 -- search.
 prdfs :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
-prdfs prt goal = getNormalForm goal >>= printValsDFS False prt
+prdfs prt goal = getNormalForm goal >>= 
+#ifdef Try
+  printValsDFSTry False prt
+#else
+   printValsDFSMatch False prt
+#endif
 
 -- The first argument backTrack indicates whether backtracking is needed
-printValsDFS :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
-printValsDFS backTrack cont goal = do
+printValsDFSMatch :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFSMatch backTrack cont goal = do
   trace $ "prdfs: " ++ take 200 (show goal)
   match prChoice prNarrowed prFree prFail prGuard prVal goal
   where
   prFail _ _       = return ()
-  prVal v          = searchNF (printValsDFS backTrack) cont v
+  prVal v          = searchNF (printValsDFSMatch backTrack) cont v
   prChoice _ i x y = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = printValsDFS backTrack cont x
-    follow ChooseRight = printValsDFS backTrack cont y
+    follow ChooseLeft  = printValsDFSMatch backTrack cont x
+    follow ChooseRight = printValsDFSMatch backTrack cont y
     follow NoDecision  = if backTrack then do decide True ChooseLeft  x
                                               decide True ChooseRight y
                                               setDecision i NoDecision
@@ -230,44 +235,104 @@ printValsDFS backTrack cont goal = do
       -- Assumption 1: Binary choices can only be set to one of
       -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
       -- be ignored in between
-      where decide bt c a = setDecision i c >> printValsDFS bt cont a
+      where decide bt c a = setDecision i c >> printValsDFSMatch bt cont a
     follow c           = error $ "Search.prChoice: " ++ show c
 
   prFree _ i xs   = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
-    follow (ChooseN c _, _) = printValsDFS backTrack cont (xs !! c)
+    follow (ChooseN c _, _) = printValsDFSMatch backTrack cont (xs !! c)
     follow (NoDecision , j) = cont $ choicesCons initCover j xs
     follow c                = error $ "Search.prFree: " ++ show c
 
   prNarrowed _ i@(NarrowedID pns _) xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs) = processLB backTrack cs i xs
-    follow (ChooseN c _) = printValsDFS backTrack cont (xs !! c)
+    follow (ChooseN c _) = printValsDFSMatch backTrack cont (xs !! c)
     follow NoDecision
       | backTrack        = do
         foldr1 (>>) $ zipWith3 (decide True) [0 ..] xs pns
         setDecision i NoDecision
       | otherwise        = foldr1 (>>) $
         zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
-      where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFS bt cont a
+      where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFSMatch bt cont a
     follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
   prNarrowed _ i _ = error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
 
   prGuard _ cs e = solve initCover cs e >>= \mbSltn -> case mbSltn of
     Nothing                      -> return ()
-    Just (reset, e') | backTrack -> printValsDFS True  cont e' >> reset
-                     | otherwise -> printValsDFS False cont e'
+    Just (reset, e') | backTrack -> printValsDFSMatch True  cont e' >> reset
+                     | otherwise -> printValsDFSMatch False cont e'
 
   processLB True cs i xs = do
     reset <- setUnsetDecision i NoDecision
-    printValsDFS backTrack cont
+    printValsDFSMatch backTrack cont
       (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
     reset
   processLB False cs i xs = do
     setDecision i NoDecision
-    printValsDFS backTrack cont
+    printValsDFSMatch backTrack cont
       (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+
+
+
+printValsDFSTry :: NormalForm a => Bool -> (a -> IO ()) -> a -> IO ()
+printValsDFSTry backTrack cont goal = do
+  trace $ "prdfs: " ++ take 200 (show goal)
+  case try goal of
+    Fail _ _ ->  return ()
+    Val v    ->  searchNF (printValsDFSTry backTrack) cont v
+    Choice _ i x y -> lookupDecision i >>= follow
+     where
+       follow ChooseLeft  = printValsDFSTry backTrack cont x
+       follow ChooseRight = printValsDFSTry backTrack cont y
+       follow NoDecision  = if backTrack then do decide True ChooseLeft  x
+                                                 decide True ChooseRight y
+                                                 setDecision i NoDecision
+                                         else do decide True  ChooseLeft x
+                                                 decide False ChooseRight y
+         -- Assumption 1: Binary choices can only be set to one of
+         -- [NoDecision, ChooseLeft, ChooseRight], therefore the reset action may
+         -- be ignored in between
+         where decide bt c a = setDecision i c >> printValsDFSTry bt cont a
+       follow c           = error $ "Search.prChoice: " ++ show c
+
+    Free _ i xs   -> lookupDecisionID i >>= follow
+      where
+      follow (LazyBind cs, _) = processLB backTrack cs i xs
+      follow (ChooseN c _, _) = printValsDFSTry backTrack cont (xs !! c)
+      follow (NoDecision , j) = cont $ choicesCons initCover j xs
+      follow c                = error $ "Search.prFree: " ++ show c
+
+    Narrowed _ i@(NarrowedID pns _) xs -> lookupDecision i >>= follow
+      where
+      follow (LazyBind cs) = processLB backTrack cs i xs
+      follow (ChooseN c _) = printValsDFSTry backTrack cont (xs !! c)
+      follow NoDecision
+        | backTrack        = do
+          foldr1 (>>) $ zipWith3 (decide True) [0 ..] xs pns
+          setDecision i NoDecision
+        | otherwise        = foldr1 (>>) $
+          zipWithButLast3 (decide True) (decide False) [0 ..] xs pns
+        where decide bt n a pn = setDecision i (ChooseN n pn) >> printValsDFSTry bt cont a
+      follow c           = error $ "Search.prNarrowed: Bad choice " ++ show c
+    Narrowed _ i _ -> error $ "Search.prNarrowed: Bad narrowed ID " ++ show i
+
+    Guard _ cs e -> solve initCover cs e >>= \mbSltn -> case mbSltn of
+      Nothing                      -> return ()
+      Just (reset, e') | backTrack -> printValsDFSTry True  cont e' >> reset
+                       | otherwise -> printValsDFSTry False cont e'
+ where 
+  processLB True cs i xs = do
+    reset <- setUnsetDecision i NoDecision
+    printValsDFSTry backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+    reset
+  processLB False cs i xs = do
+    setDecision i NoDecision
+    printValsDFSTry backTrack cont
+      (guardCons initCover (StructConstr cs) $ choicesCons initCover i xs)
+
 
 -- |Apply the first ternary function to the zipping of three lists, but
 -- take the second function for the last triple.
@@ -576,13 +641,13 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
   smpFail d info  = szero d info
   smpVal v        = searchNF (searchMSearch' cd) cont v
 
-  smpChoice d i x y = lookupDecision i >>= follow
+  smpChoice d i a b = lookupDecision i >>= follow
     where
-    follow ChooseLeft  = searchMSearch' cd cont x
-    follow ChooseRight = searchMSearch' cd cont y
-    follow NoDecision  = decide i ChooseLeft x `plus` decide i ChooseRight y
+    follow ChooseLeft  = searchMSearch' cd cont a
+    follow ChooseRight = searchMSearch' cd cont b
+    follow NoDecision  = decide i ChooseLeft a `plus` decide i ChooseRight b
     follow c           = error $ "Search.smpChoice: Bad decision " ++ show c
-    plus = if isCovered d then splus d i else mplus 
+    plus = if isCovered d then splus d i else mplus
 
   smpFree d i xs = lookupDecisionID i >>= follow
     where
@@ -592,8 +657,9 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID pns _ -> pns
-           NarrowedID pns _ -> pns
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
     sumF j | isCovered d  = svar d i
            | otherwise    = var (cont (choicesCons d j xs))
 
@@ -605,15 +671,13 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
     follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
     pns = case i of
-           FreeID pns _ -> pns
-           NarrowedID pns _ -> pns
+      FreeID     pns' _ -> pns'
+      NarrowedID pns' _ -> pns'
+      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
     sumF | isCovered d = ssum d i
-         | otherwise   = msum 
+         | otherwise   = msum
 
-
-
-
-  smpGuard d cs e 
+  smpGuard d cs e
    | isCovered d = constrainMSearch d cs (searchMSearch' cd cont e)
    | otherwise = solve cd cs e >>= maybe (szero d defFailInfo) (searchMSearch' cd cont . snd)
 

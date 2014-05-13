@@ -119,12 +119,16 @@ narrows _  _    (ChoiceID          _) _ _  = internalError "Types.narrows: Choic
 
 
 bindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
-bindOrNarrow cd i d j@(FreeID p s) xs | d < cd    = [ConstraintChoices cd (NarrowedID p s) (map (bind cd i) xs)]
-				      | otherwise = [ i :=: BindTo j]
+bindOrNarrow cd i d j@(FreeID p s) xs
+  | d < cd    = [ConstraintChoices cd (NarrowedID p s) (map (bind cd i) xs)]
+  | otherwise = [ i :=: BindTo j]
+bindOrNarrow _  _ _ j _ = internalError $ "Types.bindOrNarrow: " ++ show j
 
 lazyBindOrNarrow :: Unifiable a => Cover -> ID -> Cover -> ID -> [a] -> [Constraint]
-lazyBindOrNarrow cd i d j@(FreeID p s) xs | d < cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind cd i) xs)]
-					  | otherwise    = [ i :=: BindTo j ]
+lazyBindOrNarrow cd i d j@(FreeID p s) xs
+  | d < cd = [ConstraintChoices cd (NarrowedID p s) (map (lazyBind cd i) xs)]
+  | otherwise    = [ i :=: BindTo j ]
+lazyBindOrNarrow _  _ _ j _ = internalError $ "Types.lazyBindOrNarrow: " ++ show j
 
 -- ---------------------------------------------------------------------------
 -- Computation of normal forms
@@ -205,7 +209,11 @@ class (NormalForm a) => Unifiable a where
 
 -- |Unification on general terms
 (=:=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+#ifdef TRY
+(=:=) = unifyTry
+#else
 (=:=) = unifyMatch
+#endif
 
 unifyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
 unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
@@ -221,7 +229,7 @@ unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uni
       bindChoice   cdj j y1 y2 = choiceCons  cdj j (bindTo cs' y1) (bindTo cs' y2)
       bindNarrowed cdj j ys    = choicesCons cdj j (map (bindTo cs') ys)
       bindFree     cdj j ys    = lookupCs cs j (bindTo cs') $
-			      if cdj < cd
+               if cdj < cd
                then unifyMatch x (narrows cs cdj j id ys) cd cs
                else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_Success
       bindGuard cdj c    = guardCons cdj c . (bindTo $! c `addCs` cs')
@@ -234,8 +242,8 @@ unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uni
       where
       univChoice d j y1 y2   = choiceCons d  j (uniWith cs' y1) (uniWith cs' y2)
       univNarrowed d j ys    = choicesCons d j (map (uniWith cs') ys)
-      univFree d j ys        = lookupCs cs j (uniWith cs') 
-				 (if d < cd then uniWith cs' (narrows cs' cd j id ys) 
+      univFree d j ys        = lookupCs cs j (uniWith cs')
+                    (if d < cd then uniWith cs' (narrows cs' cd j id ys)
                     else (bindToVal j v cd cs'))
       univGuard d c          = guardCons d c . (uniWith $! c `addCs` cs')
       univVal w            = (v =.= w) cd cs'
@@ -295,7 +303,14 @@ constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_Success
 
 -- Lazy unification on general terms, used for function patterns
 (=:<=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
-(=:<=) x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
+#ifdef TRY
+(=:<=) = lazyTry
+#else
+(=:<=) = lazyMatch
+#endif
+
+lazyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
   -- binary choice
   uniChoice d i x1 x2 = choiceCons d i ((x1 =:<= y) cd cs) ((x2 =:<= y) cd cs)
@@ -322,6 +337,39 @@ constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_Success
           (if d < cd
            then unifyWith cs' (narrows cs' d j id ys)
            else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
+
+lazyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+lazyTry x y cd cs = case try x of
+  -- failure
+  Fail     d info    -> failCons d info
+  -- binary choice
+  Choice   d i x1 x2 -> choiceCons d i ((x1 =:<= y) cd cs) ((x2 =:<= y) cd cs)
+  -- n-ary choice
+  Narrowed d i xs    -> choicesCons d i (map (\z -> (z =:<= y) cd cs) xs)
+  -- constrained value
+  Guard    d c e     -> guardCons d c ((e =:<= y) cd $! c `addCs` cs)
+  -- free variable
+  Free     d i xs    -> lookupCs cs i (\xVal -> (xVal =:<= y) cd cs)
+                        (if d < cd
+                          then (narrows cs d i id xs =:<= y) cd cs
+                          else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_Success)
+  Val        vx      -> lazyVal cs y
+    where
+    lazyVal cs' y' = case try y' of
+      -- failure
+      Fail     d info    -> failCons d info
+      -- binary choice
+      Choice   d j y1 y2 -> choiceCons d j (lazyVal cs' y1) (lazyVal cs' y2)
+      -- n-ary choice
+      Narrowed d j ys    -> choicesCons d j (map (lazyVal cs') ys)
+      -- constrained value
+      Guard    d c e     -> guardCons d c $ (lazyVal $! c `addCs` cs') e
+      -- free variable
+      Free     d j ys    -> lookupCs cs' j (lazyVal cs')
+                            (if d < cd
+                            then lazyVal cs' (narrows cs' d j id ys)
+                            else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
+      Val        vy      -> (vx =.<= vy) cd cs'
 
 -- ---------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types
@@ -407,7 +455,7 @@ instance NonDet C_Success where
   match f _ _ _ _ _ (Choice_C_Success cd i x y) = f cd i x y
   match _ f _ _ _ _ (Choices_C_Success cd i@(NarrowedID _ _) xs) = f cd i xs
   match _ _ f _ _ _ (Choices_C_Success cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_C_Success cd i@(ChoiceID _) _) = internalError ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ _ _ _ (Choices_C_Success _  i@(ChoiceID _) _) = internalError ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
   match _ _ _ f _ _ (Fail_C_Success cd info) = f cd info
   match _ _ _ _ f _ (Guard_C_Success cd cs e) = f cd cs e
   match _ _ _ _ _ f x = f x
@@ -447,7 +495,7 @@ instance Unifiable C_Success where
   lazyBind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _  _ (Choices_C_Success _ i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _  _(Fail_C_Success _ info) = [Unsolvable info]
-  lazyBind cd i (Guard_C_Success d cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+  lazyBind cd i (Guard_C_Success _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
 -- END GENERATED FROM PrimTypes.curry
 

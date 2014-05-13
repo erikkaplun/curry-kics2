@@ -33,31 +33,33 @@ transTypes hoResult = concatMap (genTypeDeclarations hoResult)
 
 
 genTypeDeclarations :: HOResult -> FC.TypeDecl -> [TypeDecl]
-genTypeDeclarations _        (FC.TypeSyn qf vis tnums texp)
-  = [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
-genTypeDeclarations hoResult t@(FC.Type qf vis tnums cdecls)
-  | null cdecls = Type qf Public  targs []   : []
-  | otherwise   = Type qf Public targs decls : instanceDecls
-    -- type names are always exported to avoid ghc type errors
-  where
-    decls = concatMap (fcy2absCDecl hoResult) cdecls ++
-            [ Cons (mkChoiceName  qf) 3 acvis [coverType, idType, ctype, ctype]
-            , Cons (mkChoicesName qf) 2 acvis [coverType, idType, clisttype]
-            , Cons (mkFailName    qf) 2 acvis [coverType, failInfoType]
-            , Cons (mkGuardName   qf) 2 acvis [coverType, constraintType, ctype]
-            ]
-    instanceDecls = map ($t) [ showInstance       hoResult
-                             , readInstance
-                             , nondetInstance
-                             , generableInstance  hoResult
-                             , normalformInstance hoResult
-                             , unifiableInstance  hoResult
-                             , curryInstance      hoResult
-                             ]
-    acvis     = (fcy2absVis vis)
-    targs     = map fcy2absTVar tnums
-    ctype     = TCons qf (map TVar targs)
-    clisttype = listType ctype
+genTypeDeclarations hoResult tdecl = case tdecl of
+  (FC.TypeSyn qf vis tnums texp)
+    -> [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
+  t@(FC.Type qf vis tnums cdecls)
+    | null cdecls -> Type qf Public  targs []   : []
+    | otherwise   -> Type qf Public targs decls : instanceDecls
+         -- type names are always exported to avoid ghc type errors
+    where
+      decls = concatMap (fcy2absCDecl hoResult) cdecls ++
+              [ Cons (mkChoiceName  qf) 3 acvis [coverType, idType, ctype, ctype]
+              , Cons (mkChoicesName qf) 2 acvis [coverType, idType, clisttype]
+              , Cons (mkFailName    qf) 2 acvis [coverType, failInfoType]
+              , Cons (mkGuardName   qf) 2 acvis [coverType, constraintType, ctype]
+              ]
+      instanceDecls = map ($t) [ showInstance       hoResult
+                               , readInstance
+                               , nondetInstance
+                               , generableInstance  hoResult
+                               , normalformInstance hoResult
+                               , unifiableInstance  hoResult
+                               , curryInstance      hoResult
+                               ]
+      acvis     = (fcy2absVis vis)
+      targs     = map fcy2absTVar tnums
+      ctype     = TCons qf (map TVar targs)
+      clisttype = listType ctype
+  _ -> error "TransTypes.genTypeDeclarations"
 
 
 fcy2absCDecl :: HOResult -> FC.ConsDecl -> [ConsDecl]
@@ -90,29 +92,31 @@ fcy2absHOTExp (FC.FuncType t1 t2) = funcType (fcy2absHOTExp t1) (fcy2absHOTExp t
 -- Generate instance of Show class:
 -- ---------------------------------------------------------------------------
 showInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-showInstance hoResult (FC.Type qf _ tnums cdecls)
-  = mkInstance (basics "Show") [] ctype targs $
-  if isListType qf then [showRule4List] else
-    [ ( pre "showsPrec"
-      , simpleRule [PVar d, mkChoicePattern qf "i" ]
-          (applyF (basics "showsChoice")  [Var d, Var cd, Var i, Var x, Var y])
-      )
-    , ( pre "showsPrec"
-      , simpleRule [PVar d, mkChoicesPattern qf]
-          (applyF (basics "showsChoices") [Var d, Var cd, Var i, Var xs])
-      )
-    , ( pre "showsPrec"
-      , simpleRule [PVar d, mkGuardPattern qf]
-          (applyF (basics "showsGuard")   [Var d, Var cd, Var c, Var e])
-      )
-    , ( pre "showsPrec"
-      , simpleRule [PVar us, mkFailPattern qf]
-          (applyF (pre "showChar")        [charc '!'])
-      )
-    ] ++ concatMap (showConsRule hoResult) cdecls
-  where [cd, d,i,x,y,xs,c,e,us] = newVars ["cd", "d","i","x","y","xs","c","e","_"]
-        targs = map fcy2absTVar tnums
-        ctype = TCons qf (map TVar targs)
+showInstance hoResult tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (basics "Show") [] ctype targs $
+       if isListType qf then [showRule4List] else
+         [ ( pre "showsPrec"
+         , simpleRule [PVar d, mkChoicePattern qf "i" ]
+              (applyF (basics "showsChoice")  [Var d, Var cd, Var i, Var x, Var y])
+           )
+         , ( pre "showsPrec"
+            , simpleRule [PVar d, mkChoicesPattern qf]
+              (applyF (basics "showsChoices") [Var d, Var cd, Var i, Var xs])
+           )
+         , ( pre "showsPrec"
+            , simpleRule [PVar d, mkGuardPattern qf]
+              (applyF (basics "showsGuard")   [Var d, Var cd, Var c, Var e])
+           )
+         , ( pre "showsPrec"
+            , simpleRule [PVar us, mkFailPattern qf]
+              (applyF (pre "showChar")        [charc '!'])
+           )
+         ] ++ concatMap (showConsRule hoResult) cdecls
+     where [cd, d,i,x,y,xs,c,e,us] = newVars ["cd", "d","i","x","y","xs","c","e","_"]
+           targs = map fcy2absTVar tnums
+           ctype = TCons qf (map TVar targs)
+  _ -> error "TransTypes.showInstance"
 
   -- Generate specific show for lists (only for finite lists!)
 showRule4List =
@@ -175,14 +179,16 @@ showConsRule hoResult (FC.Cons qn carity _ _)
 -- TODO: No instance for higher-order constructors
 -- ---------------------------------------------------------------------------
 readInstance :: FC.TypeDecl -> TypeDecl
-readInstance (FC.Type qf _ tnums cdecls)
-  = mkInstance (pre "Read") [] ctype targs [rule]
-    where
-      targs = map fcy2absTVar tnums
-      ctype = TCons qf (map TVar targs)
-      rule | isListType  qf = readListRule qf
-           | isTupleType qf = readTupleRule (head cdecls)
-           | otherwise      = readRule cdecls
+readInstance tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (pre "Read") [] ctype targs [rule]
+       where
+         targs = map fcy2absTVar tnums
+         ctype = TCons qf (map TVar targs)
+         rule | isListType  qf = readListRule qf
+              | isTupleType qf = readTupleRule (head cdecls)
+              | otherwise      = readRule cdecls
+  _ -> error "TransTypes.readInstance"
 
 -- Generate special Read instance rule for lists
 
@@ -280,13 +286,15 @@ readParen (FC.Cons qn@(mn,_) carity _ _) = applyF (pre "readParen")
 -- Generate instance of NonDet class:
 -- ---------------------------------------------------------------------------
 nondetInstance :: FC.TypeDecl -> TypeDecl
-nondetInstance (FC.Type qf _ tnums _)
-  = mkInstance (basics "NonDet") [] ctype []
-  $ specialConsRules qf ++ tryRules qf ++ matchRules qf
-  where
-    targs = map fcy2absTVar tnums
-    ctype = TCons qf (map TVar targs)
-
+nondetInstance tdecl = case tdecl of
+  (FC.Type qf _ tnums _)
+    -> mkInstance (basics "NonDet") [] ctype []
+     $ specialConsRules qf ++ tryRules qf ++ matchRules qf
+     where
+       targs = map fcy2absTVar tnums
+       ctype = TCons qf (map TVar targs)
+  _ -> error "TransTypes.nondetInstance"
+    
 specialConsRules :: QName -> [(QName, Rule)]
 specialConsRules qf = map nameRule
   [ ("choiceCons" , mkChoiceName  qf)
@@ -353,54 +361,57 @@ matchRules qf = map nameRule
 --      for different constructors; change bind accordingly
 
 generableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-generableInstance hoResult (FC.Type qf _ tnums cdecls) =
-  mkInstance (basics "Generable") [] ctype targs
-    [(basics "generate", simpleRule [PVar s,PVar c]  genBody)]
-  where
-    targs = map fcy2absTVar tnums
-    ctype = TCons qf (map TVar targs)
-    [s,c] = newVars ["s","c"]
-    idSupply = Var s
+generableInstance hoResult tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (basics "Generable") [] ctype targs
+        [(basics "generate", simpleRule [PVar s,PVar c]  genBody)]
+        where
+         targs = map fcy2absTVar tnums
+         ctype = TCons qf (map TVar targs)
+         [s,c] = newVars ["s","c"]
+         idSupply = Var s
 
-    genBody =
-      applyF (mkChoicesName qf)
-      [ Var c
-      , applyF (basics "freeID") [arities, idSupply]
-      , list2ac $ map genCons cdecls
-      ]
+         genBody =
+          applyF (mkChoicesName qf)
+          [ Var c
+          , applyF (basics "freeID") [arities, idSupply]
+          , list2ac $ map genCons cdecls
+          ]
 
 
-    genCons (FC.Cons qn arity _ _) | lookupFM hoResult qn == Just HO
-                                       = applyF (mkHoConsName qn) (consArgs2gen arity)
-                                   | otherwise
-                                       = applyF qn (consArgs2gen arity)
+         genCons (FC.Cons qn arity _ _)
+            | lookupFM hoResult qn == Just HO = applyF (mkHoConsName qn) (consArgs2gen arity)
+            | otherwise                       = applyF qn (consArgs2gen arity)
 
-    arities = list2ac $ map (intc . consArity) cdecls
+         arities = list2ac $ map (intc . consArity) cdecls
 
-    consArgs2gen n = map (applyF (basics "generate") . (:[Var c]))
-                          $ mkSuppList n idSupply
+         consArgs2gen n = map (applyF (basics "generate") . (:[Var c]))
+                              $ mkSuppList n idSupply
+  _ -> error "TransTypes.generableInstance"
 
 -- ---------------------------------------------------------------------------
 -- Generate instance of NormalForm class:
 -- ---------------------------------------------------------------------------
 normalformInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-normalformInstance hoResult (FC.Type qf _ tnums cdecls) =
-  mkInstance (basics "NormalForm") [] ctype targs $ concat
-    -- $!!
-  [ concatMap (normalformConsRule hoResult (basics "$!!")) cdecls
-  , normalFormExtConsRules qf (basics "$!!")
-      (basics "nfChoice") (basics "nfChoices")
-    -- $##
-  , concatMap (normalformConsRule hoResult (basics "$##")) cdecls
-  , normalFormExtConsRules qf (basics "$##")
-      (basics "gnfChoice") (basics "gnfChoices")
-  -- searchNF
-  , concatMap (searchNFConsRule hoResult) cdecls
-  , [searchNFCatchRule qf]
-  ]
-  where targs = map fcy2absTVar tnums
-        ctype = TCons qf (map TVar targs)
-        --[cd, cont,i,x,y,xs] = newVars ["cd", "cont","i","x","y","xs"]
+normalformInstance hoResult tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (basics "NormalForm") [] ctype targs $ concat
+         -- $!!
+       [ concatMap (normalformConsRule hoResult (basics "$!!")) cdecls
+       , normalFormExtConsRules qf (basics "$!!")
+           (basics "nfChoice") (basics "nfChoices")
+         -- $##
+       , concatMap (normalformConsRule hoResult (basics "$##")) cdecls
+       , normalFormExtConsRules qf (basics "$##")
+           (basics "gnfChoice") (basics "gnfChoices")
+       -- searchNF
+       , concatMap (searchNFConsRule hoResult) cdecls
+       , [searchNFCatchRule qf]
+       ]
+       where targs = map fcy2absTVar tnums
+             ctype = TCons qf (map TVar targs)
+             --[cd, cont,i,x,y,xs] = newVars ["cd", "cont","i","x","y","xs"]
+  _ -> error "TransTypes.normalformInstance"
 
 -- Generate NormalForm instance rule for a data constructor
 normalformConsRule :: HOResult -> QName -> FC.ConsDecl -> [(QName, Rule)]
@@ -482,37 +493,39 @@ searchNFCatchRule qf
 -- Generate instance of Unifiable class:
 -- ---------------------------------------------------------------------------
 unifiableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-unifiableInstance hoResult (FC.Type qf _ tnums cdecls) =
-  mkInstance (basics "Unifiable") [] ctype targs $ concat
-    -- unification
-  [ concatMap (unifiableConsRule hoResult (basics "=.=") (basics "=:=")) cdecls
-  , catchAllCase (basics "=.=") newFail
-    -- lazy unification (functional patterns)
-  , concatMap (unifiableConsRule hoResult (basics "=.<=") (basics "=:<=")) cdecls
-  , catchAllCase (basics "=.<=") newFail
-    -- bind
-  , concatMap (bindConsRule hoResult (basics "bind") (\cov ident arg -> applyF (basics "bind") [cov, ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
-  , [ bindChoiceRule   qf (basics "bind")
-    , bindFreeRule     qf (basics "bind")
-    , bindNarrowedRule qf (basics "bind")
-    , bindChoicesRule  qf (basics "bind")
-    , bindFailRule     qf (basics "bind")
-    , bindGuardRule    qf False
-    ]
-    -- lazy bind (function patterns)
-  , concatMap (bindConsRule hoResult (basics "lazyBind") (\cov ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [cov, ident, arg]]]) head) (zip [0 ..] cdecls)
-  , [ bindChoiceRule   qf (basics "lazyBind")
-    , bindFreeRule     qf (basics "lazyBind")
-    , bindNarrowedRule qf (basics "lazyBind")
-    , bindChoicesRule  qf (basics "lazyBind")
-    , bindFailRule     qf (basics "lazyBind")
-    , bindGuardRule    qf True
-    ]
-  ]
-  where targs = map fcy2absTVar tnums
-        ctype = TCons qf (map TVar targs)
-        newFail = applyF (basics "Fail_C_Success") [Var (3,"d"), applyF (basics "defFailInfo")[]]
-
+unifiableInstance hoResult tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (basics "Unifiable") [] ctype targs $ concat
+         -- unification
+       [ concatMap (unifiableConsRule hoResult (basics "=.=") (basics "=:=")) cdecls
+       , catchAllCase (basics "=.=") newFail
+         -- lazy unification (functional patterns)
+       , concatMap (unifiableConsRule hoResult (basics "=.<=") (basics "=:<=")) cdecls
+       , catchAllCase (basics "=.<=") newFail
+         -- bind
+       , concatMap (bindConsRule hoResult (basics "bind") (\cov ident arg -> applyF (basics "bind") [cov, ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
+       , [ bindChoiceRule   qf (basics "bind")
+         , bindFreeRule     qf (basics "bind")
+         , bindNarrowedRule qf (basics "bind")
+         , bindChoicesRule  qf (basics "bind")
+         , bindFailRule     qf (basics "bind")
+         , bindGuardRule    qf False
+         ]
+         -- lazy bind (function patterns)
+       , concatMap (bindConsRule hoResult (basics "lazyBind") (\cov ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [cov, ident, arg]]]) head) (zip [0 ..] cdecls)
+       , [ bindChoiceRule   qf (basics "lazyBind")
+         , bindFreeRule     qf (basics "lazyBind")
+         , bindNarrowedRule qf (basics "lazyBind")
+         , bindChoicesRule  qf (basics "lazyBind")
+         , bindFailRule     qf (basics "lazyBind")
+         , bindGuardRule    qf True
+         ]
+       ]
+       where targs = map fcy2absTVar tnums
+             ctype = TCons qf (map TVar targs)
+             newFail = applyF (basics "Fail_C_Success") [Var (3,"d"), applyF (basics "defFailInfo")[]]
+  _ -> error "TransTypes.unifiableInstance"
+        
 -- Generate Unifiable instance rule for a data constructor
 unifiableConsRule :: HOResult -> QName -> QName -> FC.ConsDecl -> [(QName, Rule)]
 unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
@@ -643,23 +656,25 @@ bindGuardRule qf lazy = (funcName,
 -- ---------------------------------------------------------------------------
 
 curryInstance :: HOResult -> FC.TypeDecl -> TypeDecl
-curryInstance hoResult (FC.Type qf _ tnums cdecls) =
-  mkInstance (curryPre "Curry") [] ctype targs $ concat
-    [ -- rules for equality
-      extConsRules (curryPre "=?=") qf
-    , eqConsRules hoResult cdecls
-    , catchAllPattern (curryPre "=?=")
-      -- rules for less than
-    , extConsRules (curryPre "<?=") qf
-    , ordConsRules hoResult cdecls
-    , catchAllPattern (curryPre "<?=")
-    ]
-  where
-    targs = map fcy2absTVar tnums
-    ctype = TCons qf (map TVar targs)
-    catchAllPattern qn
-      | length cdecls > 1 = catchAllCase qn (constF (curryPre "C_False"))
-      | otherwise         = []
+curryInstance hoResult tdecl = case tdecl of
+  (FC.Type qf _ tnums cdecls)
+    -> mkInstance (curryPre "Curry") [] ctype targs $ concat
+           [ -- rules for equality
+             extConsRules (curryPre "=?=") qf
+           , eqConsRules hoResult cdecls
+           , catchAllPattern (curryPre "=?=")
+             -- rules for less than
+           , extConsRules (curryPre "<?=") qf
+           , ordConsRules hoResult cdecls
+           , catchAllPattern (curryPre "<?=")
+           ]
+         where
+           targs = map fcy2absTVar tnums
+           ctype = TCons qf (map TVar targs)
+           catchAllPattern qn
+             | length cdecls > 1 = catchAllCase qn (constF (curryPre "C_False"))
+             | otherwise         = []
+  _ -> error "TransTypes.curryInstance"
 
 extConsRules :: QName -> QName -> [(QName,Rule)]
 extConsRules funcName qf = map nameRule

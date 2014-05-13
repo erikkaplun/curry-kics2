@@ -32,10 +32,12 @@ fcy2abs (FC.Prog mname imps tdecls fdecls ops) =
 ------------------------------------------------------------------------
 
 fcy2absTDecl :: FC.TypeDecl -> TypeDecl
-fcy2absTDecl (FC.TypeSyn qf vis targs texp) =
-  TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)
-fcy2absTDecl (FC.Type qf vis targs cdecls) =
-  Type qf (fcy2absVis vis) (map fcy2absTVar targs) (map fcy2absCDecl cdecls)
+fcy2absTDecl tdecl = case tdecl of
+  (FC.TypeSyn qf vis targs texp) ->
+    TypeSyn qf (fcy2absVis vis) (map fcy2absTVar targs) (fcy2absTExp texp)
+  (FC.Type qf vis targs cdecls)  ->
+    Type qf (fcy2absVis vis) (map fcy2absTVar targs) (map fcy2absCDecl cdecls)
+  _                              -> error "FlatCurry2AbstractHaskell.fcy2absTDecl"
 
 fcy2absOp :: FC.OpDecl -> OpDecl
 fcy2absOp (FC.Op qf fix prio) = Op qf (fcy2absFix fix) prio
@@ -63,26 +65,28 @@ fcy2absRule (FC.Rule numargs expr) =
 fcy2absRule (FC.External ename)    = External ename
 
 fcy2absExpr :: FC.Expr -> Expr
-fcy2absExpr (FC.Var i) = Var (fcy2absVar i)
-fcy2absExpr (FC.Lit l) = Lit (fcy2absLit l)
+fcy2absExpr expr = case expr of
+  (FC.Var i) -> Var (fcy2absVar i)
+  (FC.Lit l) -> Lit (fcy2absLit l)
 -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
 -- TODO: This is probably the dirtiest hack in the compiler:
 -- Because FlatCurry does not allow lambda abstractions, in the module Compile
 -- we construct a call to a function like "\f x1 x2 x-42 x3" which is replaced
 -- with the expression (\z -> f x1 x2 z x3).
 -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-fcy2absExpr (FC.Comb _ qf es)
-  | isLambdaHack = applyLambdaHack qf es
-  | otherwise    = applyF qf (map fcy2absExpr es)
-  where isLambdaHack = head (snd qf) == '\\'
-fcy2absExpr (FC.Let bs expr)  = Let (map ldecl bs) (fcy2absExpr expr)
-  where ldecl (i,e) = LocalPat (PVar (fcy2absVar i)) (fcy2absExpr e) []
-fcy2absExpr (FC.Free vs expr) = Let (map (LocalVar . fcy2absVar) vs)
-                                   (fcy2absExpr expr)
-fcy2absExpr (FC.Or e1 e2) = applyF (pre "?") (map fcy2absExpr [e1, e2])
+  (FC.Comb _ qf es)
+    | isLambdaHack  -> applyLambdaHack qf es
+    | otherwise     -> applyF qf (map fcy2absExpr es)
+   where isLambdaHack = head (snd qf) == '\\'
+  (FC.Let bs e)     -> Let (map ldecl bs) (fcy2absExpr e)
+    where ldecl (i,x) = LocalPat (PVar (fcy2absVar i)) (fcy2absExpr x) []
+  (FC.Free vs e)    -> Let (map (LocalVar . fcy2absVar) vs)
+                                      (fcy2absExpr e)
+  (FC.Or e1 e2)     -> applyF (pre "?") (map fcy2absExpr [e1, e2])
 --fcy2absExpr (FC.Case FC.Flex _ _) = error "fcy2absExpr: Flex Case occurred!"
-fcy2absExpr (FC.Case _ e brs) = Case (fcy2absExpr e) (map fcy2absBranch brs)
-fcy2absExpr (FC.Typed e ty)   = Typed (fcy2absExpr e) (fcy2absTExp ty)
+  (FC.Case _ e brs) -> Case (fcy2absExpr e) (map fcy2absBranch brs)
+  (FC.Typed e ty)   -> Typed (fcy2absExpr e) (fcy2absTExp ty)
+  _                 -> error "FlatCurry2AbstractHaskell.fcy2absExpr"
 
 applyLambdaHack :: QName -> [FC.Expr] -> Expr
 applyLambdaHack (q, fn) es = Lambda [PVar (1003, "z")]
@@ -98,8 +102,10 @@ fcy2absBranch (FC.Branch pat expr) =
   Branch (fcy2absPattern pat) (fcy2absExpr expr)
 
 fcy2absPattern :: FC.Pattern -> Pattern
-fcy2absPattern (FC.Pattern qf nums) = PComb qf (map (PVar . fcy2absVar) nums)
-fcy2absPattern (FC.LPattern lit)    = PLit (fcy2absLit lit)
+fcy2absPattern pat = case pat of
+  (FC.Pattern qf nums) -> PComb qf (map (PVar . fcy2absVar) nums)
+  (FC.LPattern lit)    -> PLit (fcy2absLit lit)
+  _                    -> error "FlatCurry2AbstractHaskell.fcy2absPattern"
 
 fcy2absVis :: FC.Visibility -> Visibility
 fcy2absVis FC.Public  = Public

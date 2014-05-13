@@ -6,15 +6,16 @@
 SUBDIR     = .curry/kics2
 TYPEINFDIR = $(ROOT)/currytools/typeinference
 # ghc options
-GHC_OPTS  += -O2 --make -v1 -cpp -package ghc
+# see https://ghc.haskell.org/trac/ghc/ticket/7068
+GHC_OPTS2  = -O2 --make -v1 -cpp -fno-spec-constr
 # ghc language extensions for compiling translated Curry programs
 GHC_EXTS   = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translated Curry programs
 GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR):$(LIBDIR)/$(SUBDIR):$(LIBDIR)/meta/$(SUBDIR):$(TYPEINFDIR)/$(SUBDIR)
 # Call to ghc binary
-GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_EXTS) $(GHC_INCL)
+GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_OPTS2) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
-KICS2C     = $(COMP) -v1 -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
+KICS2C     = $(COMP) -v1 --parse-options=-Wall -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
 # options for the bootstrapping compiler
 CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
 
@@ -74,7 +75,7 @@ cleanall: clean
 CompileInitial: Compile.curry
 	mkdir -p $(LOCALBIN)
 ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
-	$(KICS2) $(CURRY_OPTS) :l Compile :save :quit
+	$(KICS2) $(CURRY_OPTS) :set parser -Wall :set v2 :l Compile :save :quit
 	mv Compile $(COMP)
 else
 	pakcs $(CURRY_OPTS) :l Compile :save :quit
