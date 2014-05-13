@@ -169,7 +169,7 @@ tools:
 
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
-kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts
+kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts installlibs
 	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
@@ -179,6 +179,11 @@ ifeq ($(GLOBALINSTALL),yes)
 	cd runtime && $(MAKE)
 	cd lib     && $(MAKE)
 endif
+
+# install the library sources from the trunk directory:
+.PHONY: installlibs
+installlibs:
+	@if [ -d lib-trunk ] ; then cd lib-trunk && $(MAKE) -f Makefile.$(CURRYSYSTEM).install ; fi
 
 # create package database
 $(PKGDB):
@@ -396,7 +401,7 @@ endif
 	cd currytools              && rm -rf .git .gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
 	cd frontend/curry-frontend && rm -rf .git .gitignore dist
-	cd lib                     && rm -rf .git .gitignore
+	rm -rf lib-trunk
 	cd utils                   && $(MAKE) cleanall
 	rm -rf $(BINDIR)
 	rm -rf $(DEV_DIRS)

@@ -32,9 +32,7 @@ stage[1,2,3]
 Installation.*
 *.log
 .kics2sc
-lib/AllLibraries.curry
-lib/dist
-lib/kics2-libraries.cabal
+lib
 runtime/dist
 runtime/kics2-runtime.cabal
 docs/src/version.tex
