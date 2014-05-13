@@ -1,4 +1,4 @@
-module FailTrace (failTrace) where
+module FailTrace (inspectTrace) where
 
 import Control.Monad (liftM, unless)
 import Data.Char     (isDigit, toLower)
@@ -23,8 +23,8 @@ augmentCall (f, args) = ACall f $ zip (repeat False) args
 
 -- failTrace
 
-failTrace :: FailInfo -> IO ()
-failTrace (FailInfo calls cause) = do
+inspectTrace :: FailInfo -> IO ()
+inspectTrace (FailInfo calls cause) = do
   putStrLn "A failure occured for the following reason:"
   putStrLn cause
   blank

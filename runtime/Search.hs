@@ -16,7 +16,7 @@ import Strategies
 import Types
 import MonadSearch
 import FailInfo    (FailInfo (failCause), defFailInfo, customFail, nondetIO)
-import FailTrace
+import FailTrace   (inspectTrace)
 
 type DetExpr    a =             Cover -> ConstStore -> a
 type NonDetExpr a = IDSupply -> Cover -> ConstStore -> a
@@ -148,7 +148,7 @@ evalIO goal = do
 -- |Evaluate a deterministic expression without search, but trace failures
 failtraceD :: NormalForm a => DetExpr a -> IO ()
 failtraceD goal = case try (goal initCover emptyCs) of
-  Fail _ info -> failTrace info
+  Fail _ info -> inspectTrace info
   Val v       -> print v
   x           -> internalError $ "Search.failtraceD: non-determinism: "
                  ++ show x
@@ -158,7 +158,7 @@ failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
 failtraceDIO goal = do
   res <- searchIO emptyCs (goal initCover emptyCs)
   case res of
-    Left err -> failTrace err
+    Left err -> inspectTrace err
     Right x  -> return ()
 
 -- ---------------------------------------------------------------------------
