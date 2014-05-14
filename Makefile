@@ -169,7 +169,7 @@ tools:
 
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
-kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts installlibs
+kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
@@ -181,8 +181,8 @@ ifeq ($(GLOBALINSTALL),yes)
 endif
 
 # install the library sources from the trunk directory:
-.PHONY: installlibs
-installlibs:
+.PHONY: copylibs
+copylibs:
 	@if [ -d lib-trunk ] ; then cd lib-trunk && $(MAKE) -f Makefile.$(CURRYSYSTEM).install ; fi
 
 # create package database
@@ -460,11 +460,11 @@ bootstrap: $(COMP)
 frontend: $(CYMAKE)
 
 .PHONY: Compile
-Compile: $(PKGDB) $(INSTALLCURRY) scripts
+Compile: $(PKGDB) $(INSTALLCURRY) scripts copylibs
 	cd src && $(MAKE) CompileBoot
 
 .PHONY: REPL
-REPL: $(PKGDB) $(INSTALLCURRY) scripts
+REPL: $(PKGDB) $(INSTALLCURRY) scripts copylibs
 	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
@@ -476,7 +476,7 @@ typeinference:
 benchmarks:
 	cd benchmarks && $(MAKE)
 
-$(COMP): | $(INSTALLCURRY) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts
+$(COMP): | $(INSTALLCURRY) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	cd src && $(MAKE) bootstrap
 
 # Peform a full bootstrap - distribution - installation - uninstallation
