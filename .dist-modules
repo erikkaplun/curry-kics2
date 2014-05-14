@@ -1,6 +1,6 @@
-[submodule "lib"]
+[submodule "lib-trunk"]
   path = lib
-  url = ROOT/lib
+  url = ROOT/lib-trunk
 
 [submodule "curry-base"]
   path = frontend/curry-base
