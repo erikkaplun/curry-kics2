@@ -12,7 +12,7 @@ import Maybe    (fromJust, isJust)
 import AbstractHaskell
 import Base
 import CompilerOpts
-import Files    (withComponents)
+import Files    (withComponents, (</?>))
 
 -- ---------------------------------------------------------------------------
 -- File names
@@ -24,16 +24,16 @@ renameFile = renameModule -- until hierarchical module names are supported
 externalFile :: String -> String
 externalFile = withComponents id ("External_" ++) (const "hs")
 
-destFile :: String-> String -> String
-destFile subdir = withComponents (</> subdir) renameFile (const "hs")
+destFile :: String -> String -> String
+destFile subdir = withComponents (</?> subdir) renameFile (const "hs")
 
 analysisFile :: String -> String -> String
-analysisFile subdir = withComponents (</> subdir) renameFile (const "nda")
+analysisFile subdir = withComponents (</?> subdir) renameFile (const "nda")
 
 -- Auxiliary file containing some basic information about functions
 -- (might become unnecessary in the future)
 funcInfoFile :: String -> String -> String
-funcInfoFile subdir = withComponents (</> subdir) renameFile (const "info")
+funcInfoFile subdir = withComponents (</?> subdir) renameFile (const "info")
 
 -- ---------------------------------------------------------------------------
 -- Constructors
@@ -44,8 +44,9 @@ mkChoiceName  (q, n) = (q, "Choice"  +|+ n)
 mkChoicesName (q, n) = (q, "Choices" +|+ n)
 mkFailName    (q, n) = (q, "Fail"    +|+ n)
 mkGuardName   (q, n) = (q, "Guard"   +|+ n)
-mkFoConsName  (q, n) = (q, n)
-mkHoConsName  (q, n) = (q, "HO" +|+ n)
+mkHoConsName  (q, n) = (q, "HO"      +|+ n)
+mkFoConsName  (q, n) = (q,               n)
+
 s +|+ t = s ++ "_" ++ t
 
 prelude :: String

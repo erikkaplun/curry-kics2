@@ -71,7 +71,7 @@ locateCurryFile fn = do
   exists <- doesFileExist fn
   if exists
     then return (Just fn)
-    else lookupFileInPath fn [".curry", ".lcurry"] ["."]
+    else lookupFileInPath fn [".curry", ".lcurry", ".fcy"] ["."]
 
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)

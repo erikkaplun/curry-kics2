@@ -10,7 +10,7 @@ module Files
     -- file creation
   , writeFileInDir, writeQTermFileInDir
     -- file deletion
-  , removeFileIfExists
+  , removeFileIfExists, (</?>)
   ) where
 
 import Directory
@@ -18,10 +18,10 @@ import Directory
   , doesFileExist, removeFile
   )
 import FilePath
-  ( extSeparator, pathSeparator, (</>), (<.>)
+  ( FilePath, extSeparator, pathSeparator, joinPath, (</>), (<.>)
   , splitFileName, splitExtension, splitDirectories, takeDirectory
   )
-import List         (last, scanl1)
+import List         (isPrefixOf, last, scanl1)
 import ReadShowTerm (writeQTermFile)
 
 --- Apply functions to all parts of a file name
@@ -54,12 +54,28 @@ writeFileInDir file content = do
 
 --- write the 'String' into a file where the file name may contain a path.
 --- The corresponding directories are created first if missing.
-writeQTermFileInDir :: String -> a -> IO ()
+writeQTermFileInDir :: FilePath -> a -> IO ()
 writeQTermFileInDir file content = do
   createDirectoryIfMissing True $ takeDirectory file
   writeQTermFile file content
 
-removeFileIfExists :: String -> IO ()
+--- This operation removes the specified file only if it exists.
+removeFileIfExists :: FilePath -> IO ()
 removeFileIfExists file = do
   exists <- doesFileExist file
   when exists $ removeFile file
+
+--- `dir </?> subdir` appends the only the path components of `subdir` to `dir`
+--- which are not already the suffix if `dir`. Examples:
+---
+--- `"debug"              </?> ".curry/kics2"` -> "debug/.curry/kics2"
+--- `"debug/.curry"       </?> ".curry/kics2"` -> "debug/.curry/kics2"
+--- `"debug/.curry/kics2" </?> ".curry/kics2"` -> "debug/.curry/kics2"
+(</?>) :: FilePath -> FilePath -> FilePath
+fn </?> sfx = joinPath $ reverse $ add (reverse $ splitDirectories sfx)
+                                       (reverse $ splitDirectories fn)
+  where
+  add []         dirs = dirs
+  add dir@(d:ds) dirs
+    | dir `isPrefixOf` dirs = dirs
+    | otherwise             = d : add ds dirs
