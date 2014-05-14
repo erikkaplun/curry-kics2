@@ -11,6 +11,8 @@ Changes to version 0.3.0:
     front-end options) included.
   * Library `Distribution`: front-end parameters extended by supporting
     "special" (i.e., aribrary) arguments.
+  * Library `Distribution`: front-end paramter `outfile` removed and
+    front-end parameter `htmldir` added.
   * Library `Distribution` and `FlatCurry`: after calling the front end,
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
