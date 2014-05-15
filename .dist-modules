@@ -1,5 +1,5 @@
 [submodule "lib-trunk"]
-  path = lib
+  path = lib-trunk
   url = ROOT/lib-trunk
 
 [submodule "curry-base"]
