@@ -82,38 +82,39 @@ printWithBindings bindings result = putStrLn $
 
 -- ---------------------------------------------------------------------------
 
-searchIO :: ConstStore -> C_IO a -> IO (Either FailInfo a)
-searchIO s act = case act of
+searchIO :: IDSupply -> Cover -> ConstStore -> C_IO a -> IO (Either FailInfo a)
+searchIO s cd cs act = case act of
   C_IO              io -> io
-  Fail_C_IO     _ info -> fail info
-  Choice_C_IO  _ i _ _ -> fail $ nondetIO (show i)
+  HO_C_IO        iofun -> iofun s cd cs
+  Fail_C_IO     _ info -> failWith info
+  Choice_C_IO  _ i _ _ -> failWith $ nondetIO (show i)
   Choices_C_IO  _ i xs -> case i of
     ChoiceID     _ -> internalError "searchIO: choices with ChoiceID"
-    NarrowedID _ _ -> followToIO i xs s
-    FreeID     _ _ -> lookupCs s i (searchIO s) $
-      lookupGlobalCs >>= \gs -> lookupCs gs i (searchIO s) (followToIO i xs s)
+    NarrowedID _ _ -> followToIO i xs
+    FreeID     _ _ -> lookupCs cs i (searchIO s cd cs) $
+      lookupGlobalCs >>= \gs -> lookupCs gs i (searchIO s cd cs) (followToIO i xs)
   -- bindings of free variables are looked up first in the local
   -- constraint store and then in the global constraint store
-  Guard_C_IO    _ cs e -> solve initCover cs e >>= \mbSol -> case mbSol of
-    Nothing       -> fail $ customFail "Unsatisfiable constraint"
+  Guard_C_IO    _ cs' e -> solve initCover cs' e >>= \mbSol -> case mbSol of
+    Nothing       -> failWith $ customFail "Unsatisfiable constraint"
     Just (_, val) -> do
       -- add the constraint to the global constraint store to make it
       -- available to subsequent operations.
       -- This is valid because no backtracking is done in IO.
-      addToGlobalCs cs
-      searchIO (cs `addCs` s) val
+      addToGlobalCs cs'
+      searchIO s cd (cs' `addCs` cs) val
   where
-  fail = return . Left
-  followToIO i xs s = lookupDecision i >>= \c -> case c of
-    ChooseN idx _ -> searchIO s (xs !! idx)
-    NoDecision    -> fail $ nondetIO (show i)
-    LazyBind cs   -> searchIO s
-                   $ guardCons initCover (StructConstr cs)
+  failWith = return . Left
+  followToIO i xs = lookupDecision i >>= \c -> case c of
+    ChooseN idx _ -> searchIO s cd cs (xs !! idx)
+    NoDecision    -> failWith $ nondetIO (show i)
+    LazyBind cs'  -> searchIO s cd cs
+                   $ guardCons initCover (StructConstr cs')
                    $ choicesCons initCover i xs
     _             -> internalError $ "followToIO: " ++ show c
 
-toIO :: ConstStore -> C_IO a -> IO a
-toIO s act = searchIO s act >>= \res -> case res of
+toIO :: IDSupply -> Cover -> ConstStore -> C_IO a -> IO a
+toIO s cd cs act = searchIO s cd cs act >>= \res -> case res of
   Left info -> throwFail $ "IO action failed: " ++ failCause info
   Right val -> return val
 
@@ -136,13 +137,17 @@ eval goal = initSupply >>= \s -> print (goal s initCover emptyCs)
 
 -- |Evaluate a deterministic IO action without search
 evalDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
-evalDIO goal = toIO emptyCs (goal initCover emptyCs) >> return ()
+evalDIO goal = do
+  _ <- toIO errSupply initCover emptyCs (goal initCover emptyCs)
+  return ()
+  where errSupply = internalError "Search.evalDIO: ID supply used"
 
 -- |Evaluate a non-deterministic IO action with simple search
 evalIO :: NormalForm a => NonDetExpr (C_IO a) -> IO ()
 evalIO goal = do
   s <- initSupply
-  _ <- toIO emptyCs (goal s initCover emptyCs)
+  _ <- toIO (leftSupply s) initCover emptyCs
+       (goal (rightSupply s) initCover emptyCs)
   return ()
 
 -- |Evaluate a deterministic expression without search, but trace failures
@@ -156,10 +161,11 @@ failtraceD goal = case try (goal initCover emptyCs) of
 -- |Evaluate a deterministic expression without search, but trace failures
 failtraceDIO :: NormalForm a => DetExpr (C_IO a) -> IO ()
 failtraceDIO goal = do
-  res <- searchIO emptyCs (goal initCover emptyCs)
+  res <- searchIO errSupply initCover emptyCs (goal initCover emptyCs)
   case res of
     Left err -> inspectTrace err
-    Right x  -> return ()
+    Right _  -> return ()
+  where errSupply = internalError "Search.failtraceDIO: ID supply used"
 
 -- ---------------------------------------------------------------------------
 -- Evaluate a nondeterministic expression (thus, requiring some IDSupply)

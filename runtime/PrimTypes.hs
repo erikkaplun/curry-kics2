@@ -271,6 +271,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
 -- BEGIN GENERATED FROM PrimTypes.curry
 data C_IO t0
      = C_IO (IO (Either FailInfo t0))
+     | HO_C_IO (IDSupply -> Cover -> ConstStore -> IO (Either FailInfo t0))
      | Choice_C_IO Cover ID (C_IO t0) (C_IO t0)
      | Choices_C_IO Cover ID ([C_IO t0])
      | Fail_C_IO Cover FailInfo
@@ -302,23 +303,27 @@ instance NonDet (C_IO t0) where
 instance Generable (C_IO a) where generate _ _ = internalError "generate for C_IO"
 
 instance (NormalForm t0) => NormalForm (C_IO t0) where
-  ($!!) cont io@(C_IO _) cd cs = cont io cd cs
+  ($!!) cont io@(C_IO    _) cd cs = cont io cd cs
+  ($!!) cont io@(HO_C_IO _) cd cs = cont io cd cs
   ($!!) cont (Choice_C_IO d i x y) cd cs = nfChoice cont d i x y cd cs
   ($!!) cont (Choices_C_IO d i xs) cd cs = nfChoices cont d i xs cd cs
   ($!!) cont (Guard_C_IO d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
   ($!!) _ (Fail_C_IO d info) _ _ = failCons d info
-  ($##) cont io@(C_IO _) cd cs = cont io cd cs
+  ($##) cont io@(C_IO    _) cd cs = cont io cd cs
+  ($##) cont io@(HO_C_IO _) cd cs = cont io cd cs
   ($##) cont (Choice_C_IO d i x y) cd cs = gnfChoice cont d i x y cd cs
   ($##) cont (Choices_C_IO d i xs) cd cs = gnfChoices cont d i xs cd cs
   ($##) cont (Guard_C_IO d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
   ($##) _ (Fail_C_IO d info) _ _ = failCons d info
-  searchNF _ cont io@(C_IO _) = cont io
+  searchNF _ cont io@(C_IO    _) = cont io
+  searchNF _ cont io@(HO_C_IO _) = cont io
   searchNF _ _ x = internalError ("Prelude.IO.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable t0 => Unifiable (C_IO t0) where
   (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind _  _(C_IO _) = internalError "can not bind IO"
+  bind _  _(HO_C_IO _) = internalError "can not bind IO"
   bind cd i (Choice_C_IO d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
   bind cd i (Choices_C_IO d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
   bind cd i (Choices_C_IO d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
@@ -326,6 +331,7 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   bind _ _ (Fail_C_IO _ info) = [Unsolvable info]
   bind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ (bind cd i e)
   lazyBind _  _ (C_IO _)            = internalError "can not lazily bind IO"
+  lazyBind _  _ (HO_C_IO _)         = internalError "can not lazily bind IO"
   lazyBind cd i (Choice_C_IO d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
   lazyBind cd i (Choices_C_IO d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
   lazyBind cd i (Choices_C_IO d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
