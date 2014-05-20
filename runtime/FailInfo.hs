@@ -4,8 +4,6 @@
 -- ---------------------------------------------------------------------------
 module FailInfo where
 
-import Data.List
-
 type Call  = (String, [String])
 type Cause = String
 

@@ -1,6 +1,6 @@
 module FailTrace (inspectTrace) where
 
-import Control.Monad (liftM, unless)
+import Control.Monad (unless)
 import Data.Char     (isDigit, toLower)
 import Data.List     (intercalate)
 import System.IO     (hFlush, stdin, stdout, hGetEcho, hSetEcho
@@ -13,10 +13,7 @@ import FailInfo
 type CallStack = [ACall]
 type AArg = (Bool, String)
 
-data ACall = ACall
-  { callFun  :: String
-  , callArgs :: [AArg]
-  }
+data ACall = ACall String [AArg]
 
 augmentCall :: Call -> ACall
 augmentCall (f, args) = ACall f $ zip (repeat False) args
@@ -41,7 +38,7 @@ inspectTrace (FailInfo calls cause) = do
 printStack :: CallStack -> IO ()
 printStack stack = do
   putStrLn "\nCall stack:"
-  mapM_ putStrLn $ zipWith format [0 ..] stack
+  mapM_ putStrLn $ zipWith format [0 :: Int ..] stack
   where format n call = show n ++ ": " ++ showCall call
 
 showCall :: ACall -> String
