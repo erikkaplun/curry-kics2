@@ -1,65 +1,67 @@
-module Analysis (module Base, module Analysis) where
+--- ----------------------------------------------------------------------------
+--- This module contains the analysis of types, constructors and functions
+---- for (non)determinism and first order/higher order.
+---
+--- @author  Michael Hanus, Björn Peemöller, Fabian Skrlac
+--- @version May 2014
+--- ----------------------------------------------------------------------------
+module Analysis
+  ( NDResult, NDClass (..), initNDResult, analyseND
+  , initHOResult
+  , TypeHOResult, TypeHOClass (..), initTypeHOResult, analyseHOType
+  , ConsHOResult, ConsHOClass (..), analyseHOCons
+  , FuncHOResult, FuncHOClass (..), analyseHOFunc
+  , Visibilities, analyzeVisibility
+  , getPrivateType, getPrivateFunc, getPrivateCons
+  ) where
 
 import FiniteMap
 import FlatCurry
 import FlatCurryGoodies
-import Maybe (fromJust, fromMaybe)
-import List (partition)
+import Maybe            (fromJust, fromMaybe)
+import List             (partition)
+import SetRBT
 
-import Base
-import Dependency2
+import Classification
 import Names
 
 type Map a = FM QName a
 
--- from AnalysisSolver
-data Declaration
-  = F FuncDecl
-  | T TypeDecl
+type Analysis t a = Map a -> (t, [QName]) -> (QName, a)
 
-type AnalysisFunction t a = Map a -> (t, [QName]) -> (QName, a)
-
-getDeclName :: Declaration -> QName
-getDeclName decl = case decl of
-  F f -> funcName f
-  T t -> typeName t
-
-getFunctionCalls :: [FuncDecl] -> [(FuncDecl, [QName])]
-getFunctionCalls fs = map (\ func -> (func, callsDirectly func)) fs
-
-getCalls :: [Declaration] -> [(Declaration, [QName])]
-getCalls ds = map (\ decl -> (decl, callHelp decl)) ds
-  where
-    callHelp decl = case decl of
-      F f -> callsDirectly f
-      T t -> callsDirectly2 t
-
-fullIteration :: AnalysisFunction t a -> [(t, [QName])] -> Map a -> Map a
-              -> Map a
+fullIteration :: Analysis t a -> [(t, [QName])] -> Map a -> Map a -> Map a
 fullIteration analyze calls env start =
   let after = listToFM (<) $ map (analyze (env `plusFM` start)) calls
   in if (start `eqFM` after)
          then start
          else fullIteration analyze calls env after
 
--- ---------------------------------------------------------------------------
--- (Non)Determinism analysis
--- ---------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
+-- (Non-)Determinism analysis for functions.
+-- (Note that Type constructors and data constructors are deterministic.)
+-- -----------------------------------------------------------------------------
+
 type NDResult = Map NDClass
 
+--- Initial start value for the non-determinism analysis.
 initNDResult :: NDResult
 initNDResult = listToFM (<) [(qmark, ND)]
 
+--- Analyse a module for non-determinism using the information
+--- for imported modules analysed before.
 analyseND :: Prog -> NDResult -> NDResult
-analyseND p preRes =
-  let funcs = progFuncs p
-      start = listToFM (<) $ map initValue funcs
-  in  fullIteration ndFunc (getFunctionCalls funcs) preRes start
-  where initValue f = let name = funcName f
-                      in (name, if name == qmark then ND else D)
+analyseND p importedInfo =
+  let fs = progFuncs p
+      start = listToFM (<) $ map initValue fs
+  in  fullIteration ndFunc (map getFunctionCalls fs) importedInfo start
+  where
+    initValue f = let name = funcName f
+                  in (name, if name == qmark then ND else D)
+    getFunctionCalls f = (f, funcCalls f)
 
-ndFunc:: AnalysisFunction FuncDecl NDClass
-ndFunc ndmap (f, called)
+--- Analysis function for non-determinism analysis.
+ndFunc:: Analysis FuncDecl NDClass
+ndFunc ndInfo (f, called)
   | isRuleExternal rule      = default
   | isNDExpr (ruleBody rule) = (name, ND)
   | callsND                  = (name, ND)
@@ -67,132 +69,186 @@ ndFunc ndmap (f, called)
   where
     name    = funcName f
     rule    = funcRule f
-    callsND = any (== Just ND) $ map (lookupFM ndmap) called
-    default = (name, fromJust $ lookupFM ndmap name)
+    callsND = any (== Just ND) $ map (lookupFM ndInfo) called
+    default = (name, fromJust $ lookupFM ndInfo name)
 
--- Check whether an expression is non-deterministic, i.e. whether it uses
--- an OR or FREE
+--- Check whether an expression is non-deterministic, i.e.,
+--- whether it uses an OR (overlapping rule) or FREE (free variables).
 isNDExpr :: Expr -> Bool
 isNDExpr = trExpr cf cf combf letf freef orf casef branchf typedf
   where
-    cf               x = const False x
+    cf               x = const False x -- (variable / literal)
     combf    _ _ isNDs = or isNDs
     letf ndBinds ndExp = or (ndExp : map snd ndBinds)
-    freef          _ _ = True
+    freef         vs _ = not (null vs)
     orf            _ _ = True
     casef       _ e bs = or (e : bs)
     branchf        _ e = e
     typedf         e _ = e
 
-qmark :: QName
-qmark = renameQName (prelude, "?")
+--- list of direct dependencies for a function
+funcCalls :: FuncDecl -> [QName]
+funcCalls (Func _ _ _ _ (Rule   _ e)) = toList $ funcsInExp e
+funcCalls (Func _ _ _ _ (External _)) = []
 
--- ---------------------------------------------------------------------------
--- (first/higher)-order analysis
--- ---------------------------------------------------------------------------
-type HOResult = FM QName HOClass
+--- Gets the set of all functions (including partially applied functions)
+--- directly called in an expression.
+funcsInExp :: Expr -> SetRBT QName
+funcsInExp (Var        _) = empty
+funcsInExp (Lit        _) = empty
+funcsInExp (Comb ct f es)
+  | isFuncCall ct = f `insertRBT` unionMap funcsInExp es
+  | otherwise     =               unionMap funcsInExp es
+funcsInExp (Free     _ e) = funcsInExp e
+funcsInExp (Let     bs e) = unionMap funcsInExp (e : map snd bs)
+funcsInExp (Or     e1 e2) = funcsInExp e1 `unionRBT` funcsInExp e2
+funcsInExp (Case  _ e bs) = unionMap funcsInExp (e : map branchExpr bs)
+funcsInExp (Typed    e _) = funcsInExp e
 
-initHOResult :: HOResult
-initHOResult = emptyFM (<) -- listToFM (<) [(f, HO) | f <- externalHOFuncs]
+--- Is a combination a function call?
+isFuncCall :: CombType -> Bool
+isFuncCall ct = case ct of
+  FuncCall       -> True
+  FuncPartCall _ -> True
+  _              -> False
 
---externalHOFuncs :: [QName]
---externalHOFuncs = map renameQName $ zip (repeat prelude)
---  [">>=", "apply", "catch", "try", "$!", "$!!", "$##"]
+-- -----------------------------------------------------------------------------
+-- (first/higher)-order analysis of types and type constructors
+-- -----------------------------------------------------------------------------
 
-analyseHOFunc :: Prog -> HOResult -> HOResult
-analyseHOFunc p preRes =
-  let funcs = map F $ progFuncs p
-      types = map T $ progTypes p
-      decls = funcs ++ types
-      start = listToFM (<) $ map (\d -> (getDeclName d, FO)) decls
-  in  fullIteration ordFunc (getCalls decls) preRes start
+type TypeHOResult = Map TypeHOClass
 
-analyseHOCons :: Prog -> HOResult
-analyseHOCons p = listToFM (<)
-                $ ((("Curry_Prelude","C_Success"), FO) :)
-                $ map consOrder
-                $ concatMap typeConsDecls
-                $ filter (not . isTypeSyn)
-                $ progTypes p
+initTypeHOResult :: TypeHOResult
+initTypeHOResult = listToFM (<) externalTypes
 
-consOrder (Cons name _ _ texps) = (name, foldr hoOr FO (map consHOType texps))
+externalTypes :: [(QName, TypeHOClass)]
+externalTypes = [(ioType, TypeIO), (successType, TypeFO)]
+
+getHOResult :: QName -> TypeHOResult -> TypeHOClass
+getHOResult qn hoResult = fromMaybe TypeFO (lookupFM hoResult qn)
+
+--- Analyse a module for the higher-order classification of types and type
+--- constructors using the information for imported modules analysed before.
+analyseHOType :: Prog -> TypeHOResult -> TypeHOResult
+analyseHOType p importedInfo =
+  let types = progTypes p
+      start = listToFM (<) $ map initValue types
+  in  fullIteration hoType (map getUsedTypes types) importedInfo start
   where
-    consHOType (TVar       _) = FO
-    consHOType (FuncType _ _) = HO
-    consHOType (TCons  _ tys) = foldr hoOr FO (map consHOType tys)
+    initValue    t = (typeName t, classifyHOTypeDecl t)
+    getUsedTypes t = (t, usedTypes t)
 
-hoOr :: HOClass -> HOClass -> HOClass
-hoOr HO _ = HO
-hoOr FO x = x
-hoOr (HORes _) HO = HO
-hoOr x@(HORes _) FO = x
-hoOr (HORes _) (HORes _) = error "Analysis.hoOr"
+hoType :: Analysis TypeDecl TypeHOClass
+hoType typeInfo (t, deps) = (typeName t, maximumTypeHOClass depClasses)
+  where depClasses = map (`getHOResult` typeInfo) (typeName t : deps)
 
-ordFunc :: AnalysisFunction Declaration HOClass
-ordFunc orderMap (T (Type    qn _ _ conDecls),_)
-  = (qn,(goThroughConsList orderMap conDecls))
-ordFunc orderMap (T (TypeSyn qn _ _ ty),_)
-  = (qn,(ordHelp1 orderMap ty))
-ordFunc orderMap (F func                        ,_)
-  = (funcName func, isHOFunc orderMap (funcArity func) (funcType func))
+classifyHOTypeDecl :: TypeDecl -> TypeHOClass
+classifyHOTypeDecl (Type   qn _ _ cs)
+  | qn == ioType = TypeIO
+  | otherwise    = maximumTypeHOClass
+                 $ map classifyHOType
+                 $ concatMap consArgs cs
+classifyHOTypeDecl (TypeSyn _ _ _ ty) = classifyHOType ty
 
-goThroughConsList _        [] = FO
-goThroughConsList orderMap (Cons _ _ _ tys : conDecls)
-  = hoOr (foldr (\ ty order -> hoOr order (ordHelp1 orderMap ty)) FO tys)
-         (goThroughConsList orderMap conDecls)
+classifyHOType :: TypeExpr -> TypeHOClass
+classifyHOType (TVar       _) = TypeFO
+classifyHOType (FuncType _ _) = TypeHO
+classifyHOType (TCons qn tys)
+  | qn == ioType = maximumTypeHOClass (TypeIO : map classifyHOType tys)
+  | otherwise    = maximumTypeHOClass (map classifyHOType tys)
 
-ordHelp1 _        (TVar       _) = FO
-ordHelp1 _        (FuncType _ _) = HO
-ordHelp1 orderMap (TCons qn tys)
-  = hoOr (fromMaybe FO (lookupFM orderMap qn))
-         (foldr (\ty order -> hoOr order (ordHelp1 orderMap ty)) FO tys)
+usedTypes :: TypeDecl -> [QName]
+usedTypes (Type    _ _ _ cs) = toList $ unionMap typeCons
+                                      $ concatMap consArgs cs
+usedTypes (TypeSyn _ _ _ ty) = toList $ typeCons ty
 
+typeCons :: TypeExpr -> SetRBT QName
+typeCons (TVar       _) = empty
+typeCons (FuncType a b) = typeCons a `unionRBT` typeCons b
+typeCons (TCons   qn _) = singleton qn
 
--- Determines, if a Function is a higher order function.
+-- -----------------------------------------------------------------------------
+-- (first/higher)-order analysis of data constructors
+-- -----------------------------------------------------------------------------
+
+type ConsHOResult = Map ConsHOClass
+
+initHOResult :: Map a
+initHOResult = emptyFM (<)
+
+analyseHOCons :: Prog -> ConsHOResult
+analyseHOCons p = listToFM (<) $ externals ++ internals
+  where
+  externals = filter ((== progName p) . fst . fst) externalCons
+  internals = map consOrder $ concatMap typeConsDecls
+            $ filter (not . isTypeSyn) -- filter isDataDecl
+            $ progTypes p
+
+externalCons :: [(QName, ConsHOClass)]
+externalCons = [(successType, ConsFO)]
+
+consOrder :: ConsDecl -> (QName, ConsHOClass)
+consOrder (Cons qn _ _ tys) = (qn, class)
+  where class = typeToConsHOClass $ maximumTypeHOClass (map classifyHOType tys)
+
+-- -----------------------------------------------------------------------------
+-- (first/higher)-order analysis of functions
+-- -----------------------------------------------------------------------------
+
+type FuncHOResult = Map FuncHOClass
+
+analyseHOFunc :: Prog -> TypeHOResult -> FuncHOResult
+analyseHOFunc p typeInfo = listToFM (<) $ map analyse (progFuncs p)
+  where analyse f = (funcName f, isHOFunc typeInfo (funcArity f) (funcType f))
+
+-- Determines if a function is higher order.
 -- In our context, a function with arity n is higher order (HO),
--- if one of its arguments has a higher order type. 
+-- if one of its arguments has a higher order type.
 -- If the result is a m-ary function type and neither
 -- the argument types nor the result type is a higher order type,
 -- then the function has a higher order result with arity m (HORes m)
 -- Otherwise, it is first order (FO)
-isHOFunc orderMap arity ty
-  | arity == 0 = foldr (\ty' order -> hoOr order (isHOType orderMap ty'))
-                       (if numArgs > 0 then HORes numArgs  else FO)
-                       types  --isHOType orderMap ty  -- FO 
+isHOFunc :: TypeHOResult -> Int -> TypeExpr -> FuncHOClass
+isHOFunc typeInfo arity ty
+  | arity == 0 = case reverse (splitFuncType ty) of
+      []        -> error "Analysis.isHOFunc: no type"
+      (lty:tys) -> maximumFuncHOClass (initVal : map (isHOType True typeInfo) tys)
+        where initVal = maxFuncHOClass
+                          (if null tys then FuncFO else FuncHORes (length tys))
+                          (isHOType False typeInfo lty)
   | otherwise  = case ty of
-      FuncType x y -> isHOType orderMap x `hoOr` isHOFunc orderMap (arity - 1) y
+      FuncType x y -> maxFuncHOClass (isHOType True typeInfo x)
+                                     (isHOFunc typeInfo (arity - 1) y)
       _            -> error "Analysis.isHOFunc"
- where types = splitFuncType ty
-       numArgs = length types - 1
 
--- Determines, if a type expression involves a function type (->)
--- or a type that has a constructor which involves a function type. 
-isHOType orderMap ty = case ty of
-  TVar _          -> FO
-  FuncType   _ _  -> HO
-  TCons    qn tys -> foldr hoOr (fromMaybe FO (lookupFM orderMap qn))
-                                (map (isHOType orderMap) tys)
+--- Determines if a type expression involves a function type (->)
+--- or a type that has a constructor which involves a function type.
+isHOType :: Bool -> TypeHOResult -> TypeExpr -> FuncHOClass
+isHOType ioAsHo typeInfo ty = case ty of
+  TVar _          -> FuncFO
+  FuncType   _ _  -> FuncHO
+  TCons    qn tys -> maximumFuncHOClass $
+                        typeToFuncHOClass ioAsHo (getHOResult qn typeInfo) :
+                          map (isHOType ioAsHo typeInfo) tys
 
--- splits a function Type in the type-expressions of the arguments and the result
+--- splits a function type into the type expressions
+--- of the arguments and the result.
 splitFuncType :: TypeExpr -> [TypeExpr]
 splitFuncType t@(TVar        _) = [t]
-splitFuncType (FuncType at rt) = at : splitFuncType rt
+splitFuncType (FuncType  at rt) = at : splitFuncType rt
 splitFuncType t@(TCons     _ _) = [t]
 
---------------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
 -- Visibility analysis
---------------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
 
 data Visibilities = Vis ([QName],[QName]) ([QName],[QName]) ([QName],[QName])
 
 getPrivateFunc (Vis (_  ,priv) _                   _) = priv
-getPublicFunc  (Vis (pub,   _) _                   _) = pub
 
 getPrivateType (Vis _          (_  ,priv)          _) = priv
-getPublicType  (Vis _          (pub,   _)          _) = pub
 
 getPrivateCons (Vis _          _          (_  ,priv)) = priv
-getPublicCons  (Vis _          _          (pub,   _)) = pub
 
 analyzeVisibility :: Prog -> Visibilities
 analyzeVisibility p =
@@ -204,16 +260,40 @@ analyzeVisibility p =
   types = progTypes p
 
 splitVisibleFuncs funcs =
-   let (pubs,privs) =  partition (\f -> funcVisibility f == Public) funcs in
-   (map funcName pubs, map funcName privs)
+  let (pubs, privs) =  partition (\f -> funcVisibility f == Public) funcs
+  in  (map funcName pubs, map funcName privs)
 
 splitVisibleTypes types =
-   let (pubs,privs) = partition (\t -> typeVisibility t == Public) types in
-    (map typeName pubs, map typeName privs)
+  let (pubs, privs) = partition (\t -> typeVisibility t == Public) types
+  in  (map typeName pubs, map typeName privs)
 
 splitVisibleCons cons =
-  let (pubs,privs) = partition (\c -> consVisibility c == Public) cons in
-   (map consName pubs, map consName privs)
+  let (pubs, privs) = partition (\c -> consVisibility c == Public) cons
+  in  (map consName pubs, map consName privs)
 
-(|++|) :: ([a], [b]) -> ([a], [b]) -> ([a], [b])
-(xs1, xs2) |++| (ys1, ys2) = (xs1 ++ ys1 , xs2 ++ ys2)
+-- -----------------------------------------------------------------------------
+-- Special Identifiers
+-- -----------------------------------------------------------------------------
+
+qmark :: QName
+qmark = renameQName (prelude, "?")
+
+successType :: QName
+successType = renameQName (prelude, "Success")
+
+ioType :: QName
+ioType = renameQName (prelude, "IO")
+
+-- Small interface to Sets
+
+empty :: SetRBT a
+empty = emptySetRBT (<=)
+
+unionMap :: (a -> SetRBT b) -> [a] -> SetRBT b
+unionMap f = foldr unionRBT empty . map f
+
+singleton :: a -> SetRBT a
+singleton x = insertRBT x empty
+
+toList :: SetRBT a -> [a]
+toList = setRBT2list

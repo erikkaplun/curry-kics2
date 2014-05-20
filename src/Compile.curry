@@ -10,7 +10,7 @@ import Char             (isSpace)
 import Maybe            (fromJust)
 import List             (intercalate, isPrefixOf)
 import Directory        (doesFileExist)
-import FilePath         ((</>), dropExtension, normalise)
+import FilePath         (FilePath, (</>), dropExtension, normalise)
 import FileGoodies      (lookupFileInPath)
 import FiniteMap
 import FlatCurry
@@ -98,26 +98,30 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     progs = [ (m, p) | (m, (_, p)) <- mods]
     opts = state :> compOptions
 
-storeAnalysis :: State -> AnalysisResult -> String -> IO ()
-storeAnalysis state (types, ndAna, hoFunAna, hoConsAna) fn = do
+writeAnalysis :: Options -> FilePath -> AnalysisResult -> IO ()
+writeAnalysis opts fn (types, ndAna, hoType, hoCons, hoFunc) = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
-  writeQTermFileInDir ndaFile (ndAnaStr, hoFuncAnaStr, hoConsAnaStr, typesStr)
-    where
-      opts         = state :> compOptions
-      ndaFile      = analysisFile (opts :> optOutputSubdir) fn
-      ndAnaStr     = showFM ndAna
-      hoFuncAnaStr = showFM hoFunAna
-      hoConsAnaStr = showFM hoConsAna
-      typesStr     = showFM types
+  writeQTermFileInDir ndaFile
+    (showFM types, showFM ndAna, showFM hoType, showFM hoCons, showFM hoFunc)
+    where ndaFile = analysisFile (opts :> optOutputSubdir) fn
+
+readAnalysis :: Options -> FilePath -> IO AnalysisResult
+readAnalysis opts fn = do
+  showDetail opts $ "Reading Analysis file " ++ ndaFile
+  (types, ndAna, hoType, hoCons, hoFunc) <- readQTermFile ndaFile
+  return ( readFM (<) types , readFM (<) ndAna
+         , readFM (<) hoType, readFM (<) hoCons, readFM (<) hoFunc)
+    where ndaFile = analysisFile (opts :> optOutputSubdir) fn
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage current total ("Analyzing " ++ mid) fn ndaFile
-  (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
-  return { ndResult     := (state :> ndResult    ) `plusFM` readFM (<) ndAnalysis
-         , hoResultFun  := (state :> hoResultFun ) `plusFM` readFM (<) hoFuncAnalysis
-         , hoResultCons := (state :> hoResultCons) `plusFM` readFM (<) hoConsAnalysis
-         , typeMap      := (state :> typeMap     ) `plusFM` readFM (<) types
+  (types, ndAna, hoType, hoCons, hoFunc) <- readAnalysis opts fn
+  return { typeMap      := (state :> typeMap     ) `plusFM` types
+         , ndResult     := (state :> ndResult    ) `plusFM` ndAna
+         , hoResultType := (state :> hoResultType) `plusFM` hoType
+         , hoResultCons := (state :> hoResultCons) `plusFM` hoCons
+         , hoResultFunc := (state :> hoResultFunc) `plusFM` hoFunc
          | state }
     where
       ndaFile = analysisFile (opts :> optOutputSubdir) fn
@@ -157,7 +161,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
   showDetail opts "Transforming functions"
   ((tProg,modAnalysisResult), state') <- unM (transProg renamed) state
-  storeAnalysis state' modAnalysisResult fn
+  writeAnalysis (state' :> compOptions) fn modAnalysisResult
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
 

@@ -11,7 +11,7 @@ import Char            (isAlphaNum)
 import FilePath        ((</>))
 import List            (intersperse)
 
-import Base            (NDClass (..), HOClass (..))
+import Classification  (NDClass (..), ConsHOClass (..), FuncHOClass (..))
 import AbstractHaskell (QName)
 import Files           (withComponents)
 
@@ -108,21 +108,20 @@ dropFuncPrefix (m, f) = case f of
 -- 1st arg: is the function used for compilation in determinism mode
 -- 2nd arg: determinism classification of the function
 -- 3rd arg: higher-order classification of the function
-funcPrefix :: Bool -> NDClass -> HOClass -> String
-funcPrefix _     D  FO        = "d_"
-funcPrefix _     D  (HORes _) = "d_"
-funcPrefix True  D  HO        = "d_"  -- "dho_"
-funcPrefix False D  HO        = "nd_" -- "ndho_"
-funcPrefix _     ND _         = "nd_"
+funcPrefix :: Bool -> NDClass -> FuncHOClass -> String
+funcPrefix _     D  FuncFO        = "d_"
+funcPrefix _     D  (FuncHORes _) = "d_"
+funcPrefix True  D  FuncHO        = "d_"  -- "dho_"
+funcPrefix False D  FuncHO        = "nd_" -- "ndho_"
+funcPrefix _     ND _             = "nd_"
 
 -- Compute the determinism prefix of a Curry constructor
 -- 1st arg: is the function used for compilation in determinism mode
 -- 2nd arg: classification of the constructor
-consPrefix :: Bool -> HOClass -> String
-consPrefix _     FO        = ""
-consPrefix _     (HORes _) = error "Names.consPrefix"
-consPrefix True  HO        = ""
-consPrefix False HO        = "HO_"
+consPrefix :: Bool -> ConsHOClass -> String
+consPrefix _     ConsFO        = ""
+consPrefix True  ConsHO        = ""
+consPrefix False ConsHO        = "HO_"
 
 -- ---------------------------------------------------------------------------
 -- General renaming of functions and constructors

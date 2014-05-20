@@ -28,11 +28,11 @@ import Analysis
 
 --- Translate a list of FlatCurry type declarations into the
 --- corresponding type and instance declarations for Haskell.
-transTypes :: HOResult -> [FC.TypeDecl] -> [TypeDecl]
+transTypes :: ConsHOResult -> [FC.TypeDecl] -> [TypeDecl]
 transTypes hoResult = concatMap (genTypeDeclarations hoResult)
 
 
-genTypeDeclarations :: HOResult -> FC.TypeDecl -> [TypeDecl]
+genTypeDeclarations :: ConsHOResult -> FC.TypeDecl -> [TypeDecl]
 genTypeDeclarations hoResult tdecl = case tdecl of
   (FC.TypeSyn qf vis tnums texp)
     -> [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
@@ -62,12 +62,12 @@ genTypeDeclarations hoResult tdecl = case tdecl of
   _ -> error "TransTypes.genTypeDeclarations"
 
 
-fcy2absCDecl :: HOResult -> FC.ConsDecl -> [ConsDecl]
+fcy2absCDecl :: ConsHOResult -> FC.ConsDecl -> [ConsDecl]
 fcy2absCDecl hoResult (FC.Cons qf ar vis texps)
   | isHigherOrder = [foCons, hoCons]
   | otherwise     = [foCons]
   where
-    isHigherOrder = lookupFM hoResult qf == Just HO
+    isHigherOrder = lookupFM hoResult qf == Just ConsHO
     foCons = Cons (mkFoConsName qf) ar vis' (map fcy2absTExp   texps)
     hoCons = Cons (mkHoConsName qf) ar vis' (map fcy2absHOTExp texps)
     vis' = fcy2absVis vis
@@ -91,7 +91,7 @@ fcy2absHOTExp (FC.FuncType t1 t2) = funcType (fcy2absHOTExp t1) (fcy2absHOTExp t
 -- ---------------------------------------------------------------------------
 -- Generate instance of Show class:
 -- ---------------------------------------------------------------------------
-showInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+showInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 showInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
     -> mkInstance (basics "Show") [] ctype targs $
@@ -129,7 +129,7 @@ showConsRule hoResult (FC.Cons qn carity _ _)
   | otherwise = [rule qn]
 
   where
-    isHoCons = lookupFM hoResult qn == Just HO
+    isHoCons = lookupFM hoResult qn == Just ConsHO
 
     rule name = ( pre "showsPrec"
                 , case take 8 (snd name) of
@@ -360,7 +360,7 @@ matchRules qf = map nameRule
 -- TODO generators for constructor arguments can pe the same idsupplies
 --      for different constructors; change bind accordingly
 
-generableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+generableInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 generableInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
     -> mkInstance (basics "Generable") [] ctype targs
@@ -380,8 +380,8 @@ generableInstance hoResult tdecl = case tdecl of
 
 
          genCons (FC.Cons qn arity _ _)
-            | lookupFM hoResult qn == Just HO = applyF (mkHoConsName qn) (consArgs2gen arity)
-            | otherwise                       = applyF qn (consArgs2gen arity)
+            | lookupFM hoResult qn == Just ConsHO = applyF (mkHoConsName qn) (consArgs2gen arity)
+            | otherwise                           = applyF qn (consArgs2gen arity)
 
          arities = list2ac $ map (intc . consArity) cdecls
 
@@ -392,7 +392,7 @@ generableInstance hoResult tdecl = case tdecl of
 -- ---------------------------------------------------------------------------
 -- Generate instance of NormalForm class:
 -- ---------------------------------------------------------------------------
-normalformInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+normalformInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 normalformInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
     -> mkInstance (basics "NormalForm") [] ctype targs $ concat
@@ -417,13 +417,13 @@ normalformInstance hoResult tdecl = case tdecl of
   _ -> error "TransTypes.normalformInstance"
 
 -- Generate NormalForm instance rule for a data constructor
-normalformConsRule :: HOResult -> QName -> FC.ConsDecl -> [(QName, Rule)]
+normalformConsRule :: ConsHOResult -> QName -> FC.ConsDecl -> [(QName, Rule)]
 normalformConsRule hoResult funcName (FC.Cons qn _ _ texps)
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
 
   where
-    isHoCons = lookupFM hoResult qn == Just HO
+    isHoCons = lookupFM hoResult qn == Just ConsHO
     carity = length texps
     rule name = (funcName, simpleRule
       ([PVar (1,"cont"), PComb name (map (\i -> PVar (i,'x':show i)) [1..carity])] ++ cdCsPVar)
@@ -459,13 +459,13 @@ normalFormExtConsRules qf funcName choiceFunc choicesFunc =
           = newVars ["d", "info", "c", "cs", "cd", "cont","i","x","y","e","xs", "_"]
 
 -- Generate searchNF instance rule for a data constructor
-showConsConsRule :: HOResult -> FC.ConsDecl -> [(QName, Rule)]
+showConsConsRule :: ConsHOResult -> FC.ConsDecl -> [(QName, Rule)]
 showConsConsRule hoResult (FC.Cons qn carity _ _)
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
 
   where
-    isHoCons  = lookupFM hoResult qn == Just HO
+    isHoCons  = lookupFM hoResult qn == Just ConsHO
     rule name = ( basics "showCons"
                 , simpleRule [consPattern name "_" carity]
                   (string2ac $ intercalate " " $
@@ -486,13 +486,13 @@ showConsCatchRule qf
   where [x] = newVars ["x"]
 
 -- Generate searchNF instance rule for a data constructor
-searchNFConsRule :: HOResult -> FC.ConsDecl -> [(QName, Rule)]
+searchNFConsRule :: ConsHOResult -> FC.ConsDecl -> [(QName, Rule)]
 searchNFConsRule hoResult (FC.Cons qn carity _ _)
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
 
   where
-    isHoCons  = lookupFM hoResult qn == Just HO
+    isHoCons  = lookupFM hoResult qn == Just ConsHO
     rule name = ( basics "searchNF"
                 , simpleRule [PVar mbSearch, PVar cont, consPattern name "x" carity]
                   (nfBody name)
@@ -522,7 +522,7 @@ searchNFCatchRule qf
 -- ---------------------------------------------------------------------------
 -- Generate instance of Unifiable class:
 -- ---------------------------------------------------------------------------
-unifiableInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+unifiableInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 unifiableInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
     -> mkInstance (basics "Unifiable") [] ctype targs $ concat
@@ -559,13 +559,13 @@ unifiableInstance hoResult tdecl = case tdecl of
   _ -> error "TransTypes.unifiableInstance"
 
 -- Generate Unifiable instance rule for a data constructor
-unifiableConsRule :: HOResult -> QName -> QName -> FC.ConsDecl -> [(QName, Rule)]
+unifiableConsRule :: ConsHOResult -> QName -> QName -> FC.ConsDecl -> [(QName, Rule)]
 unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
 
   where
-    isHoCons = lookupFM hoResult qn == Just HO
+    isHoCons = lookupFM hoResult qn == Just ConsHO
     rule name = ( consFunc, simpleRule [consPattern name "x" carity
                                        , consPattern name "y" carity
                                        , PVar nestingDepth
@@ -585,13 +585,13 @@ unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
 
 -- Generate bindRules for a data constructor:
 --  bindConsRules :: [FC.ConsDecl] -> (Expr -> Expr) -> (Expr -> Expr) -> [Rule]
-bindConsRule :: HOResult -> QName -> (Expr -> Expr -> Expr -> Expr)
+bindConsRule :: ConsHOResult -> QName -> (Expr -> Expr -> Expr -> Expr)
              -> ([Expr] -> Expr) -> (Int, FC.ConsDecl) -> [(QName, Rule)]
 bindConsRule hoResult funcName bindArgs combine (num, (FC.Cons qn _ _ texps))
   | isHoCons  = map rule [qn, mkHoConsName qn]
   | otherwise = [rule qn]
   where
-    isHoCons = lookupFM hoResult qn == Just HO
+    isHoCons = lookupFM hoResult qn == Just ConsHO
     rule name = (funcName,
       simpleRule [PVar (1,"cd"), PVar (2, "i"), PComb name $ map (\i -> PVar (i, 'x':show i)) [3 .. (length texps) + 2] ]
         ( applyF (pre ":")
@@ -687,7 +687,7 @@ bindGuardRule qf lazy = (funcName,
 -- Generate instance of Curry class
 -- ---------------------------------------------------------------------------
 
-curryInstance :: HOResult -> FC.TypeDecl -> TypeDecl
+curryInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 curryInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
     -> mkInstance (curryPre "Curry") [] ctype targs $ concat
@@ -743,15 +743,15 @@ extConsRules funcName qf = map nameRule
           [d,i,x,y,z,xs,c,e,cs,p,cd,info] = newVars ["d", "i","x","y","z","xs","c","e","cs","_","cd","info"]
 
 -- Generate equality instance rule for a data constructor
-eqConsRules :: HOResult -> [FC.ConsDecl] -> [(QName, Rule)]
+eqConsRules :: ConsHOResult -> [FC.ConsDecl] -> [(QName, Rule)]
 eqConsRules hoResult = concatMap (eqConsRule hoResult)
 
-eqConsRule :: HOResult -> FC.ConsDecl -> [(QName, Rule)]
+eqConsRule :: ConsHOResult -> FC.ConsDecl -> [(QName, Rule)]
 eqConsRule hoResult (FC.Cons qn carity _ _)
   | isHoCons  = [rule qn, rule $ mkHoConsName qn]
   | otherwise = [rule qn]
   where
-    isHoCons  = lookupFM hoResult qn == Just HO
+    isHoCons  = lookupFM hoResult qn == Just ConsHO
     rule name = ( curryPre "=?="
                 , simpleRule [ consPattern name "x" carity
                              , consPattern name "y" carity
@@ -769,13 +769,13 @@ eqConsRule hoResult (FC.Cons qn carity _ _)
     cs = (2 * carity + 2, "cs")
 
 -- Generate <?= rule for data constructors
-ordConsRules :: HOResult -> [FC.ConsDecl] -> [(QName, Rule)]
+ordConsRules :: ConsHOResult -> [FC.ConsDecl] -> [(QName, Rule)]
 ordConsRules _        [] = []
 ordConsRules hoResult (FC.Cons qn carity _ _ : cds)
   | isHoCons  = concatMap rule [qn, mkHoConsName qn] ++ ordConsRules hoResult cds
   | otherwise = rule qn ++ ordConsRules hoResult cds
   where
-    isHoCons    = lookupFM hoResult qn == Just HO
+    isHoCons    = lookupFM hoResult qn == Just ConsHO
     rule name   = firstRule name : concatMap (ordCons2Rule hoResult (name, carity)) cds
     firstRule n = ( curryPre "<?=", simpleRule
                     [consPattern n "x" carity, consPattern n "y" carity, PVar cd, PVar cs]
@@ -793,12 +793,12 @@ ordConsRules hoResult (FC.Cons qn carity _ _ : cds)
     cd = (2,"d")
     cs = (1,"cs")
 
-ordCons2Rule :: HOResult -> (QName, Int) -> FC.ConsDecl -> [(QName, Rule)]
+ordCons2Rule :: ConsHOResult -> (QName, Int) -> FC.ConsDecl -> [(QName, Rule)]
 ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
   | isHoCons2 = [rule qn2, rule $ mkHoConsName qn2]
   | otherwise = [rule qn2]
   where
-    isHoCons2 = lookupFM hoResult qn2 == Just HO
+    isHoCons2 = lookupFM hoResult qn2 == Just ConsHO
     rule name = (curryPre "<?=", simpleRule
                     [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_"), PVar (2,"_")]
                     (constF $ curryPre "C_True"))
@@ -927,10 +927,10 @@ incCover :: QName
 incCover = basics "incCover"
 
 curryAnd :: QName
-curryAnd = curryPre $ funcPrefix True D FO ++ genRename "&&"
+curryAnd = curryPre $ funcPrefix True D FuncFO ++ genRename "&&"
 
 curryOr :: QName
-curryOr = curryPre $ funcPrefix True D FO ++ genRename "||"
+curryOr = curryPre $ funcPrefix True D FuncFO ++ genRename "||"
 
 curryLt :: QName
-curryLt = curryPre $ funcPrefix True D FO ++ genRename "<"
+curryLt = curryPre $ funcPrefix True D FuncFO ++ genRename "<"
