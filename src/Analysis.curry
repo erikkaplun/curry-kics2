@@ -158,14 +158,14 @@ classifyHOType (TCons qn tys)
   | otherwise    = maximumTypeHOClass (map classifyHOType tys)
 
 usedTypes :: TypeDecl -> [QName]
-usedTypes (Type    _ _ _ cs) = toList $ unionMap typeCons
+usedTypes (Type    _ _ _ cs) = toList $ unionMap  typeCons
                                       $ concatMap consArgs cs
-usedTypes (TypeSyn _ _ _ ty) = toList $ typeCons ty
+usedTypes (TypeSyn _ _ _ ty) = toList $ typeCons  ty
 
 typeCons :: TypeExpr -> SetRBT QName
 typeCons (TVar       _) = empty
 typeCons (FuncType a b) = typeCons a `unionRBT` typeCons b
-typeCons (TCons   qn _) = singleton qn
+typeCons (TCons qn tys) = qn `insertRBT` unionMap typeCons tys
 
 -- -----------------------------------------------------------------------------
 -- (first/higher)-order analysis of data constructors
@@ -291,9 +291,6 @@ empty = emptySetRBT (<=)
 
 unionMap :: (a -> SetRBT b) -> [a] -> SetRBT b
 unionMap f = foldr unionRBT empty . map f
-
-singleton :: a -> SetRBT a
-singleton x = insertRBT x empty
 
 toList :: SetRBT a -> [a]
 toList = setRBT2list
