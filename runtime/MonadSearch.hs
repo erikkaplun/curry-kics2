@@ -1,5 +1,6 @@
 module MonadSearch where
 
+import FailInfo (FailInfo)
 import ID
 import Control.Monad
 import Control.Monad.State.Lazy as Lazy

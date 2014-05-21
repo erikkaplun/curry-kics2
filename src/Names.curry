@@ -1,53 +1,46 @@
------------------------------------------------------------------------
---- Operations to change names of the original program into names
---- used in the target program
------------------------------------------------------------------------
+--- --------------------------------------------------------------------------
+--- This module contains operations to change names of the original program
+--- into names used in the target program and vice versa.
+--- 
+--- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
+--- @version November 2012
+--- --------------------------------------------------------------------------
 module Names where
 
-import Char     (isAlphaNum)
-import FilePath ((</>))
-import List     (intersperse)
-import Maybe    (fromJust, isJust)
+import Char            (isAlphaNum)
+import FilePath        ((</>))
+import List            (intersperse)
 
-import AbstractHaskell
-import Base
-import CompilerOpts
-import Files    (withComponents, (</?>))
+import AbstractHaskell (QName)
+import Classification  (NDClass (..), ConsHOClass (..), FuncHOClass (..))
+import Files           (withComponents, (</?>))
 
 -- ---------------------------------------------------------------------------
--- File names
+-- Renaming file names
 -- ---------------------------------------------------------------------------
 
-renameFile :: String -> String
-renameFile = renameModule -- until hierarchical module names are supported
+renameFile :: Bool -> String -> String
+renameFile trace
+  | trace     = addTrace . renameModule
+  | otherwise = renameModule -- until hierarchical module names are supported
 
 externalFile :: String -> String
 externalFile = withComponents id ("External_" ++) (const "hs")
 
-destFile :: String -> String -> String
-destFile subdir = withComponents (</?> subdir) renameFile (const "hs")
+destFile :: Bool -> String -> String -> String
+destFile trace subdir = withComponents (</?> subdir) (renameFile trace) (const "hs")
 
 analysisFile :: String -> String -> String
-analysisFile subdir = withComponents (</?> subdir) renameFile (const "nda")
+analysisFile subdir = withComponents (</?> subdir) (renameFile False) (const "nda")
 
--- Auxiliary file containing some basic information about functions
--- (might become unnecessary in the future)
+--- Auxiliary file containing some basic information about functions
+--- (might become unnecessary in the future)
 funcInfoFile :: String -> String -> String
-funcInfoFile subdir = withComponents (</?> subdir) renameFile (const "info")
+funcInfoFile subdir = withComponents (</?> subdir) (renameFile False) (const "info")
 
 -- ---------------------------------------------------------------------------
--- Constructors
+-- Renaming modules
 -- ---------------------------------------------------------------------------
-
--- Generating Names for introduced constructors
-mkChoiceName  (q, n) = (q, "Choice"  +|+ n)
-mkChoicesName (q, n) = (q, "Choices" +|+ n)
-mkFailName    (q, n) = (q, "Fail"    +|+ n)
-mkGuardName   (q, n) = (q, "Guard"   +|+ n)
-mkHoConsName  (q, n) = (q, "HO"      +|+ n)
-mkFoConsName  (q, n) = (q,               n)
-
-s +|+ t = s ++ "_" ++ t
 
 prelude :: String
 prelude = "Prelude"
@@ -56,14 +49,19 @@ basics :: String
 basics = "Basics"
 
 curryPrelude :: String
-curryPrelude = renameModule "Prelude"
+curryPrelude = renameModule prelude
 
 renameModule :: String -> String
 renameModule = ("Curry_" ++)
 
+addTrace :: String -> String
+addTrace = renameModule . ("Trace_" ++) . unRenameModule
+
+removeTrace :: String -> String
+removeTrace = renameModule . dropPrefix "Trace_" . unRenameModule
+
 unRenameModule :: String -> String
-unRenameModule n | take 6 n == "Curry_" = drop 6 n
-                 | otherwise            = n
+unRenameModule = dropPrefix "Curry_"
 
 isCurryModule :: String -> Bool
 isCurryModule m = take 6 m == "Curry_"
@@ -71,11 +69,85 @@ isCurryModule m = take 6 m == "Curry_"
 isHaskellModule :: String -> Bool
 isHaskellModule = not . isCurryModule
 
+-- ---------------------------------------------------------------------------
+-- Building constructors
+-- ---------------------------------------------------------------------------
+
+mkChoiceName :: QName -> QName
+mkChoiceName = withQName id ("Choice_" ++)
+
+mkChoicesName :: QName -> QName
+mkChoicesName = withQName id ("Choices_" ++)
+
+mkFailName :: QName -> QName
+mkFailName = withQName id ("Fail_" ++)
+
+mkGuardName :: QName -> QName
+mkGuardName = withQName id ("Guard_" ++)
+
+mkFoConsName :: QName -> QName
+mkFoConsName = id
+
+mkHoConsName :: QName -> QName
+mkHoConsName = withQName id ("HO_" ++)
+
+-- ---------------------------------------------------------------------------
+-- (non)determinism prefixes
+-- ---------------------------------------------------------------------------
+
+unRenamePrefixedFunc :: QName -> QName
+unRenamePrefixedFunc = unRenameQName . dropFuncPrefix
+
+dropFuncPrefix :: QName -> QName
+dropFuncPrefix (m, f) = case f of
+  'd' : '_' : fun       -> (m, fun)
+  'n' : 'd' : '_' : fun -> (m, fun)
+  _                     -> (m, f)
+
+-- Compute the determinism prefix of a curry function
+-- 1st arg: is the function used for compilation in determinism mode
+-- 2nd arg: determinism classification of the function
+-- 3rd arg: higher-order classification of the function
+funcPrefix :: Bool -> NDClass -> FuncHOClass -> String
+funcPrefix _     D  FuncFO        = "d_"
+funcPrefix _     D  (FuncHORes _) = "d_"
+funcPrefix True  D  FuncHO        = "d_"  -- "dho_"
+funcPrefix False D  FuncHO        = "nd_" -- "ndho_"
+funcPrefix _     ND _             = "nd_"
+
+-- Compute the determinism prefix of a Curry constructor
+-- 1st arg: is the function used for compilation in determinism mode
+-- 2nd arg: classification of the constructor
+consPrefix :: Bool -> ConsHOClass -> String
+consPrefix _     ConsFO        = ""
+consPrefix True  ConsHO        = ""
+consPrefix False ConsHO        = "HO_"
+
+-- ---------------------------------------------------------------------------
+-- General renaming of functions and constructors
+-- ---------------------------------------------------------------------------
+
+renameQNameTrace :: QName -> QName
+renameQNameTrace qn = if isCurryModule (fst qn) then withQName addTrace id qn
+                                                else qn
+
 renameQName :: QName -> QName
-renameQName (q, n) = (renameModule q, genRename n)
+renameQName = withQName renameModule genRename
 
 unRenameQName :: QName -> QName
-unRenameQName (q, n) = (unRenameModule q, unGenRename n)
+unRenameQName = withQName unRenameModule unGenRename
+
+externalFunc :: QName -> QName
+externalFunc = withQName id ("external_" ++)
+
+fromExternalFunc :: QName -> QName
+fromExternalFunc = withQName id (dropPrefix "external_")
+
+mkGlobalName :: QName -> QName
+mkGlobalName = withQName id ("global_" ++)
+
+fromGlobalName :: QName -> QName
+fromGlobalName = withQName id (dropPrefix "global_")
 
 genRename :: String -> String
 genRename n
@@ -85,149 +157,106 @@ genRename n
   | head n == '(' = "OP_Tuple" ++ show (length n - 1)
   | otherwise     = replaceNonIdChars "C_" "OP_" n
 
--- TODO: Also for OP_Tuple ?
 unGenRename :: String -> String
 unGenRename n
-  | n == "OP_List"   = "[]"
-  | n == "OP_Cons"   = ":"
-  | n == "OP_Unit"   = "()"
-  | take 2 n == "C_" = drop 2 n
-  | otherwise        = n
+  | n == "OP_List"         = "[]"
+  | n == "OP_Cons"         = ":"
+  | n == "OP_Unit"         = "()"
+  | take 8 n == "OP_Tuple" = mkTuple $ parseNat $ drop 8 n
+  | take 2 n == "C_"       = drop 2 n
+  | take 3 n == "OP_"      = unRenameOp  (drop 3 n)
+  | take 3 n == "HO_"      = unGenRename (drop 3 n)
+  | otherwise              = n
 
-externalFunc :: QName -> QName
-externalFunc (q, n) = (q, "external_" ++ n)
+mkTuple :: Int -> String
+mkTuple n = '(' : replicate (n - 1) ',' ++ ")"
 
--- Compute the determinism prefix of a curry function
--- 1st arg: is the function used for compilation in determinism mode
--- 2nd arg: determinism classification of the function
--- 3rd arg: higher-order classification of the function
-funcPrefix :: Bool -> NDClass -> HOClass -> String
-funcPrefix _     D  FO        = "d_"
-funcPrefix _     D  (HORes _) = "d_"
-funcPrefix True  D  HO        = "d_"  -- "dho_"
-funcPrefix False D  HO        = "nd_" -- "ndho_"
-funcPrefix _     ND _         = "nd_"
+parseNat :: String -> Int
+parseNat xs = parse' 0 xs
+  where
+  parse' s []     = s
+  parse' s (c:cs) = parse' (10 * s + ord c - ord '0') cs
 
--- Compute the determinism prefix of a curry constructor
--- 1st arg: is the function used for compilation in determinism mode
--- 2nd arg: classification of the constructor
-consPrefix :: Bool -> HOClass -> String
-consPrefix _     FO        = ""
-consPrefix _     (HORes _) = error "Names.consPrefix"
-consPrefix True  HO        = ""
-consPrefix False HO        = "HO_"
+-- ---------------------------------------------------------------------------
+-- Auxiliaries
+-- ---------------------------------------------------------------------------
 
-mkGlobalName :: (String,String) -> (String,String)
-mkGlobalName (rnMod,rnFun) = (rnMod, "global_" ++ rnFun)
+withQName :: (String -> String) -> (String -> String) -> QName -> QName
+withQName fq fn (q, n) = (fq q, fn n)
 
--- rename modules
-mkModName :: String -> String
-mkModName = ("Curry_" ++)
+dropPrefix :: String -> String -> String
+dropPrefix pfx s
+  | take n s == pfx = drop n s
+  | otherwise       = s
+  where n = length pfx
 
 isInfixName :: String -> Bool
 isInfixName = all (`elem` "?!#$%^&*+=-<>.:/\\|")
 
-showOpChar :: Char -> String
-showOpChar c = case c of
-  '_' -> "_" --"underscore" TODO: Can this lead to a name clash?
-  '~' -> "tilde"
-  '!' -> "bang"
-  '@' -> "at"
-  '#' -> "hash"
-  '$' -> "dollar"
-  '%' -> "percent"
-  '^' -> "caret"
-  '&' -> "ampersand"
-  '*' -> "star"
-  '+' -> "plus"
-  '-' -> "minus"
-  '=' -> "eq"
-  '<' -> "lt"
-  '>' -> "gt"
-  '?' -> "qmark"
-  '.' -> "dot"
-  '/' -> "slash"
-  '|' -> "bar"
-  '\\' ->"backslash"
-  ':' -> "colon"
-  '(' -> "oparen"
-  ')' -> "cparen"
-  '[' -> "obracket"
-  ']' -> "cbracket"
-  ',' -> "comma"
-  '\'' -> "tick"
-  _   -> error $ "unexpected symbol: " ++ show c
+opRenaming :: [(Char, String)]
+opRenaming =
+  [ ('_' , "uscore"   )
+  , ('~' , "tilde"    )
+  , ('!' , "bang"     )
+  , ('@' , "at"       )
+  , ('#' , "hash"     )
+  , ('$' , "dollar"   )
+  , ('%' , "percent"  )
+  , ('^' , "caret"    )
+  , ('&' , "amp"      )
+  , ('*' , "star"     )
+  , ('+' , "plus"     )
+  , ('-' , "minus"    )
+  , ('=' , "eq"       )
+  , ('<' , "lt"       )
+  , ('>' , "gt"       )
+  , ('?' , "qmark"    )
+  , ('.' , "dot"      )
+  , ('/' , "slash"    )
+  , ('|' , "bar"      )
+  , ('\\', "backslash")
+  , (':' , "colon"    )
+  , ('(' , "lparen"   )
+  , (')' , "rparen"   )
+  , ('[' , "lbracket" )
+  , (']' , "rbracket" )
+  , (',' , "comma"    )
+  , ('\'', "tick"     )
+  ]
 
--- | replaces characters that are not valid haskell identifiers,
--- | if there were no characters replaced, the first prefix,
--- | otherwise the snd prefix ist prepended
+unRenameOp :: String -> String
+unRenameOp = concatMap toOpChar . splitAll (== '_')
+  where toOpChar s = case lookup s (map swap opRenaming) of
+          Just c  -> [c]
+          Nothing -> s
+        swap (a, b) = (b, a)
+
+splitAll :: (a -> Bool) -> [a] -> [[a]]
+splitAll _ []       = []
+splitAll p xs@(_:_) = f : splitAll p (drop 1 s)
+  where (f, s) = break p xs
+
+-- |Replaces characters that are not allowed in haskell identifiers.
+-- If no characters were replaced, the first prefix is used,
+-- otherwise the second one.
 replaceNonIdChars :: String -> String -> String -> String
-replaceNonIdChars pfxNonOp pfxOp str = case strings of
-  []  -> error "replaceNonIdChars: empty identifier"
-  [s] -> if isAlphaNum (head str)
-            then pfxNonOp ++ s
-            else pfxOp    ++ s
-  _   -> pfxOp ++ concat (intersperse "_" strings)
- where strings       = separateAndReplace isIdentChar showOpChar str
-       isIdentChar c = isAlphaNum c || c == '_' || c == '\''
+replaceNonIdChars pfxNonOp pfxOp str = case strs of
+  [] -> error "Names.replaceNonIdChars: empty identifier"
+  _  -> if and (map (all isIdentChar) strs)
+          then pfxNonOp ++ concat strs
+          else pfxOp    ++ intercalate "_" (map (concatMap showOpChar) strs)
+ where  strs = spanAll isAlphaNum str
 
-separateAndReplace :: (a -> Bool) -> (a -> [a]) -> [a] -> [[a]]
-separateAndReplace pred f list = case rest of
-  [] -> case sep of
-    [] -> []
-    _  -> [sep]
-  (x:xs) -> case sep of
-    [] -> f x : separateAndReplace pred f xs
-    _  -> sep : f x : separateAndReplace pred f xs
- where (sep,rest) = break  (not . pred) list
+        intercalate xs xss = concat (intersperse xs xss)
 
--- rename type constructors
-{-
-mkTypeName :: String -> String
-mkTypeName n
-  | n == "[]"     = "OP_List"
-  | n == "()"     = "OP_Unit"
-  | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "C_" "OP_" n
--}
+        showOpChar  c = case lookup c opRenaming of
+          Just ren -> ren
+          Nothing  -> [c]
 
-{-
---- Rename qualified type constructor.
-renType (mn,fn) = (mkModName mn, mkTypeName fn)
+        isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 
--- Rename qualified data constructor.
-renCons (mn,fn) = (mkModName mn, mkConName fn)
-
--- Rename qualified defined function.
-renFunc (mn,fn) = (mkModName mn, mkFunName fn)
--}
-
-
-{-
--- rename defined functions
-mkFunName :: String -> String
-mkFunName = replaceNonIdChars "c_" "op_"
--}
-
-
-{-
--- rename data constructors
-mkConName :: String -> String
-mkConName n
-  | n == "[]"     = "OP_Nil"
-  | n == ":"      = "OP_Cons"
-  | n == "()"     = "OP_Unit"
-  | head n == '(' = "OP_Tuple" ++ show (length n - 1)
-  | otherwise     = replaceNonIdChars "C_" "OP_" n
-
--- unrename data constructors
-umkConName :: String -> String
-umkConName n | mkConName oldCon =:= n = oldCon where oldCon free
-{-
- | n == "OP_Nil"    = "[]"
- | n == "OP_Cons"   = ":"
- | n == "OP_Unit"   = "()"
- | take 2 n == "C_" = drop 2 n
- | otherwise        = n
--}
--}
+spanAll :: (a -> Bool) -> [a] -> [[a]]
+spanAll p xs = (if null pfx then id else (pfx:)) $ case rest of
+  []     -> []
+  (x:ys) -> [x] : spanAll p ys
+ where (pfx, rest) = span p xs

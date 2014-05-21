@@ -14,6 +14,7 @@ module Types
 
 import ConstStore
 import Debug
+import FailInfo
 import ID
 
 -- ---------------------------------------------------------------------------
@@ -147,6 +148,9 @@ class (NonDet a, Show a) => NormalForm a where
   ($!!) :: NonDet b => (a -> Cover -> ConstStore -> b) -> a -> Cover -> ConstStore -> b
   -- |Apply a continuation to the ground normal form
   ($##) :: NonDet b => (a -> Cover -> ConstStore -> b) -> a -> Cover -> ConstStore -> b
+  -- show of constructor
+  showCons :: a -> String
+  showCons = show
   -- new approach
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
@@ -506,7 +510,6 @@ instance Unifiable C_Success where
 -- Higher Order functions
 instance Show (a -> b) where
   show _ = "<<function>>"
---   show = internalError "show for function is undefined"
 
 instance Read (a -> b) where
   readsPrec = internalError "read for function is undefined"

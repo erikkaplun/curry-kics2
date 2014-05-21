@@ -373,12 +373,13 @@ compileCurryProgram rst curryprog = do
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
-               [ "-v" ++ show (transVerbose (rst :> verbose))
-               , "-i" ++ intercalate ":" (loadPaths rst)
-               ] ++
-               (if null (rst :> parseOpts)
-                then []
-                else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
+    [ "-v" ++ show (transVerbose (rst :> verbose))
+    , "-i" ++ intercalate ":" (loadPaths rst)
+    ] ++
+    (if null (rst :> parseOpts)
+    then []
+    else ["--parse-options=\"" ++ rst :> parseOpts ++ "\""])
+      ++ (if rst :> traceFailure then ["--trace-failure"] else [])
   kics2Cmd  = unwords [kics2Bin, kics2Opts, rst :> cmpOpts, curryprog]
   transVerbose n | n == 3    = 2
                  | n >= 4    = 3
@@ -675,6 +676,7 @@ replOptions =
   , ("v1"           , \r _ -> return (Just { verbose      := 1     | r }))
   , ("v2"           , \r _ -> return (Just { verbose      := 2     | r }))
   , ("v3"           , \r _ -> return (Just { verbose      := 3     | r }))
+  , ("v4"           , \r _ -> return (Just { verbose      := 4     | r }))
   , ("prompt"       , setPrompt                                          )
   , ("+interactive" , \r _ -> return (Just { interactive  := True  | r }))
   , ("-interactive" , \r _ -> return (Just { interactive  := False | r }))
@@ -686,6 +688,8 @@ replOptions =
   , ("-bindings"    , \r _ -> return (Just { showBindings := False | r }))
   , ("+time"        , \r _ -> return (Just { showTime     := True  | r }))
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
+  , ("+trace"       , \r _ -> return (Just { traceFailure := True  | r }))
+  , ("-trace"       , \r _ -> return (Just { traceFailure := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
   , ("safe"         , \r _ -> return (Just { safeExec     := True  | r }))
@@ -748,15 +752,17 @@ printOptions rst = putStrLn $ unlines
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
   , "v<n>            - verbosity level"
   , "                    0: quiet (errors and warnings only)"
-  , "                    1: status messages (default)"
-  , "                    2: intermediate messages and commands"
-  , "                    3: all intermediate results"
+  , "                    1: frontend status messages (default)"
+  , "                    2: kics2c status messages"
+  , "                    3: ghc status messages"
+  , "                    4: analysis information"
   , "prompt <prompt> - set the user prompt"
   , "+/-interactive  - turn on/off interactive execution of main goal"
   , "+/-first        - turn on/off printing only first solution"
   , "+/-optimize     - turn on/off optimization"
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show execution time"
+  , "+/-trace        - trace failure in deterministic expression"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
   , "safe            - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
@@ -799,6 +805,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst :> optim       ) ++ "optimize "    ++
   showOnOff (rst :> showBindings) ++ "bindings "    ++
   showOnOff (rst :> showTime    ) ++ "time "        ++
+  showOnOff (rst :> traceFailure) ++ "trace "       ++
   showOnOff (rst :> useGhci     ) ++ "ghci "
  where
    showOnOff b = if b then "+" else "-"

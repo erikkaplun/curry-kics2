@@ -1,5 +1,5 @@
 {-# LANGUAGE Records #-}
-module TransFunctions where
+module TransFunctions (State (..), defaultState, AnalysisResult, defaultModules, transProg, unM) where
 
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
   , lookupFM, plusFM, delListFromFM)
@@ -12,11 +12,18 @@ import Analysis
 import CompilerOpts
 import FlatCurry
 import FlatCurryGoodies
+import LiftCase
 import Message
 import Names
 import Splits
 
-type AnalysisResult = (TypeMap, NDResult, HOResult, HOResult)
+-- The type map is used to lookup the type name for a given constructor
+-- name to be able to add missing pattern matching alternatives like
+-- Choice_<TypeName> etc.
+-- This could also be done by inspecting the type signature of the respective
+-- function, but it may not be accurate for various reasons.
+
+type AnalysisResult = (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
 
 -- ---------------------------------------------------------------------------
 -- IO state monad, like StateT IO
@@ -61,13 +68,15 @@ mapM f (m:ms) = f m       `bindM` \m' ->
 -- Internal state
 -- ---------------------------------------------------------------------------
 
+-- map a constructor name to the name of its defining type
 type TypeMap = FM QName QName
 
 type State =
   { typeMap      :: TypeMap
   , ndResult     :: NDResult
-  , hoResultFun  :: HOResult
-  , hoResultCons :: HOResult
+  , hoResultType :: TypeHOResult
+  , hoResultCons :: ConsHOResult
+  , hoResultFunc :: FuncHOResult
   , nextID       :: VarIndex    -- index for fresh variable
   , detMode      :: Bool        -- determinism mode
 --   , report      :: [String]
@@ -78,8 +87,9 @@ defaultState :: State
 defaultState =
   { typeMap      := listToFM (<) primTypes
   , ndResult     := initNDResult
-  , hoResultFun  := initHOResult
-  , hoResultCons := emptyFM (<)
+  , hoResultType := initTypeHOResult
+  , hoResultCons := initHOResult
+  , hoResultFunc := initHOResult
   , nextID       := idVar
   , detMode      := False
 --   , report      = []
@@ -109,25 +119,40 @@ getNDClass :: QName -> M NDClass
 getNDClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
   $ (flip lookupFM) qn $ (st :> ndResult)
--- HOFunResult
 
-addHOFunAnalysis :: HOResult -> M ()
-addHOFunAnalysis newRes = updState$ \s -> { hoResultFun := newRes `plusFM` s :> hoResultFun | s }
+-- HOTypeResult
 
-getFunHOClass :: QName -> M HOClass
-getFunHOClass qn = getState `bindM` \st ->
+addHOTypeAnalysis :: TypeHOResult -> M ()
+addHOTypeAnalysis newRes = updState$ \s ->
+  { hoResultType := (newRes `plusFM` s :> hoResultType) | s }
+
+getTypeHOClass :: QName -> M TypeHOClass
+getTypeHOClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
-  $ (flip lookupFM) qn $ (st :> hoResultFun)
+  $ (flip lookupFM) qn $ (st :> hoResultType)
 
 -- HOConsResult
 
-addHOConsAnalysis :: HOResult -> M ()
-addHOConsAnalysis newRes = updState$ \s -> { hoResultCons := (newRes `plusFM` s :> hoResultCons) | s }
+addHOConsAnalysis :: ConsHOResult -> M ()
+addHOConsAnalysis newRes = updState$ \s ->
+  { hoResultCons := (newRes `plusFM` s :> hoResultCons) | s }
 
-getConsHOClass :: QName -> M HOClass
+getConsHOClass :: QName -> M ConsHOClass
 getConsHOClass qn = getState `bindM` \st ->
   returnM $ fromMaybe (error $ show qn ++ " not analysed" )
   $ (flip lookupFM) qn $ (st :> hoResultCons)
+
+-- HOFunResult
+
+addHOFuncAnalysis :: FuncHOResult -> M ()
+addHOFuncAnalysis newRes = updState$ \s ->
+  { hoResultFunc := newRes `plusFM` s :> hoResultFunc | s }
+
+getFuncHOClass :: QName -> M FuncHOClass
+getFuncHOClass qn = getState `bindM` \st ->
+  returnM $ fromMaybe (error $ show qn ++ " not analysed" )
+  $ (flip lookupFM) qn $ (st :> hoResultFunc)
+
 
 -- IDs
 
@@ -169,6 +194,10 @@ doInDetMode dm action =
   setDetMode oldDm `bindM_`
   returnM retVal
 
+isTraceFailure :: M Bool
+isTraceFailure = getState `bindM` \st ->
+                 returnM (st :> compOptions :> optTraceFailure)
+
 -- add a message to the transformation report
 -- addToReport :: String -> M ()
 -- addToReport msg = updState (\st -> {report := (msg : st -> report) | st})
@@ -190,22 +219,29 @@ transProg :: Prog -> M (Prog, AnalysisResult)
 transProg p@(Prog m is ts fs _) =
   getState `bindM` \st ->
   let modNDRes     = analyseND     p (st :> ndResult)
-      modHOResFun  = analyseHOFunc p (st :> hoResultFun)
+      modHOResType = analyseHOType p (st :> hoResultType)
       modHOResCons = analyseHOCons p
+      modHOResFunc = analyseHOFunc p (st :> hoResultType `plusFM` modHOResType)
       modTypeMap   = getConsMap ts
       visInfo      = analyzeVisibility p
+
       visNDRes     = modNDRes     `delListFromFM` getPrivateFunc visInfo
-      visHOFun     = modHOResFun  `delListFromFM` getPrivateFunc visInfo
+
+      visHOType    = modHOResType `delListFromFM` getPrivateType visInfo
       visHOCons    = modHOResCons `delListFromFM` getPrivateCons visInfo
+      visHOFun     = modHOResFunc `delListFromFM` getPrivateFunc visInfo
+
       visType      = modTypeMap   `delListFromFM` getPrivateCons visInfo
+      anaResult    = (visType, visNDRes, visHOType, visHOCons, visHOFun)
   in
   addNDAnalysis     modNDRes     `bindM_`
-  addHOFunAnalysis  modHOResFun  `bindM_`
+  addHOTypeAnalysis modHOResType `bindM_`
   addHOConsAnalysis modHOResCons `bindM_`
+  addHOFuncAnalysis modHOResFunc `bindM_`
   addTypeMap        modTypeMap   `bindM_`
   -- translation of the functions
   mapM transFunc fs `bindM` \fss ->
-  returnM $ (Prog m is [] (concat fss) [], (visType , visNDRes, visHOFun, visHOCons))
+  returnM $ (Prog m is [] (concat fss) [], anaResult)
 
 -- Register the types of constructors to be able to retrieve the types for
 -- constructors used in case patterns. May be needless now because the case
@@ -228,22 +264,22 @@ transFunc f@(Func qn _ _ _ _) =
     False -> transNDFunc f `bindM` \ fn -> returnM [fn]
     True  ->
       getNDClass    qn `bindM` \ndCl ->
-      getFunHOClass qn `bindM` \hoCl ->
+      getFuncHOClass qn `bindM` \hoCl ->
       liftIO (showAnalysis opts (snd qn ++ " is " ++ show (ndCl, hoCl))) `bindM_`
       case ndCl of
         -- create non-deterministic function
         ND -> transNDFunc f `bindM` \ fn -> returnM [fn]
         D  -> case hoCl of
           -- create deterministic as well as non-deterministic function
-          HO ->
+          FuncHO ->
             transPureFunc f `bindM` \ fd ->
             transNDFunc   f `bindM` \ fn ->
             returnM [fd, fn]
 
           -- create deterministic function
-          HORes _ -> transPureFunc f `bindM` \ fd -> returnM [fd]
+          FuncHORes _ -> transPureFunc f `bindM` \ fd -> returnM [fd]
 
-          FO ->  case f of
+          FuncFO ->  case f of
             -- check if the Function is intended to represent a global variable
             -- i.e. has the form name = global val Temporary
             -- this will be translated into
@@ -291,15 +327,15 @@ renameFun :: QName -> M QName
 renameFun qn@(q, n) =
   isDetMode        `bindM` \dm   ->
   getNDClass qn    `bindM` \ndCl ->
-  getFunHOClass qn `bindM` \hoCl ->
-  returnM (q, (funcPrefix dm ndCl hoCl) ++ n)
+  getFuncHOClass qn `bindM` \hoCl ->
+  returnM (q, funcPrefix dm ndCl hoCl ++ n)
 
 -- renaming of constructors respective to their order and the determinism mode
 renameCons :: QName -> M QName
 renameCons qn@(q, n) =
   isDetMode `bindM` \dm ->
   getConsHOClass qn `bindM` \hoCl ->
-  returnM (q, (consPrefix dm hoCl) ++ n)
+  returnM (q, consPrefix dm hoCl ++ n)
 
 -- translate a type expressen by inserting an additional ConstStore and
 -- EncapsulationDepth type
@@ -351,13 +387,20 @@ transRule :: FuncDecl -> M Rule
 transRule (Func qn _ _ _ (Rule vs e)) =
   isDetMode `bindM` \ dm ->
   transBody qn vs e `bindM` \e' ->
-  returnM $ Rule ((if dm then vs else vs ++ [suppVarIdx])
-                  ++ [nestingIdx,constStoreVarIdx]) e'
+  isTraceFailure `bindM` \fc ->
+  let vs' = vs ++ (if dm then [] else [suppVarIdx])
+               ++ [nestingIdx, constStoreVarIdx]
+      e'' = if fc then failCheck qn vs e' else e'
+  in  returnM $ Rule vs' e''
 transRule (Func qn a _ _ (External _)) =
   isDetMode `bindM` \ dm ->
-  let vs = [1 .. a] ++ (if dm then [] else [suppVarIdx])
-                       ++ [nestingIdx,constStoreVarIdx] in
-  returnM $ Rule vs $ funcCall (externalFunc qn) (map Var vs)
+  isTraceFailure `bindM` \fc ->
+  let vs  = [1 .. a]
+      vs' = vs ++ (if dm then [] else [suppVarIdx])
+                   ++ [nestingIdx,constStoreVarIdx]
+      e   = funcCall (externalFunc qn) (map Var vs')
+      e'  = if fc then failCheck qn vs e else e
+  in returnM $ Rule vs' e'
 
 transBody :: QName -> [Int] -> Expr -> M Expr
 transBody qn vs exp = case exp of
@@ -426,6 +469,7 @@ transPattern l@(LPattern _) = returnM l
 newBranches :: QName -> [Int] -> Int -> QName -> M [BranchExpr]
 newBranches qn' vs i pConsName =
   isDetMode `bindM` \ dm ->
+  isTraceFailure `bindM` \fc ->
   -- lookup type name to create appropriate constructor names
   getType pConsName `bindM` \ typeName ->
   let Just pos = find (==i) vs
@@ -457,9 +501,10 @@ newBranches qn' vs i pConsName =
     , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
              (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
     , Branch (Pattern (mkFailName typeName) [1000, 1001])
-             (liftFail [Var 1000, Var 1001])
+              (if fc then liftFail [Var 1000, Var 1001]
+                     else traceFail (Var 1000) qn' (map Var vs) (Var 1001))
     , Branch (Pattern ("", "_") [])
-             (liftFail [Var nestingIdx, defFailInfo])
+             (consFail qn' (Var i))
     ] -- TODO Magic numbers?
 
 -- Complete translation of an expression where all newly introduced supply
@@ -499,17 +544,17 @@ transExpr (Comb (ConsPartCall i) qn es) =
   isDetMode `bindM` \dm ->
   renameCons qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  genIds g (myWrap dm True D FO i (Comb (ConsPartCall i) qn' es'))
+  genIds g (wrapPartCall dm True D FuncFO i (Comb (ConsPartCall i) qn' es'))
 
 -- fully applied functions
 transExpr (Comb FuncCall qn es) =
   getCompOption (\opts -> opts :> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
-  getFunHOClass qn `bindM` \hoCl ->
+  getFuncHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs `bindM` \(g, es') ->
-  if ndCl == ND || not opt || (hoCl == HO && not dm)
+  if ndCl == ND || not opt || (hoCl == FuncHO && not dm)
    -- for non-deterministic functions and higher-order functions in non-determinism mode
    -- we just call the function with the additional arguments (idsupply, capsule nesting depth
    -- and the constraint store
@@ -518,18 +563,18 @@ transExpr (Comb FuncCall qn es) =
     -- for deterministic functions with higher-order result in non-determinism mode
     -- we need to wrap the result in order to accept the additional arguments
     else genIds g $ case hoCl of
-      HORes i | not dm -> wrapDHO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
-      _                -> (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
+      FuncHORes i | not dm -> wrapDHO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
+      _                    -> (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
 
 -- partially applied functions
 transExpr (Comb (FuncPartCall i) qn es) =
   getCompOption (\opts -> opts :> optOptimization > OptimNone) `bindM` \opt ->
   getNDClass qn `bindM` \ndCl ->
-  getFunHOClass qn `bindM` \hoCl ->
+  getFuncHOClass qn `bindM` \hoCl ->
   isDetMode `bindM` \dm ->
   renameFun qn `bindM` \qn' ->
   mapM transExpr es `bindM` unzipArgs  `bindM` \(g, es') ->
-  genIds g (myWrap dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
+  genIds g (wrapPartCall dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
 
 -- let expressions
 transExpr (Let vses e) =
@@ -599,29 +644,55 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 
 -- ---------------------------------------------------------------------------
 -- Wrapping
+
+-- Wrapping surrounds function call with additional constructs to make the calls
+-- fit into the compilation scheme. This is necessary for the following cases:
+--
+--  1. A partially applied constructor or function call.
+--     In this case, the partial call is extended to accept the additional
+--     arguments for the IDSupply (only in nondeterministic context),
+--     the cover depth and the constraint store *after each regular argument*.
+--     This is required by the primitive apply function.
+--  2. A call to a constructor or a deterministic function called from a
+--     non-deterministic context. In this case, the deterministic function
+--     is expected to accept an additional IDSupply (which is then ignored).
 -- ---------------------------------------------------------------------------
 
--- wrapping the higher order result of deterministic function calls
--- from nondeterministic context
+--- Wrapping the higher order result function of a deterministic function
+--- called from nondeterministic context.
+--- @param arity - arity of the result function
+--- @param expr  - function call to wrap
 wrapDHO :: Int -> Expr -> Expr
-wrapDHO a e = newWrap a wrapDX e
+wrapDHO arity expr = newWrap True arity expr
 
--- wrapping the result of partial applications in order to
--- accept the aditional elements
-myWrap :: Bool -> Bool -> NDClass -> HOClass -> Int -> Expr -> Expr
-myWrap True  _   _  _  a e = wrapCs a e
-myWrap False opt nd ho a e = newWrap (a + resArity) iw (wrapCs a e)
-  where iw = if opt && nd == D && not isHO then wrapDX else wrapNX
-        isHO = case ho of
-                 HO -> True
-                 _  -> False
-        resArity = case ho of
-                     HORes i -> i
-                     _       -> 0
+--- Wrapping the result of partial applications
+--- in order to accept the above mentioned aditional arguments.
+--- @param dm    - True iff invoked in deterministic context
+--- @param opt   - True iff optimization for deterministic functions
+---                   should be applied
+--- @param nd    - nondeterministic class of called function or constructor
+---                  (constructors are always deterministic)
+--- @param ho    - higher-order class of called function or constructor
+--- @param arity - arity of partial call, i.e., number of arguments missing
+---                to form a fully applied call
+--- @param e     - expression (partial call) to transform
+wrapPartCall :: Bool -> Bool -> NDClass -> FuncHOClass -> Int -> Expr -> Expr
+wrapPartCall dm opt nd ho arity e
+  | dm        = wrapCs arity e
+  | nd == ND  = newWrap False arity              (wrapCs arity e)
+  | otherwise = newWrap useDX (arity + resArity) (wrapCs arity e)
+  where
+  useDX = opt && nd == D && not isHO
+  isHO = case ho of
+            FuncHO -> True
+            _      -> False
+  resArity = case ho of
+                FuncHORes i -> i
+                _           -> 0
 
--- adding Constraintstore arguments after every argument of a higher order funchtion
+-- adding Constraintstore arguments after every argument of a higher order function
 wrapCs :: Int -> Expr -> Expr
-wrapCs n e | n == 1 = if isConstr then addCs [funId,e] else e
+wrapCs n e | n == 1 = if isConstr then addCs [funId, e] else e
            | n >  1 = addCs [mkWraps (n - 1)
                               (if isConstr then (addCs [funId]) else funId)
                             ,e]
@@ -632,29 +703,31 @@ wrapCs n e | n == 1 = if isConstr then addCs [funId,e] else e
     (Comb (ConsPartCall _) _ _) -> True
     _                           -> False
 
-newWrap :: Int -> ([Expr] -> Expr) -> Expr -> Expr
-newWrap n innermostWrapper e
+-- TODO: simplify
+newWrap :: Bool -> Int -> Expr -> Expr
+newWrap useDX n e
   | n == 0 = e
   | n == 1 = innermostWrapper [funId, e]
   | n == 2 = wrapDX [innermostWrapper [funId], e]
   | n == 3 = wrapDX [wrapDX [innermostWrapper [funId]], e]
   | n == 4 = wrapDX [wrapDX [wrapDX [innermostWrapper [funId]]], e]
-  | n >  4 = wrapDX [wraps (n-1) (innermostWrapper [funId]), e]
-  where wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
+  | n >  4 = wrapDX [wraps (n - 1) (innermostWrapper [funId]), e]
+  where
+  wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
+  innermostWrapper = if useDX then wrapDX else wrapNX
 
-wrapDX exprs = fun 2 (basics,"wrapDX") exprs
-wrapNX exprs = fun 2 (basics,"wrapNX") exprs
-addCs  exprs = fun 2 (basics,"acceptCs")  exprs
-funId = fun 1 (prelude, "id") []
-
-
--- Strict or lazy computation of supplies
-letIdVar True  = strictLet
-letIdVar False = lazyLet
+wrapDX = fun 2 (basics, "wrapDX")
+wrapNX = fun 2 (basics, "wrapNX")
+addCs  = fun 2 (basics, "acceptCs")
+funId  = fun 1 (prelude, "id") []
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
+
+-- Strict or lazy computation of supplies
+letIdVar True  = strictLet
+letIdVar False = lazyLet
 
 curryInt :: QName
 curryInt = renameQName (prelude, "Int")
@@ -732,6 +805,34 @@ char c = funcCall curryChar charExpr
 
 float :: Float -> Expr
 float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
+
+failCheck qn vars e
+  | isCaseAuxFuncName (snd $ unRenamePrefixedFunc qn) = e
+  | otherwise                   = funcCall (basics, "failCheck")
+    [ showQName $ unRenameQName qn
+    , list2FCList (map (\v -> funcCall (prelude, "show") [Var v]) vars)
+    , e
+    ]
+
+traceFail cd qn args fail = liftFail
+  [ cd
+  , funcCall (basics, "traceFail")
+    [ showQName qn
+    , list2FCList (map (\a -> funcCall (prelude, "show") [a]) args)
+    , fail
+    ]
+  ]
+
+consFail qn arg = liftFail
+  [ funcCall (basics, "initCover") []
+  , funcCall (basics, "consFail")
+    [ showQName $ unRenameQName qn
+    , funcCall (basics, "showCons") [arg]
+    ]
+  ]
+
+showQName qn = list2FCList $ map (Lit . Charc) (q ++ '.' : n)
+  where (q,n) = unRenamePrefixedFunc qn
 
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")

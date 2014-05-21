@@ -21,8 +21,8 @@ import ReadShowTerm     (readQTermFile)
 import AnnotatedFlatCurryGoodies (unAnnProg)
 
 import qualified AbstractHaskell        as AH
-import qualified AbstractHaskellGoodies as AHG (funcName, typeOf)
-import AbstractHaskellPrinter    (showModuleHeader, showDecls)
+import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, typeOf)
+import AbstractHaskellPrinter (showModuleHeader, showDecls)
 import CompilerOpts
 import Files                     ( withBaseName, withDirectory, withExtension
                                  , writeFileInDir, writeQTermFileInDir
@@ -39,7 +39,7 @@ import Names
 import SimpleMake
 import TransFunctions
 import TransTypes
-import Utils                      (notNull)
+import Utils                     (notNull)
 
 --- Parse the command-line arguments and build the specified files
 main :: IO ()
@@ -80,7 +80,8 @@ makeModule mods state mod@((_, (fn, fcy)), _)
   | opts :> optForce  = compileModule progs modCnt state mod
   | otherwise         = do
                         depFiles <- getDepFiles
-                        smake (destFile (opts :> optOutputSubdir) fn)
+                        smake (destFile (opts :> optTraceFailure)
+                                        (opts :> optOutputSubdir) fn)
                               depFiles
                               (compileModule progs modCnt state mod)
                               (loadAnalysis modCnt state mod)
@@ -88,7 +89,8 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     getDepFiles = do
       hasExternals <- doesFileExist extFile
       let ownModule = fn : if hasExternals then [extFile] else []
-      let imported  = map (\i -> destFile (opts :> optOutputSubdir)
+      let imported  = map (\i -> destFile (opts :> optTraceFailure)
+                                          (opts :> optOutputSubdir)
                                $ fst $ fromJust $ lookup i mods) imps
       return $ ownModule ++ imported
     extFile = externalFile fn
@@ -97,26 +99,30 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     progs = [ (m, p) | (m, (_, p)) <- mods]
     opts = state :> compOptions
 
-storeAnalysis :: State -> AnalysisResult -> FilePath -> IO ()
-storeAnalysis state (types, ndAna, hoFunAna, hoConsAna) fn = do
+writeAnalysis :: Options -> FilePath -> AnalysisResult -> IO ()
+writeAnalysis opts fn (types, ndAna, hoType, hoCons, hoFunc) = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
-  writeQTermFileInDir ndaFile (ndAnaStr, hoFuncAnaStr, hoConsAnaStr, typesStr)
-    where
-      opts         = state :> compOptions
-      ndaFile      = analysisFile (opts :> optOutputSubdir) fn
-      ndAnaStr     = showFM ndAna
-      hoFuncAnaStr = showFM hoFunAna
-      hoConsAnaStr = showFM hoConsAna
-      typesStr     = showFM types
+  writeQTermFileInDir ndaFile
+    (showFM types, showFM ndAna, showFM hoType, showFM hoCons, showFM hoFunc)
+    where ndaFile = analysisFile (opts :> optOutputSubdir) fn
+
+readAnalysis :: Options -> FilePath -> IO AnalysisResult
+readAnalysis opts fn = do
+  showDetail opts $ "Reading Analysis file " ++ ndaFile
+  (types, ndAna, hoType, hoCons, hoFunc) <- readQTermFile ndaFile
+  return ( readFM (<) types , readFM (<) ndAna
+         , readFM (<) hoType, readFM (<) hoCons, readFM (<) hoFunc)
+    where ndaFile = analysisFile (opts :> optOutputSubdir) fn
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage (current, total) "Analyzing" mid (fn, ndaFile)
-  (ndAnalysis, hoFuncAnalysis, hoConsAnalysis, types) <- readQTermFile ndaFile
-  return { ndResult     := (state :> ndResult    ) `plusFM` readFM (<) ndAnalysis
-         , hoResultFun  := (state :> hoResultFun ) `plusFM` readFM (<) hoFuncAnalysis
-         , hoResultCons := (state :> hoResultCons) `plusFM` readFM (<) hoConsAnalysis
-         , typeMap      := (state :> typeMap     ) `plusFM` readFM (<) types
+  (types, ndAna, hoType, hoCons, hoFunc) <- readAnalysis opts fn
+  return { typeMap      := (state :> typeMap     ) `plusFM` types
+         , ndResult     := (state :> ndResult    ) `plusFM` ndAna
+         , hoResultType := (state :> hoResultType) `plusFM` hoType
+         , hoResultCons := (state :> hoResultCons) `plusFM` hoCons
+         , hoResultFunc := (state :> hoResultFunc) `plusFM` hoFunc
          | state }
     where
       ndaFile = analysisFile (opts :> optOutputSubdir) fn
@@ -156,7 +162,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 
   showDetail opts "Transforming functions"
   ((tProg,modAnalysisResult), state') <- unM (transProg renamed) state
-  storeAnalysis state' modAnalysisResult fn
+  writeAnalysis (state' :> compOptions) fn modAnalysisResult
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
 
@@ -194,7 +200,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
-    dest           = destFile (opts :> optOutputSubdir) fn
+    dest           = destFile (opts :> optTraceFailure) (opts :> optOutputSubdir) fn
     funcInfo       = funcInfoFile (opts :> optOutputSubdir) fn
     opts           = state :> compOptions
     fcyFile f      = withExtension (const ".fcy") f
@@ -204,13 +210,13 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
 extractFuncInfos funs =
   map (\fd -> (AHG.funcName fd, isIO (AHG.typeOf fd))) funs
  where
-  isIO AH.Untyped = False
-  isIO (AH.FType texp) = withIOResult texp
-  isIO (AH.CType _ texp) = withIOResult texp
+  isIO AH.Untyped      = False
+  isIO (AH.FType   ty) = withIOResult ty
+  isIO (AH.CType _ ty) = withIOResult ty
 
-  withIOResult (AH.TVar _) = False
-  withIOResult (AH.FuncType _ texp) = withIOResult texp
-  withIOResult (AH.TCons tc _) = tc == (curryPrelude, "C_IO")
+  withIOResult (AH.TVar        _) = False
+  withIOResult (AH.FuncType _ ty) = withIOResult ty
+  withIOResult (AH.TCons    tc _) = tc == (curryPrelude, "C_IO")
 
 -- Patch Prelude in order to add some exports for predefined items
 patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
@@ -242,18 +248,16 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
   return $ intercalate "\n\n" $ filter notNull
-    [ unlines (defaultPragmas : pragmas)
-    , showModuleHeader m td fd imps
+    [ unlines (defaultPragmas ++ pragmas)
+    , showModuleHeader (opts :> optTraceFailure) m td fd imps
     , unlines extimps
-    , showDecls m od td fd
+    , showDecls (opts :> optTraceFailure) m od td fd
     , unlines extdecls
     ]
  where
-  defaultPragmas :: String
-  defaultPragmas =
-      "{-# LANGUAGE MagicHash #-}\n"
-   ++ "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
-
+  defaultPragmas = [ "{-# LANGUAGE MagicHash #-}"
+                   , "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
+                   ]
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -262,7 +266,7 @@ lookupExternals opts fn = do
   exists <- doesFileExist extName
   if exists
     then showDetail opts    "External file found" >> readFile extName
-    else showDetail opts "No External file found" >> return ""
+    else showDetail opts "No external file found" >> return ""
     where extName = externalFile fn
 
 -- Split an external file into a pragma String, a list of imports and the rest

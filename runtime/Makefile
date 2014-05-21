@@ -50,9 +50,9 @@ endif
 	echo "Library"                                           >> $@
 	echo "  Build-Depends: $(CABAL_RUNTIMEDEPS)"             >> $@
 	echo "  Exposed-modules:"                                >> $@
-	echo "      Basics, CurryException, Debug, IDSupply"     >> $@
-	echo "    , Installation, MonadList, MonadSearch"        >> $@
-	echo "    , PrimTypes, SafeExec"                         >> $@
+	echo "      Basics, CurryException, Debug, FailInfo"     >> $@
+	echo "    , FailTrace, IDSupply, Installation"           >> $@
+	echo "    , MonadList, MonadSearch, PrimTypes, SafeExec" >> $@
 	echo "  Other-modules:"                                  >> $@
 	echo "      ConstStore, ID, Search, Solver"              >> $@
 	echo "    , Strategies, Types"                           >> $@

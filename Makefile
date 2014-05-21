@@ -298,7 +298,7 @@ endif
 	echo "" >> $@
 	echo 'ghcOptions :: String' >> $@
 ifeq ($(GLOBALINSTALL),yes)
-	echo 'ghcOptions = "$(subst ",\",$(GHC_OPTS)) -package kics2-runtime -package kics2-libraries"' >> $@
+	echo 'ghcOptions = "$(subst ",\",$(GHC_OPTS)) -package kics2-runtime -package kics2-libraries -package kics2-libraries-trace"' >> $@
 else
 	echo 'ghcOptions = "$(subst ",\",$(GHC_OPTS))"' >> $@
 endif

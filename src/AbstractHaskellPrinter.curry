@@ -21,12 +21,12 @@ import Maybe (isJust)
 import Read  (readNat)
 
 import AbstractHaskell
-import Names (isHaskellModule, prelude, curryPrelude)
+import Names (isHaskellModule, prelude, curryPrelude, addTrace)
 
-type Options = { currentModule :: String }
+type Options = { currentModule :: String, traceFailure :: Bool }
 
 defaultOptions :: Options
-defaultOptions = { currentModule := "" }
+defaultOptions = { currentModule := "", traceFailure := False }
 
 -- ---------------------------------------------------------------------------
 -- Functions to print an AbstractHaskell program in standard Curry syntax
@@ -38,31 +38,31 @@ defaultOptions = { currentModule := "" }
 --- otherwise only the type constructors.
 --- The potential comments in function declarations are formatted as
 --- documentation comments.
-showProg :: Prog -> String
-showProg (Prog m imports typedecls funcdecls opdecls) =
+showProg ::Bool ->  Prog -> String
+showProg trace (Prog m imports typedecls funcdecls opdecls) =
   intercalate "\n\n" $ filter (not . null) $
-    [ showModuleHeader m typedecls funcdecls imports
-    , showDecls m opdecls typedecls funcdecls
+    [ showModuleHeader trace m typedecls funcdecls imports
+    , showDecls trace m opdecls typedecls funcdecls
     ]
 
-showModuleHeader :: String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
-showModuleHeader m typedecls funcdecls imps = concat
-  [ "module " ++ m
+showModuleHeader :: Bool -> String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
+showModuleHeader trace m typedecls funcdecls imps = concat
+  [ "module " ++ (if trace then addTrace m else m)
   , " (" ++ exports ++ ")"
   , " where"
   , if null imports then "" else "\n\n" ++ imports
   ]
   where exports = showExports typedecls funcdecls
-        imports = showImports imps
+        imports = showImports trace imps
 
-showDecls :: String -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> String
-showDecls m opdecls typedecls funcdecls
+showDecls :: Bool -> String -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> String
+showDecls trace m opdecls typedecls funcdecls
   = intercalate "\n\n" $ filter (not . null)
     [ showOpDecls opdecls
     , showTypeDecls opts typedecls
     , showFuncDecls opts funcdecls
     ]
-    where opts = { currentModule := m }
+  where opts = { currentModule := m, traceFailure := trace }
 
 -- ---------------------------------------------------------------------------
 -- Module Header
@@ -101,13 +101,14 @@ showExports types funcs =
     getFuncName (Func _ (_,name) _ _ _ _) =
       if isInfixOpName name then "(" ++ name ++ ")" else name
 
-showImports :: [String] -> String
-showImports imports = prefixInter showImport imports "\n"
+showImports :: Bool -> [String] -> String
+showImports trace imports = prefixInter showImport imports "\n"
   where
   showImport imp
       -- Haskell modules are imported unqualified
     | isHaskellModule imp = "import " ++ imp
       -- all Curry modules are imported qualified
+    | trace               = "import qualified " ++ addTrace imp ++ " as " ++ imp
     | otherwise           = "import qualified " ++ imp
 
 -- ---------------------------------------------------------------------------
@@ -276,9 +277,9 @@ showLocalDecl opts (LocalPat pattern expr localdecls) =
   )
 showLocalDecl opts (LocalVar index) = showPattern opts (PVar index) ++ " free"
 
---- Shows an AbstractHaskell expression in standard Curry syntax.
 showExpr = showExprOpt defaultOptions
 
+--- Shows an AbstractHaskell expression in standard Curry syntax.
 showExprOpt :: Options -> Expr -> String
 showExprOpt _ (Var (_,name))   = showIdentifier name
 showExprOpt _ (Lit lit)        = showLiteral lit
@@ -364,12 +365,12 @@ showPattern opts (PAs (_,name) pat)     = showIdentifier name ++ "@"
 showPattern opts (PFuncComb qname pats) = showPattern opts (PComb qname pats)
 
 showLitPattern :: Options -> Literal -> String
-showLitPattern opts (Intc i) =
-  '(' : showSymbol opts (curryPrelude, "C_Int") ++ " " ++ showInt i ++ "#)"
-showLitPattern opts (Floatc f) =
-  '(' : showSymbol opts (curryPrelude, "C_Float") ++ " " ++ showFloat f ++ "#)"
-showLitPattern opts c@(Charc _) =
-  '(' : showSymbol opts (curryPrelude, "C_Char") ++ " '" ++ showCharc c ++ "'#)"
+showLitPattern opts l = '(' : cons ++ ' ' : showLiteral l ++ "#)"
+  where
+  cons = showSymbol opts $ case l of
+    Intc   _ -> (curryPrelude, "C_Int"  )
+    Floatc _ -> (curryPrelude, "C_Float")
+    Charc  _ -> (curryPrelude, "C_Char" )
 
 showPreludeCons :: Options -> Pattern -> String
 showPreludeCons opts p
@@ -405,18 +406,17 @@ showBranchExpr opts (Branch pattern expr)
    = (showPattern opts pattern) ++ " -> " ++ (showExprOpt opts expr)
 
 showLiteral :: Literal -> String
-showLiteral (Intc i)   = showInt i
+showLiteral (Intc   i) = showInt i
 showLiteral (Floatc f) = showFloat f
-showLiteral (Charc c)  = show c
--- showLiteral (Charc c)  = "'" ++ showCharc (Charc c) ++ "'"
+showLiteral (Charc  c) = show c
 
 -- Show an integer (no brackets around negative numbers):
 showInt :: Int -> String
-showInt i = if i>=0 then show i else '-':show (negate i)
+showInt i = if i >= 0 then show i else '-' : show (negate i)
 
 -- Show an integer (no brackets around negative numbers):
 showFloat :: Float -> String
-showFloat f = if f>=0 then show f else '-':show (negateFloat f)
+showFloat f = if f >= 0 then show f else '-' : show (negateFloat f)
 
 showCharc :: Literal -> String
 showCharc lit = case lit of
@@ -495,7 +495,7 @@ showConsListApplication opts expr = case expr of
   (Apply (Apply _ head) tail) -> case tail of
     (Symbol _) -> showBoxedExpr opts head
     _          -> (showBoxedExpr opts head) ++ "," ++ (showConsListApplication opts tail)
-  _                           -> error "AbstractHaskellPrinter.showConsListApplication"             
+  _                           -> error "AbstractHaskellPrinter.showConsListApplication"
 
 showSimpleListApplication :: Options -> Expr -> String
 showSimpleListApplication opts expr = case expr of

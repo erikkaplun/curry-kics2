@@ -18,12 +18,15 @@
 --- @version July 2013
 --------------------------------------------------------------------------------
 
-module LiftCase (liftCases) where
+module LiftCase (isCaseAuxFuncName, liftCases) where
 
 import AnnotatedFlatCurry
 import AnnotatedFlatCurryGoodies
 import List                      (isPrefixOf, partition, delete, nub, sortBy)
 import FiniteMap
+
+isCaseAuxFuncName :: String -> Bool
+isCaseAuxFuncName n = take 6 n == "_case_"
 
 --- @param - the program to be transformed
 liftCases :: Bool -> AProg TypeExpr -> AProg TypeExpr
