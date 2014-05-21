@@ -219,7 +219,7 @@ clean: $(CLEANCURRY)
 	cd currytools  && $(MAKE) clean
 	-cd docs/src   && $(MAKE) clean
 	cd frontend    && $(MAKE) clean
-	cd lib         && $(MAKE) clean
+	-cd lib        && $(MAKE) clean
 	cd runtime     && $(MAKE) clean
 	cd src         && $(MAKE) clean
 	-cd talks      && $(MAKE) clean
@@ -232,7 +232,7 @@ clean: $(CLEANCURRY)
 .PHONY: cleanall
 cleanall: clean
 	-cd docs/src && $(MAKE) cleanall
-	cd lib       && $(MAKE) cleanall
+	-cd lib      && $(MAKE) cleanall
 	cd scripts   && $(MAKE) cleanall
 	cd src       && $(MAKE) cleanall
 	-cd talks    && $(MAKE) cleanall
@@ -243,6 +243,7 @@ cleanall: clean
 .PHONY: maintainer-clean
 maintainer-clean: cleanall
 	rm -rf $(BINDIR)
+	rm -rf $(LIBDIR)
 
 .PHONY: .FORCE
 .FORCE:
