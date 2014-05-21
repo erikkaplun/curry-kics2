@@ -164,7 +164,8 @@ unGenRename n
   | n == "OP_Unit"         = "()"
   | take 8 n == "OP_Tuple" = mkTuple $ parseNat $ drop 8 n
   | take 2 n == "C_"       = drop 2 n
-  | take 3 n == "OP_"      = unRenameOp (drop 3 n)
+  | take 3 n == "OP_"      = unRenameOp  (drop 3 n)
+  | take 3 n == "HO_"      = unGenRename (drop 3 n)
   | otherwise              = n
 
 mkTuple :: Int -> String
