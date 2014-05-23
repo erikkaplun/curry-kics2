@@ -12,10 +12,10 @@ module ModuleDeps (ModuleIdent, Source, Errors, deps) where
 
 import Directory    (doesFileExist, getModificationTime)
 import Distribution (defaultParams, setFullPath, setQuiet, setSpecials)
-import FileGoodies  (lookupFileInPath)
 import FilePath     ( FilePath, dropExtension, takeExtension, takeBaseName
                     , dropTrailingPathSeparator
                     )
+import Files        (lookupFileInPath)
 import FiniteMap    (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry    ( Prog (..), readFlatCurryFile, flatCurryFileName
                     , readFlatCurryWithParseOptions

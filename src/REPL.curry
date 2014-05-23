@@ -9,32 +9,31 @@
 module REPL where
 
 import AbstractCurry
-import Char          (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
+import Char             (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
 import Directory
 import Distribution
-import FilePath
-  ( (</>), (<.>), dropExtension
-  , splitSearchPath, splitFileName, splitExtension
-  )
-import FileGoodies   (lookupFileInPath, splitPath)
-import FlatCurry     (flatCurryFileName, readFlatCurryFile)
-import FlatCurryGoodies(progImports)
+import FilePath         ( (</>), (<.>), dropExtension
+                        , splitSearchPath, splitFileName, splitExtension
+                        )
+import Files            (lookupFileInPath)
+import FlatCurry        (flatCurryFileName, readFlatCurryFile)
+import FlatCurryGoodies (progImports)
 import IO
 import IOExts
-import List          (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
-import ReadNumeric   (readNat)
-import ReadShowTerm  (readsTerm)
-import Sort          (mergeSort)
-import System        (system, getArgs, getEnviron, setEnviron, getPID, exitWith)
+import List             (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
+import ReadNumeric      (readNat)
+import ReadShowTerm     (readsTerm)
+import Sort             (mergeSort)
+import System           (system, getArgs, getEnviron, getPID, exitWith)
 import Time
 
 import AbstractCurryGoodies
-import Files         (removeFileIfExists)
-import GhciComm      (stopGhciComm)
+import Files                (removeFileIfExists)
+import GhciComm             (stopGhciComm)
 import qualified Installation as Inst
-import Names         (funcInfoFile)
+import Names               (funcInfoFile)
 import RCFile
-import Utils         (notNull, strip)
+import Utils               (notNull, strip)
 
 import Linker
 
@@ -69,11 +68,11 @@ defaultImportPaths :: ReplState -> IO [String]
 defaultImportPaths rst = do
   currypath <- getEnviron "CURRYPATH"
   let rclibs = rcValue (rst :> rcvars) "libraries"
-  return $ splitPath currypath ++ splitPath rclibs
+  return $ splitSearchPath currypath ++ splitSearchPath rclibs
 
 defaultImportPathsWith :: ReplState -> String -> IO [String]
 defaultImportPathsWith rst dirs =
-  (splitPath dirs ++) `liftIO` defaultImportPaths rst
+  (splitSearchPath dirs ++) `liftIO` defaultImportPaths rst
 
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []

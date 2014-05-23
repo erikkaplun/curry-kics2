@@ -10,7 +10,7 @@ module Files
     -- file creation
   , writeFileInDir, writeQTermFileInDir
     -- file deletion
-  , removeFileIfExists, (</?>)
+  , removeFileIfExists, (</?>), lookupFileInPath
   ) where
 
 import Directory
@@ -18,7 +18,7 @@ import Directory
   , doesFileExist, removeFile
   )
 import FilePath
-  ( FilePath, extSeparator, pathSeparator, joinPath, (</>), (<.>)
+  ( FilePath, joinPath, (</>), (<.>), isAbsolute
   , splitFileName, splitExtension, splitDirectories, takeDirectory
   )
 import List         (isPrefixOf, last, scanl1)
@@ -79,3 +79,21 @@ fn </?> sfx = joinPath $ reverse $ add (reverse $ splitDirectories sfx)
   add dir@(d:ds) dirs
     | dir `isPrefixOf` dirs = dirs
     | otherwise             = d : add ds dirs
+
+--- Looks up the first file with a possible extension in a list of directories.
+--- Returns Nothing if such a file does not exist.
+lookupFileInPath :: FilePath -> [String] -> [FilePath] -> IO (Maybe FilePath)
+lookupFileInPath file exts path
+  | isAbsolute file = lookupExtFile file exts
+  | otherwise       = lookupFile path
+  where
+    lookupFile []         = return Nothing
+    lookupFile (dir:dirs) = do
+      mbfile <- lookupExtFile (dir </> file) exts
+      maybe (lookupFile dirs) (return . Just) mbfile
+
+    lookupExtFile _ []         = return Nothing
+    lookupExtFile f (ext:exts) = do
+      let fExt = f <.> ext
+      exists <- doesFileExist fExt
+      if exists then return (Just fExt) else lookupExtFile f exts

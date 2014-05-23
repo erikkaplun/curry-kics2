@@ -12,7 +12,6 @@ import Maybe            (fromJust)
 import List             (intercalate, isPrefixOf)
 import Directory        (doesFileExist)
 import FilePath         (FilePath, (</>), dropExtension, normalise)
-import FileGoodies      (lookupFileInPath)
 import FiniteMap
 import FlatCurry
 import FlatCurryGoodies (updQNamesInProg)
@@ -26,6 +25,7 @@ import AbstractHaskellPrinter (showModuleHeader, showDecls)
 import CompilerOpts
 import Files                     ( withBaseName, withDirectory, withExtension
                                  , writeFileInDir, writeQTermFileInDir
+                                 , lookupFileInPath
                                  )
 import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase                  (liftCases)
