@@ -584,7 +584,13 @@ transExpr (Let vses e) =
   genIds (g ++ ge) (Let (zip vs es') e')
 
 -- non-determinism
-transExpr (Or e1 e2) = transExpr (qmark e1 e2)
+transExpr (Or e1 e2) =
+  transExpr e1 `bindM` \(vs1, e1') ->
+  transExpr e2 `bindM` \(vs2, e2') ->
+  takeNextID   `bindM` \i          ->
+  genIds (i:vs1 ++ vs2)
+         (choice [e1', e2', Var i, Var nestingIdx, Var constStoreVarIdx])
+--   transExpr (qmark e1 e2)
 
 -- free variable
 transExpr (Free vs e) =
@@ -834,6 +840,7 @@ consFail qn arg = liftFail
 showQName qn = list2FCList $ map (Lit . Charc) (q ++ '.' : n)
   where (q,n) = unRenamePrefixedFunc qn
 
+choice      = funcCall (basics, "choice")
 liftOr      = funcCall (basics, "narrow")
 liftOrs     = funcCall (basics, "narrows")
 liftGuard   = funcCall (basics, "guardCons")

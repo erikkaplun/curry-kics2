@@ -25,6 +25,9 @@ failCheck fun args x = case try x of
   Fail cd info -> failCons cd (traceFail fun args info)
   _            -> x
 
+choice :: NonDet a => a -> a -> IDSupply -> Cover -> ConstStore -> a
+choice x y s cd _ = let i = thisID s in i `seq` choiceCons cd i x y
+
 -- -----------------------------------------------------------------------------
 -- Auxiliaries for application of higher-order functions
 -- -----------------------------------------------------------------------------
