@@ -22,7 +22,7 @@ CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
 # Source modules of the compiler (without standard libraries)
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Analysis Classification CompilerOpts EliminateCond Files      \
-               FlatCurry2AbstractHaskell LiftCase Message ModuleDeps         \
+               LiftCase Message ModuleDeps                                   \
                Names SCC SimpleMake Splits State TransFunctions TransTypes   \
                Utils
 

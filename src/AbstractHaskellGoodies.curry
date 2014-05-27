@@ -6,7 +6,8 @@
 module AbstractHaskellGoodies where
 
 import AbstractHaskell
-import Char(toLower)
+import Char            (toLower)
+import List            (union)
 
 infixr 9 ~>
 
@@ -90,6 +91,11 @@ boolType = baseType (pre "Bool")
 dateType :: TypeExpr
 dateType = baseType ("Time", "CalendarTime")
 
+tyVarsOf :: TypeExpr -> [TVarIName]
+tyVarsOf (TVar        tv) = [tv]
+tyVarsOf (FuncType t1 t2) = tyVarsOf t1 `union` tyVarsOf t2
+tyVarsOf (TCons    _ tys) = foldr union [] (map tyVarsOf tys)
+
 --- A typed function declaration.
 tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
 tfunc name arity v t rules = Func "" name arity v (FType t) (Rules rules)
@@ -114,6 +120,9 @@ string2ac :: String -> Expr
 string2ac []     = constF (pre "[]")
 string2ac (c:cs) = applyF (pre ":") [Lit (Charc c), string2ac cs]
 
+simpleRule :: [Pattern] -> Expr -> Rules
+simpleRule ps e = Rules [Rule ps [noGuard e] []]
+
 noGuard :: Expr -> (Expr, Expr)
 noGuard e = (Symbol (pre "success"), e)
 
@@ -123,7 +132,7 @@ pre f = ("Prelude", f)
 cvar :: String -> Expr
 cvar s = Var (1,s)
 
--- let declaration (with possibly empty local delcarations):
+-- let declaration (with possibly empty local declarations):
 clet :: [LocalDecl] -> Expr -> Expr
 clet locals cexp = if null locals then cexp else Let locals cexp
 
@@ -134,6 +143,9 @@ ctvar s = TVar (1,s)
 list2ac :: [Expr] -> Expr
 list2ac []     = applyF (pre "[]") []
 list2ac (c:cs) = applyF (pre ":") [c, list2ac cs]
+
+declVar :: VarIName -> Expr -> LocalDecl
+declVar v e = LocalPat (PVar v) e []
 
 -----------------------------------------------------------------
 renameSymbolInProg :: (QName -> QName) -> Prog -> Prog

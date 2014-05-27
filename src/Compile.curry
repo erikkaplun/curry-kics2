@@ -27,7 +27,6 @@ import Files                     ( withBaseName, withDirectory, withExtension
                                  , writeFileInDir, writeQTermFileInDir
                                  , lookupFileInPath
                                  )
-import FlatCurry2AbstractHaskell (fcy2abs)
 import LiftCase                  (liftCases)
 import EliminateCond             (eliminateCond)
 import DefaultPolymorphic        (defaultPolymorphic)
@@ -161,10 +160,10 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
-  transFuncs <- runIOErrorState (transProg renamed) state
-  let ((tProg, modAnalysisResult), state') = either error id transFuncs
+  transFuncs <- runIOES (trProg renamed) state
+  let ((ahsFun@(AH.Prog n imps _ funs ops), modAnalysisResult), state')
+        = either error id transFuncs
   writeAnalysis (state' :> compOptions) fn modAnalysisResult
-  let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
 
   showDetail opts "Transforming type declarations"

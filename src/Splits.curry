@@ -10,12 +10,13 @@ module Splits (mkSplits) where
     bindings: list of triples (s, x, y): let x = leftSupply s, y = rightSupply s
 -}
 mkSplits :: Int -> [Int] -> (Int, Int, [(Int, Int, Int)])
-mkSplits _ [] = error "mkSplits3 with empty list"
-mkSplits s [x] = (x, s, [])
-mkSplits s xs@(_:_:_) = (s, nextr, (s, sl, sr) : spsl ++ spsr) where
+mkSplits _ []         = error "mkSplits3 with empty list"
+mkSplits s [x]        = (x, s, [])
+mkSplits s xs@(_:_:_) = (s, nextr, (s, sl, sr) : spsl ++ spsr)
+  where
   (sl, nextl, spsl) = mkSplits (s + 1) ys
   (sr, nextr, spsr) = mkSplits nextl zs
-  (ys, zs) = half xs
+  (ys, zs)          = half xs
 
 -- split a list into two halfs
 half :: [a] -> ([a], [a])

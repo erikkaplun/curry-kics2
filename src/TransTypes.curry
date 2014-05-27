@@ -13,7 +13,6 @@ import qualified FlatCurry as FC
 import FlatCurryGoodies
 import AbstractHaskell
 import AbstractHaskellGoodies
-import FlatCurry2AbstractHaskell
 import FiniteMap
 import List (intercalate, intersperse)
 import Names
@@ -61,6 +60,12 @@ genTypeDeclarations hoResult tdecl = case tdecl of
       clisttype = listType ctype
   _ -> error "TransTypes.genTypeDeclarations"
 
+fcy2absVis :: FC.Visibility -> Visibility
+fcy2absVis FC.Public  = Public
+fcy2absVis FC.Private = Private
+
+fcy2absTVar :: FC.TVarIndex -> TVarIName
+fcy2absTVar i = (i, 't' : show i)
 
 fcy2absCDecl :: ConsHOResult -> FC.ConsDecl -> [ConsDecl]
 fcy2absCDecl hoResult (FC.Cons qf ar vis texps)

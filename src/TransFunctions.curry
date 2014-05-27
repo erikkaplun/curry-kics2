@@ -7,15 +7,17 @@
 --- --------------------------------------------------------------------------
 {-# LANGUAGE Records #-}
 module TransFunctions
-  ( State (..), defaultState, AnalysisResult, transProg, runIOErrorState
+  ( State (..), defaultState, AnalysisResult, trProg, runIOES
   ) where
 
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
   , lookupFM, plusFM, delListFromFM)
+import Function (first)
 import List (find, intersperse, isPrefixOf)
 import Maybe
 
-import qualified AbstractHaskell as AH
+import qualified AbstractHaskell        as AH
+import qualified AbstractHaskellGoodies as AH
 import AbstractHaskellPrinter
 import Analysis
 import CompilerOpts
@@ -32,55 +34,66 @@ import Splits
 -- This could also be done by inspecting the type signature of the respective
 -- function, but it may not be accurate for various reasons.
 
-type AnalysisResult = (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
+type AnalysisResult =
+  (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
 
 -- ---------------------------------------------------------------------------
--- IO state monad, like StateT IO
+-- IO error state monad, like `EitherT (StateT IO)`
 -- ---------------------------------------------------------------------------
 
-data IOErrorState s a = M (s -> IO (Either String (a, s)))
+data IOES s a = M (s -> IO (Either String (a, s)))
 
-runIOErrorState :: IOErrorState s a -> s -> IO (Either String (a, s))
-runIOErrorState (M x) = x
+runIOES :: IOES s a -> s -> IO (Either String (a, s))
+runIOES (M x) = x
 
-returnM :: a -> IOErrorState s a
+returnM :: a -> IOES s a
 returnM x = M $ \s -> return (Right (x, s))
 
-(>+=) :: IOErrorState s a -> (a -> IOErrorState s b) -> IOErrorState s b
+(>+=) :: IOES s a -> (a -> IOES s b) -> IOES s b
 f >+= g = M $ \s -> do
-  eex <- runIOErrorState f s
+  eex <- runIOES f s
   case eex of
     Left  err     -> return (Left err)
-    Right (x, s') -> runIOErrorState (g x) s'
+    Right (x, s') -> runIOES (g x) s'
 
-(>+) :: IOErrorState s a -> IOErrorState s b -> IOErrorState s b
+(>+) :: IOES s a -> IOES s b -> IOES s b
 f >+ g = f >+= \_ -> g
 
-failM :: String -> IOErrorState s a
+failM :: String -> IOES s a
 failM err = M $ \_ -> return (Left err)
 
-getState :: IOErrorState s s
+getState :: IOES s s
 getState = M $ \s -> return (Right (s, s))
 
-putState :: s -> IOErrorState s ()
+putState :: s -> IOES s ()
 putState s = M $ \ _ -> return (Right ((), s))
 
-updState :: (s -> s) -> IOErrorState s ()
+updState :: (s -> s) -> IOES s ()
 updState f = getState >+= \s -> putState (f s)
 
-liftIO :: IO a -> IOErrorState s a
+liftIO :: IO a -> IOES s a
 liftIO act = M $ \s -> do
   a <- act
   return (Right (a, s))
 
-mapM :: (a -> IOErrorState s b) -> [a] -> IOErrorState s [b]
+liftM :: (a -> b) -> IOES s a -> IOES s b
+liftM f act = act >+= \x -> returnM (f x)
+
+liftM2 :: (a -> b -> c) -> IOES s a -> IOES s b -> IOES s c
+liftM2 f a b = a >+= \x -> b >+= \y -> returnM (f x y)
+
+mapM :: (a -> IOES s b) -> [a] -> IOES s [b]
 mapM _ [] = returnM []
 mapM f (m:ms) = f m       >+= \m'  ->
                 mapM f ms >+= \ms' ->
                 returnM (m':ms')
 
+foldM :: (a -> b -> IOES s a) -> a -> [b] -> IOES s a
+foldM _ e []       = returnM e
+foldM f e (x : xs) = f e x >+= \fex -> foldM f fex xs
+
 -- ---------------------------------------------------------------------------
--- Internal state
+-- Internal state and access functions
 -- ---------------------------------------------------------------------------
 
 -- map a constructor name to the name of its defining type
@@ -104,12 +117,12 @@ defaultState =
   , hoResultType := initTypeHOResult
   , hoResultCons := initHOResult
   , hoResultFunc := initHOResult
-  , nextID       := idVar
+  , nextID       := 0
   , detMode      := False
   , compOptions  := defaultOptions
   }
 
-type M a = IOErrorState State a
+type M a = IOES State a
 
 -- type map
 
@@ -223,11 +236,11 @@ strictSupply = getCompOption $ \opts ->
   (opts :> optOptimization >= OptimStrictSupply)
 
 -- ---------------------------------------------------------------------------
--- Program transformation
+-- Program translation
 -- ---------------------------------------------------------------------------
 
-transProg :: Prog -> M (Prog, AnalysisResult)
-transProg p@(Prog m is ts fs _) =
+trProg :: Prog -> M (AH.Prog, AnalysisResult)
+trProg p@(Prog m is ts fs _) =
   getState >+= \st ->
   let modNDRes     = analyseND     p (st :> ndResult)
       modHOResType = analyseHOType p (st :> hoResultType)
@@ -250,44 +263,46 @@ transProg p@(Prog m is ts fs _) =
   addHOConsAnalysis modHOResCons >+
   addHOFuncAnalysis modHOResFunc >+
   addTypeMap        modTypeMap   >+
-  -- translation of the functions
-  mapM transFunc fs >+= \fss ->
-  returnM $ (Prog m is [] (concat fss) [], anaResult)
+  -- trlation of the functions
+  mapM trFunc fs >+= \fss ->
+  returnM $ (AH.Prog m is [] (concat fss) [], anaResult)
 
 --- Register the types names of constructors to be able to retrieve
 --- the types for constructors used in pattern matching.
 --- May be needless now because the case lifting now also creates correct types.
 getConsMap :: [TypeDecl] -> TypeMap
 getConsMap ts = listToFM (<)
-              $ concatMap (\ (Type qn _ _ cs) -> map (\c -> (consName c, qn)) cs)
+              $ concatMap (\(Type qn _ _ cs) -> map (\c -> (consName c, qn)) cs)
               $ filter (not . isTypeSyn) ts
 
 -- ---------------------------------------------------------------------------
--- Translation of Curry functions
+-- Translation of function declarations
 -- ---------------------------------------------------------------------------
 
-transFunc :: FuncDecl -> M [FuncDecl]
-transFunc f@(Func qn _ _ _ _) =
+trFunc :: FuncDecl -> M [AH.FuncDecl]
+trFunc f@(Func qn _ _ _ _) =
   checkGlobal f  >+
   getCompOptions >+= \opts ->
   case opts :> optOptimization > OptimNone of
     -- translate all functions as non-deterministic by default
-    False -> transNDFunc f >+= \ fn -> returnM [fn]
+    False -> trNDFunc f >+= \ fn -> returnM [fn]
     True  ->
       getNDClass     qn >+= \ndCl ->
       getFuncHOClass qn >+= \hoCl ->
       liftIO (showAnalysis opts (snd qn ++ " is " ++ show (ndCl, hoCl))) >+
       case ndCl of
-        ND -> transNDFunc f >+= \ fn -> returnM [fn]
+        ND -> trNDFunc f >+= \ fn -> returnM [fn]
         D  -> case hoCl of
           -- create both deterministic and non-deterministic function
-          FuncHO                  -> transDetFunc f >+= \ fd ->
-                                     transNDFunc  f >+= \ fn ->
+          FuncHO                  -> trDetFunc f >+= \ fd ->
+                                     trNDFunc  f >+= \ fn ->
                                      returnM [fd, fn]
-          FuncHORes _             -> transDetFunc f >+= \ fd -> returnM [fd]
-          FuncFO | isGlobalDecl f -> transGlobalDecl f
-                 | otherwise      -> transDetFunc f >+= \ fn -> returnM [fn]
+          FuncHORes _             -> trDetFunc f >+= \ fd -> returnM [fd]
+          FuncFO | isGlobalDecl f -> trGlobalDecl f
+                 | otherwise      -> trDetFunc f >+= \ fn -> returnM [fn]
 
+--- Check if a function representing a global variable
+--- is first-order and determinismic.
 checkGlobal :: FuncDecl -> M ()
 checkGlobal f@(Func qn _ _ _ _)
   | isGlobalDecl f =
@@ -303,6 +318,24 @@ checkGlobal f@(Func qn _ _ _ _)
 
 --- Compute if the function declaration is intended to represent
 --- a global variable, i.e., has the form `fun = global val Temporary`.
+isGlobalDecl :: FuncDecl -> Bool
+isGlobalDecl (Func _ a _ _ r) = case r of
+  (Rule [] e) -> a == 0 && isGlobalCall e
+  _           -> False
+
+isGlobalCall :: Expr -> Bool
+isGlobalCall e = case e of
+  Comb FuncCall fname [_, c] -> fname == globalGlobal
+                             && c     == Comb FuncCall globalTemporary []
+  _                          -> False
+
+globalGlobal :: QName
+globalGlobal = renameQName ("Global", "global")
+
+globalTemporary :: QName
+globalTemporary = renameQName ("Global", "Temporary")
+
+--- Translate a global declaration of the form `fun = global val Temporary`.
 --- This will be translated into
 ---
 ---     d_C_fun _ _  = global_C_fun
@@ -312,57 +345,51 @@ checkGlobal f@(Func qn _ _ _ _)
 ---                               C_Temporary emptyCs
 ---
 --- to make it a constant.
-isGlobalDecl :: FuncDecl -> Bool
-isGlobalDecl (Func _ a _ _ r) = case r of
-  (Rule [] e) -> a == 0 && isGlobalCall e
-  _           -> False
-
-isGlobalCall :: Expr -> Bool
-isGlobalCall e = case e of
-  Comb FuncCall fname [_, c] -> fname == renameQName ("Global", "global")
-                             && c     == globalTemporary
-  _                          -> False
-
-globalTemporary :: Expr
-globalTemporary = Comb ConsCall (renameQName ("Global", "Temporary")) []
-
-transGlobalDecl :: FuncDecl -> M [FuncDecl]
-transGlobalDecl (Func qn a vis t r) = case r of
-  (Rule _ (Comb _ fname [val, _])) | a == 0 ->
-    transCompleteExpr val >+= \trVal ->
-    renameFun qn          >+= \qn' ->
-    renameFun fname       >+= \newfname ->
-    transTypeExpr 0 t     >+= \t'    ->
+trGlobalDecl :: FuncDecl -> M [AH.FuncDecl]
+trGlobalDecl (Func qn a v t r) = case r of
+  (Rule _ (Comb _ _ [e, _]))  | a == 0  ->
+    trCompleteExpr e       >+= \e'      ->
+    renameFun qn           >+= \qn'     ->
+    renameFun globalGlobal >+= \global' ->
+    trDetType 0 t          >+= \t'      ->
     returnM $
-      [ Func qn' 2 vis t' (Rule [0, 1] (Comb FuncCall (mkGlobalName qn) []))
-      , Func (mkGlobalName qn) 0 Private t
-          (Rule [] (Comb FuncCall newfname
-                [ Let [ (constStoreVarIdx, emptyCs  )
-                      , (nestingIdx      , initCover)
-                      ]
-                    trVal
-                , globalTemporary
-                , initCover
-                , emptyCs
-                ]))
+      [ AH.Func "" qn' 2 (cvVisibility v) (toTypeSig t')
+        (AH.simpleRule (map AH.PVar [coverName, constStoreName])
+                    (AH.Symbol $ mkGlobalName qn))
+      , AH.Func "" (mkGlobalName qn) 0 AH.Private
+        (toTypeSig $ trHOTypeExpr AH.FuncType t)
+        (AH.simpleRule [] (AH.applyF global'
+              [ AH.Let (map (uncurry AH.declVar)
+                            [ (constStoreName, emptyCs  )
+                            , (coverName     , initCover)
+                            ])
+                       e'
+              , AH.Symbol globalTemporary
+              , initCover
+              , emptyCs
+              ]))
       ]
-  _ -> failM "TransFunctions.transGlobalDecl: no global declaration"
+  _ -> failM "TransFunctions.trGlobalDecl: no global declaration"
+
+cvVisibility :: Visibility -> AH.Visibility
+cvVisibility Public  = AH.Public
+cvVisibility Private = AH.Private
 
 --- Translation into a deterministic function.
-transDetFunc :: FuncDecl -> M FuncDecl
-transDetFunc (Func qn a v t r) = doInDetMode True $
+trDetFunc :: FuncDecl -> M AH.FuncDecl
+trDetFunc (Func qn a v t r) = doInDetMode True $
   renameFun qn      >+= \qn' ->
-  transRule qn' a r >+= \r'  ->
-  transTypeExpr a t >+= \t'  ->
-  returnM (Func qn' (a + 1) v t' r')
+  trDetType  a t >+= \t'  ->
+  trRule qn' a r >+= \r'  ->
+  returnM (AH.Func "" qn' (a + 1) (cvVisibility v) (toTypeSig t') r')
 
 --- Translation into a non-deterministic function.
-transNDFunc :: FuncDecl -> M FuncDecl
-transNDFunc (Func qn a v t r) = doInDetMode False $
+trNDFunc :: FuncDecl -> M AH.FuncDecl
+trNDFunc (Func qn a v t r) = doInDetMode False $
   renameFun qn        >+= \qn' ->
-  transRule qn'   a r >+= \r'  ->
-  transNDTypeExpr a t >+= \t'  ->
-  returnM (Func qn' (a + 2) v t' r')
+  trNonDetType a t >+= \t'  ->
+  trRule qn'   a r >+= \r'  ->
+  returnM (AH.Func "" qn' (a + 2) (cvVisibility v) (toTypeSig t') r')
 
 --- Rename a function w.r.t. its non-determinism
 --- and higher-order classification.
@@ -380,298 +407,376 @@ renameCons qn@(q, n) =
   getConsHOClass qn >+= \hoCl ->
   returnM (q, consPrefix dm hoCl ++ n)
 
--- translate a type expressen by inserting an additional ConstStore and
--- EncapsulationDepth type
+-- -----------------------------------------------------------------------------
+-- Translation of Types
+-- -----------------------------------------------------------------------------
 
-transExprType :: Bool -> TypeExpr -> TypeExpr
-transExprType deterministic
-  | deterministic = transHOTypeExprWith (\t1 t2 -> foldr1 FuncType [t1, coverType, storeType, t2])
-  | otherwise     = transHOTypeExprWith funcType
+toTypeSig :: AH.TypeExpr -> AH.TypeSig
+toTypeSig ty | null tyVars = AH.FType ty
+             | otherwise   = AH.CType ctxt ty
+  where
+  tyVars = AH.tyVarsOf ty
+  ctxt   = map (\tv -> AH.Context (curryPrelude, "Curry") [tv]) tyVars
 
-transTypeExpr :: Int -> TypeExpr -> M TypeExpr
-transTypeExpr = transTypeExprWith
-  (\t1 t2 -> foldr1 FuncType [t1, coverType, storeType, t2])
-  (\t     -> foldr1 FuncType [coverType, storeType, t])
+trDetType :: Int -> TypeExpr -> M AH.TypeExpr
+trDetType = trTypeExpr detFuncType
+  (\t -> foldr1 AH.FuncType [coverType, storeType, t])
 
 -- translate a type expression by replacing (->) with Funcs and inserting
 -- additional IDSupply, ConstStore and EncapsulationDepth types
-transNDTypeExpr :: Int -> TypeExpr -> M TypeExpr
-transNDTypeExpr  = transTypeExprWith funcType
-                   (FuncType supplyType . FuncType coverType . FuncType storeType)
+trNonDetType :: Int -> TypeExpr -> M AH.TypeExpr
+trNonDetType = trTypeExpr nondetFuncType
+  (AH.FuncType supplyType . AH.FuncType coverType . AH.FuncType storeType)
 
-transTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr)
-                  -> (TypeExpr -> TypeExpr)
-                  -> Int -> TypeExpr -> M TypeExpr
-transTypeExprWith combFunc addArgs n t
+trExprType :: TypeExpr -> M AH.TypeExpr
+trExprType ty =
+  isDetMode >+= \dm ->
+  returnM $ trHOTypeExpr (if dm then detFuncType else nondetFuncType) ty
+
+trTypeExpr :: (AH.TypeExpr -> AH.TypeExpr -> AH.TypeExpr)
+           -> (AH.TypeExpr -> AH.TypeExpr)
+           -> Int -> TypeExpr -> M AH.TypeExpr
+trTypeExpr combFunc addArgs n t
     -- all arguments are applied
-  | n == 0 = returnM $ addArgs (transHOTypeExprWith combFunc t)
+  | n == 0 = returnM $ addArgs (trHOTypeExpr combFunc t)
   | n >  0 = case t of
               (FuncType t1 t2) ->
-                transTypeExprWith combFunc addArgs (n-1) t2 >+= \t2' ->
-                returnM $ FuncType (transHOTypeExprWith combFunc t1) t2'
-              _                -> failM $ "transTypeExprWith: " ++ show (n, t)
-  | n <  0 = failM $ "transTypeExprWith: " ++ show (n, t)
+                trTypeExpr combFunc addArgs (n-1) t2 >+= \t2' ->
+                returnM $ AH.FuncType (trHOTypeExpr combFunc t1) t2'
+              _                -> failM $ "trTypeExpr: " ++ show (n, t)
+  | n <  0 = failM $ "trTypeExpr: " ++ show (n, t)
 
--- transforms higher order type expressions using a function that combines
--- the two type-expressions of FuncTypes.
-transHOTypeExprWith :: (TypeExpr -> TypeExpr -> TypeExpr) -> TypeExpr -> TypeExpr
-transHOTypeExprWith _    t@(TVar       _) = t
-transHOTypeExprWith comb (FuncType t1 t2) = comb (transHOTypeExprWith comb t1)
-                                                 (transHOTypeExprWith comb t2)
-transHOTypeExprWith comb (TCons    qn ts) = TCons qn
-                                            (map (transHOTypeExprWith comb) ts)
+--- Transform a higher order type expressions using a function
+--- to combine the two type expressions of a functional type.
+trHOTypeExpr :: (AH.TypeExpr -> AH.TypeExpr -> AH.TypeExpr)
+             -> TypeExpr -> AH.TypeExpr
+trHOTypeExpr _ (TVar         i) = AH.TVar (cvTVarIndex i)
+trHOTypeExpr f (FuncType t1 t2) = f (trHOTypeExpr f t1) (trHOTypeExpr f t2)
+trHOTypeExpr f (TCons    qn ts) = AH.TCons qn (map (trHOTypeExpr f) ts)
+
+cvTVarIndex :: TVarIndex -> AH.TVarIName
+cvTVarIndex i = (i, 't' : show i)
+
+supplyType :: AH.TypeExpr
+supplyType  = AH.TCons (basics, "IDSupply") []
+
+coverType :: AH.TypeExpr
+coverType = AH.TCons (basics, "Cover") []
+
+storeType :: AH.TypeExpr
+storeType = AH.TCons (basics, "ConstStore") []
+
+detFuncType :: AH.TypeExpr -> AH.TypeExpr -> AH.TypeExpr
+detFuncType t1 t2 = foldr1 AH.FuncType [t1, coverType, storeType, t2]
+
+nondetFuncType :: AH.TypeExpr -> AH.TypeExpr -> AH.TypeExpr
+nondetFuncType t1 t2 = AH.TCons (basics, "Func") [t1, t2]
+
+-- -----------------------------------------------------------------------------
+-- Translation of Rules and Expressions
+-- -----------------------------------------------------------------------------
 
 --- Translate a single rule of a function.
 --- Adds a supply argument to non-deterministic versions and a constStore
---- and nesting index argument to all functions.
-transRule :: QName -> Int -> Rule -> M Rule
-transRule qn _ (Rule vs e) =
+--- and coder depth argument to all functions.
+trRule :: QName -> Int -> Rule -> M AH.Rules
+trRule qn _ (Rule vs e) =
   isDetMode         >+= \dm ->
-  transBody qn vs e >+= \e' ->
   isTraceFailure    >+= \fc ->
-  let vs' = vs ++ [suppVarIdx | not dm] ++ [nestingIdx, constStoreVarIdx]
-      e'' = if fc then failCheck qn vs e' else e'
-  in  returnM $ Rule vs' e''
-transRule qn a (External _) =
+  trBody qn vs e    >+= \e' ->
+  let vs' = map cvVarIndex vs
+            ++ [topSupplyName | not dm] ++ [coverName, constStoreName]
+      e'' = if fc then failCheck qn (map cvVar vs) e' else e'
+  in  returnM $ AH.simpleRule (map AH.PVar vs') e''
+trRule qn a (External _) =
   isDetMode      >+= \dm ->
   isTraceFailure >+= \fc ->
   let vs  = [1 .. a]
-      vs' = vs ++ [suppVarIdx | not dm] ++ [nestingIdx, constStoreVarIdx]
-      e   = funcCall (externalFunc qn) (map Var vs')
-      e'  = if fc then failCheck qn vs e else e
-  in returnM $ Rule vs' e'
+      vs' = map cvVarIndex vs
+            ++ [topSupplyName | not dm] ++ [coverName, constStoreName]
+      e   = funcCall (externalFunc qn) (map AH.Var vs')
+      e'  = if fc then failCheck qn (map cvVar vs) e else e
+  in  returnM $ AH.simpleRule (map AH.PVar vs') e'
 
 --- Translate a function body.
-transBody :: QName -> [Int] -> Expr -> M Expr
-transBody qn vs exp = case exp of
-  -- case expression with variable
-  (Case ct e@(Var i) bs) ->
-    -- translate branches
-    mapM transBranch bs >+= \bs' ->
-    -- create branches for non-deterministic constructors
-    let bs'' = addUnifIntCharRule bs bs'
-        pConsName = consNameFromPattern $ head bs in
-    newBranches qn vs i pConsName >+= \ns ->
-    -- TODO: superfluous?
-    transExpr e >+= \(_, e') ->
-    returnM $ Case ct e' (bs'' ++ ns)
-  _ ->transCompleteExpr exp
+trBody :: QName -> [Int] -> Expr -> M AH.Expr
+trBody qn vs e = case e of
+  Case _ (Var i) bs ->
+    getMatchedType (head bs)  >+= \ty  ->
+    mapM trBranch bs          >+= \bs' ->
+    let lbs = litBranches bs' in
+    consBranches qn vs i ty   >+= \cbs ->
+    returnM $ AH.Case (cvVar i) (bs' ++ lbs ++ cbs)
+  _ -> trCompleteExpr e
 
-addUnifIntCharRule :: [BranchExpr] -> [BranchExpr] -> [BranchExpr]
-addUnifIntCharRule bs bs' =
-  case bs of
-   (Branch (LPattern (Intc  _)) _ :_) -> addRule True  bs bs' []
-   (Branch (LPattern (Charc _)) _ :_) -> addRule False bs bs' []
-   _                                  -> bs'
-  where
-    addRule isInt bs1 bs2 rules = case (bs1, bs2) of
-      (Branch (LPattern l) _ : nextBs, Branch p e : nextBs')
-        -> Branch p e : addRule isInt nextBs nextBs' ((Lit l, e) : rules)
-
-      -- TODO: magic number
-      _ -> Branch (Pattern (constr isInt) [5000])
-                  (funcCall (matchFun isInt)
-                    [ list2FCList $ map pair2FCPair $ reverse rules
-                    , Var 5000, Var nestingIdx, Var constStoreVarIdx
-                    ])
-          : bs2
-    matchFun True  = (basics, "matchInteger")
-    matchFun False = (basics, "matchChar")
-    constr   True  = renameQName (prelude, "CurryInt")
-    constr   False = (curryPrelude, "CurryChar")
-
-consNameFromPattern :: BranchExpr -> QName
-consNameFromPattern (Branch (Pattern p _) _) = p
-consNameFromPattern (Branch (LPattern  l) _) = case l of
+getMatchedType :: BranchExpr -> M QName
+getMatchedType (Branch (Pattern p _) _) = getType p
+getMatchedType (Branch (LPattern  l) _) = returnM $ case l of
   Intc _   -> curryInt
   Floatc _ -> curryFloat
   Charc _  -> curryChar
 
--- translate case branch and return the name of the constructor
-transBranch :: BranchExpr -> M BranchExpr
-transBranch (Branch p e) =
-  transPattern      p >+= \p' ->
-  transCompleteExpr e >+= \e' ->
-  returnM (Branch p' e')
+trBranch :: BranchExpr -> M AH.BranchExpr
+trBranch (Branch p e) = liftM2 AH.Branch (trPattern p) (trCompleteExpr e)
 
-transPattern :: Pattern -> M Pattern
-transPattern (Pattern qn vs) =
+trPattern :: Pattern -> M AH.Pattern
+trPattern (Pattern qn vs) =
   renameCons qn >+= \qn' ->
-  returnM (Pattern qn' vs)
-transPattern l@(LPattern  _) = returnM l
+  returnM $ AH.PComb qn' $ map (AH.PVar . cvVarIndex) vs
+trPattern (LPattern    l) = returnM $ AH.PLit $ cvLit l
 
--- create new case branches for added non-deterministic constructors
--- qn'      : qualified name of the function currently processed
--- vs       : function arguments
--- i        : variable matched by case
--- pConsName: name of an arbitrary constructor of the type of the matched
---            variable
-newBranches :: QName -> [Int] -> Int -> QName -> M [BranchExpr]
-newBranches qn' vs i pConsName =
+--- During unification the internal representation of `Int` and `Char` values
+--- is changed to an algebraic data type. Hence, we have to extend the pattern
+--- matching on literals to also cope with this additional representation.
+--- Therefore, this function collects all literal-matching branches and
+--- creates a call to a dedicated matching function. Thus, the branches
+---
+---    <lit_1> -> <expr_1>
+---    ...
+---    <lit_n> -> <expr_n>
+---
+--- are extended with an additional branch
+---
+---    CurryInt l ->
+---     matchInteger [(<lit_1>, <expr_1>), ..., (<lit_n>, <expr_n>)] l cd cs
+---
+--- which performs mathcing on the additional representation.
+litBranches :: [AH.BranchExpr] -> [AH.BranchExpr]
+litBranches bs = case branchPairs of
+    (AH.Intc  _, _) : _ -> [mkBranch (renameQName (prelude, "CurryInt"))
+                                     (basics, "matchInteger")]
+    (AH.Charc _, _) : _ -> [mkBranch (curryPrelude, "CurryChar")
+                                     (basics, "matchChar")]
+    _                   -> []
+  where
+    branchPairs = [ (l, e) | AH.Branch (AH.PLit l) e <- bs ]
+    mkBranch cons match = AH.Branch (AH.PComb cons [AH.PVar litVar])
+                        $ funcCall match
+                          [ AH.list2ac $ map pair2ac
+                                       $ map (first AH.Lit) branchPairs
+                          , AH.Var litVar, coverVar, constStoreVar
+                          ]
+    litVar = (5000, "l")
+
+--- Generate additional case branches for added non-deterministic constructors.
+---
+--- For example, consider the function `not`:
+---
+---    not x = case x of
+---      True  -> False
+---      False -> True
+---
+--- This function will be translated to:
+---
+---    not x1 cd cs = case x1 of
+---      C_True                  -> C_False
+---      C_False                 -> C_True
+---      Choice_C_Bool  d i l r  -> narrow d i (not l cd cs) (not r cd cs)
+---      Choices_C_Bool d i xs   -> narrows cs d i (\z -> not z cd cs) xs
+---      Guard_C_Bool   d   c x  -> guardCons d c (not x cd cs)
+---      Fail_C_Bool    d   info -> failCons d info
+---      _                       -> consFail (showCons x1)
+---
+--- where the last 5 branches are generated using this function.
+---
+--- @param qn'      : Qualified name of the function currently processed,
+---                   used for recursive calls.
+--- @param vs       : Function arguments
+--- @param i        : Variable matched by case
+--- @param pConsName: Name of the type of the matched variable,
+---                   used to compute the names of the additional constructors.
+consBranches :: QName -> [Int] -> Int -> QName -> M [AH.BranchExpr]
+consBranches qn' vs v typeName =
   isDetMode      >+= \dm ->
   isTraceFailure >+= \fc ->
-  -- lookup type name to create appropriate constructor names
-  getType pConsName >+= \ typeName ->
-  let Just pos = find (==i) vs
-      suppVar = if dm then [] else [suppVarIdx]
-      (vs1, _ : vs2) = break (==pos) vs
-      call v = funcCall qn' $
-                map Var (vs1 ++ v : vs2
-                             ++ suppVar
-                             ++ [nestingIdx, constStoreVarIdx])
-      -- pattern matching on guards will combine the new constraints with the given
-      -- constraint store
-      guardCall  cVar valVar   = strictCall (funcCall qn' $ map Var (vs1 ++ valVar : vs2 ++ suppVar ++ [nestingIdx]))
-                                 (combConstr cVar constStoreVarIdx)
-      combConstr cVar constVar = funcCall addCs [Var cVar, Var constVar]
-      -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      -- TODO: This is probably the dirtiest hack in the compiler:
-      -- Because FlatCurry does not allow lambda abstractions, we construct
-      -- a call to a function like "\f x1 x2 x-42 x3" which is replaced to
-      -- the expression (\z -> f x1 x2 z x3) in the module
-      -- FlatCurry2AbstractHaskell.
-      -- EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL ! EVIL
-      lCall = lambdaCall qn'
-            $ map Var (vs1 ++ (-42) : vs2 ++ suppVar ++ [nestingIdx,constStoreVarIdx]) in
-  returnM $
-    [ Branch (Pattern (mkChoiceName typeName) [1000, 1001, 1002, 1003])
-             (narrow [Var 1000, Var 1001, call 1002, call 1003])
-    , Branch (Pattern (mkChoicesName typeName) [1000, 1001, 1002])
-             (narrows [Var constStoreVarIdx, Var 1000, Var 1001, lCall, Var 1002])
-    , Branch (Pattern (mkGuardName typeName) [1000, 1001, 1002])
-             (liftGuard [Var 1000, Var 1001, guardCall 1001 1002])
-    , Branch (Pattern (mkFailName typeName) [1000, 1001])
-              (if fc then liftFail [Var 1000, Var 1001]
-                     else traceFail (Var 1000) qn' (map Var vs) (Var 1001))
-    , Branch (Pattern ("", "_") [])
-             (consFail qn' (Var i))
-    ] -- TODO Magic numbers?
+  let (vs1, _ : vs2) = break (== v) vs
+      vars1     = map cvVar vs1
+      vars2     = map cvVar vs2
+      mbSuppVar = [topSupplyVar | not dm]
 
--- Complete translation of an expression where all newly introduced supply
--- variables are already bound by nested let expressions
-transCompleteExpr :: Expr -> M Expr
-transCompleteExpr e =
-  strictSupply      >+= \s       ->
-  getNextID         >+= \i       -> -- save current variable id
-  transExpr e       >+= \(g, e') ->
-  mkLetIdVar s g e' >+= \e''     ->
-  setNextID i       >+              -- and reset it variable id
-  returnM e''
-    where
-    mkLetIdVar strict g e' = case g of
-      []  -> returnM e'
-      [v] -> returnM (letIdVar strict [(v, Var suppVarIdx)] e')
-      _   -> failM "TransFunctions.transCompleteExpr"
+      recCall x = funcCall qn' $ concat
+        [ vars1, x : vars2 , mbSuppVar, [coverVar, constStoreVar] ]
 
--- transform an expression into a list of new supply variables to be bound
--- and the new expression
-transExpr :: Expr -> M ([VarIndex], Expr)
--- variables
-transExpr e@(Var _)        = returnM ([], e)
+      -- pattern matching on guards will combine the new constraints
+      -- with the given constraint store
+      guardCall = strictCall
+        (funcCall qn' $ concat [vars1, AH.Var e : vars2, mbSuppVar, [coverVar]])
+        (funcCall addCs [AH.Var c, constStoreVar])
 
--- literals
-transExpr (Lit (Intc   i)) = returnM ([], int   i)
-transExpr (Lit (Floatc f)) = returnM ([], float f)
-transExpr (Lit (Charc  c)) = returnM ([], char  c)
+      lambdaExpr = AH.Lambda [AH.PVar z] $ AH.applyF qn' $ concat
+        [vars1, (AH.Var z) : vars2, mbSuppVar, [coverVar, constStoreVar]]
+  in returnM $
+    [ AH.Branch (AH.PComb (mkChoiceName  typeName) (map AH.PVar [d, i, l, r]))
+      (narrow [AH.Var d, AH.Var i, recCall (AH.Var l), recCall (AH.Var r)])
+    , AH.Branch (AH.PComb (mkChoicesName typeName) (map AH.PVar [d, i, xs]))
+      (narrows [constStoreVar, AH.Var d, AH.Var i, lambdaExpr, AH.Var xs])
+    , AH.Branch (AH.PComb (mkGuardName   typeName) (map AH.PVar [d, c, e]))
+      (liftGuard [AH.Var d, AH.Var c, guardCall])
+    , AH.Branch (AH.PComb (mkFailName    typeName) (map AH.PVar [d, info]))
+      (if fc then liftFail  [AH.Var d, AH.Var info]
+             else traceFail (AH.Var d) qn' (map cvVar vs) (AH.Var info))
+    , AH.Branch (AH.PVar us) (consFail qn' (cvVar v))
+    ]
+  where
+  [d, i, l, r, xs, z, c, e, info, us]
+    = newVars ["d", "i", "l", "r", "xs", "z", "c", "e", "info", "_"]
 
--- constructors
-transExpr (Comb ConsCall qn es) =
+--- Translation of an expression where all newly introduced supply
+--- variables are bound by nested let expressions.
+trCompleteExpr :: Expr -> M AH.Expr
+trCompleteExpr e =
+  getNextID   >+= \i       -> -- save current variable id
+  trExpr e    >+= \(g, e') ->
+  setNextID i >+              -- and reset the variable id
+  case g of
+    []  -> returnM e'
+    [v] -> letIdVar [(supplyName v, topSupplyVar)] e'
+    _   -> failM "TransFunctions.trCompleteExpr"
+
+--- Transform an expression and compute a list of new supply variables
+--- to be bound.
+trExpr :: Expr -> M ([VarIndex], AH.Expr)
+trExpr (Var               i) = returnM ([], cvVar     i)
+trExpr (Lit               l) = returnM ([], cvLitExpr l)
+trExpr (Comb ConsCall qn es) =
   renameCons     qn               >+= \qn'      ->
-  mapM transExpr es >+= unzipArgs >+= \(g, es') ->
-  genIds g (Comb ConsCall qn' es')
+  mapM trExpr es >+= unzipArgs >+= \(g, es') ->
+  genIds g (AH.applyF qn' es')
+
+-- fully applied functions
+trExpr (Comb FuncCall qn es) =
+  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
+  getNDClass qn     >+= \ndCl ->
+  getFuncHOClass qn >+= \hoCl ->
+  isDetMode         >+= \dm   ->
+  renameFun qn      >+= \qn'  ->
+  mapM trExpr es >+= unzipArgs >+= \(g, es') ->
+  if ndCl == ND || not opt || (hoCl == FuncHO && not dm)
+   -- for non-deterministic functions and higher-order functions
+   -- translated in non-determinism mode we just call the function
+   -- with the additional arguments (idsupply, capsule nesting depth
+   -- and the constraint store)
+    then takeNextID >+= \i -> genIds (i:g)
+          (AH.applyF qn' (es' ++ [supplyVar i, coverVar, constStoreVar]))
+    -- for deterministic functions with higher-order result
+    -- in non-determinism mode we need to wrap the result
+    -- in order to accept the additional arguments
+    else genIds g $ case hoCl of
+      FuncHORes i | not dm -> wrapDHO i $
+                              AH.applyF qn' (es' ++ [coverVar, constStoreVar])
+      _                    -> AH.applyF qn' (es' ++ [coverVar, constStoreVar])
+
+-- partially applied functions
+trExpr (Comb (FuncPartCall i) qn es) =
+  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
+  getNDClass qn     >+= \ndCl ->
+  getFuncHOClass qn >+= \hoCl ->
+  isDetMode         >+= \dm   ->
+  renameFun qn      >+= \qn'  ->
+  mapM trExpr es >+= unzipArgs  >+= \(g, es') ->
+  genIds g (wrapPartCall False dm opt ndCl hoCl i (AH.applyF qn' es'))
 
 -- calls to partially applied constructors are treated like calls to partially
 -- applied deterministic first order functions.
-transExpr (Comb (ConsPartCall i) qn es) =
+trExpr (Comb (ConsPartCall i) qn es) =
   isDetMode     >+= \dm  ->
   renameCons qn >+= \qn' ->
-  mapM transExpr es >+= unzipArgs >+= \(g, es') ->
-  genIds g (wrapPartCall dm True D FuncFO i (Comb (ConsPartCall i) qn' es'))
+  mapM trExpr es >+= unzipArgs >+= \(g, es') ->
+  genIds g (wrapPartCall True  dm True D FuncFO i (AH.applyF qn' es'))
 
--- fully applied functions
-transExpr (Comb FuncCall qn es) =
-  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
-  getNDClass qn     >+= \ndCl ->
-  getFuncHOClass qn >+= \hoCl ->
-  isDetMode         >+= \dm   ->
-  renameFun qn      >+= \qn'  ->
-  mapM transExpr es >+= unzipArgs >+= \(g, es') ->
-  if ndCl == ND || not opt || (hoCl == FuncHO && not dm)
-   -- for non-deterministic functions and higher-order functions in non-determinism mode
-   -- we just call the function with the additional arguments (idsupply, capsule nesting depth
-   -- and the constraint store
-    then takeNextID >+= \i ->
-         genIds (i:g) (Comb FuncCall qn' (es' ++ [Var i, Var nestingIdx, Var constStoreVarIdx]))
-    -- for deterministic functions with higher-order result in non-determinism mode
-    -- we need to wrap the result in order to accept the additional arguments
-    else genIds g $ case hoCl of
-      FuncHORes i | not dm -> wrapDHO i (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
-      _                    -> (Comb FuncCall qn' (es' ++ [Var nestingIdx, Var constStoreVarIdx]))
-
--- partially applied functions
-transExpr (Comb (FuncPartCall i) qn es) =
-  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
-  getNDClass qn     >+= \ndCl ->
-  getFuncHOClass qn >+= \hoCl ->
-  isDetMode         >+= \dm   ->
-  renameFun qn      >+= \qn'  ->
-  mapM transExpr es >+= unzipArgs  >+= \(g, es') ->
-  genIds g (wrapPartCall dm opt ndCl hoCl i (Comb (FuncPartCall i) qn' es'))
-
--- let expressions
-transExpr (Let ds e) =
+trExpr (Let ds e) =
   let (vs, es) = unzip ds in
-  mapM transExpr es >+= unzipArgs >+= \(g, es') ->
-  transExpr e       >+=               \(ge, e') ->
-  genIds (g ++ ge) (Let (zip vs es') e')
+  mapM trExpr es >+= unzipArgs >+= \(g, es') ->
+  trExpr e       >+=               \(ge, e') ->
+  genIds (g ++ ge) (AH.Let (zipWith AH.declVar (map cvVarIndex vs) es') e')
 
--- non-determinism
-transExpr (Or e1 e2) =
-  transExpr e1 >+= \(vs1, e1') ->
-  transExpr e2 >+= \(vs2, e2') ->
-  takeNextID   >+= \i          ->
+trExpr (Or e1 e2) =
+  trExpr e1  >+= \(vs1, e1') ->
+  trExpr e2  >+= \(vs2, e2') ->
+  takeNextID >+= \i          ->
   genIds (i : vs1 ++ vs2)
-         (choice [e1', e2', Var i, Var nestingIdx, Var constStoreVarIdx])
+    (choice [e1', e2', supplyVar i, coverVar, constStoreVar])
 
--- free variable
-transExpr (Free vs e) =
-  transExpr e             >+= \(g, e') ->
-  takeNextIDs (length vs) >+= \is      ->
-  genIds (g ++ is) (Let (zipWith (\ v i -> (v, generate (Var i))) vs is) e')
+trExpr (Free vs e) =
+  takeNextIDs (length vs) >+= \is   ->
+  trExpr e             >+= \(g, e') ->
+  genIds (is ++ g) (AH.Let (zipWith mkFree vs is) e')
+  where mkFree v i = AH.declVar (cvVarIndex v) (generate $ supplyVar i)
 
-transExpr (Case _ _ _) = failM "TransFunctions.transExpr: case expression"
+-- This case should not occur because:
+--   * Nested case expressions have been lifted using LiftCase
+--   * The outer case expression has been handled by trBody
+trExpr (Case _ _ _) = failM "TransFunctions.trExpr: case expression"
 
-transExpr (Typed e ty) =
-  isDetMode   >+= \dm      ->
-  transExpr e >+= \(g, e') ->
-  genIds g (Typed e' (transExprType dm ty))
+trExpr (Typed e ty) =
+  trExpr e      >+= \(g, e') ->
+  trExprType ty >+= \ty'     ->
+  genIds g (AH.Typed e' ty')
 
-genIds :: [VarIndex] -> Expr -> M ([VarIndex], Expr)
+unzipArgs :: [([VarIndex], AH.Expr)] -> M ([VarIndex], [AH.Expr])
+unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
+
+genIds :: [VarIndex] -> AH.Expr -> M ([VarIndex], AH.Expr)
 genIds []       e = returnM ([], e)
 genIds ns@(_:_) e =
-  strictSupply >+= \strict ->
   -- get next free variable id
-  getNextID    >+= \i      ->
+  getNextID >+= \i ->
   -- create splitting of supply variables
-  let (vroot, v', vs) = mkSplits i ns
-      addSplit (v, v1, v2) e = letIdVar strict
-        [(v1, leftSupply [Var v]), (v2, rightSupply [Var v])] e
-  in  setNextID v' >+ returnM ([vroot], foldr addSplit e vs)
+  let (vroot, v', vs)    = mkSplits i ns
+      supply (v, v1, v2) =  [ (supplyName v1, leftSupply  [supplyVar v])
+                            , (supplyName v2, rightSupply [supplyVar v])
+                            ]
+  in
+  letIdVar (concatMap supply vs) e >+= \e' ->
+  setNextID v' >+ returnM ([vroot], e')
 
--- TODO magic numbers
-idVar      = 2000
+cvVar :: VarIndex -> AH.Expr
+cvVar = AH.Var . cvVarIndex
 
--- Variable index for supply variable
-suppVarIdx = 3000
+cvVarIndex :: VarIndex -> AH.VarIName
+cvVarIndex i = (i, 'x' : show i)
 
--- Variable index for nesting level
-nestingIdx = 3250
+cvLit :: Literal -> AH.Literal
+cvLit (Intc   i) = AH.Intc   i
+cvLit (Floatc f) = AH.Floatc f
+cvLit (Charc  c) = AH.Charc  c
 
--- Variable index for constraint store
-constStoreVarIdx = 3500
+cvLitExpr :: Literal -> AH.Expr
+cvLitExpr (Intc   i) = funcCall curryInt
+                       [constant (prelude, showInt   i ++ "#")]
+cvLitExpr (Floatc f) = funcCall curryFloat
+                       [constant (prelude, showFloat f ++ "#")]
+cvLitExpr (Charc  c) = funcCall curryChar  charExpr
+  where
+  charExpr
+    | ord c < 127 = [constant (prelude, showLiteral (AH.Charc c) ++ "#")]
+      -- due to problems with non-ASCII characters in ghc
+    | otherwise   = [funcCall (basics, "nonAsciiChr")
+                              [constant (prelude, show (ord c) ++ "#")]]
 
-unzipArgs :: [([VarIndex], e)] -> M ([VarIndex], [e])
-unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
+topSupplyVar :: AH.Expr
+topSupplyVar = AH.Var topSupplyName
+
+topSupplyName ::AH.VarIName
+topSupplyName = (3000, "s")
+
+supplyVar :: VarIndex -> AH.Expr
+supplyVar = AH.Var . supplyName
+
+supplyName :: VarIndex -> AH.VarIName
+supplyName i = (i, 's' : show i)
+
+coverVar :: AH.Expr
+coverVar = AH.Var coverName
+
+coverName :: AH.VarIName
+coverName = (3250, "cd")
+
+constStoreVar :: AH.Expr
+constStoreVar = AH.Var constStoreName
+
+constStoreName :: AH.VarIName
+constStoreName = (3500, "cs")
 
 -- ---------------------------------------------------------------------------
 -- Wrapping
@@ -694,7 +799,7 @@ unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
 --- called from nondeterministic context.
 --- @param arity - arity of the result function
 --- @param expr  - function call to wrap
-wrapDHO :: Int -> Expr -> Expr
+wrapDHO :: Int -> AH.Expr -> AH.Expr
 wrapDHO arity expr = newWrap True arity expr
 
 --- Wrapping the result of partial applications
@@ -708,11 +813,12 @@ wrapDHO arity expr = newWrap True arity expr
 --- @param arity - arity of partial call, i.e., number of arguments missing
 ---                to form a fully applied call
 --- @param e     - expression (partial call) to transform
-wrapPartCall :: Bool -> Bool -> NDClass -> FuncHOClass -> Int -> Expr -> Expr
-wrapPartCall dm opt nd ho arity e
-  | dm        = wrapCs arity e
-  | nd == ND  = newWrap False arity              (wrapCs arity e)
-  | otherwise = newWrap useDX (arity + resArity) (wrapCs arity e)
+wrapPartCall :: Bool -> Bool -> Bool -> NDClass -> FuncHOClass -> Int
+             -> AH.Expr -> AH.Expr
+wrapPartCall cons dm opt nd ho arity e
+  | dm        = wrapCs cons arity e
+  | nd == ND  = newWrap False arity              (wrapCs cons arity e)
+  | otherwise = newWrap useDX (arity + resArity) (wrapCs cons arity e)
   where
   useDX = opt && nd == D && not isHO
   isHO = case ho of
@@ -724,23 +830,20 @@ wrapPartCall dm opt nd ho arity e
 
 --- Add  `ConstraintStore` arguments after every argument of a partially
 --- called function.
-wrapCs :: Int -> Expr -> Expr
-wrapCs n e | n == 1 = if isConsCall then acceptCs [funId, e] else e
-           | n >  1 = acceptCs
-           [mkWraps (n - 1)
-                              (if isConsCall then acceptCs [funId] else funId)
-                            ,e]
+wrapCs :: Bool -> Int -> AH.Expr -> AH.Expr
+wrapCs cons n e
+  | n == 1 = if cons then acceptCs [funId, e] else e
+  | n >  1 = acceptCs [ mkWraps (n - 1) (if cons then acceptCs [funId]
+                                                 else funId)
+                      , e
+                      ]
  where
+  acceptCs = AH.applyF (basics, "acceptCs")
   mkWraps m expr | m < 2     = expr
                  | otherwise = mkWraps (m - 1) (acceptCs [expr])
-  isConsCall = case e of
-    (Comb (ConsPartCall _) _ _) -> True
-    _                           -> False
-
-acceptCs = fun 2 (basics, "acceptCs")
 
 -- TODO: simplify
-newWrap :: Bool -> Int -> Expr -> Expr
+newWrap :: Bool -> Int -> AH.Expr -> AH.Expr
 newWrap useDX n e
   | n == 0 = e
   | n == 1 = innermostWrapper [funId, e]
@@ -752,19 +855,20 @@ newWrap useDX n e
   wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
   innermostWrapper = if useDX then wrapDX else wrapNX
 
-wrapDX = fun 2 (basics, "wrapDX")
-wrapNX = fun 2 (basics, "wrapNX")
-funId  = fun 1 (prelude, "id") []
+wrapDX = AH.applyF (basics, "wrapDX")
+wrapNX = AH.applyF (basics, "wrapNX")
+funId  = AH.applyF (prelude, "id") []
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
 -- ---------------------------------------------------------------------------
 
 -- Strict or lazy computation of supplies
-letIdVar :: Bool -> [(Int, Expr)] -> Expr -> Expr
-letIdVar strict ds e
-  | strict    = Let ds $ foldr seqCall e $ map (Var . fst) ds
-  | otherwise = Let ds e
+letIdVar :: [(AH.VarIName, AH.Expr)] -> AH.Expr -> M AH.Expr
+letIdVar ds e =
+  strictSupply >+= \strict ->
+  returnM $ AH.Let (map (uncurry AH.declVar) ds)
+          $ if strict then foldr seqCall e (map (AH.Var . fst) ds) else e
 
 curryInt :: QName
 curryInt = renameQName (prelude, "Int")
@@ -778,77 +882,42 @@ curryChar = renameQName (prelude, "Char")
 addCs :: QName
 addCs = (basics, "addCs")
 
--- type expressions
-
-supplyType :: TypeExpr
-supplyType  = TCons (basics, "IDSupply") []
-
-coverType :: TypeExpr
-coverType = TCons (basics, "Cover") []
-
-storeType :: TypeExpr
-storeType = TCons (basics, "ConstStore") []
-
-funcType :: TypeExpr -> TypeExpr -> TypeExpr
-funcType t1 t2 = TCons (basics, "Func") [t1, t2]
-
 -- expressions
 
-list2FCList :: [Expr] -> Expr
-list2FCList []     = consCall (prelude, "[]") []
-list2FCList (e:es) = consCall (prelude, ":") [e,list2FCList es]
+pair2ac :: (AH.Expr, AH.Expr) -> AH.Expr
+pair2ac (e1, e2) = consCall (prelude, "(,)") [e1, e2]
 
-pair2FCPair :: (Expr,Expr) -> Expr
-pair2FCPair (e1,e2) = consCall (prelude, "(,)") [e1,e2]
-
-seqCall :: Expr -> Expr -> Expr
+seqCall :: AH.Expr -> AH.Expr -> AH.Expr
 seqCall e1 e2 = funcCall (prelude, "seq") [e1, e2]
 
-strictCall :: Expr -> Expr -> Expr
-strictCall f e = funcCall (prelude, "$!") [f,e]
+strictCall :: AH.Expr -> AH.Expr -> AH.Expr
+strictCall f e = funcCall (prelude, "$!") [f, e]
 
-consCall n xs = Comb ConsCall n xs
-funcCall n xs = Comb FuncCall n xs
-lambdaCall (q,n) xs = Comb FuncCall (q, '\\' : n) xs
+consCall = AH.applyF
+funcCall = AH.applyF
 
-constant qn = consCall qn []
+constant qn = AH.applyF qn []
 
-fun :: Int -> QName -> [Expr] -> Expr
-fun i n xs | length xs == i = funcCall n xs
-           | otherwise      = Comb (FuncPartCall (length xs - i)) n xs
-
-int :: Int -> Expr
-int i = funcCall curryInt [constant (prelude, showInt i ++ "#")]
-
-char :: Char -> Expr
-char c = funcCall curryChar charExpr
-  where
-  charExpr
-    | ord c < 127 = [constant (prelude, showLiteral (AH.Charc c) ++ "#")]
-      -- due to problems with non-ASCII characters in ghc
-    | otherwise   = [funcCall (basics, "nonAsciiChr")
-                              [constant (prelude, show (ord c) ++ "#")]]
-
-float :: Float -> Expr
-float f = funcCall curryFloat [constant (prelude, showFloat f ++ "#")]
-
-failCheck qn vars e
+failCheck :: QName -> [AH.Expr] -> AH.Expr -> AH.Expr
+failCheck qn vs e
   | isCaseAuxFuncName (snd $ unRenamePrefixedFunc qn) = e
   | otherwise                   = funcCall (basics, "failCheck")
     [ showQName $ unRenameQName qn
-    , list2FCList (map (\v -> funcCall (prelude, "show") [Var v]) vars)
+    , AH.list2ac (map (\v -> funcCall (prelude, "show") [v]) vs)
     , e
     ]
 
+traceFail :: AH.Expr -> QName -> [AH.Expr] -> AH.Expr -> AH.Expr
 traceFail cd qn args fail = liftFail
   [ cd
   , funcCall (basics, "traceFail")
     [ showQName qn
-    , list2FCList (map (\a -> funcCall (prelude, "show") [a]) args)
+    , AH.list2ac (map (\a -> funcCall (prelude, "show") [a]) args)
     , fail
     ]
   ]
 
+consFail :: QName -> AH.Expr -> AH.Expr
 consFail qn arg = liftFail
   [ initCover
   , funcCall (basics, "consFail")
@@ -857,7 +926,8 @@ consFail qn arg = liftFail
     ]
   ]
 
-showQName qn = list2FCList $ map (Lit . Charc) (q ++ '.' : n)
+showQName :: QName -> AH.Expr
+showQName qn = AH.string2ac (q ++ '.' : n)
   where (q, n) = unRenamePrefixedFunc qn
 
 emptyCs     = funcCall (basics, "emptyCs") []
@@ -871,7 +941,12 @@ liftFail    = funcCall (basics, "failCons")
 
 leftSupply  = funcCall (basics, "leftSupply")
 rightSupply = funcCall (basics, "rightSupply")
-generate i  = funcCall (basics, "generate") [i, Var nestingIdx]
+
+generate :: AH.Expr -> AH.Expr
+generate s = funcCall (basics, "generate") [s, coverVar]
+
+newVars :: [String] -> [AH.VarIName]
+newVars = zip [1 ..]
 
 -- ---------------------------------------------------------------------------
 -- Helper functions
