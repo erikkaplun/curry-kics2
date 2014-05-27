@@ -41,14 +41,14 @@ import TransFunctions
 import TransTypes
 import Utils                     (notNull)
 
---- Parse the command-line arguments and build the specified files
+--- Parse the command-line arguments and build the specified files.
 main :: IO ()
 main = do
   (opts, files) <- getCompilerOpts
   mapIO_ (build opts) files
 
 --- Load the module, resolve the dependencies and compile the source files
---- if necessary
+--- if necessary.
 build :: Options -> String -> IO ()
 build opts fn = do
   mbFn <- locateCurryFile fn
@@ -88,7 +88,7 @@ makeModule mods state mod@((_, (fn, fcy)), _)
   where
     getDepFiles = do
       hasExternals <- doesFileExist extFile
-      let ownModule = fn : if hasExternals then [extFile] else []
+      let ownModule = fn : [extFile | hasExternals]
       let imported  = map (\i -> destFile (opts :> optTraceFailure)
                                           (opts :> optOutputSubdir)
                                $ fst $ fromJust $ lookup i mods) imps
@@ -161,7 +161,8 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
-  ((tProg,modAnalysisResult), state') <- unM (transProg renamed) state
+  transFuncs <- runIOErrorState (transProg renamed) state
+  let ((tProg, modAnalysisResult), state') = either error id transFuncs
   writeAnalysis (state' :> compOptions) fn modAnalysisResult
   let ahsFun@(AH.Prog n imps _ funs ops) = fcy2abs tProg
   dump DumpFunDecls opts funDeclName (show ahsFun)
@@ -283,7 +284,7 @@ splitExternals content = (pragmas, imports, decls)
   isComment line   = "-- " `isPrefixOf` line
                      && not ("-- #endimport" `isPrefixOf` line)
 
--- Dump an intermediate result to a file
+--- Dump an intermediate result to a file
 dump :: DumpFormat -> Options -> FilePath -> String -> IO ()
 dump format opts file src = when (format `elem` opts :> optDump) $ do
   showDetail opts $ "Dumping " ++ file
@@ -293,3 +294,6 @@ rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =
   Prog (renameModule name) (map renameModule imports) td fd od where
   (Prog _ _ td fd od) = updQNamesInProg renameQName p
+
+defaultModules :: [String]
+defaultModules = [basics]
