@@ -33,11 +33,11 @@ choice x y s cd _ = let i = thisID s in i `seq` choiceCons cd i x y
 -- -----------------------------------------------------------------------------
 
 -- |Convert a deterministic function to a non-deterministic shape
-nd :: (a -> Cover -> ConstStore -> b) -> a
-  -> IDSupply -> Cover -> ConstStore -> b
+nd :: (a -> Cover -> ConstStore -> b)
+   -> a -> IDSupply -> Cover -> ConstStore -> b
 nd f a _ cd cs = f a cd cs
 
--- |Make higher order functions take a cover depth and a constraint store
+-- |Make a higher order function take a cover depth and a constraint store
 -- |after each argument.
 acceptCs ::  (b -> c)-> (a -> b) -> a -> Cover -> ConstStore -> c
 acceptCs cont f x _ _ = cont (f x)
