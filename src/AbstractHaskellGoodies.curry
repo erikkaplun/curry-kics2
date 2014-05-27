@@ -117,8 +117,7 @@ cmtfunc comment name arity v tc t rules =
 
 -- transform a string constant into AbstractHaskell term:
 string2ac :: String -> Expr
-string2ac []     = constF (pre "[]")
-string2ac (c:cs) = applyF (pre ":") [Lit (Charc c), string2ac cs]
+string2ac = Lit . Stringc
 
 simpleRule :: [Pattern] -> Expr -> Rules
 simpleRule ps e = Rules [Rule ps [noGuard e] []]

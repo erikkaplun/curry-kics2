@@ -8,23 +8,18 @@
 {-# LANGUAGE Records #-}
 module TransFunctions ( State (..), defaultState, trProg, runIOES ) where
 
-import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
-  , lookupFM, plusFM, delListFromFM)
-import Function (first)
-import List (find, intersperse, isPrefixOf)
-import Maybe
+import FiniteMap (lookupFM, plusFM, delListFromFM)
+import Function  (first)
 
 import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AH
-import AbstractHaskellPrinter
-import Analysis
-import CompilerOpts
-import FlatCurry
-import FlatCurryGoodies
-import LiftCase
-import Message
-import Names
-import Splits
+import           Analysis
+import           CompilerOpts  (Options (..), defaultOptions, OptimLevel (..))
+import           FlatCurry
+import           LiftCase      (isCaseAuxFuncName)
+import           Message       (showAnalysis)
+import           Names
+import           Splits        (mkSplits)
 
 -- ---------------------------------------------------------------------------
 -- IO error state monad, like `EitherT (StateT IO)`
@@ -720,17 +715,9 @@ cvLit (Floatc f) = AH.Floatc f
 cvLit (Charc  c) = AH.Charc  c
 
 cvLitExpr :: Literal -> AH.Expr
-cvLitExpr (Intc   i) = funcCall curryInt
-                       [constant (prelude, showInt   i ++ "#")]
-cvLitExpr (Floatc f) = funcCall curryFloat
-                       [constant (prelude, showFloat f ++ "#")]
-cvLitExpr (Charc  c) = funcCall curryChar  charExpr
-  where
-  charExpr
-    | ord c < 127 = [constant (prelude, showLiteral (AH.Charc c) ++ "#")]
-      -- due to problems with non-ASCII characters in ghc
-    | otherwise   = [funcCall (basics, "nonAsciiChr")
-                              [constant (prelude, show (ord c) ++ "#")]]
+cvLitExpr (Intc   i) = funcCall curryInt   [constant (prelude, show i ++ "#")]
+cvLitExpr (Floatc f) = funcCall curryFloat [constant (prelude, show f ++ "#")]
+cvLitExpr (Charc  c) = funcCall curryChar  [constant (prelude, show c ++ "#")]
 
 topSupplyVar :: AH.Expr
 topSupplyVar = AH.Var topSupplyName

@@ -6,17 +6,16 @@
 ---
 --- @author Martin Engelke, Bernd Brassel, Michael Hanus, Marion Mueller,
 ---         Parissa Sadeghi, Bjoern Peemoeller
---- @version April 2011
+--- @version May 2014
 ------------------------------------------------------------------------------
 {-# LANGUAGE Records #-}
 module AbstractHaskellPrinter
   ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl
-  , showTypeExpr, showFuncDecl
-  , showLiteral, showExpr, showPattern, showInt, showFloat
+  , showTypeExpr, showFuncDecl, showLiteral, showExpr, showPattern
   ) where
 
 import Char  (isDigit)
-import List  (intersperse, partition)
+import List  (intercalate, partition)
 import Maybe (isJust)
 import Read  (readNat)
 
@@ -46,13 +45,13 @@ showProg trace (Prog m imports typedecls funcdecls opdecls) =
     ]
 
 showModuleHeader :: Bool -> String -> [TypeDecl] -> [FuncDecl] -> [String] -> String
-showModuleHeader trace m typedecls funcdecls imps = concat
+showModuleHeader trace m ts fs imps = concat
   [ "module " ++ (if trace then addTrace m else m)
   , " (" ++ exports ++ ")"
   , " where"
   , if null imports then "" else "\n\n" ++ imports
   ]
-  where exports = showExports typedecls funcdecls
+  where exports = showExports ts fs
         imports = showImports trace imps
 
 showDecls :: Bool -> String -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> String
@@ -79,12 +78,12 @@ showExports types funcs =
     ++ map getFuncName (filter isPublicFunc funcs)
   where
     isPublicType :: TypeDecl -> Bool
-    isPublicType (Type _ visibility _ _)    = visibility == Public
-    isPublicType (TypeSyn _ visibility _ _) = visibility == Public
-    isPublicType (Instance _ _ _ _)         = False
+    isPublicType (Type    _ vis _ _) = vis == Public
+    isPublicType (TypeSyn _ vis _ _) = vis == Public
+    isPublicType (Instance  _ _ _ _) = False
 
     isPublicFunc :: FuncDecl -> Bool
-    isPublicFunc (Func _ _ _ visibility _ _) = visibility == Public
+    isPublicFunc (Func _ _ _ vis _ _) = vis == Public
 
     getTypeName :: TypeDecl -> String
     getTypeName (Type     (_,name) _ _ _) = name
@@ -93,7 +92,7 @@ showExports types funcs =
 
     allPublicCons :: TypeDecl -> Bool
     allPublicCons (Type _ _ _ c) = length (filter isPublicCons c) == length c
-      where isPublicCons (Cons _ _ visibility _) = visibility == Public
+      where isPublicCons (Cons _ _ vis _) = vis == Public
     allPublicCons (TypeSyn _ _ _ _)  = False
     allPublicCons (Instance _ _ _ _) = False
 
@@ -162,7 +161,7 @@ showContext :: Options -> [Context] -> String
 showContext _    []         = ""
 showContext opts [ctxt]     = showClass opts ctxt ++ " => "
 showContext opts cs@(_:_:_) =
-  "(" ++ concat (intersperse "," (map (showClass opts) cs)) ++ ") => "
+  "(" ++ intercalate "," (map (showClass opts) cs) ++ ") => "
 
 showClass :: Options -> Context -> String
 showClass opts (Context qn tvars) =
@@ -281,7 +280,7 @@ showExpr = showExprOpt defaultOptions
 
 --- Shows an AbstractHaskell expression in standard Curry syntax.
 showExprOpt :: Options -> Expr -> String
-showExprOpt _ (Var (_,name))   = showIdentifier name
+showExprOpt _ (Var (_, name))  = showIdentifier name
 showExprOpt _ (Lit lit)        = showLiteral lit
 showExprOpt opts (Symbol name) = if isInfixOpName (snd name)
   then "(" ++ showSymbol opts name ++ ")"
@@ -309,13 +308,11 @@ showExprOpt opts (IfThenElse boolExpr expr1 expr2)  =
 showSymbol :: Options -> QName -> String
 showSymbol opts (modName, symName)
     -- all Haskell modules are imported unqualified
-  | isHaskellModule modName           = symName
+  | isHaskellModule modName            = symName
     -- the current module isn't imported at all
   | modName == (opts :> currentModule) = symName
     -- all Curry modules are imported qualified
   | otherwise                          = modName ++ "." ++ symName
---   | isJust (lookupFM fm symName) = thatModule++"."++symName
---   | otherwise = symName
 
 -- show a lambda expression as a left/right section, if
 -- it is a literal, var other than the pattern var or non-infix symbol.
@@ -383,12 +380,12 @@ showPreludeCons opts p
 showPatternList :: Options -> Pattern -> String
 showPatternList opts p
   | isClosedStringPattern p
-  = '\"':filter (/='\'') (concat (showPatListElems opts p))++"\""
+  = '\"' : filter (/='\'') (concat (showPatListElems opts p)) ++ "\""
   | isClosedPatternList p
-  = "["++concat (intersperse "," (showPatListElems opts p))++"]"
+  = "[" ++ intercalate "," (showPatListElems opts p) ++ "]"
   | isAsPattern p
   = showAsPatternList opts p
-  | otherwise = "(" ++ concat (intersperse ":" (showPatListElems opts p))++")"
+  | otherwise = "(" ++ intercalate ":" (showPatListElems opts p) ++ ")"
 
 showPatListElems opts pat = case pat of
   (PComb (_,":")  [x,xs]) -> showPattern opts x : showPatListElems opts xs
@@ -406,28 +403,10 @@ showBranchExpr opts (Branch pattern expr)
    = (showPattern opts pattern) ++ " -> " ++ (showExprOpt opts expr)
 
 showLiteral :: Literal -> String
-showLiteral (Intc   i) = showInt i
-showLiteral (Floatc f) = showFloat f
-showLiteral (Charc  c) = show c
-
--- Show an integer (no brackets around negative numbers):
-showInt :: Int -> String
-showInt i = if i >= 0 then show i else '-' : show (negate i)
-
--- Show an integer (no brackets around negative numbers):
-showFloat :: Float -> String
-showFloat f = if f >= 0 then show f else '-' : show (negateFloat f)
-
-showCharc :: Literal -> String
-showCharc lit = case lit of
-  (Charc c) | c=='\n'   -> "\\n"
-            | c=='\r'   -> "\\r"
-            | c=='\t'   -> "\\t"
-            | c=='\\'   -> "\\\\"
-            | c=='\"'   -> "\\\""
-            | c=='\''   -> "\\\'"
-            | otherwise -> [c]
-  _                     -> error "AbstractHaskellPrinter.showCharc"
+showLiteral (Intc    i) = show i
+showLiteral (Floatc  f) = show f
+showLiteral (Charc   c) = show c
+showLiteral (Stringc s) = show s
 
 showBlock :: String -> String
 showBlock text
@@ -476,19 +455,10 @@ showSymbolApplication opts (mod,name) appl
 
 showListApplication :: Options -> Expr -> String
 showListApplication opts appl
-  | isStringList appl
-    = "\"" ++ (showCharListApplication opts appl) ++ "\""
   | isClosedList appl
-    = "[" ++ (showConsListApplication opts appl) ++ "]"
+    = "[" ++ showConsListApplication opts appl ++ "]"
   | otherwise
-    = "(" ++ (showSimpleListApplication opts appl) ++ ")"
-
-showCharListApplication :: Options -> Expr -> String
-showCharListApplication opts expr = case expr of
-  (Apply (Apply _ (Lit c)) tail) -> case tail of
-    (Symbol _) -> showCharc c
-    _          -> showCharc c ++ showCharListApplication opts tail
-  _                              -> error "AbstractHaskellPrinter.showCharListApplication"
+    = "(" ++ showSimpleListApplication opts appl ++ ")"
 
 showConsListApplication :: Options -> Expr -> String
 showConsListApplication opts expr = case expr of
@@ -550,18 +520,15 @@ showBoxedExpr opts expr
 --- composition functions for AbstractHaskellPrinter
 ------------------------------------------------------------------------------
 
-intercalate :: [a] -> [[a]] -> [a]
-intercalate xs xss = concat (intersperse xs xss)
-
 prefixMap :: (a -> String) -> [a] ->  String -> String
 prefixMap f xs s = concatMap (s ++) (map f xs)
 
 prefixInter :: (a -> String) -> [a] ->  String -> String
-prefixInter f xs s = concat $ intersperse s (map f xs)
+prefixInter f xs s = intercalate s (map f xs)
 
 combineMap :: (a -> String) -> [a] ->  String -> String
-combineMap _ [] _     = ""
-combineMap f (x:xs) s = (f x) ++ (prefixMap f xs s)
+combineMap _ []     _ = ""
+combineMap f (x:xs) s = f x ++ prefixMap f xs s
 
 dropTags :: String -> String
 dropTags []     = []
@@ -600,16 +567,6 @@ isAsPattern p = case p of
 
 isInfixOpName :: String -> Bool
 isInfixOpName = all (`elem` infixIDs)
-
--- TODO: Does this still work?
-isStringList :: Expr -> Bool
-isStringList expr = case expr of
-  (Symbol (mod,name)) -> mod == prelude && name == "[]"
-  (Var _)             -> False
-  (Apply head tail)   -> case head of
-    (Apply _ (Lit (Charc _))) -> isStringList tail
-    _                         -> False
-  _                   -> error "AbstractHaskellPrinter.isStringList"
 
 isClosedList :: Expr -> Bool
 isClosedList expr = case expr of

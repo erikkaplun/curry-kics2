@@ -189,8 +189,9 @@ data Pattern
 data BranchExpr = Branch Pattern Expr
 
 --- Data type for representing literals occurring in an expression.
---- It is either an integer, a float, or a character constant.
+--- It is either an integer, a float, a character, or a string constant.
 data Literal
-  = Intc   Int
-  | Floatc Float
-  | Charc  Char
+  = Intc    Int
+  | Floatc  Float
+  | Charc   Char
+  | Stringc String
