@@ -23,8 +23,7 @@ CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Analysis Classification CompilerOpts EliminateCond Files      \
                LiftCase Message ModuleDeps                                   \
-               Names SCC SimpleMake Splits State TransFunctions TransTypes   \
-               Utils
+               Names SCC SimpleMake State TransFunctions TransTypes Utils
 
 # Source modules of the REPL (without standard libraries)
 REPL_DEPS = AbstractCurryGoodies Files GhciComm Linker Names RCFile Utils

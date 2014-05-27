@@ -19,7 +19,6 @@ import           FlatCurry
 import           LiftCase      (isCaseAuxFuncName)
 import           Message       (showAnalysis)
 import           Names
-import           Splits        (mkSplits)
 
 -- ---------------------------------------------------------------------------
 -- IO error state monad, like `EitherT (StateT IO)`
@@ -695,13 +694,33 @@ genIds ns@(_:_) e =
   -- get next free variable id
   getNextID >+= \i ->
   -- create splitting of supply variables
-  let (vroot, v', vs)    = mkSplits i ns
-      supply (v, v1, v2) =  [ (supplyName v1, leftSupply  [supplyVar v])
-                            , (supplyName v2, rightSupply [supplyVar v])
-                            ]
+  let (vroot, v', vs)    = splitSupply i ns
+      supply (v, v1, v2) = [ (supplyName v1, leftSupply  [supplyVar v])
+                           , (supplyName v2, rightSupply [supplyVar v])
+                           ]
   in
   letIdVar (concatMap supply vs) e >+= \e' ->
   setNextID v' >+ returnM ([vroot], e')
+
+--- Split up an identifier supply to saturate
+--- the given list of requested supplies.
+---  @param s : initial free supply variable
+---  @param xs: non-empty list of fresh variables to be bound to an id supply
+---
+--- @Result (x, s', bindings)
+---    - x is the root-level variable to be bound
+---    - s' is the next free variable
+---    - bindings: list of triples (s, x, y)
+---               (let x = leftSupply s, y = rightSupply s)
+splitSupply :: VarIndex -> [VarIndex]
+            -> (VarIndex, VarIndex, [(VarIndex, VarIndex, VarIndex)])
+splitSupply _ []         = error "splitSupply with empty list"
+splitSupply s [x]        = (x, s, [])
+splitSupply s xs@(_:_:_) = (s, nextr, (s, sl, sr) : spsl ++ spsr)
+  where
+  (sl, nextl, spsl) = splitSupply (s + 1) ys
+  (sr, nextr, spsr) = splitSupply nextl zs
+  (ys, zs)          = splitAt (div (length xs) 2) xs
 
 cvVar :: VarIndex -> AH.Expr
 cvVar = AH.Var . cvVarIndex
