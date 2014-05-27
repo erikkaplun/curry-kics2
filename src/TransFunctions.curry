@@ -6,9 +6,7 @@
 --- @version May 2014
 --- --------------------------------------------------------------------------
 {-# LANGUAGE Records #-}
-module TransFunctions
-  ( State (..), defaultState, AnalysisResult, trProg, runIOES
-  ) where
+module TransFunctions ( State (..), defaultState, trProg, runIOES ) where
 
 import FiniteMap ( FM, addToFM, emptyFM, mapFM, filterFM, fmToList, listToFM
   , lookupFM, plusFM, delListFromFM)
@@ -27,15 +25,6 @@ import LiftCase
 import Message
 import Names
 import Splits
-
--- The type map is used to lookup the type name for a given constructor
--- name to be able to add missing pattern matching alternatives like
--- Choice_<TypeName> etc.
--- This could also be done by inspecting the type signature of the respective
--- function, but it may not be accurate for various reasons.
-
-type AnalysisResult =
-  (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
 
 -- ---------------------------------------------------------------------------
 -- IO error state monad, like `EitherT (StateT IO)`
@@ -96,9 +85,6 @@ foldM f e (x : xs) = f e x >+= \fex -> foldM f fex xs
 -- Internal state and access functions
 -- ---------------------------------------------------------------------------
 
--- map a constructor name to the name of its defining type
-type TypeMap = FM QName QName
-
 type State =
   { typeMap      :: TypeMap
   , ndResult     :: NDResult
@@ -112,7 +98,7 @@ type State =
 
 defaultState :: State
 defaultState =
-  { typeMap      := listToFM (<) primTypes
+  { typeMap      := initTypeMap
   , ndResult     := initNDResult
   , hoResultType := initTypeHOResult
   , hoResultCons := initHOResult
@@ -246,7 +232,7 @@ trProg p@(Prog m is ts fs _) =
       modHOResType = analyseHOType p (st :> hoResultType)
       modHOResCons = analyseHOCons p
       modHOResFunc = analyseHOFunc p (st :> hoResultType `plusFM` modHOResType)
-      modTypeMap   = getConsMap    ts
+      modTypeMap   = getTypeMap    ts
       visInfo      = analyzeVisibility p
 
       visNDRes     = modNDRes     `delListFromFM` getPrivateFunc visInfo
@@ -263,17 +249,9 @@ trProg p@(Prog m is ts fs _) =
   addHOConsAnalysis modHOResCons >+
   addHOFuncAnalysis modHOResFunc >+
   addTypeMap        modTypeMap   >+
-  -- trlation of the functions
+  -- translation of the functions
   mapM trFunc fs >+= \fss ->
   returnM $ (AH.Prog m is [] (concat fss) [], anaResult)
-
---- Register the types names of constructors to be able to retrieve
---- the types for constructors used in pattern matching.
---- May be needless now because the case lifting now also creates correct types.
-getConsMap :: [TypeDecl] -> TypeMap
-getConsMap ts = listToFM (<)
-              $ concatMap (\(Type qn _ _ cs) -> map (\c -> (consName c, qn)) cs)
-              $ filter (not . isTypeSyn) ts
 
 -- ---------------------------------------------------------------------------
 -- Translation of function declarations
@@ -947,15 +925,3 @@ generate s = funcCall (basics, "generate") [s, coverVar]
 
 newVars :: [String] -> [AH.VarIName]
 newVars = zip [1 ..]
-
--- ---------------------------------------------------------------------------
--- Helper functions
--- ---------------------------------------------------------------------------
-
---- List of constructors of known primitive types.
-primTypes :: [(QName, QName)]
-primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
-                             , renameQName (prelude, y))) $
-  [ ("Success","Success"), ("True", "Bool"), ("False", "Bool")
-  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
-  ]

@@ -22,6 +22,7 @@ import AnnotatedFlatCurryGoodies (unAnnProg)
 import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, typeOf)
 import AbstractHaskellPrinter (showModuleHeader, showDecls)
+import Analysis               (AnalysisResult, showAnalysisResult, readAnalysisResult)
 import CompilerOpts
 import Files                     ( withBaseName, withDirectory, withExtension
                                  , writeFileInDir, writeQTermFileInDir
@@ -99,18 +100,15 @@ makeModule mods state mod@((_, (fn, fcy)), _)
     opts = state :> compOptions
 
 writeAnalysis :: Options -> FilePath -> AnalysisResult -> IO ()
-writeAnalysis opts fn (types, ndAna, hoType, hoCons, hoFunc) = do
+writeAnalysis opts fn analysis = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
-  writeQTermFileInDir ndaFile
-    (showFM types, showFM ndAna, showFM hoType, showFM hoCons, showFM hoFunc)
+  writeQTermFileInDir ndaFile (showAnalysisResult analysis)
     where ndaFile = analysisFile (opts :> optOutputSubdir) fn
 
 readAnalysis :: Options -> FilePath -> IO AnalysisResult
 readAnalysis opts fn = do
   showDetail opts $ "Reading Analysis file " ++ ndaFile
-  (types, ndAna, hoType, hoCons, hoFunc) <- readQTermFile ndaFile
-  return ( readFM (<) types , readFM (<) ndAna
-         , readFM (<) hoType, readFM (<) hoCons, readFM (<) hoFunc)
+  readAnalysisResult `liftIO` readQTermFile ndaFile
     where ndaFile = analysisFile (opts :> optOutputSubdir) fn
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State

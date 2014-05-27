@@ -6,7 +6,9 @@
 --- @version May 2014
 --- ----------------------------------------------------------------------------
 module Analysis
-  ( NDResult, NDClass (..), initNDResult, analyseND
+  ( AnalysisResult, showAnalysisResult, readAnalysisResult
+  , TypeMap, initTypeMap, getTypeMap
+  , NDResult, NDClass (..), initNDResult, analyseND
   , initHOResult
   , TypeHOResult, TypeHOClass (..), initTypeHOResult, analyseHOType
   , ConsHOResult, ConsHOClass (..), analyseHOCons
@@ -25,7 +27,53 @@ import SetRBT
 import Classification
 import Names
 
+type AnalysisResult = (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
+
+showAnalysisResult :: AnalysisResult -> (String, String, String, String, String)
+showAnalysisResult (types, ndAna, hoType, hoCons, hoFunc)
+  = (showFM types, showFM ndAna, showFM hoType, showFM hoCons, showFM hoFunc)
+
+readAnalysisResult :: (String, String, String, String, String) -> AnalysisResult
+readAnalysisResult (types, ndAna, hoType, hoCons, hoFunc)
+  = ( readFM (<) types , readFM (<) ndAna , readFM (<) hoType
+    , readFM (<) hoCons, readFM (<) hoFunc)
+
 type Map a = FM QName a
+
+-- -----------------------------------------------------------------------------
+-- Mapping from constructor names to the defining types
+-- -----------------------------------------------------------------------------
+
+-- The type map is used to lookup the type name for a given constructor
+-- name to be able to add missing pattern matching alternatives like
+-- Choice_<TypeName> etc.
+-- This could also be done by inspecting the type signature of the respective
+-- function, but it may not be accurate for various reasons.
+
+type TypeMap = Map QName
+
+initTypeMap :: TypeMap
+initTypeMap = listToFM (<) primTypes
+
+--- List of constructors of known primitive types.
+primTypes :: [(QName, QName)]
+primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
+                             , renameQName (prelude, y))) $
+  [ ("Success","Success"), ("True", "Bool"), ("False", "Bool")
+  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
+  ]
+
+--- Register the types names of constructors to be able to retrieve
+--- the types for constructors used in pattern matching.
+--- May be needless now because the case lifting now also creates correct types.
+getTypeMap :: [TypeDecl] -> TypeMap
+getTypeMap ts = listToFM (<)
+              $ concatMap (\(Type qn _ _ cs) -> map (\c -> (consName c, qn)) cs)
+              $ filter (not . isTypeSyn) ts
+
+-- -----------------------------------------------------------------------------
+-- Analysis using fix-point iteration
+-- -----------------------------------------------------------------------------
 
 type Analysis t a = Map a -> (t, [QName]) -> (QName, a)
 
