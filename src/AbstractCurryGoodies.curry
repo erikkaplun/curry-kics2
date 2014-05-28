@@ -1,6 +1,9 @@
--- ---------------------------------------------------------------------------
---- Auxiliaries for processing AbstractCurry type expressions
--- ---------------------------------------------------------------------------
+--- --------------------------------------------------------------------------
+--- Auxiliaries for processing AbstractCurry type expressions.
+---
+--- @author Michael Hanus
+--- @version May 2014
+--- --------------------------------------------------------------------------
 module AbstractCurryGoodies
   ( isPolyType, isFunctionalType, isIOType, isIOReturnType, modsOfType
   , showMonoTypeExpr

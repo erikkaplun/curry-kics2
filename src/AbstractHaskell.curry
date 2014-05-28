@@ -151,9 +151,8 @@ data Rule = Rule [Pattern] [(Expr,Expr)] [LocalDecl]
 
 --- Data type for representing local (let/where) declarations
 data LocalDecl
-  = LocalFunc FuncDecl                   -- local function declaration
+  = LocalFunc FuncDecl                 -- local function declaration
   | LocalPat  Pattern Expr [LocalDecl] -- local pattern declaration
-  | LocalVar  VarIName                   -- local free variable declaration
 
 --- Data type for representing Haskell expressions.
 data Expr

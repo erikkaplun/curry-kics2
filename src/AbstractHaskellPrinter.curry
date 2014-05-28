@@ -261,20 +261,19 @@ showCrhsList opts ((g,r):cs)
    | otherwise
    = "\n" ++ showBlock (combineMap (showCrhs opts) ((g,r):cs) "\n")
 
-showCrhs :: Options -> (Expr,Expr) -> String
+showCrhs :: Options -> (Expr, Expr) -> String
 showCrhs opts (cond,expr) =
   "| " ++ showExprOpt opts cond ++ "\n= " ++ showExprOpt opts expr
 
 showLocalDecl :: Options -> LocalDecl -> String
-showLocalDecl opts (LocalFunc funcdecl) = showLocalFuncDecl opts funcdecl
-showLocalDecl opts (LocalPat pattern expr localdecls) =
-  showPattern opts pattern ++ " = " ++ showExprOpt opts expr ++
-  (if null localdecls
+showLocalDecl opts (LocalFunc     f) = showLocalFuncDecl opts f
+showLocalDecl opts (LocalPat p e ds) =
+  showPattern opts p ++ " = " ++ showExprOpt opts e ++
+  (if null ds
    then ""
    else "\n   where\n" ++
-        showBlock (prefixMap (showLocalDecl opts) localdecls "\n")
+        showBlock (prefixMap (showLocalDecl opts) ds "\n")
   )
-showLocalDecl opts (LocalVar index) = showPattern opts (PVar index) ++ " free"
 
 showExpr = showExprOpt defaultOptions
 

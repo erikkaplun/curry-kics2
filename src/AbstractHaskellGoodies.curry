@@ -225,7 +225,6 @@ renameSymbolInLocal ren local = case local of
   LocalPat pat e locals -> LocalPat (renameSymbolInPat ren pat)
                                       (renameSymbolInExpr ren e)
                                       (map (renameSymbolInLocal ren) locals)
-  _ -> local -- LoalVar
 
 renameSymbolInTypeSig :: (QName -> QName) -> TypeSig -> TypeSig
 renameSymbolInTypeSig _ Untyped = Untyped
