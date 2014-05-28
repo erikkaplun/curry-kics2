@@ -298,7 +298,7 @@ isGlobalDecl (Func _ a _ _ r) = case r of
 isGlobalCall :: Expr -> Bool
 isGlobalCall e = case e of
   Comb FuncCall fname [_, c] -> fname == globalGlobal
-                             && c     == Comb FuncCall globalTemporary []
+                             && c     == Comb ConsCall globalTemporary []
   _                          -> False
 
 globalGlobal :: QName
