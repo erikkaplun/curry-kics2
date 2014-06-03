@@ -903,7 +903,7 @@ traceFail cd qn args fail = liftFail
 
 consFail :: QName -> AH.Expr -> AH.Expr
 consFail qn arg = liftFail
-  [ initCover
+  [ coverVar
   , funcCall (basics, "consFail")
     [ showQName $ unRenameQName qn
     , funcCall (basics, "showCons") [arg]
