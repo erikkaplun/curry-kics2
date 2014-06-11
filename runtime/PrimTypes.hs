@@ -211,7 +211,12 @@ data Func t0 t1
      | Fail_Func Cover FailInfo
      | Guard_Func Cover Constraints (Func t0 t1)
 
-instance Show (Func a b) where show = internalError "ERROR: no show for Func"
+instance Show (Func a b) where
+ showsPrec d (Choice_Func cd i f1 f2) = showsChoice d cd i f1 f2 
+ showsPrec d (Choices_Func cd i fs)   = showsChoices d cd i fs
+ showsPrec _ (Fail_Func _ _)          = showChar '!'
+ showsPrec d (Guard_Func cd c f)      = showsGuard d cd c f
+ showsPrec _ (Func _)                 = showString "<<function>>"
 
 instance Read (Func a b) where readsPrec = internalError "readsPrec for Func"
 
