@@ -17,3 +17,11 @@ notNull = not . null
 --- Remove leading and trailing whitespace
 strip :: String -> String
 strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+
+--- Extend a String to a given minimal length by adding *leading* spaces.
+lpad :: Int -> String -> String
+lpad n s = replicate (n - length s) ' ' ++ s
+
+--- Extend a String to a given minimal length by adding *trailing* spaces.
+rpad :: Int -> String -> String
+rpad n s = s ++ replicate (n - length s) ' '

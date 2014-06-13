@@ -39,7 +39,7 @@ import Names
 import SimpleMake
 import TransFunctions
 import TransTypes
-import Utils                     (notNull)
+import Utils                     (notNull, lpad, rpad)
 
 --- Parse the command-line arguments and build the specified files.
 main :: IO ()
@@ -229,10 +229,7 @@ compMessage (curNum, maxNum) what m (src, dst)
   =  '[' : lpad (length sMaxNum) (show curNum) ++ " of " ++ sMaxNum  ++ "]"
   ++ ' ' : rpad 9 what ++ ' ' : rpad 16 m
   ++ " ( " ++ normalise src ++ ", " ++ normalise dst ++ " )"
-  where
-  sMaxNum  = show maxNum
-  lpad n s = replicate (n - length s) ' ' ++ s
-  rpad n s = s ++ replicate (n - length s) ' '
+  where sMaxNum  = show maxNum
 
 filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
