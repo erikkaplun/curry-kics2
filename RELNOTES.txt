@@ -6,6 +6,11 @@ Release notes for KiCS2 Version 0.3.1 (under development)
 
 Changes to version 0.3.0:
 
+  * REPL: The prompt now shows the loaded module first instead of after
+    the list of added modules.
+  * REPL: The command `:add` now accepts a list of modules to be added
+    instead of only a single module. The list of added modules is now
+    sorted in ascending order and no longer contains duplicates.
   * REPL: new (experimental) options `prelude` (for defining the name
     of the standard prelude) and `parser` (for setting additional
     front-end options) included.

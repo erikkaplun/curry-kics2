@@ -116,7 +116,7 @@ repl rst = do
 calcPrompt :: ReplState -> String
 calcPrompt rst = subst (rst :> prompt)
  where
-  loaded = unwords (rst :> addMods ++ [rst:> mainMod])
+  loaded = unwords (rst:> mainMod : rst :> addMods)
   subst []       = []
   subst [c]      = [c]
   subst (c:d:cs) = case c of
@@ -526,15 +526,24 @@ processReload rst args
 
 --- Process :add command
 processAdd :: ReplState -> String -> IO (Maybe ReplState)
-processAdd rst args = do
-  let modname = dropExtension args
-  if null modname
-    then skipCommand "missing module name"
-    else do
-    mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
-    maybe (skipCommand "source file of module not found")
-          (\ _ -> return (Just { addMods := modname : rst :> addMods | rst}))
-          mbf
+processAdd rst args
+  | null args = skipCommand "Missing module name"
+  | otherwise = Just `liftIO` foldIO add rst (words args)
+  where
+    add rst' m = do
+      let mdl = dropExtension m
+      mbf <- lookupFileInPath mdl [".curry", ".lcurry"] (loadPaths rst')
+      case mbf of
+        Nothing -> do
+          writeErrorMsg $ "Source file of module '" ++ mdl ++ "' not found"
+          return rst'
+        Just _  -> return { addMods := insert mdl (rst' :> addMods) | rst'}
+
+    insert m []        = [m]
+    insert m ms@(n:ns)
+      | m < n     = m : ms
+      | m == n    = ms
+      | otherwise = n : insert m ns
 
 --- Process expression evaluation
 processEval :: ReplState -> String -> IO (Maybe ReplState)
@@ -812,31 +821,31 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
 printHelpOnCommands :: IO ()
 printHelpOnCommands = putStrLn $ unlines
   [ "Commands (can be abbreviated to a prefix if unique)"
-  , ":load <prog>     - load program \"<prog>.[l]curry\" as main module"
-  , ":add  <prog>     - add module \"<prog>\" to currently loaded modules"
-  , ":reload          - recompile currently loaded modules"
-  , ":eval <expr>     - evaluate expression <expr>"
-  , ":type <expr>     - show type of expression <expr>"
-  , ":programs        - show names of all Curry programs available in load path"
-  , ":cd <dir>        - change current directory to <dir>"
-  , ":edit            - load source of currently loaded module into editor"
-  , ":edit <mod>      - load source of module <m> into editor"
-  , ":show            - show currently loaded source program"
-  , ":show <mod>      - show source of module <m>"
-  , ":source <f>      - show source of (visible!) function <f>"
-  , ":source <m>.<f>  - show source of function <f> in module <m>"
-  , ":browse          - browse program and its imported modules"
-  , ":interface       - show interface of currently loaded module"
-  , ":interface <mod> - show interface of module <mod>"
-  , ":usedimports     - show all used imported functions/constructors"
-  , ":set <option>    - set an option"
-  , ":set             - see help on options and current options"
-  , ":save            - save executable with main expression 'main'"
-  , ":save <expr>     - save executable with main expression <expr>"
-  , ":fork <expr>     - fork new process evaluating <expr>"
-  , ":help            - show this message"
-  , ":!<command>      - execute <command> in shell"
-  , ":quit            - leave the system"
+  , ":load <prog>       - load program '<prog>.[l]curry' as main module"
+  , ":add  <m1> .. <mn> - add modules '<m1>' to '<mn>' to currently loaded modules"
+  , ":reload            - recompile currently loaded modules"
+  , ":eval <expr>       - evaluate expression <expr>"
+  , ":type <expr>       - show type of expression <expr>"
+  , ":programs          - show names of all Curry programs available in load path"
+  , ":cd <dir>          - change current directory to <dir>"
+  , ":edit              - load source of currently loaded module into editor"
+  , ":edit <mod>        - load source of module <m> into editor"
+  , ":show              - show currently loaded source program"
+  , ":show <mod>        - show source of module <m>"
+  , ":source <f>        - show source of (visible!) function <f>"
+  , ":source <m>.<f>    - show source of function <f> in module <m>"
+  , ":browse            - browse program and its imported modules"
+  , ":interface         - show interface of currently loaded module"
+  , ":interface <mod>   - show interface of module <mod>"
+  , ":usedimports       - show all used imported functions/constructors"
+  , ":set <option>      - set an option"
+  , ":set               - see help on options and current options"
+  , ":save              - save executable with main expression 'main'"
+  , ":save <expr>       - save executable with main expression <expr>"
+  , ":fork <expr>       - fork new process evaluating <expr>"
+  , ":help              - show this message"
+  , ":!<command>        - execute <command> in shell"
+  , ":quit              - leave the system"
   ]
 
 --- Print all Curry programs in current load path
