@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version January 2014
+--- @version June 2014
 --- --------------------------------------------------------------------------
 {-# LANGUAGE Records #-}
 module REPL where
@@ -299,7 +299,7 @@ insertFreeVarsInMainGoal _   _    Nothing     = return GoalError
 insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
   CurryProg _ _ _ [mfunc@(CFunc _ _ _ ty _)] _ -> do
     let freevars           = freeVarsInFuncRule mfunc
-        (exp, whereclause) = break (== "where") (words goal)
+        (exp, whereclause) = breakWhereFreeClause goal
     if (rst :> safeExec) && isIOType ty
       then do writeErrorMsg "Operation not allowed in safe mode!"
               return GoalError
@@ -314,9 +314,9 @@ insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
           then return (GoalWithoutBindings prog)
           else do
             let newgoal = unwords $
-                  ["("] ++ exp ++ [",["] ++
+                  ["(",exp,",["] ++
                   intersperse "," (map (\v-> "\"" ++ v ++ "\"") freevars) ++
-                  ["]"] ++ map (\v->',':v) freevars ++ ")":whereclause
+                  ["]"] ++ map (\v->',':v) freevars ++ ")":[whereclause]
             writeVerboseInfo rst 2 $
               "Adding printing of bindings for free variables: " ++
                 intercalate "," freevars
@@ -337,6 +337,21 @@ insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
   lvarName ldecl = case ldecl of CLocalVar (_,v) -> [v]
                                  _               -> []
 
+  -- Breaks a main expression into an expression and a where...free clause.
+  -- If the where clause is not present, this part is empty.
+  breakWhereFreeClause mainexp =
+    let revmainexp = reverse mainexp
+     in if take 4 revmainexp == "eerf"
+        then let woWhere = findWhere (drop 4 revmainexp)
+              in if null woWhere
+                 then (mainexp,"")
+                 else (reverse woWhere, drop (length woWhere) mainexp)
+        else (mainexp,"")
+   where
+    findWhere [] = []
+    findWhere (c:cs) | isSpace c && take 6 cs == "erehw " = drop 6 cs
+                     | otherwise                          = findWhere cs
+  
 --- If the main goal is polymorphic, make it monomorphic by adding a type
 --- declaration where type variables are replaced by type "()".
 --- If the main goal has type "IO t" where t is monomorphic, t /= (),
