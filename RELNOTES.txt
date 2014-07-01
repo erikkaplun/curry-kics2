@@ -21,6 +21,7 @@ Changes to version 0.3.0:
   * Library `Distribution` and `FlatCurry`: after calling the front end,
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
+  * Libraries `Float` and `Integer`: Power operators added.
   * Library `HTML`: `formMetaInfo` added, HTML header changed to HTML5.
   * Library `List`: Improved version of `inits` added.
   * Library `Prelude`: Functions `forIO`, `forIO_`, `when`, `unless` added.
