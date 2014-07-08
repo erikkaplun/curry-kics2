@@ -1,8 +1,8 @@
 Release Notes for KiCS2
 =======================
 
-Release notes for KiCS2 Version 0.3.1 (under development)
----------------------------------------------------------
+Release notes for KiCS2 Version 0.3.1
+-------------------------------------
 
 Changes to version 0.3.0:
 
@@ -22,6 +22,7 @@ Changes to version 0.3.0:
     an exception is raised if the front end returns with an error
     (due to an illegal source program).
   * Libraries `Float` and `Integer`: Power operators added.
+  * Library `Float`: hyperbolic/ arc sine/cosine/tangent operators added.
   * Library `HTML`: `formMetaInfo` added, HTML header changed to HTML5.
   * Library `List`: Improved version of `inits` added.
   * Library `Prelude`: Functions `forIO`, `forIO_`, `when`, `unless` added.
