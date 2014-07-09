@@ -194,7 +194,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
     | d <= 0    = indent l k . showChar '_' . nl
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
-      Fail _ _        -> showChar '!'
+      Fail _ _        -> showChar '!' . nl
       Choice  _ i x y -> shows i  . nl . showsChildren d l
                          [("L", try x), ("R", try y)]
       Narrowed _ i xs -> shows i  . nl . showsChildren d l
@@ -349,7 +349,7 @@ printValsDFSTry backTrack cont goal = do
       Nothing                      -> return ()
       Just (reset, e') | backTrack -> printValsDFSTry True  cont e' >> reset
                        | otherwise -> printValsDFSTry False cont e'
- where 
+ where
   processLB True cs i xs = do
     reset <- setUnsetDecision i NoDecision
     printValsDFSTry backTrack cont
