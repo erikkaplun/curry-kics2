@@ -68,7 +68,7 @@ defaultImportPaths :: ReplState -> IO [String]
 defaultImportPaths rst = do
   currypath <- getEnviron "CURRYPATH"
   let rclibs = rcValue (rst :> rcvars) "libraries"
-  return $ splitSearchPath currypath ++ splitSearchPath rclibs
+  return $ filter (/= ".") $ splitSearchPath currypath ++ splitSearchPath rclibs
 
 defaultImportPathsWith :: ReplState -> String -> IO [String]
 defaultImportPathsWith rst dirs =
@@ -351,7 +351,7 @@ insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
     findWhere [] = []
     findWhere (c:cs) | isSpace c && take 6 cs == "erehw " = drop 6 cs
                      | otherwise                          = findWhere cs
-  
+
 --- If the main goal is polymorphic, make it monomorphic by adding a type
 --- declaration where type variables are replaced by type "()".
 --- If the main goal has type "IO t" where t is monomorphic, t /= (),
