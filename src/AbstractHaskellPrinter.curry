@@ -361,12 +361,12 @@ showPattern opts (PAs (_,name) pat)     = showIdentifier name ++ "@"
 showPattern opts (PFuncComb qname pats) = showPattern opts (PComb qname pats)
 
 showLitPattern :: Options -> Literal -> String
-showLitPattern opts l = '(' : cons ++ ' ' : showLiteral l ++ "#)"
-  where
-  cons = showSymbol opts $ case l of
-    Intc   _ -> (curryPrelude, "C_Int"  )
-    Floatc _ -> (curryPrelude, "C_Float")
-    Charc  _ -> (curryPrelude, "C_Char" )
+showLitPattern opts l = case l of
+    Charc   _ -> wrapUnboxed (curryPrelude, "C_Char" )
+    Floatc  _ -> wrapUnboxed (curryPrelude, "C_Float")
+    Intc    _ -> wrapUnboxed (curryPrelude, "C_Int"  )
+    Stringc _ -> showLiteral l
+  where wrapUnboxed c = '(' : showSymbol opts c ++ ' ' : showLiteral l ++ "#)"
 
 showPreludeCons :: Options -> Pattern -> String
 showPreludeCons opts p

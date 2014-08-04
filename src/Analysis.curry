@@ -30,12 +30,12 @@ import Names
 type AnalysisResult = (TypeMap, NDResult, TypeHOResult, ConsHOResult, FuncHOResult)
 
 showAnalysisResult :: AnalysisResult -> (String, String, String, String, String)
-showAnalysisResult (types, ndAna, hoType, hoCons, hoFunc)
-  = (showFM types, showFM ndAna, showFM hoType, showFM hoCons, showFM hoFunc)
+showAnalysisResult (types, ndAna, hoTyp, hoCons, hoFunc)
+  = (showFM types, showFM ndAna, showFM hoTyp, showFM hoCons, showFM hoFunc)
 
 readAnalysisResult :: (String, String, String, String, String) -> AnalysisResult
-readAnalysisResult (types, ndAna, hoType, hoCons, hoFunc)
-  = ( readFM (<) types , readFM (<) ndAna , readFM (<) hoType
+readAnalysisResult (types, ndAna, hoTyp, hoCons, hoFunc)
+  = ( readFM (<) types , readFM (<) ndAna , readFM (<) hoTyp
     , readFM (<) hoCons, readFM (<) hoFunc)
 
 type Map a = FM QName a

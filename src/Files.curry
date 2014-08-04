@@ -93,7 +93,7 @@ lookupFileInPath file exts path
       maybe (lookupFile dirs) (return . Just) mbfile
 
     lookupExtFile _ []         = return Nothing
-    lookupExtFile f (ext:exts) = do
-      let fExt = f <.> ext
+    lookupExtFile f (e:es) = do
+      let fExt = f <.> e
       exists <- doesFileExist fExt
-      if exists then return (Just fExt) else lookupExtFile f exts
+      if exists then return (Just fExt) else lookupExtFile f es
