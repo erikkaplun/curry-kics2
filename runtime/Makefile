@@ -1,11 +1,13 @@
 # Generate the kics2-runtime.cabal and install the package
 
 # Name of the package
-PACKAGE     = kics2-runtime
+PACKAGE      = kics2-runtime
 # Name of the cabal file
-CABAL_FILE  = $(PACKAGE).cabal
+CABAL_FILE   = $(PACKAGE).cabal
 # idsupply directory to use
-IDSUPPLYDIR = idsupplyioref
+IDSUPPLYDIR  = idsupplyioref
+# Additional flags for compilation of the runtime
+RUNTIMEFLAGS =
 
 # the runtime package configuration file
 RUNTIME_PKG_CONF = $(LOCALPKG)/runtime.conf
@@ -18,7 +20,8 @@ space     := $(empty) $(empty)
 comma_sep  = $(subst $(space),$(comma)$(space),$(1))
 # runtime dependencies as comma separated list
 CABAL_RUNTIMEDEPS  = $(call comma_sep,$(RUNTIMEDEPS))
-
+# GHC options passed to the cabal file
+CABAL_GHC_OPTS = $(RUNTIMEFLAGS:%=-D%)
 
 .PHONY: install
 install: $(CABAL_FILE)
@@ -57,3 +60,4 @@ endif
 	echo "      ConstStore, ID, Search, Solver"              >> $@
 	echo "    , Strategies, Types"                           >> $@
 	echo "  hs-source-dirs: ., $(IDSUPPLYDIR)"               >> $@
+	echo "  ghc-options: $(CABAL_GHC_OPTS)"                  >> $@

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module PrimTypes where
 
@@ -21,11 +22,21 @@ data BinInt
 instance Show BinInt where
   showsPrec d (Choice_BinInt cd i x y) = showsChoice d cd i x y
   showsPrec d (Choices_BinInt cd i xs) = showsChoices d cd i xs
-  showsPrec d (Guard_BinInt cd c e) = showsGuard d cd c e
-  showsPrec _ (Fail_BinInt _ _) = showChar '!'
-  showsPrec _ (Neg x1) = (showString "(Neg") . ((showChar ' ') . ((shows x1) . (showChar ')')))
-  showsPrec _ Zero = showString "Zero"
-  showsPrec _ (Pos x1) = (showString "(Pos") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec _ (Fail_BinInt        _ _) = showChar '!'
+  showsPrec d (Guard_BinInt    cd c e) = showsGuard d cd c e
+#ifdef BinaryInt
+  showsPrec _ (Neg                 x1) = (showString "(Neg") . ((showChar ' ')
+                                       . ((shows x1) . (showChar ')')))
+  showsPrec _ Zero                     = showString "Zero"
+  showsPrec _ (Pos                 x1) = (showString "(Pos") . ((showChar ' ')
+                                       . ((shows x1) . (showChar ')')))
+#else
+  showsPrec d (Neg                  x) = showString "(-" . showsPrec d x
+                                       . showChar ')'
+  showsPrec _ Zero                     = showChar '0'
+  showsPrec d (Pos                  x) = showsPrec d x
+#endif
+
 
 
 instance Read BinInt where
@@ -118,11 +129,28 @@ data Nat
 instance Show Nat where
   showsPrec d (Choice_Nat cd i x y) = showsChoice d cd i x y
   showsPrec d (Choices_Nat cd i xs) = showsChoices d cd i xs
-  showsPrec d (Guard_Nat cd c e) = showsGuard d cd c e
-  showsPrec _ (Fail_Nat _ _) = showChar '!'
-  showsPrec _ IHi = showString "IHi"
-  showsPrec _ (O x1) = (showString "(O") . ((showChar ' ') . ((shows x1) . (showChar ')')))
-  showsPrec _ (I x1) = (showString "(I") . ((showChar ' ') . ((shows x1) . (showChar ')')))
+  showsPrec d (Guard_Nat    cd c e) = showsGuard d cd c e
+  showsPrec _ (Fail_Nat        _ _) = showChar '!'
+#ifdef BinaryInt
+  showsPrec _ IHi                   = showString "IHi"
+  showsPrec _ (O x1)                = showString "(O" . showChar ' '
+                                    . shows x1 . showChar ')'
+  showsPrec _ (I x1)                = showString "(I" . showChar ' '
+                                    . shows x1 . showChar ')'
+#else
+  showsPrec d x                     = showTerm 1 0 x
+    where
+    showTerm a c IHi   = shows    (a + c)
+    showTerm a c (O n) = showTerm (2 * a) c       n
+    showTerm a c (I n) = showTerm (2 * a) (c + a) n
+    showTerm a c x
+      | a <= 1         = showsPrec d x
+      | c == 0         = showChar '(' . shows a . showString " * "
+                       . showsPrec d x . showChar ')'
+      | otherwise      = showChar '(' . shows a . showString " * "
+                       . showsPrec d x . showString " + "
+                       . shows c . showChar ')'
+#endif
 
 
 instance Read Nat where
@@ -212,7 +240,7 @@ data Func t0 t1
      | Guard_Func Cover Constraints (Func t0 t1)
 
 instance Show (Func a b) where
- showsPrec d (Choice_Func cd i f1 f2) = showsChoice d cd i f1 f2 
+ showsPrec d (Choice_Func cd i f1 f2) = showsChoice d cd i f1 f2
  showsPrec d (Choices_Func cd i fs)   = showsChoices d cd i fs
  showsPrec _ (Fail_Func _ _)          = showChar '!'
  showsPrec d (Guard_Func cd c f)      = showsGuard d cd c f
@@ -259,7 +287,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind _  _ (Func _) = internalError "can not bind a Func"
   bind cd i (Choice_Func d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_Func d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_Func d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
   bind cd i (Choices_Func d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
   bind _  _ (Choices_Func _ i@(ChoiceID _) _) = internalError ("Prelude.Func.bind: Choices with ChoiceID: " ++ (show i))
   bind _  _ (Fail_Func _ info) = [Unsolvable info]
@@ -270,7 +298,7 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   lazyBind cd i (Choices_Func d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _  _ (Choices_Func _ i _) = internalError ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ _ (Fail_Func _ info) = [Unsolvable info]
-  lazyBind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]  
+  lazyBind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 -- END GENERATED FROM PrimTypes.curry
 
 -- BEGIN GENERATED FROM PrimTypes.curry

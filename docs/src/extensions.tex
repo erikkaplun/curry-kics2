@@ -4,6 +4,55 @@
 \CYS supports some extensions in Curry programs that are not (yet)
 part of the definition of Curry. These extensions are described below.
 
+\subsection{Narrowing on Int Literals}
+In addition to narrowing on algebraic data types,
+\CYS alos implements narrowing on values of the primitive type \code{Int}.
+For example, the goal \code{x == 3 where x free}
+can be narrowed to the solutions
+\begin{curry}
+Prelude> x == 3 where x free
+{x = (-_x2)       } False
+{x = 0            } False
+{x = 1            } False
+{x = (2 * _x3)    } False
+{x = 3            } True
+{x = (4 * _x4 + 1)} False
+{x = (4 * _x4 + 3)} False
+\end{curry}
+Note that the free variables occuring in the binding are restricted to
+positive numbers greater than $0$
+(the output has been indented to increase readability).
+This feature is realized by an internal binary representation
+of integer numbers. If necessary, this representation can be exposed to
+the user by setting the flag \code{BinaryInt} during installation:
+\begin{curry}
+make [kernel|install] RUNTIMEFLAGS=BinaryInt
+\end{curry}
+In an experimental (local) installation, the flag can also be set in the
+interpreter:
+\begin{curry}
+:set ghc -DBinaryInt
+\end{curry}
+The example above will then be evaluated (without indentation) to:
+\begin{curry}
+Prelude> x == 3 where x free
+{x = (Neg _x2)        } False
+{x = 0                } False
+{x = 1                } False
+{x = (Pos (O _x3))    } False
+{x = 3                } True
+{x = (Pos (I (O _x4)))} False
+{x = (Pos (I (I _x4)))} False
+\end{curry}
+In this output, values without free variables are presented like before.
+For value containing a free variable,
+the constructors \code{Neg} and \code{Pos} denote negative and
+positive numbers (without $0$), while the constructors \code{O} and \code{I}
+denote a $0$-- and $1$--bit where the \emph{least significant bit comes first}.
+That is,
+$\code{(Pos (I (O _x4)))} = +\code{(I (O _x4))} = + (2 * \code{(O _x4)}) + 1 = + (4 * \code{_x4}) + 1$
+which meets the output above.
+
 \subsection{Recursive Variable Bindings}
 
 Local variable declarations (introduced by \code{let}\pindex{let}
