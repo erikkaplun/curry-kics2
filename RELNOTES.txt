@@ -6,6 +6,18 @@ Release notes for KiCS2 Version 0.3.1
 
 Changes to version 0.3.0:
 
+  * Changed representation of integer literals containing free variables.
+    Such literals are now represented as arithmetic expressions well-known
+    from (constraint-)logic programming, such as
+
+        { x = (4 * _x4 + 1) }
+
+    instead of the binary representation
+
+        { x = (Pos (I (O _x4))) }
+
+    Furthermore, the representation can be configured during installation
+    and is now also documented in the manual as a language extension.
   * REPL: The prompt now shows the loaded module first instead of after
     the list of added modules.
   * REPL: The command `:add` now accepts a list of modules to be added
