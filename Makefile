@@ -58,6 +58,8 @@ export COMP         = $(LOCALBIN)/kics2c$(EXE_SUFFIX)
 export REPL         = $(LOCALBIN)/kics2i$(EXE_SUFFIX)
 # The default options for the REPL, used for libraries and tools
 export REPL_OPTS    = :set v2 :set -ghci
+# The standard name of the interactive Curry system in then bin dirctory:
+export CURRYSYSTEMBIN = $(BINDIR)/curry
 # The frontend binary
 export CYMAKE       = $(BINDIR)/cymake$(EXE_SUFFIX)
 # The cleancurry binary
@@ -175,6 +177,8 @@ kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
 	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
+	rm -f $(CURRYSYSTEMBIN)
+	ln -s $(BINDIR)/$(CURRYSYSTEM) $(CURRYSYSTEMBIN)
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
 	cd runtime && $(MAKE) unregister
@@ -228,7 +232,8 @@ clean: $(CLEANCURRY)
 	cd tools       && $(MAKE) clean
 	cd utils       && $(MAKE) clean
 	cd www         && $(MAKE) clean
-	rm -f $(MAKELOG) rm -f $(INSTALLHS) $(INSTALLCURRY)
+	rm -f $(MAKELOG) $(CURRYSYSTEMBIN)
+	rm -f $(INSTALLHS) $(INSTALLCURRY)
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
