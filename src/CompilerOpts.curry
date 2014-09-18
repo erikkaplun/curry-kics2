@@ -30,7 +30,8 @@ version = concat
 type Options =
   { optHelp               :: Bool         -- show usage and exit
   , optVersion            :: Bool         -- show version and exit
-  , optVerbosity          :: Verbosity    -- verbosity level
+  , optVerbosity          :: Verbosity    -- current verbosity level
+  , optMainVerbosity      :: Verbosity    -- verbosity level of main module
   , optForce              :: Bool         -- force recompilation
   , optImportPaths        :: [String]     -- directories searched for imports
   , optOutputSubdir       :: String       -- subdirectory for compiled modules
@@ -39,22 +40,25 @@ type Options =
   , optDump               :: [DumpFormat] -- dump intermediate results
   , optParser             :: String       -- additional front-end options
   , optTraceFailure       :: Bool         -- trace failures
+  , rcVars                :: [(String, String)] -- content of rc file
   }
 
 --- Default compiler options
 defaultOptions :: Options
 defaultOptions =
-  { optHelp         := False
-  , optVersion      := False
-  , optVerbosity    := VerbStatus
-  , optForce        := False
-  , optImportPaths  := []
-  , optOutputSubdir := ".curry" </> "kics2"
-  , optOptimization := OptimStrictSupply
-  , optExtensions   := []
-  , optDump         := []
-  , optParser       := ""
-  , optTraceFailure := False
+  { optHelp          := False
+  , optVersion       := False
+  , optVerbosity     := VerbStatus
+  , optMainVerbosity := VerbStatus
+  , optForce         := False
+  , optImportPaths   := []
+  , optOutputSubdir  := ".curry" </> "kics2"
+  , optOptimization  := OptimStrictSupply
+  , optExtensions    := []
+  , optDump          := []
+  , optParser        := ""
+  , optTraceFailure  := False
+  , rcVars           := []
   }
 
 --- Verbosity levels of the compiler
