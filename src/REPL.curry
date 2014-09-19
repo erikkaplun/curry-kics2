@@ -20,7 +20,7 @@ import FlatCurry        (flatCurryFileName, readFlatCurryFile)
 import FlatCurryGoodies (progImports)
 import IO
 import IOExts
-import List             (intercalate, intersperse, isPrefixOf, isInfixOf, nub)
+import List             (intercalate, intersperse, isPrefixOf, nub)
 import ReadNumeric      (readNat)
 import ReadShowTerm     (readsTerm)
 import Sort             (mergeSort)
@@ -379,11 +379,12 @@ makeMainGoalMonomorphic rst prog goal = case prog of
                     then '(' : goal ++ ") >>= print"
                     else goal
 
--- Compile a Curry program with IDC compiler:
+-- Compile a Curry program with kics2 compiler:
 compileCurryProgram :: ReplState -> String -> IO Int
 compileCurryProgram rst curryprog = do
-  writeVerboseInfo rst 2 $ "Executing: " ++ kics2Cmd
-  system kics2Cmd
+  timekics2Cmd <- getTimeCmd rst "KiCS2 compilation" kics2Cmd
+  writeVerboseInfo rst 2 $ "Executing: " ++ timekics2Cmd
+  system timekics2Cmd
  where
   kics2Bin  = rst :> kics2Home </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
@@ -402,7 +403,6 @@ compileCurryProgram rst curryprog = do
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ReplState
 execMain rst _ mainexp = do -- _ was cmpstatus
-  timecmd <- getTimeCmd
   let paropts = case rst :> ndMode of
                   Par n -> "-N" ++ (if n == 0 then "" else show n)
                   _     -> ""
@@ -411,33 +411,13 @@ execMain rst _ mainexp = do -- _ was cmpstatus
                  then " "
                  else " +RTS " ++ rst :> rtsOpts ++ " " ++ paropts ++ " -RTS ") ++
                 rst:>rtsArgs
-      tcmd    = timecmd ++ maincmd
+  timecmd <- getTimeCmd rst "Execution" maincmd
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
-  writeVerboseInfo rst 3 $ "Executing: " ++ tcmd
-  cmdstatus <- system tcmd
+  writeVerboseInfo rst 3 $ "Executing: " ++ timecmd
+  cmdstatus <- system timecmd
   unless (cmdstatus == 0) $
     putStrLn ("Evaluation terminated with non-zero status " ++ show cmdstatus)
   return (setExitStatus cmdstatus rst)
- where
-  getTimeCmd | rst :> showTime = getTimeCmdForDist `liftIO` getDistribution
-             | otherwise       = return ""
-
-  -- Time command for specific distributions. It might be necessary
-  -- to adapt this command.
-  getTimeCmdForDist dist
-    | True --"Ubuntu" `isInfixOf` dist
-     = "time --format=\"Execution time: %Us / elapsed: %E\" "
-    | "Debian" `isInfixOf` dist
-      = "export TIMEFORMAT=\"Execution time: %2Us / elapsed: %2Es\" && time "
-    | otherwise = "time "
-
-  getDistribution = do
-    (hin, hout, herr) <- execCmd "lsb_release -i"
-    dist <- hGetContents hout
-    hClose hin
-    hClose hout
-    hClose herr
-    return dist
 
 -- ---------------------------------------------------------------------------
 -- Processing of REPL commands
@@ -784,7 +764,7 @@ printOptions rst = putStrLn $ unlines
   , "+/-first        - turn on/off printing only first solution"
   , "+/-optimize     - turn on/off optimization"
   , "+/-bindings     - show bindings of free variables in initial goal"
-  , "+/-time         - show execution time"
+  , "+/-time         - show compilation and execution time"
   , "+/-trace        - trace failure in deterministic expression"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
   , "safe            - safe execution mode without I/O actions"

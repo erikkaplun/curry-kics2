@@ -3,7 +3,7 @@
 --- The current installation infos are taken from the
 --- file `ROOT/runtime/Installation.hs` which is automatically generated.
 ---
---- @author  Michael Hanus, Bjoern Peemoeller, Fabian Reck
+--- @author  Michael Hanus, Bjoern Peemoeller, Fabian Skrlac
 --- @version September 2014
 --- --------------------------------------------------------------------------
 

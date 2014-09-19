@@ -11,13 +11,15 @@ module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , setExitStatus
   , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain
+  , getTimeCmd
   ) where
 
 import AbstractCurry
 import Directory
 import FilePath      ((</>), dropExtension)
-import IO            (Handle, hFlush, stdout)
-import List          (intercalate)
+import IO            (Handle, hFlush, hGetContents, hClose, stdout)
+import IOExts        (execCmd)
+import List          (intercalate, isInfixOf)
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
 import System
@@ -162,10 +164,11 @@ createAndCompileMain rst createExecutable mainExp bindings = do
   writeFile mainFile $ mainModule rst' isdet isio (rst :> traceFailure) bindings
 
   let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
-  writeVerboseInfo rst' 3 $ "Compiling " ++ mainFile ++ " with: " ++ ghcCompile
+  tghcCompile <- getTimeCmd rst' "GHC compilation" ghcCompile
+  writeVerboseInfo rst' 3 $ "Compiling " ++ mainFile ++ " with: " ++ tghcCompile
   (rst'', status) <- if useGhci
                       then compileWithGhci rst' ghcCompile mainExp
-                      else system ghcCompile >>= \stat -> return (rst', stat)
+                      else system tghcCompile >>= \stat -> return (rst', stat)
   return (if status > 0
           then (setExitStatus 1 rst'', MainError)
           else (setExitStatus 0 rst'',
@@ -287,3 +290,33 @@ mainExpr goal isdet isio isTF ndMode evalMode mbBindings
     " printWithBindings (zip (fromCurry names) [" ++
     intercalate "," (map (("show v" ++) . show) [1..n]) ++
     "]) result)"
+
+
+---------------------------------------------------------------------------
+-- Axuiliaries:
+
+-- Decorates a shell command so that timing information is shown if
+-- the corresponding option is set.
+getTimeCmd :: ReplState -> String -> String -> IO String
+getTimeCmd rst timename cmd
+  | rst :> showTime = do dist <- getDistribution
+                         return (getTimeCmdForDist dist ++ cmd)
+  | otherwise       = return cmd
+ where
+  -- Time command for specific distributions. It might be necessary
+  -- to adapt this command.
+  getTimeCmdForDist dist
+    | True --"Ubuntu" `isInfixOf` dist
+    = "time --format=\""++timename++" time: %Us / elapsed: %E\" "
+    | "Debian" `isInfixOf` dist
+    = "export TIMEFORMAT=\""++timename++" time: %2Us / elapsed: %2Es\" && time "
+    | otherwise = "time "
+
+  getDistribution = do
+    (hin, hout, herr) <- execCmd "lsb_release -i"
+    dist <- hGetContents hout
+    hClose hin
+    hClose hout
+    hClose herr
+    return dist
+
