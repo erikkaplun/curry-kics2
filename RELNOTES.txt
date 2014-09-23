@@ -12,6 +12,7 @@ Changes to version 0.3.1:
   * Tool `CASS`: new analysis `RequiredValues` added.
   * Optimization tool `bindingopt` for transforming Boolean equalities
     into constraint equalities added.
+  * Tool `data2xml` for data conversion to XML and back added.
 
 
 Release notes for KiCS2 Version 0.3.1
