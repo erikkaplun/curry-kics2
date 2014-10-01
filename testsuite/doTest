@@ -23,7 +23,7 @@ TESTTOOLS="testData2Xml"
 ALLTESTS="$TESTLANG $TESTLIBS $TESTTOOLS"
 
 # clean up before
-$KICS2BIN/cleancurry
+$CURRYBIN/cleancurry
 
 # execute all unit tests:
 echo "Executing unit tests for back end $BACKEND..."
