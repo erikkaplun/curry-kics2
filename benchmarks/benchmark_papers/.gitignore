@@ -5,6 +5,7 @@ execpaper
 Examples/currycode.sty
 kics2/currycode.sty
 kics2/plot_*
+kics2/LOGFILE
 
 # tex temporary files
 *.aux
