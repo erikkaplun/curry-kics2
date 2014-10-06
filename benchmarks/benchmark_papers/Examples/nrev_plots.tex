@@ -1,0 +1,35 @@
+\documentclass{article}
+
+\usepackage{currycode}
+\usepackage{graphicx}
+
+\begin{document}
+\sloppy
+
+\section{Introduction}
+
+This is a short LaTeX document showing some features of an
+Executable Benchmark Paper.
+
+\begin{curryprog}
+import Benchmarks
+import NRevBench
+\end{curryprog}
+
+\section{Benchmarks}
+
+\paragraph{Note:}
+%
+All benchmarks were executed on a \runcurry{getOS} machine
+(named ``\runcurry{getHostName}'')
+running \runcurry{getSystemID} \runcurry{getSystemRelease}
+(with an ``\runcurry{getCPUModel}'' processor containing
+\runcurry{getCoreNumber} cores).
+
+\subsection{Nrev Benchmark}
+
+\begin{center}
+\runcurry{benchCurrySystemsAndPlot 5.2 [500,1000..] "plot_all"}
+\end{center}
+
+\end{document}

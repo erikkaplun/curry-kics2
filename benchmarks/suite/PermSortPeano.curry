@@ -59,5 +59,5 @@ descList up low =
 
 sortmain n = psort (Cons two (app (descList n three) (Cons (S O) Nil)))
 
---main = sortmain nat14
-main = sortmain nat15
+main = sortmain nat14
+--main = sortmain nat15

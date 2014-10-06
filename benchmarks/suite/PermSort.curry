@@ -14,4 +14,5 @@ psort xs = sorted (perm xs)
 
 sortmain n = psort (2:[n,n-1 .. 3]++[1])
 
-main = sortmain 15
+main = sortmain 14
+--main = sortmain 15

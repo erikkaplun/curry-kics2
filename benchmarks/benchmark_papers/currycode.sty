@@ -1,0 +1,18 @@
+% include file for LaTeX files containing Curry code to be executed
+
+\usepackage{listings}
+\usepackage{comment}
+\usepackage{ifthen}
+
+\IfFileExists{\jobname.currycode.tex}
+  {\input{\jobname.currycode.tex}}
+  {\typeout{WARNING: file "\jobname.currycode.tex" is missing, no curry results included.}}
+
+% code snippet with Curry expressions
+\newcommand{\runcurry}[1]{\ifthenelse{\isundefined{\curryresult}}{\{\texttt{\lstinline{#1}}\}}{\curryresult{#1}}}
+
+% Curry code lines:
+%\newenvironment{curryprog}{}{} %\begin{verbatim}}{\end{verbatim}}
+%\lstnewenvironment{curryprog}{}{}
+\specialcomment{curryprog}{}{}
+\excludecomment{curryprog}
