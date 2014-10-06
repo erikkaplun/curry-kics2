@@ -95,10 +95,28 @@ benchPrograms currysystem programs =
                                    maybe "--" showF f)))
            (runOn (benchProgram currysystem) programs)
  where
-  showF x = ``format "%.2f",x''
-
   showOpts o = if null o then ""
                else " ("++ unwords (filter (/=":set") (words o)) ++")"
+
+-- Shows a floating point number.
+showF x = ``format "%.2f",x''
+
+-- Executes a benchmark with parallel strategies (with a KiCS2 system)
+-- and return the required elapsed time.
+benchParProg :: CurrySystem -> String -> Benchmark [(String,String)]
+benchParProg currysystem progname =
+  mapBench (map (\ (p,mbf) -> (p, maybe "-" showF mbf)))
+   ((runOn execProgBench [""," +RTS -N2 -RTS"," +RTS -N4 -RTS"," +RTS -N -RTS"])
+      `withPrepare` compileCurry currysystem options progname ""
+      `withCleanup` cleanCurry   currysystem progname)
+ where
+  options = ":set parallel"
+
+  execProgBench rtsopt = numberOfRuns *>- 
+    mapBench (maybe Nothing (Just . elapsedTime))
+             (benchCommandWithLimit
+                (runCurryCmd currysystem progname ++ rtsopt)
+                timeLimit)
 
 -----------------------------------------------------------------------
 -- The naive reverse benchmark executed for different list lengths
@@ -176,12 +194,18 @@ nondetBench _ =
 -- compute first solution:
 withSearchFirst prog = map (\s->(prog,":set "++s++" :set +first",""))
 
+-- Parallel search benchmark programs:
+parSearchBench = ["PermSort","PermSortPeano"]
+
 -- Encapsulated search benchmarks:
 encapsBench _ =
   [("PermSortSearchTree",":set dfs","mainsort")
   ,("PermSortSearchTree",":set dfs","maintree")]
 
-                    
+-- Benchmark a list of Curry systems with a list of benchmark programs
+-- and show the result as a table.
+mainBench :: [CurrySystem] -> (CurrySystem -> [(String,String,String)])
+          -> IO String
 mainBench systems benchprogs = do
   curdir <- getCurrentDirectory
   setCurrentDirectory benchProgDir
@@ -189,8 +213,20 @@ mainBench systems benchprogs = do
   let tabledata = map (\ ((prg,p):ds) -> prg:p:map snd ds)
                       (transpose bdata)
   setCurrentDirectory curdir
-  return (benchResultsAsTable ("Program" : map showSystemLabel systems)
+  return (benchResultsAsTable ("RTS Parameters" : map showSystemLabel systems)
                               tabledata)
 
+-- Benchmark the parallel search strategy of a Curry system (KiCS2)
+-- with a list of benchmark programs and show the result as a table.
+mainParBench :: CurrySystem -> [String] -> IO String
+mainParBench system benchprogs = do
+  curdir <- getCurrentDirectory
+  setCurrentDirectory benchProgDir
+  bdata <- mapIO (\prog -> execBench (benchParProg system prog)) benchprogs
+  let tabledata = map (\ ((prg,p):ds) -> prg:p:map snd ds)
+                      (transpose bdata)
+  setCurrentDirectory curdir
+  return (benchResultsAsTable ("Program" : benchprogs)
+                              tabledata)
 
 -----------------------------------------------------------------------
