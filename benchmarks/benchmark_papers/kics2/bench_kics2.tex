@@ -7,6 +7,8 @@
 \usepackage{currycode}
 \usepackage{graphicx}
 
+\setlength{\parindent}{0ex}
+
 \begin{document}
 \sloppy
 
@@ -59,17 +61,35 @@ i.e., operations without overlapping rules or free variables:
 \subsection{Non-deterministic DFS Benchmarks}
 
 The following benchmark programs contain non-deterministic operations
-or free variables. We evaluate the computation of a
-first solution/value via DFS in PAKCS vs. KiCS2:
+or free variables. We evaluate the computation of all
+solutions/values via DFS in various Curry systems:
 
 \begin{center}
-\runcurry{mainBench [PAKCS, KiCS2 ""] nondetBenchDFS}
+\runcurry{mainBench [PAKCS, MCC, KiCS2 ""] nondetBenchDFS}
+\end{center}
+
+These benchmarks contain functional patterns which are not supported in MCC:
+
+\begin{center}
+\runcurry{mainBench [PAKCS, KiCS2 ""] funpatBenchDFS}
 \end{center}
 
 \subsection{Non-deterministic Benchmarks}
 
+The following benchmark programs compare various search strategies
+as they are supported in KiCS2.
+
+The first set of benchmarks computes all solutions/values:
+
 \begin{center}
 \runcurry{mainBench kics2Systems nondetBench}
+\end{center}
+
+The following benchmarks computes the first solution/value
+only (since the search space is infinite):
+
+\begin{center}
+\runcurry{mainBench kics2Systems nondetBenchFirst}
 \end{center}
 
 \subsection{Parallel Non-deterministic Benchmarks}

@@ -12,7 +12,7 @@ import List(transpose)
 import System
 
 -- Time limit for individual benchmarks:
-timeLimit = 100.0 -- seconds
+timeLimit = 120.0 -- seconds
 
 -- Number of runs for each benchmark:
 numberOfRuns = 1
@@ -49,17 +49,23 @@ binOfSystem (KiCS2 version) = "/opt/kics2/kics2"++
 compileCurry :: CurrySystem -> String -> String-> String -> IO ()
 compileCurry cs opts prog mainexp = system compilecmd >> done
  where
+   compilecmd = case cs of
+     MCC -> unwords
+              [currybin,"-o",prog,
+               if null mainexp then "-e\"main\"" else "-e\""++mainexp++"\"",
+               prog++".curry"]
+     _   -> unwords [currybin,defopts,opts,":load",prog,":save",mainexp,":quit"]
+
    currybin = binOfSystem cs
 
-   compilecmd = case cs of
-     MCC     -> unwords [currybin,"-o",prog,prog++".curry"]
-     PAKCS   -> unwords [currybin,":load",prog,":save",mainexp,":quit"]
-     KiCS2 _ -> unwords [currybin,opts,":load",prog,":save",mainexp,":quit"]
+   -- default options for PAKCS and KiCS2:
+   defopts = ":set -first :set -time"
 
 -- The command to execute a compiled Curry program:
+-- (for MCC: increase heap size and set non-interative option)
 runCurryCmd :: CurrySystem -> String -> String
 runCurryCmd cs prog =
-  "./"++prog ++ (if cs==MCC then " +RTS -h512m -RTS" else "")
+  "./"++prog ++ (if cs==MCC then " +RTS -h512m -RTS -n" else "")
 
 -- Remove generated files:
 cleanCurry cs prog = case cs of
@@ -163,35 +169,44 @@ detBench _ = map (\p -> (p,"",""))
   ,"Primes","PrimesPeano","PrimesBuiltin"
   ,"Queens","QueensUser"]
 
--- Non-deterministic benchmark programs testing the computation of the
--- first solution via DFS in PAKCS vs. KiCS2:
+-- Non-deterministic benchmark programs testing the computation of
+-- all values via DFS:
 nondetBenchDFS currysystem =
-  map (\p -> (p,dfsFirstOption,""))
-      ["PermSort","PermSortPeano","Half",
-       "Last","RegExp",
-       "LastFunPats","ExpVarFunPats","ExpSimpFunPats","PaliFunPats"]
- where
-  dfsFirstOption =
-    if currysystem==PAKCS
-    then ":set +first"
-    else ":set dfs :set +first" -- KiCS2
+  map (\p -> (p,dfsOption currysystem,""))
+      ["PermSort","PermSortPeano","Half","Last","RegExp"]
+
+-- Benchmark programs with functional patterns
+-- (all values via DFS are computed):
+funpatBenchDFS currysystem =
+  map (\p -> (p,dfsOption currysystem,""))
+      ["LastFunPats","ExpVarFunPats","ExpSimpFunPats","PaliFunPats"]
+
+-- Set the DFS option for KiCS2:
+dfsOption cs = if cs `elem` [PAKCS,MCC] then "" else ":set dfs"
 
 -- Non-deterministic benchmark programs:
 nondetBench _ =
-  "PermSort"       `withSearchFirst` ["dfs","bfs","ids"] ++
-  "PermSortPeano"  `withSearchFirst` ["dfs","bfs","ids"] ++
-  "Half"           `withSearchFirst` ["dfs","bfs","ids"] ++
-  "NDNums"         `withSearchFirst` ["bfs","ids"]       ++
-  map (\m -> ("ShareNonDet","",m)) ["goal1","goal2","goal3"] ++
-  "Last"           `withSearchFirst` ["dfs","bfs","ids"] ++
-  "RegExp"         `withSearchFirst` ["dfs","bfs","ids"] ++
-  "LastFunPats"    `withSearchFirst` ["dfs","bfs","ids"] ++
-  "ExpVarFunPats"  `withSearchFirst` ["dfs","bfs","ids"] ++
-  "ExpSimpFunPats" `withSearchFirst` ["dfs","bfs","ids"] ++
-  "PaliFunPats"    `withSearchFirst` ["dfs","bfs","ids"]
+  "PermSort"       `withSearch` ["dfs","bfs","ids"] ++
+  "PermSortPeano"  `withSearch` ["dfs","bfs","ids"] ++
+  "Half"           `withSearch` ["dfs","bfs","ids"] ++
+  map (\m -> ("ShareNonDet",":set dfs",m)) ["goal1","goal2","goal3"] ++
+  "Last"           `withSearch` ["dfs","bfs","ids"] ++
+  "RegExp"         `withSearch` ["dfs","bfs","ids"] ++
+  "LastFunPats"    `withSearch` ["dfs","bfs","ids"] ++
+  "ExpVarFunPats"  `withSearch` ["dfs","bfs","ids"] ++
+  "ExpSimpFunPats" `withSearch` ["dfs","bfs","ids"] ++
+  "PaliFunPats"    `withSearch` ["dfs","bfs","ids"]
 
--- transform program into programs testing all search strategies to
--- compute first solution:
+-- transform program into programs testing all given search strategies:
+withSearch prog = map (\s->(prog,":set "++s,""))
+
+-- Non-deterministic benchmark programs where only the first solution
+-- is computed (due to infinite search tree):
+nondetBenchFirst _ =
+  "NDNums" `withSearchFirst` ["bfs","ids"]
+
+-- transform program into programs testing all given search strategies to
+-- compute a first solution/value:
 withSearchFirst prog = map (\s->(prog,":set "++s++" :set +first",""))
 
 -- Parallel search benchmark programs:
@@ -213,7 +228,7 @@ mainBench systems benchprogs = do
   let tabledata = map (\ ((prg,p):ds) -> prg:p:map snd ds)
                       (transpose bdata)
   setCurrentDirectory curdir
-  return (benchResultsAsTable ("RTS Parameters" : map showSystemLabel systems)
+  return (benchResultsAsTable ("Program" : map showSystemLabel systems)
                               tabledata)
 
 -- Benchmark the parallel search strategy of a Curry system (KiCS2)
@@ -226,7 +241,7 @@ mainParBench system benchprogs = do
   let tabledata = map (\ ((prg,p):ds) -> prg:p:map snd ds)
                       (transpose bdata)
   setCurrentDirectory curdir
-  return (benchResultsAsTable ("Program" : benchprogs)
+  return (benchResultsAsTable ("RTS Parameters" : benchprogs)
                               tabledata)
 
 -----------------------------------------------------------------------
