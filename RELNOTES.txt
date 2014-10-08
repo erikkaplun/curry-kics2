@@ -1,6 +1,20 @@
 Release Notes for KiCS2
 =======================
 
+Release notes for KiCS2 Version 0.3.2
+-------------------------------------
+
+Changes to version 0.3.1:
+
+  * KiCS2 can also be invoked via the command `curry` in the bin directory.
+  * Library `Prelude`: `solve` and `&&>` added.
+  * Library `Prolog` added.
+  * Tool `CASS`: new analysis `RequiredValues` added.
+  * Optimization tool `bindingopt` for transforming Boolean equalities
+    into constraint equalities added.
+  * Tool `data2xml` for data conversion to XML and back added.
+
+
 Release notes for KiCS2 Version 0.3.1
 -------------------------------------
 

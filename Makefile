@@ -58,6 +58,8 @@ export COMP         = $(LOCALBIN)/kics2c$(EXE_SUFFIX)
 export REPL         = $(LOCALBIN)/kics2i$(EXE_SUFFIX)
 # The default options for the REPL, used for libraries and tools
 export REPL_OPTS    = :set v2 :set -ghci
+# The standard name of the interactive Curry system in then bin dirctory:
+export CURRYSYSTEMBIN = $(BINDIR)/curry
 # The frontend binary
 export CYMAKE       = $(BINDIR)/cymake$(EXE_SUFFIX)
 # The cleancurry binary
@@ -66,8 +68,6 @@ export CLEANCURRY   = $(BINDIR)/cleancurry$(EXE_SUFFIX)
 export CURRYDOC     = $(BINDIR)/currydoc$(EXE_SUFFIX)
 # The Haskell installation info
 export INSTALLHS    = $(ROOT)/runtime/Installation.hs
-# The Curry installation info
-export INSTALLCURRY = $(ROOT)/src/Installation.curry
 # The version information for the manual
 MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
@@ -172,9 +172,11 @@ tools:
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
 kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
-	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
-	                        GHC="$(shell $(WHICH) "$(GHC)")"
+	$(MAKE) $(INSTALLHS) INSTALLPREFIX="$(shell $(PWD))" \
+	                     GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
+	rm -f $(CURRYSYSTEMBIN)
+	ln -s $(BINDIR)/$(CURRYSYSTEM) $(CURRYSYSTEMBIN)
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
 	cd runtime && $(MAKE) unregister
@@ -228,7 +230,8 @@ clean: $(CLEANCURRY)
 	cd tools       && $(MAKE) clean
 	cd utils       && $(MAKE) clean
 	cd www         && $(MAKE) clean
-	rm -f $(MAKELOG) rm -f $(INSTALLHS) $(INSTALLCURRY)
+	rm -f $(MAKELOG) $(CURRYSYSTEMBIN)
+	rm -f $(INSTALLHS)
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -255,9 +258,6 @@ maintainer-clean: cleanall
 ##############################################################################
 
 # generate module with basic installation information
-$(INSTALLCURRY): $(INSTALLHS)
-	cp $< $@
-
 $(INSTALLHS): Makefile
 ifneq ($(shell test -x "$(GHC)" ; echo $$?), 0)
 	$(error "Executable 'ghc' not found. You may use 'make <target> GHC=<path>')
@@ -463,11 +463,11 @@ bootstrap: $(COMP)
 frontend: $(CYMAKE)
 
 .PHONY: Compile
-Compile: $(PKGDB) $(INSTALLCURRY) scripts copylibs
+Compile: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) CompileBoot
 
 .PHONY: REPL
-REPL: $(PKGDB) $(INSTALLCURRY) scripts copylibs
+REPL: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
@@ -479,7 +479,7 @@ typeinference:
 benchmarks:
 	cd benchmarks && $(MAKE)
 
-$(COMP): | $(INSTALLCURRY) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
+$(COMP): | $(INSTALLHS) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	cd src && $(MAKE) bootstrap
 
 # Peform a full bootstrap - distribution - installation - uninstallation

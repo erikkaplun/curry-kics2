@@ -81,14 +81,14 @@ liftCasesFunc onlyNested mod aux f (esMain,i0,ffMain) =
     comb ty ct n args i = let (args', i', ff, vs) = sequence args i
                           in  (AComb ty ct n args', i', ff, vs)
 
-    leT :: TypeExpr -> [(VarIndex, M (AExpr TypeExpr))] -> M (AExpr TypeExpr)
-        -> M (AExpr TypeExpr)
+    leT :: TypeExpr -> [((VarIndex, TypeExpr), M (AExpr TypeExpr))]
+        -> M (AExpr TypeExpr) -> M (AExpr TypeExpr)
     leT ty bs e i =
       let (vs, es) = unzip bs
           (es',i',ffes,ves) = sequence es i
           (e',i'',ffe,ve) = e i'
       in (ALet ty (zip vs es') e',i'', ffes . ffe,
-          filter (\v -> fst v `notElem` vs) (ves ++ ve))
+          filter (\v -> fst v `notElem` map fst vs) (ves ++ ve))
 
     freE :: TypeExpr -> [TypedVar] -> M (AExpr TypeExpr)
          -> M (AExpr TypeExpr)

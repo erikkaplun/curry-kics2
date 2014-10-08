@@ -1,0 +1,27 @@
+# intermediate files and binaries
+.curry
+execpaper
+*currycode.tex*
+Examples/currycode.sty
+kics2/currycode.sty
+kics2/plot_*
+kics2/LOGFILE
+
+# tex temporary files
+*.aux
+*.log
+*.out
+*.nav
+*.snm
+*.toc
+*.tpt
+*.vrb
+*.pdf
+*.blg
+*.idx
+*.ilg
+*.ind
+*.tpt
+*.synctex.gz
+*.backup
+*~

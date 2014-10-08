@@ -24,6 +24,7 @@ import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, ty
 import AbstractHaskellPrinter (showModuleHeader, showDecls)
 import Analysis               (AnalysisResult, showAnalysisResult, readAnalysisResult)
 import CompilerOpts
+import RCFile
 import Files                     ( withBaseName, withDirectory, withExtension
                                  , writeFileInDir, writeQTermFileInDir
                                  , lookupFileInPath
@@ -44,8 +45,12 @@ import Utils                     (notNull, lpad, rpad)
 --- Parse the command-line arguments and build the specified files.
 main :: IO ()
 main = do
+  rcdefs        <- readRC
   (opts, files) <- getCompilerOpts
-  mapIO_ (build opts) files
+  mapIO_ (build { rcVars := rcdefs
+                , optMainVerbosity := opts :> optVerbosity
+                | opts })
+         files
 
 --- Load the module, resolve the dependencies and compile the source files
 --- if necessary.

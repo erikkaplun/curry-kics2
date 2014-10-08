@@ -1,0 +1,108 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This is a paper to benchmark various versions of the KiCS2 system.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+\usepackage{currycode}
+\usepackage{graphicx}
+
+\setlength{\parindent}{0ex}
+
+\begin{document}
+\sloppy
+
+\title{Benchmarking KiCS2}
+\author{Michael Hanus}
+\maketitle
+
+\section{Introduction}
+
+This document contains the result of benchmarking various
+Curry systems.
+%
+All benchmarks were executed in the following environment:
+\begin{itemize}
+\item \runcurry{getOS} machine (named ``\runcurry{getHostName}'')
+\item operating system: \runcurry{getSystemID} \runcurry{getSystemRelease}
+\item CPU: ``\runcurry{getCPUModel}'' processor containing
+      \runcurry{getCoreNumber} cores
+\item time limit for each benchmark: \runcurry{return (show timeLimit)} seconds
+\item number of iterations for each benchmark:
+       \runcurry{return (show numberOfRuns)}
+\end{itemize}
+     
+\section{Benchmarks}
+
+%%% The actual benchmark programs are in a separate Curry module:
+\begin{curryprog}
+----------------------------------------------------------------------
+import Benchmarks
+import BenchKiCS2
+----------------------------------------------------------------------
+\end{curryprog}
+
+\subsection{Deterministic Benchmarks}
+
+The following diagram compares MCC, PAKCS, and KiCS2
+on the classical naive reverse benchmark for different list lengths:
+
+\begin{center}
+\runcurry{benchNRevAndPlot 5.2 [500,1000..] "plot_all"}
+\end{center}
+
+Next we test various Curry systems on deterministic operations,
+i.e., operations without overlapping rules or free variables:
+
+\begin{center}
+\runcurry{mainBench (MCC:PAKCS:kics2Systems) detBench}
+\end{center}
+
+\subsection{Non-deterministic DFS Benchmarks}
+
+The following benchmark programs contain non-deterministic operations
+or free variables. We evaluate the computation of all
+solutions/values via DFS in various Curry systems:
+
+\begin{center}
+\runcurry{mainBench [PAKCS, MCC, KiCS2 ""] nondetBenchDFS}
+\end{center}
+
+These benchmarks contain functional patterns which are not supported in MCC:
+
+\begin{center}
+\runcurry{mainBench [PAKCS, KiCS2 ""] funpatBenchDFS}
+\end{center}
+
+\subsection{Non-deterministic Benchmarks}
+
+The following benchmark programs compare various search strategies
+as they are supported in KiCS2.
+
+The first set of benchmarks computes all solutions/values:
+
+\begin{center}
+\runcurry{mainBench kics2Systems nondetBench}
+\end{center}
+
+The following benchmarks computes the first solution/value
+only (since the search space is infinite):
+
+\begin{center}
+\runcurry{mainBench kics2Systems nondetBenchFirst}
+\end{center}
+
+\subsection{Parallel Non-deterministic Benchmarks}
+
+\begin{center}
+\runcurry{mainParBench (KiCS2 "") parSearchBench}
+\end{center}
+
+\subsection{Encapsulated Search Benchmarks}
+
+\begin{center}
+\runcurry{mainBench kics2Systems encapsBench}
+\end{center}
+
+
+\end{document}

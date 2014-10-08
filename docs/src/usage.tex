@@ -45,7 +45,7 @@ and terminates \CYS. This invocation could be useful in ``make'' files
 for systems implemented in Curry.
 
 
-\subsection{Command of \CYS}
+\subsection{Commands of \CYS}
 \label{sec:kics2-commands}
 
 The {\bf most important commands} of \CYS are
@@ -70,9 +70,9 @@ together with all its imported modules.
 \item[\fbox{\code{:reload}}]\pindex{:reload}
 Recompile all currently loaded modules.
 
-\item[\fbox{\code{:add} $m$}]\pindex{:add}
-Add module $m$ to the set of currently loaded modules
-so that its exported entities are available in the top-level environment.
+\item[\fbox{\code{:add} $m_1 \ldots m_n$}]\pindex{:add}
+Add modules $m_1,\ldots,m_n$ to the set of currently loaded modules
+so that their exported entities are available in the top-level environment.
 
 \item[\fbox{$expr$}] Evaluate the expression $expr$ to normal form
 and show the computed results.
@@ -92,13 +92,12 @@ in the initial expression.}
 they must be introduced by a \ccode{where\ldots{}free} declaration.
 For instance, one can write
 \begin{curry}
-xs++ys =:= [1,2]  where xs,ys free
+not b where b free
 \end{curry}
-in order to obtain the following three possible bindings:
+in order to obtain the following bindings and results:
 \begin{curry}
-{xs = [], ys = [1,2]} Success
-{xs = [1], ys = [2]} Success
-{xs = [1,2], ys = []} Success
+{b = False} True
+{b = True} False
 \end{curry}
 Without these declarations, an error is reported in order to
 avoid the unintended introduction of free variables in initial expressions
@@ -158,7 +157,7 @@ If the variable \code{showcommand} is set in the
 configuration file \ccode{.kics2rc}
 (see Section~\ref{sec-customization}),
 its value is used as a command to show the source text,
-otherwise the \ccode{cat} is used.
+otherwise the command \ccode{cat} is used.
 
 \item[\fbox{\code{:show $m$}}]\pindex{:show}
 Show the source text of module $m$ which must be accessible

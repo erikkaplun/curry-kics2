@@ -138,8 +138,8 @@ unboundVars e = nub (trExpr var lit comb leT freE oR casE branch typed e)
  lit  _ _ = []
  comb _ _ _ = concat
  leT _ bs vars = let (vs, es) = unzip bs
-                 in filter (\v -> fst v `notElem` vs) (concat (vars:es))
- freE _ vs = filter (\v -> fst v `notElem` (map fst) vs)
+                 in filter (\v -> fst v `notElem` map fst vs) (concat (vars:es))
+ freE _ vs = filter (\v -> fst v `notElem` map fst vs)
  oR   _       = (++)
  casE _ _ vars  bVars  = concat (vars:bVars)
  branch pat vars = case pat of

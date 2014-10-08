@@ -25,7 +25,7 @@ natList O = []
 natList (S x) = (S x) : (natList x)
 
 isList [] = True
-isList (x:xs) = isList xs
+isList (_:xs) = isList xs
 
 
 main = isList (reverse (natList nat1M))

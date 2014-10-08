@@ -31,5 +31,5 @@ expSize (Var _) = 1
 expSize (Add e1 e2) = expSize e1 + expSize e2 + 1
 expSize (Mul e1 e2) = expSize e1 + expSize e2 + 1
 
--- make a single simplifcation step in an expression having 4003 nodes
-main = expSize (simplify (genExpWithMult1 2000))
+-- make a single simplifcation step in an expression having 2003 nodes
+main = expSize (simplify (genExpWithMult1 1000))

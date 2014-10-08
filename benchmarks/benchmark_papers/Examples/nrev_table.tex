@@ -1,0 +1,63 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Example for executable benchmark paper:
+%
+% The paper contains all executable code to benchmark the normalization
+% time of the Curry system for the naive reverse benchmark.
+% The results are formatted as a LaTeX table.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+\usepackage{currycode}
+\usepackage{graphicx}
+
+\begin{document}
+\sloppy
+
+\section{Introduction}
+
+This is a short LaTeX document showing some features of an
+Executable Benchmark Paper.
+
+%%% The benchmark program:
+\begin{curryprog}
+----------------------------------------------------------------------
+import Benchmarks
+import BenchmarkGoodies
+
+-- Naive reverse implementation:
+nrev []     = []
+nrev (x:xs) = (nrev xs) ++ [x]
+
+-- Naive reverse benchmark: we benchmark the time of the complete naive
+-- reverse and the list construction and create a difference
+-- benchmark to obtain the time for the naive reverse only:
+nrevBenchDiff :: Int -> Benchmark Float
+nrevBenchDiff n =
+  benchTimeNF (return (nrev [1..n]))  .-.  benchTimeNF (return [1..n])
+
+nrevMainBench =
+  execBench (mapBench (map (\ (n,f) -> (show n, showF2 f)))
+               (runOn (\n -> 1 *> nrevBenchDiff n) [500,1000..2500])) >>=
+    return . benchInputsResultsAsTable ("length:","time:")
+----------------------------------------------------------------------
+\end{curryprog}
+
+\section{Benchmarks}
+
+\paragraph{Note:}
+%
+All benchmarks were executed on a \runcurry{getOS} machine
+(named ``\runcurry{getHostName}'')
+running \runcurry{getSystemID} \runcurry{getSystemRelease}
+(with an ``\runcurry{getCPUModel}'' processor containing
+\runcurry{getCoreNumber} cores).
+
+\subsection{Nrev Benchmark}
+
+\begin{center}
+\runcurry{nrevMainBench}
+\end{center}
+
+
+\end{document}
