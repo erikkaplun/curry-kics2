@@ -187,10 +187,12 @@ writeSimpleMainGoalFile rst goal = writeMainGoalFile rst [] Nothing goal
 -- and possibly a type string is provided:
 writeMainGoalFile :: ReplState -> [String] -> Maybe String -> String -> IO ()
 writeMainGoalFile rst imports mtype goal = writeFile mainGoalFile $
-  unlines $ map ("import " ++) allImports
+  unlines $ [noMissingSigs]
+         ++ map ("import " ++) allImports
          ++ maybe [] (\ts -> ["kics2MainGoal :: " ++ ts]) mtype
          ++ ["kics2MainGoal = " ++ goal]
-  where allImports = nub $ rst :> mainMod : rst :> addMods ++ imports
+  where allImports    = nub $ rst :> mainMod : rst :> addMods ++ imports
+        noMissingSigs = "{-# OPTIONS_CYMAKE -W no-missing-signatures #-}"
 
 -- Remove mainGoalFile and auxiliaries
 cleanMainGoalFile :: ReplState -> IO ()
