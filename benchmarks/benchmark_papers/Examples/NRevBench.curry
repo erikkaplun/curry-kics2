@@ -41,13 +41,13 @@ nrevProgBenchsWithLimit currysystem tlimit listlens =
     mapBench (maybe Nothing (Just . cpuTime))
              (benchCommandWithLimit ("./NRev "++show n) tlimit)
 
-benchCurrySystemsAndPlot tlimit inputs jpgfile = do
+benchCurrySystemsAndPlot tlimit inputs outfile = do
   pdata  <- execBench (nrevProgBenchsWithLimit PAKCS      tlimit inputs)
   kdata  <- execBench (nrevProgBenchsWithLimit (KiCS2 "") tlimit inputs)
   kwodata <- execBench (nrevProgBenchsWithLimit (KiCS2 ":set -opt") tlimit inputs)
   kodata <- execBench (nrevProgBenchsWithLimit (KiCS2 ":set ghc -optc-O3") tlimit inputs)
   mdata  <- execBench (nrevProgBenchsWithLimit MCC        tlimit inputs)
-  plotResults jpgfile
+  plotResults outfile
               [Lines, Title "nrev run times",
                XLabel "list length", YLabel "run time (seconds)"]
               [("pakcs",pdata)
@@ -56,6 +56,6 @@ benchCurrySystemsAndPlot tlimit inputs jpgfile = do
               ,("kics2 -optc-O3",kodata)
               ,("mcc",mdata)
               ]
-  return ("\\includegraphics[width=\\linewidth]{"++jpgfile++".jpg}")
+  return ("\\includegraphics[width=\\linewidth]{"++outfile++"}")
 
 -----------------------------------------------------------------------

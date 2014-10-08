@@ -14,6 +14,7 @@ module BenchmarkGoodies(
          )
  where
 
+import FileGoodies(fileSuffix,stripSuffix)
 import List
 import System
 
@@ -76,9 +77,6 @@ data PlotStyle = Lines
                | XTicsRotate Int
 
 --- Transform plot styles into gnuplot commands.
-plotStyles2GP :: [PlotStyle] -> String
-plotStyles2GP = unlines . map plotStyle2GP
-
 plotStyle2GP :: PlotStyle -> String
 plotStyle2GP Lines = "set style data linespoints\n"++
                      "set key right bottom"
@@ -99,18 +97,23 @@ showInt i = if i<0 then '-' : show (-i) else show i
 --- the data to be plotted (represented as a pair of a title
 --- and the (x,y) values to be plotted).
 plotResults :: String -> [PlotStyle] -> [(String,[(a,b)])] -> IO ()
-plotResults pname pstyles titleddata = do
-  let outfile = pname++".jpg"
+plotResults outfile pstyles titleddata = do
+  let pname          = stripSuffix outfile
+      outsuffix      = fileSuffix outfile
       plotfileprefix = pname++"_"
       scriptfile     = pname++".gpscript"
+      terminalset    = case outsuffix of
+        "pdf" -> "set terminal pdf enhanced"
+        "jpg" -> "set terminal jpeg nocrop enhanced"
+        _ -> error $ "plotResults: unsupported out file format: "++outsuffix
   titleddatafiles <- mapIO (writeDataFile plotfileprefix) (zip [1..] titleddata)
-  writeFile scriptfile $
-    "set terminal jpeg nocrop enhanced\n" ++
-    "set output '"++outfile++"'\n"++
-    "set tics nomirror\n"++
-    "set style fill solid border\n"++
-    plotStyles2GP pstyles ++
-    "plot " ++ intercalate " , " (map plotCmd titleddatafiles) ++ "\n"
+  writeFile scriptfile $ unlines $
+    [terminalset
+    ,"set output '"++outfile++"'"
+    ,"set tics nomirror"
+    ,"set style fill solid border"] ++
+    map plotStyle2GP pstyles ++
+    ["plot " ++ intercalate " , " (map plotCmd titleddatafiles)]
   system $ "gnuplot " ++ scriptfile
   --system $ unwords (["rm",scriptfile] ++ map snd titleddatafiles)
   putStrLn $ "Data plotted to '"++outfile++"'"
@@ -135,13 +138,13 @@ writeDataFile fileprefix (n,(title,bdata)) = do
 -----------------------------------------------------------------------
 -- Tests:
 test1 =
- plotResults "xxx"
+ plotResults "xxx.jpg"
    [Lines, Title "nrev run times",
     XLabel "list length", YLabel "run time (seconds)"]
    [data1,data2]
 
 test2 =
- plotResults "xxx"
+ plotResults "xxx.pdf"
    [Histogram, Title "nrev run times",
     XLabel " ",
     XTicsRotate (-45),

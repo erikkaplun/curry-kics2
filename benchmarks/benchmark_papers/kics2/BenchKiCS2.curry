@@ -12,7 +12,7 @@ import List(transpose)
 import System
 
 -- Time limit for individual benchmarks:
-timeLimit = 120.0 -- seconds
+timeLimit = 150.0 -- seconds
 
 -- Number of runs for each benchmark:
 numberOfRuns = 1
@@ -139,7 +139,7 @@ nrevProgBenchsWithLimit currysystem options tlimit listlens =
     mapBench (maybe Nothing (Just . cpuTime))
              (benchCommandWithLimit ("./NRev "++show n) tlimit)
 
-benchNRevAndPlot tlimit inputs jpgfile = do
+benchNRevAndPlot tlimit inputs outfile = do
   pdata   <- execBench (nrevProgBenchsWithLimit PAKCS      "" tlimit inputs)
   kdata   <- execBench (nrevProgBenchsWithLimit (KiCS2 "") "" tlimit inputs)
   kwodata <- execBench (nrevProgBenchsWithLimit (KiCS2 "") ":set -opt"
@@ -147,7 +147,7 @@ benchNRevAndPlot tlimit inputs jpgfile = do
   ko3data <- execBench (nrevProgBenchsWithLimit (KiCS2 "") ":set ghc -optc-O3"
                                                 tlimit inputs)
   mccdata <- execBench (nrevProgBenchsWithLimit MCC "" tlimit inputs)
-  plotResults jpgfile
+  plotResults outfile
               [Lines, Title "nrev run times",
                XLabel "list length", YLabel "run time (seconds)"]
               [("pakcs",pdata)
@@ -156,7 +156,7 @@ benchNRevAndPlot tlimit inputs jpgfile = do
               ,("kics2 -optc-O3",ko3data)
               ,("mcc",mccdata)
               ]
-  return ("\\includegraphics[width=\\linewidth]{"++jpgfile++".jpg}")
+  return ("\\includegraphics[width=\\linewidth]{"++outfile++"}")
 
 -----------------------------------------------------------------------
 -- The benchmark programs to test different KiCS2 versions:

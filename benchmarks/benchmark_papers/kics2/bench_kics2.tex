@@ -48,7 +48,7 @@ The following diagram compares MCC, PAKCS, and KiCS2
 on the classical naive reverse benchmark for different list lengths:
 
 \begin{center}
-\runcurry{benchNRevAndPlot 5.2 [500,1000..] "plot_all"}
+\runcurry{benchNRevAndPlot 5.2 [500,1000..] "plot_all.pdf"}
 \end{center}
 
 Next we test various Curry systems on deterministic operations,
@@ -58,11 +58,13 @@ i.e., operations without overlapping rules or free variables:
 \runcurry{mainBench (MCC:PAKCS:kics2Systems) detBench}
 \end{center}
 
+
 \subsection{Non-deterministic DFS Benchmarks}
 
 The following benchmark programs contain non-deterministic operations
 or free variables. We evaluate the computation of all
-solutions/values via DFS in various Curry systems:
+solutions/values via the depth-first strategy (DFS)
+with various Curry systems:
 
 \begin{center}
 \runcurry{mainBench [PAKCS, MCC, KiCS2 ""] nondetBenchDFS}
@@ -74,7 +76,8 @@ These benchmarks contain functional patterns which are not supported in MCC:
 \runcurry{mainBench [PAKCS, KiCS2 ""] funpatBenchDFS}
 \end{center}
 
-\subsection{Non-deterministic Benchmarks}
+
+\subsection{Search Strategy Benchmarks for KiCS2}
 
 The following benchmark programs compare various search strategies
 as they are supported in KiCS2.
@@ -92,11 +95,17 @@ only (since the search space is infinite):
 \runcurry{mainBench kics2Systems nondetBenchFirst}
 \end{center}
 
+
 \subsection{Parallel Non-deterministic Benchmarks}
+
+These benchmarks are executed with the option ``\texttt{:set +parallel}''
+and different run-time settings to influence the number
+of threads used for the execution.
 
 \begin{center}
 \runcurry{mainParBench (KiCS2 "") parSearchBench}
 \end{center}
+
 
 \subsection{Encapsulated Search Benchmarks}
 
