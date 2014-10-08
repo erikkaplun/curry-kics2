@@ -1,7 +1,9 @@
 {-# OPTIONS_CYMAKE -F --pgmF=../../../bin/currypp #-}
 
 -----------------------------------------------------------------------
---- A benchmark to test different Curry system with various benchmarks.
+--- Benchmark different Curry systems with various example programs.
+---
+--- This program is used in the *executable benchmark paper* `bench_kics2.tex`.
 -----------------------------------------------------------------------
 
 import Benchmarks
