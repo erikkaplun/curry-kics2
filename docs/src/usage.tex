@@ -518,6 +518,32 @@ set the options for iterative deepening, using \code{ghci}
 and verbosity level 2.
 
 
+\subsection{Using \CYS in Batch Mode}
+
+Although \CYS is primarily designed as an interactive system,
+it can also be used to process data in batch mode.
+For example, consider a Curry program, say \code{myprocessor}, that
+reads argument strings from the command line and processes them.
+Suppose the entry point is a function called \code{just_doit}
+that takes no arguments. Such a processor can be invoked from
+the shell as follows:
+\begin{curry}
+> kics2 :set args string1 string2 :load myprocessor.curry :eval just_doit :quit
+\end{curry}
+The \ccode{:quit} directive in necessary to avoid \CYS going
+into interactive mode after the
+excution of the expression being evaluated.
+The actual run-time arguments (\code{string1}, \code{string2})
+are defined by setting the option \code{args} (see above).
+
+Here is an example to use \CYS in this way:
+\begin{curry}
+> kics2 :set args Hello World :add System :eval "getArgs >>= putStrLn . unwords" :quit
+Hello World
+>
+\end{curry}
+
+
 \subsection{Command Line Editing}
 
 In order to have support for line editing or history functionality
@@ -565,3 +591,8 @@ Its installation is described in the file \code{README}
 in directory \ccode{\cyshome/tools/emacs} which also contains
 the sources of the Curry mode and a short description about
 the use of this mode.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "manual"
+%%% End: 

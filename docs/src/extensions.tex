@@ -5,10 +5,11 @@
 part of the definition of Curry. These extensions are described below.
 
 \subsection{Narrowing on Int Literals}
+
 In addition to narrowing on algebraic data types,
-\CYS alos implements narrowing on values of the primitive type \code{Int}.
-For example, the goal \code{x == 3 where x free}
-can be narrowed to the solutions
+\CYS also implements narrowing on values of the primitive type \code{Int}.
+For example, the goal \ccode{x == 3 where x free}
+is evaluated to the solutions
 \begin{curry}
 Prelude> x == 3 where x free
 {x = (-_x2)       } False
@@ -22,7 +23,7 @@ Prelude> x == 3 where x free
 Note that the free variables occuring in the binding are restricted to
 positive numbers greater than $0$
 (the output has been indented to increase readability).
-This feature is realized by an internal binary representation
+This feature is implemented by an internal binary representation
 of integer numbers. If necessary, this representation can be exposed to
 the user by setting the flag \code{BinaryInt} during installation:
 \begin{curry}
@@ -44,8 +45,8 @@ Prelude> x == 3 where x free
 {x = (Pos (I (O _x4)))} False
 {x = (Pos (I (I _x4)))} False
 \end{curry}
-In this output, values without free variables are presented like before.
-For value containing a free variable,
+In this output, values without free variables are presented as before.
+For values containing a free variable,
 the constructors \code{Neg} and \code{Pos} denote negative and
 positive numbers (without $0$), while the constructors \code{O} and \code{I}
 denote a $0$-- and $1$--bit where the \emph{least significant bit comes first}.
@@ -428,3 +429,8 @@ currently not supported or even restricted.
 \item Labels cannot be sequentially associated with multiple values
   (record fields do not behave like stacks).
 \end{itemize}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "manual"
+%%% End: 
