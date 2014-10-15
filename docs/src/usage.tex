@@ -239,6 +239,16 @@ for loading modules to $path$.
 Note that this search path is only used for loading modules
 inside this invocation of \CYS.
 
+The path is a list of directories separated by \ccode{:}.
+The prefix \ccode{\char126} is replaced by the home directory as
+in the following example:
+\begin{curry}
+:set path aux:~/tests
+\end{curry}
+Relative directory names are replaced by absolute ones
+so that the path is independent of later changes of the
+current working directory.
+
 \item[\fbox{\code{bfs}}]\pindex{bfs}
 Set the search mode to evaluate non-deterministic expressions
 to breadth-first search.

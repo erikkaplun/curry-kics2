@@ -71,8 +71,10 @@ defaultImportPaths rst = do
   return $ filter (/= ".") $ splitSearchPath currypath ++ splitSearchPath rclibs
 
 defaultImportPathsWith :: ReplState -> String -> IO [String]
-defaultImportPathsWith rst dirs =
-  (splitSearchPath dirs ++) `liftIO` defaultImportPaths rst
+defaultImportPathsWith rst dirs = do
+  defipath <- defaultImportPaths rst
+  adirs    <- mapIO getAbsolutePath (splitSearchPath dirs)
+  return (adirs ++ defipath)
 
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []
