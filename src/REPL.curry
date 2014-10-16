@@ -502,17 +502,21 @@ processLoad rst args = do
     then skipCommand "missing module name"
     else do
     let (dirname, modname) = splitFileName dirmodname
-    unless (dirname == "./") $ setCurrentDirectory dirname
-    mbf <- lookupFileInPath modname [".curry", ".lcurry"] ["."]
-    maybe (skipCommand $ "source file of module " ++ dirmodname ++ " not found")
-          (\fn ->
-              readAndProcessSourceFileOptions rst' fn >>=
-              maybe (return Nothing)
-                (\rst'' -> compileCurryProgram rst'' modname >>
-                return (Just { mainMod := modname, addMods := [] | rst'' }))
-          )
-          mbf
-
+    mbrst <- if (dirname == "./") then return (Just rst')
+             else do putStrLn $ "Changing working directory to "++dirname
+                     processCd rst' dirname
+    maybe (return Nothing)
+     (\rst2 ->
+       (lookupFileInPath modname [".curry", ".lcurry"] ["."]) >>=
+       maybe (skipCommand $ "source file of module "++dirmodname++" not found")
+             (\fn ->
+                 readAndProcessSourceFileOptions rst2 fn >>=
+                 maybe (return Nothing)
+                   (\rst3 -> compileCurryProgram rst3 modname >>
+                   return (Just { mainMod := modname, addMods := [] | rst3 }))
+             ))
+     mbrst
+   
 --- Process :reload command
 processReload :: ReplState -> String -> IO (Maybe ReplState)
 processReload rst args
@@ -529,20 +533,27 @@ processAdd rst args
   | null args = skipCommand "Missing module name"
   | otherwise = Just `liftIO` foldIO add rst (words args)
   where
-    add rst' m = do
-      let mdl = dropExtension m
-      mbf <- lookupFileInPath mdl [".curry", ".lcurry"] (loadPaths rst')
-      case mbf of
-        Nothing -> do
-          writeErrorMsg $ "Source file of module '" ++ mdl ++ "' not found"
-          return rst'
-        Just _  -> return { addMods := insert mdl (rst' :> addMods) | rst'}
+    add rst' m = let mdl = dropExtension m in
+      if validModuleName mdl
+      then do
+        mbf <- lookupFileInPath mdl [".curry", ".lcurry"] (loadPaths rst')
+        case mbf of
+          Nothing -> do
+            writeErrorMsg $ "Source file of module '" ++ mdl ++ "' not found"
+            return rst'
+          Just _  -> return { addMods := insert mdl (rst' :> addMods) | rst'}
+      else do writeErrorMsg $ "Illegal module name (ignored): " ++ mdl
+              return rst'
 
     insert m []        = [m]
     insert m ms@(n:ns)
       | m < n     = m : ms
       | m == n    = ms
       | otherwise = n : insert m ns
+
+--- Is a string a valid module name?
+validModuleName :: String -> Bool
+validModuleName = all (\c -> isAlphaNum c || c == '_')
 
 --- Process expression evaluation
 processEval :: ReplState -> String -> IO (Maybe ReplState)
@@ -557,9 +568,10 @@ processType rst args = do
 --- Process :cd command
 processCd :: ReplState -> String -> IO (Maybe ReplState)
 processCd rst args = do
-  exists <- doesDirectoryExist args
-  if exists then setCurrentDirectory args >> return (Just rst)
-            else skipCommand "directory does not exist"
+  dirname <- getAbsolutePath args
+  exists  <- doesDirectoryExist dirname
+  if exists then setCurrentDirectory dirname >> return (Just rst)
+            else skipCommand $ "directory does not exist"
 
 --- Process :programs command
 processPrograms :: ReplState -> String -> IO (Maybe ReplState)
@@ -568,9 +580,8 @@ processPrograms rst _ = printAllLoadPathPrograms rst >> return (Just rst)
 --- Process :edit command
 processEdit :: ReplState -> String -> IO (Maybe ReplState)
 processEdit rst args = do
-  let modname = if null args then rst :> mainMod else dropExtension args
-  mbf <- lookupFileInPath modname [".curry", ".lcurry"]
-                          ("." : rst :> importPaths)
+  modname <- getModuleName rst args
+  mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
   editenv <- getEnviron "EDITOR"
   let editcmd  = rcValue (rst :> rcvars) "editcommand"
       editprog = if null editcmd then editenv else editcmd
@@ -591,10 +602,21 @@ processSource rst args
   | otherwise   = showFunctionInModule rst mod (tail dotfun)
   where (mod, dotfun) = break (== '.') args
 
+--- Extract a module name, possibly prefixed by a path, from an argument,
+--- or return the current module name if the argument is the empty string.
+getModuleName :: ReplState -> String -> IO String
+getModuleName rst args =
+  if null args
+  then return (rst :> mainMod)
+  else let (dirname, mname) = splitFileName (dropExtension args)
+        in if dirname == "./"
+           then return mname
+           else getAbsolutePath (dropExtension args)
+
 --- Process :show command
 processShow :: ReplState -> String -> IO (Maybe ReplState)
 processShow rst args = do
-  let modname = if null args then rst :> mainMod else dropExtension args
+  modname <- getModuleName rst args
   mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
   case mbf of
     Nothing -> skipCommand "source file not found"
@@ -606,8 +628,8 @@ processShow rst args = do
 
 processInterface :: ReplState -> String -> IO (Maybe ReplState)
 processInterface rst args = do
-  let modname  = if null args then rst :> mainMod else dropExtension args
-      toolexec = "currytools" </> "genint" </> "GenInt"
+  modname <- getModuleName rst args
+  let toolexec = "currytools" </> "genint" </> "GenInt"
   callTool rst toolexec ("-int " ++ modname)
 
 processBrowse :: ReplState -> String -> IO (Maybe ReplState)
