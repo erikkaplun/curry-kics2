@@ -28,11 +28,11 @@ import Function     (second)
 import List         (intercalate, partition)
 import Maybe        (fromJust, isJust)
 import Message      (showStatus)
+import Names        (splitIdentifiers)
 import System       (system)
 
 import CompilerOpts
 import RCFile       (rcValue)
-import Files        ()
 import SCC          (scc)
 
 type ModuleIdent = String
@@ -87,9 +87,13 @@ moduleDeps opts mEnv m = case lookupFM mEnv m of
       Just fn -> sourceDeps { optVerbosity := VerbQuiet | opts } m fn mEnv
 
 lookupModule :: Options -> String -> IO (Maybe FilePath)
-lookupModule opts m = lookupFileInPath m [".curry", ".lcurry", ".fcy"]
+lookupModule opts m = lookupFileInPath (moduleNameToFile m)
+                      [".curry", ".lcurry", ".fcy"]
                       (map dropTrailingPathSeparator importPaths)
   where importPaths = "." : opts :> optImportPaths
+
+moduleNameToFile :: String -> FilePath
+moduleNameToFile = foldr1 (</>) . splitIdentifiers
 
 sourceDeps :: Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts m fn mEnv = do
