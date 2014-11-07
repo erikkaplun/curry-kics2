@@ -210,6 +210,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     ahsFile f      = withExtension (const ".ahs") f
 
 -- Extract some basic information (deterministic, IO) about all functions
+extractFuncInfos :: [AH.FuncDecl] -> [(AH.QName, Bool)]
 extractFuncInfos funs =
   map (\fd -> (AHG.funcName fd, isIO (AHG.typeOf fd))) funs
  where

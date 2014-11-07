@@ -195,6 +195,7 @@ showTypeSig opts fname (CType ctxt texp) =
   ++ " :: " ++ showContext opts ctxt ++ showTypeExpr opts False texp ++ "\n"
 
 -- Show a1,a2,a3 as a_1,a_2,a_3 (due to bug in PAKCS front-end):
+showTypeVar :: String -> String
 showTypeVar []     = []
 showTypeVar (c:cs) =
   if c == 'a' && not (null cs) && all isDigit cs
@@ -208,6 +209,7 @@ showIdentifier :: String -> String
 showIdentifier = filter (not . flip elem "<>")
 
 --- Shows an AbstractHaskell function declaration in standard Curry syntax.
+showFuncDecl :: FuncDecl -> String
 showFuncDecl = showFuncDeclOpt defaultOptions
 
 -- ---------------------------------------------------------------------------
@@ -275,6 +277,7 @@ showLocalDecl opts (LocalPat p e ds) =
         showBlock (prefixMap (showLocalDecl opts) ds "\n")
   )
 
+showExpr :: Expr -> String
 showExpr = showExprOpt defaultOptions
 
 --- Shows an AbstractHaskell expression in standard Curry syntax.
@@ -317,6 +320,7 @@ showSymbol opts (modName, symName)
 -- it is a literal, var other than the pattern var or non-infix symbol.
 -- A better test for sections would need the test for sub expressions
 -- which is too complex for this simple purpose.
+showLambdaOrSection :: Options -> [Pattern] -> Expr -> String
 showLambdaOrSection opts patts expr = case patts of
   [PVar pvar] -> case expr of
     (Apply (Apply (Symbol qname@(_, name)) lexpr) (Var var)) ->
@@ -336,6 +340,7 @@ showLambdaOrSection opts patts expr = case patts of
     _ -> showLambda opts patts expr
   _ -> showLambda opts patts expr
 
+showLambda :: Options -> [Pattern] -> Expr -> String
 showLambda opts patts expr = "\\" ++ (combineMap (showPattern opts) patts " ")
                              ++ " -> " ++ (showExprOpt opts expr)
 
@@ -386,6 +391,7 @@ showPatternList opts p
   = showAsPatternList opts p
   | otherwise = "(" ++ intercalate ":" (showPatListElems opts p) ++ ")"
 
+showPatListElems :: Options -> Pattern -> [String]
 showPatListElems opts pat = case pat of
   (PComb (_,":")  [x,xs]) -> showPattern opts x : showPatListElems opts xs
   (PComb (_,"[]") [])     -> []
@@ -393,6 +399,7 @@ showPatListElems opts pat = case pat of
   (PAs name p)            -> [showPattern opts (PAs name p)]
   _                       -> error "AbstractHaskellPrinter.showPatListElems"
 
+showAsPatternList :: Options -> Pattern -> String
 showAsPatternList opts pat = case pat of
   (PAs (_,name) p) -> name ++ "@" ++ "(" ++ intercalate ":" (showPatListElems opts p) ++ ")"
   _                -> error "AbstractHaskellPrinter.showAsPatternList"
@@ -556,10 +563,12 @@ isClosedStringPattern pat = case pat of
   (PAs _ _)              -> False
   _                      -> error "AbstractHaskellPrinter.isClosedStringPattern"
 
+isCharPattern :: Pattern -> Bool
 isCharPattern p = case p of
   PLit (Charc _) -> True
   _              -> False
 
+isAsPattern :: Pattern -> Bool
 isAsPattern p = case p of
     PAs _ _ -> True
     _       -> False
@@ -591,6 +600,7 @@ isSimpleExpr expr = case expr of
   _             -> False
 
 
+isFuncType :: TypeExpr -> Bool
 isFuncType t = case t of
   FuncType _ _ -> True
   _            -> False
@@ -618,6 +628,7 @@ infixIDs :: String
 infixIDs =  "~!@#$%^&*+-=<>?./|\\:"
 
 -- enclose string with brackets, if required by first argument
+maybeShowBrackets :: Bool -> String -> String
 maybeShowBrackets nested s
   | nested    = "(" ++ s ++ ")"
   | otherwise = s

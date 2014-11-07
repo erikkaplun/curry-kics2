@@ -254,16 +254,17 @@ renameSymbolInRule ren (Rule pats crhss locals) =
 renameOpDecl :: (QName -> QName) -> OpDecl -> OpDecl
 renameOpDecl ren (Op qf fix prio) = Op (ren qf) fix prio
 
-
------------------------------------------------------------------
+-- ---------------------------------------------------------------
 -- Some selector functions.
 
-funcDecls (Prog _ _ _ fdecls _) = fdecls
+funcDecls :: Prog -> [FuncDecl]
+funcDecls (Prog _ _ _ fs _) = fs
 
+funcName :: FuncDecl -> QName
 funcName (Func _ f _ _ _ _) = f
 
-typeOf (Func _ _ _ _ texp _) = texp
+typeOf :: FuncDecl -> TypeSig
+typeOf (Func _ _ _ _ ty _) = ty
 
+commentOf :: FuncDecl -> String
 commentOf (Func cmt _ _ _ _ _) = cmt
-
------------------------------------------------------------------
