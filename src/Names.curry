@@ -1,7 +1,7 @@
 --- --------------------------------------------------------------------------
 --- This module contains operations to change names of the original program
 --- into names used in the target program and vice versa.
---- 
+---
 --- @author Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version November 2012
 --- --------------------------------------------------------------------------
@@ -9,11 +9,21 @@ module Names where
 
 import Char            (isAlphaNum)
 import FilePath        ((</>))
-import List            (intersperse)
+import List            (intercalate, isPrefixOf, last)
 
 import AbstractHaskell (QName)
 import Classification  (NDClass (..), ConsHOClass (..), FuncHOClass (..))
 import Files           (withComponents, (</?>))
+
+splitIdentifiers :: String -> [String]
+splitIdentifiers s = let (pref, rest) = break (== '.') s in
+  pref : case rest of
+    []     -> []
+    _ : s' -> splitIdentifiers s'
+
+joinIdentifiers :: [String] -> String
+joinIdentifiers = foldr1 combine
+  where combine xs ys = xs ++ '.' : ys
 
 -- ---------------------------------------------------------------------------
 -- Renaming file names
@@ -52,19 +62,28 @@ curryPrelude :: String
 curryPrelude = renameModule prelude
 
 renameModule :: String -> String
-renameModule = ("Curry_" ++)
-
-addTrace :: String -> String
-addTrace = renameModule . ("Trace_" ++) . unRenameModule
-
-removeTrace :: String -> String
-removeTrace = renameModule . dropPrefix "Trace_" . unRenameModule
+renameModule = onLastIdentifier ("Curry_" ++)
 
 unRenameModule :: String -> String
-unRenameModule = dropPrefix "Curry_"
+unRenameModule = onLastIdentifier (dropPrefix "Curry_")
+
+addTrace :: String -> String
+addTrace = renameModule . onLastIdentifier ("Trace_" ++) . unRenameModule
+
+removeTrace :: String -> String
+removeTrace = renameModule . onLastIdentifier (dropPrefix "Trace_")
+            . unRenameModule
+
+onLastIdentifier :: (String -> String) -> String -> String
+onLastIdentifier f = joinIdentifiers . onLast f . splitIdentifiers
+
+onLast :: (a -> a) -> [a] -> [a]
+onLast _ []           = error "Names.onLast: empty list"
+onLast f [x]          = [f x]
+onLast f (x:xs@(_:_)) = x : onLast f xs
 
 isCurryModule :: String -> Bool
-isCurryModule m = take 6 m == "Curry_"
+isCurryModule = ("Curry_" `isPrefixOf`) . last . splitIdentifiers
 
 isHaskellModule :: String -> Bool
 isHaskellModule = not . isCurryModule
@@ -246,8 +265,6 @@ replaceNonIdChars pfxNonOp pfxOp str = case strs of
           then pfxNonOp ++ concat strs
           else pfxOp    ++ intercalate "_" (map (concatMap showOpChar) strs)
  where  strs = spanAll isAlphaNum str
-
-        intercalate xs xss = concat (intersperse xs xss)
 
         showOpChar  c = case lookup c opRenaming of
           Just ren -> ren
