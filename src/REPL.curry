@@ -157,6 +157,7 @@ evalExpression rst expr = do
   return rst''
 
 -- Check whether the main module import the module "Unsafe".
+importUnsafeModule :: ReplState -> IO Bool
 importUnsafeModule rst =
   if "Unsafe" `elem` (rst :> addMods)
   then return True

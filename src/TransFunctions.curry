@@ -12,7 +12,7 @@ import FiniteMap (lookupFM, plusFM, delListFromFM)
 import Function  (first)
 
 import qualified AbstractHaskell        as AH
-import qualified AbstractHaskellGoodies as AH
+import qualified AbstractHaskellGoodies as AHG
 import           Analysis
 import           CompilerOpts  (Options (..), defaultOptions, OptimLevel (..))
 import           FlatCurry
@@ -326,12 +326,12 @@ trGlobalDecl (Func qn a v t r) = case r of
     trDetType 0 t          >+= \t'      ->
     returnM $
       [ AH.Func "" qn' 2 (cvVisibility v) (toTypeSig t')
-        (AH.simpleRule (map AH.PVar [coverName, constStoreName])
+        (AHG.simpleRule (map AH.PVar [coverName, constStoreName])
                     (AH.Symbol $ mkGlobalName qn))
       , AH.Func "" (mkGlobalName qn) 0 AH.Private
         (toTypeSig $ trHOTypeExpr AH.FuncType t)
-        (AH.simpleRule [] (AH.applyF global'
-              [ AH.Let (map (uncurry AH.declVar)
+        (AHG.simpleRule [] (AHG.applyF global'
+              [ AH.Let (map (uncurry AHG.declVar)
                             [ (constStoreName, emptyCs  )
                             , (coverName     , initCover)
                             ])
@@ -387,7 +387,7 @@ toTypeSig :: AH.TypeExpr -> AH.TypeSig
 toTypeSig ty | null tyVars = AH.FType ty
              | otherwise   = AH.CType ctxt ty
   where
-  tyVars = AH.tyVarsOf ty
+  tyVars = AHG.tyVarsOf ty
   ctxt   = map (\tv -> AH.Context (curryPrelude, "Curry") [tv]) tyVars
 
 trDetType :: Int -> TypeExpr -> M AH.TypeExpr
@@ -459,7 +459,7 @@ trRule qn _ (Rule vs e) =
   let vs' = map cvVarIndex vs
             ++ [topSupplyName | not dm] ++ [coverName, constStoreName]
       e'' = if fc then failCheck qn (map cvVar vs) e' else e'
-  in  returnM $ AH.simpleRule (map AH.PVar vs') e''
+  in  returnM $ AHG.simpleRule (map AH.PVar vs') e''
 trRule qn a (External _) =
   isDetMode      >+= \dm ->
   isTraceFailure >+= \fc ->
@@ -468,7 +468,7 @@ trRule qn a (External _) =
             ++ [topSupplyName | not dm] ++ [coverName, constStoreName]
       e   = funcCall (externalFunc qn) (map AH.Var vs')
       e'  = if fc then failCheck qn (map cvVar vs) e else e
-  in  returnM $ AH.simpleRule (map AH.PVar vs') e'
+  in  returnM $ AHG.simpleRule (map AH.PVar vs') e'
 
 --- Translate a function body.
 trBody :: QName -> [Int] -> Expr -> M AH.Expr
@@ -524,7 +524,7 @@ litBranches bs = case branchPairs of
     branchPairs = [ (l, e) | AH.Branch (AH.PLit l) e <- bs ]
     mkBranch cons match = AH.Branch (AH.PComb cons [AH.PVar litVar])
                         $ funcCall match
-                          [ AH.list2ac $ map pair2ac
+                          [ AHG.list2ac $ map pair2ac
                                        $ map (first AH.Lit) branchPairs
                           , AH.Var litVar, coverVar, constStoreVar
                           ]
@@ -575,7 +575,7 @@ consBranches qn' vs v typeName =
         (funcCall qn' $ concat [vars1, AH.Var e : vars2, mbSuppVar, [coverVar]])
         (funcCall addCs [AH.Var c, constStoreVar])
 
-      lambdaExpr = AH.Lambda [AH.PVar z] $ AH.applyF qn' $ concat
+      lambdaExpr = AH.Lambda [AH.PVar z] $ AHG.applyF qn' $ concat
         [vars1, (AH.Var z) : vars2, mbSuppVar, [coverVar, constStoreVar]]
   in returnM $
     [ AH.Branch (AH.PComb (mkChoiceName  typeName) (map AH.PVar [d, i, l, r]))
@@ -613,7 +613,7 @@ trExpr (Lit               l) = returnM ([], cvLitExpr l)
 trExpr (Comb ConsCall qn es) =
   renameCons     qn               >+= \qn'      ->
   mapM trExpr es >+= unzipArgs >+= \(g, es') ->
-  genIds g (AH.applyF qn' es')
+  genIds g (AHG.applyF qn' es')
 
 -- fully applied functions
 trExpr (Comb FuncCall qn es) =
@@ -629,14 +629,14 @@ trExpr (Comb FuncCall qn es) =
    -- with the additional arguments (idsupply, capsule nesting depth
    -- and the constraint store)
     then takeNextID >+= \i -> genIds (i:g)
-          (AH.applyF qn' (es' ++ [supplyVar i, coverVar, constStoreVar]))
+          (AHG.applyF qn' (es' ++ [supplyVar i, coverVar, constStoreVar]))
     -- for deterministic functions with higher-order result
     -- in non-determinism mode we need to wrap the result
     -- in order to accept the additional arguments
     else genIds g $ case hoCl of
       FuncHORes i | not dm -> wrapDHO i $
-                              AH.applyF qn' (es' ++ [coverVar, constStoreVar])
-      _                    -> AH.applyF qn' (es' ++ [coverVar, constStoreVar])
+                              AHG.applyF qn' (es' ++ [coverVar, constStoreVar])
+      _                    -> AHG.applyF qn' (es' ++ [coverVar, constStoreVar])
 
 -- partially applied functions
 trExpr (Comb (FuncPartCall i) qn es) =
@@ -646,7 +646,7 @@ trExpr (Comb (FuncPartCall i) qn es) =
   isDetMode         >+= \dm   ->
   renameFun qn      >+= \qn'  ->
   mapM trExpr es >+= unzipArgs  >+= \(g, es') ->
-  genIds g (wrapPartCall False dm opt ndCl hoCl i (AH.applyF qn' es'))
+  genIds g (wrapPartCall False dm opt ndCl hoCl i (AHG.applyF qn' es'))
 
 -- calls to partially applied constructors are treated like calls to partially
 -- applied deterministic first order functions.
@@ -654,13 +654,13 @@ trExpr (Comb (ConsPartCall i) qn es) =
   isDetMode     >+= \dm  ->
   renameCons qn >+= \qn' ->
   mapM trExpr es >+= unzipArgs >+= \(g, es') ->
-  genIds g (wrapPartCall True  dm True D FuncFO i (AH.applyF qn' es'))
+  genIds g (wrapPartCall True  dm True D FuncFO i (AHG.applyF qn' es'))
 
 trExpr (Let ds e) =
   let (vs, es) = unzip ds in
   mapM trExpr es >+= unzipArgs >+= \(g, es') ->
   trExpr e       >+=               \(ge, e') ->
-  genIds (g ++ ge) (AH.Let (zipWith AH.declVar (map cvVarIndex vs) es') e')
+  genIds (g ++ ge) (AH.Let (zipWith AHG.declVar (map cvVarIndex vs) es') e')
 
 trExpr (Or e1 e2) =
   trExpr e1  >+= \(vs1, e1') ->
@@ -673,7 +673,7 @@ trExpr (Free vs e) =
   takeNextIDs (length vs) >+= \is   ->
   trExpr e             >+= \(g, e') ->
   genIds (is ++ g) (AH.Let (zipWith mkFree vs is) e')
-  where mkFree v i = AH.declVar (cvVarIndex v) (generate $ supplyVar i)
+  where mkFree v i = AHG.declVar (cvVarIndex v) (generate $ supplyVar i)
 
 -- This case should not occur because:
 --   * Nested case expressions have been lifted using LiftCase
@@ -822,7 +822,7 @@ wrapCs cons n e
                       , e
                       ]
  where
-  acceptCs = AH.applyF (basics, "acceptCs")
+  acceptCs = AHG.applyF (basics, "acceptCs")
   mkWraps m expr | m < 2     = expr
                  | otherwise = mkWraps (m - 1) (acceptCs [expr])
 
@@ -839,9 +839,14 @@ newWrap useDX n e
   wraps m expr = if m <= 1 then expr else wrapDX [wraps (m - 1) expr]
   innermostWrapper = if useDX then wrapDX else wrapNX
 
-wrapDX = AH.applyF (basics, "wrapDX")
-wrapNX = AH.applyF (basics, "wrapNX")
-funId  = AH.applyF (prelude, "id") []
+wrapDX :: [AH.Expr] -> AH.Expr
+wrapDX = AHG.applyF (basics, "wrapDX")
+
+wrapNX :: [AH.Expr] -> AH.Expr
+wrapNX = AHG.applyF (basics, "wrapNX")
+
+funId :: AH.Expr
+funId  = AHG.applyF (prelude, "id") []
 
 -- ---------------------------------------------------------------------------
 -- Primitive operations
@@ -851,7 +856,7 @@ funId  = AH.applyF (prelude, "id") []
 letIdVar :: [(AH.VarIName, AH.Expr)] -> AH.Expr -> M AH.Expr
 letIdVar ds e =
   strictSupply >+= \strict ->
-  returnM $ AH.Let (map (uncurry AH.declVar) ds)
+  returnM $ AH.Let (map (uncurry AHG.declVar) ds)
           $ if strict then foldr seqCall e (map (AH.Var . fst) ds) else e
 
 curryInt :: QName
@@ -877,17 +882,21 @@ seqCall e1 e2 = funcCall (prelude, "seq") [e1, e2]
 strictCall :: AH.Expr -> AH.Expr -> AH.Expr
 strictCall f e = funcCall (prelude, "$!") [f, e]
 
-consCall = AH.applyF
-funcCall = AH.applyF
+consCall :: QName -> [AH.Expr] -> AH.Expr
+consCall = AHG.applyF
 
-constant qn = AH.applyF qn []
+funcCall :: QName -> [AH.Expr] -> AH.Expr
+funcCall = AHG.applyF
+
+constant :: QName -> AH.Expr
+constant qn = AHG.applyF qn []
 
 failCheck :: QName -> [AH.Expr] -> AH.Expr -> AH.Expr
 failCheck qn vs e
   | isCaseAuxFuncName (snd $ unRenamePrefixedFunc qn) = e
   | otherwise                   = funcCall (basics, "failCheck")
     [ showQName $ unRenameQName qn
-    , AH.list2ac (map (\v -> funcCall (prelude, "show") [v]) vs)
+    , AHG.list2ac (map (\v -> funcCall (prelude, "show") [v]) vs)
     , e
     ]
 
@@ -896,7 +905,7 @@ traceFail cd qn args fail = liftFail
   [ cd
   , funcCall (basics, "traceFail")
     [ showQName qn
-    , AH.list2ac (map (\a -> funcCall (prelude, "show") [a]) args)
+    , AHG.list2ac (map (\a -> funcCall (prelude, "show") [a]) args)
     , fail
     ]
   ]
@@ -911,19 +920,34 @@ consFail qn arg = liftFail
   ]
 
 showQName :: QName -> AH.Expr
-showQName qn = AH.string2ac (q ++ '.' : n)
+showQName qn = AHG.string2ac (q ++ '.' : n)
   where (q, n) = unRenamePrefixedFunc qn
 
-emptyCs     = funcCall (basics, "emptyCs") []
-initCover   = funcCall (basics, "initCover") []
+emptyCs :: AH.Expr
+emptyCs = funcCall (basics, "emptyCs") []
 
-choice      = funcCall (basics, "choice")
-narrow      = funcCall (basics, "narrow")
-narrows     = funcCall (basics, "narrows")
-liftGuard   = funcCall (basics, "guardCons")
-liftFail    = funcCall (basics, "failCons")
+initCover :: AH.Expr
+initCover = funcCall (basics, "initCover") []
 
-leftSupply  = funcCall (basics, "leftSupply")
+choice :: [AH.Expr] -> AH.Expr
+choice = funcCall (basics, "choice")
+
+narrow :: [AH.Expr] -> AH.Expr
+narrow = funcCall (basics, "narrow")
+
+narrows :: [AH.Expr] -> AH.Expr
+narrows = funcCall (basics, "narrows")
+
+liftGuard :: [AH.Expr] -> AH.Expr
+liftGuard = funcCall (basics, "guardCons")
+
+liftFail :: [AH.Expr] -> AH.Expr
+liftFail = funcCall (basics, "failCons")
+
+leftSupply :: [AH.Expr] -> AH.Expr
+leftSupply = funcCall (basics, "leftSupply")
+
+rightSupply :: [AH.Expr] -> AH.Expr
 rightSupply = funcCall (basics, "rightSupply")
 
 generate :: AH.Expr -> AH.Expr

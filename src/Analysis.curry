@@ -292,11 +292,14 @@ splitFuncType t@(TCons     _ _) = [t]
 
 data Visibilities = Vis ([QName],[QName]) ([QName],[QName]) ([QName],[QName])
 
-getPrivateFunc (Vis (_  ,priv) _                   _) = priv
+getPrivateFunc :: Visibilities -> [QName]
+getPrivateFunc (Vis (_, priv) _ _) = priv
 
-getPrivateType (Vis _          (_  ,priv)          _) = priv
+getPrivateType :: Visibilities -> [QName]
+getPrivateType (Vis _ (_, priv) _) = priv
 
-getPrivateCons (Vis _          _          (_  ,priv)) = priv
+getPrivateCons :: Visibilities -> [QName]
+getPrivateCons (Vis _ _ (_, priv)) = priv
 
 analyzeVisibility :: Prog -> Visibilities
 analyzeVisibility p =
@@ -307,14 +310,17 @@ analyzeVisibility p =
  where
   types = progTypes p
 
+splitVisibleFuncs :: [FuncDecl] -> ([QName],[QName])
 splitVisibleFuncs funcs =
   let (pubs, privs) =  partition (\f -> funcVisibility f == Public) funcs
   in  (map funcName pubs, map funcName privs)
 
+splitVisibleTypes :: [TypeDecl] -> ([QName],[QName])
 splitVisibleTypes types =
   let (pubs, privs) = partition (\t -> typeVisibility t == Public) types
   in  (map typeName pubs, map typeName privs)
 
+splitVisibleCons  :: [ConsDecl] -> ([QName],[QName])
 splitVisibleCons cons =
   let (pubs, privs) = partition (\c -> consVisibility c == Public) cons
   in  (map consName pubs, map consName privs)
