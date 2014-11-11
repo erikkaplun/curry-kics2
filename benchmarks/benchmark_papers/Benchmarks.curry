@@ -2,7 +2,7 @@
 --- A DSL for benchmark descriptions embedded into Curry
 ---
 --- @author Michael Hanus
---- @version January 2014
+--- @version November 2014
 -----------------------------------------------------------------
 
 module Benchmarks(Benchmark, benchmark, prepareBenchmarkCleanup,
@@ -11,7 +11,7 @@ module Benchmarks(Benchmark, benchmark, prepareBenchmarkCleanup,
          mapBench, pairBench, diffBench, (.-.),
          (>!>=), returnBM,
          runOn, runUntilOn, runUntilNothingOn, execBench,
-         benchTimeNF,
+         benchTimeNF, benchCommandOutput,
          CmdResult, cmdResultAverage,
          exitStatus, elapsedTime, cpuTime, systemTime,
          maxResidentMemory,
@@ -166,9 +166,9 @@ execBench (BM pre post action) = do
   return result
 
 -----------------------------------------------------------------
--- Here are constructors to create concrete benchmarks.
+-- Now we define some constructors to create concrete benchmarks.
 -----------------------------------------------------------------
--- A quite simple constructors for internal tests of the Curry system.
+-- A quite simple constructor for internal tests of the Curry system.
 
 --- Benchmark the time (in seconds)
 --- to compute the normal form of an expression.
@@ -190,11 +190,23 @@ benchTimeNF getexp = benchmark $ do
   return (i2f rtime /. 1000.0)
 
 -----------------------------------------------------------------
--- Benchmarks for system commands.
+-- Benchmarks returning the output of system commands.
 
---- The benchmark results of executing a shell command.
---- Currently, it contains the command, exit status, elapsed time, cpu time,
---- system time (in seconds), and the maximum resident size (in Kilobytes).
+--- This operation constructs a benchmark that simply returns
+--- the output of a shell command. To be more precise,
+--- the constructed benchmark contains as a result the exit status and
+--- the standard and error output string produced by the execution
+--- of the given shell command (provided as the argument).
+benchCommandOutput :: String -> Benchmark (Int,String,String)
+benchCommandOutput cmd = benchmark $ evalCmd cmd [] ""
+
+-----------------------------------------------------------------
+-- Benchmarks for timing system commands.
+
+--- The result type for benchmarks timing the executing a shell command.
+--- Currently, a result contains the command, exit status, elapsed time,
+--- cpu time, system time (in seconds), and the maximum resident size
+--- (in Kilobytes).
 data CmdResult = CD String Int Float Float Float Int
 
 --- The average of a list of command benchmark results.

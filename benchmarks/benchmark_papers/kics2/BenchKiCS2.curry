@@ -1,4 +1,4 @@
-{-# OPTIONS_CYMAKE -F --pgmF=../../../bin/currypp #-}
+{-# OPTIONS_CYMAKE -F --pgmF=currypp #-}
 
 -----------------------------------------------------------------------
 --- Benchmark different Curry systems with various example programs.
@@ -20,7 +20,8 @@ timeLimit = 150.0 -- seconds
 numberOfRuns = 1
 
 -- The KiCS2 systems to be benchmarked:
-kics2Systems = [KiCS2 "0.2.4", KiCS2 "0.3.0", KiCS2 "0.3.1", KiCS2 ""]
+kics2Systems = [KiCS2 "0.2.3", KiCS2 "0.2.4",
+                KiCS2 "0.3.0", KiCS2 "0.3.1", KiCS2 ""]
 
 -- Directory containing the benchmark programs:
 benchProgDir = "../../suite"
@@ -31,6 +32,11 @@ benchProgDir = "../../suite"
 
 -- The Curry systems (compilers) used in the benchmarks:
 data CurrySystem = PAKCS | MCC | KiCS2 String -- version
+
+-- Show the name of the Curry system:
+showSystemName PAKCS           = "PAKCS"
+showSystemName MCC             = "MCC"
+showSystemName (KiCS2 version) = "KiCS2 " ++ version
 
 -- Show the name of the Curry system as a LaTeX string (used as a label
 -- of a column of a table):
@@ -78,6 +84,21 @@ cleanCurry cs prog = case cs of
   KiCS2 _ -> do system ("/opt/kics2/bin/cleancurry "++prog)
                 system ("/bin/rm -f "++prog)
                 done
+
+-- Executes a benchmark (program name, compile options, main expression or "")
+-- on a given Curry system and return the output (and error if exit status
+-- is non-zero).
+benchExpResult :: CurrySystem -> (String,String,String)
+               -> Benchmark String
+benchExpResult currysystem (progname,options,mainexp) =
+  (mapBench checkError (benchCommandOutput ("./"++progname)))
+    `withPrepare` compileCurry currysystem options progname mainexp
+    `withCleanup` cleanCurry   currysystem progname
+ where
+  checkError (status,output,error) =
+    if status==0 then output
+                 else "***ERROR*** Exit status: "++show status++"\n"++
+                      output++error
 
 -- Executes a benchmark (program name, compile options, main expression or "")
 -- on a given Curry system and return the required cpu time.
@@ -245,5 +266,19 @@ mainParBench system benchprogs = do
   setCurrentDirectory curdir
   return (benchResultsAsTable ("RTS Parameters" : benchprogs)
                               tabledata)
+
+-----------------------------------------------------------------------
+-- Benchmark to show some distribution information of a Curry system.
+distInfo :: CurrySystem -> IO String
+distInfo currysystem = do
+  execBench (benchExpResult currysystem ("DistInfo","","runtimeSystem"))
+
+-- Benchmark to show the distribution information of a
+-- list of Curry systems as a LaTeX table.
+distInfosAsTable :: [CurrySystem] -> IO String
+distInfosAsTable currysystems = do
+  infos <- mapIO (\cs -> distInfo cs >>= \i -> return [showSystemName cs,i])
+                 currysystems
+  return (benchResultsAsTable ["System","Info"] infos)
 
 -----------------------------------------------------------------------
