@@ -143,7 +143,7 @@ lazyBindOrNarrow _  _ _ j _ = internalError $ "Types.lazyBindOrNarrow: " ++ show
 --
 -- The NF/GNF computation is combined with a continuation to be applied to
 -- the NF/GNF.
-class (NonDet a, Show a) => NormalForm a where
+class (NonDet a, Generable a, Show a) => NormalForm a where
   -- |Apply a continuation to the normal form
   ($!!) :: NonDet b => (a -> Cover -> ConstStore -> b) -> a -> Cover -> ConstStore -> b
   -- |Apply a continuation to the ground normal form
@@ -156,24 +156,24 @@ class (NonDet a, Show a) => NormalForm a where
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- two alternatives of a binary choice.
-nfChoice :: (NormalForm a, NonDet b) 
+nfChoice :: (NormalForm a, NonDet b)
          => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> a -> a -> Cover -> ConstStore -> b
 nfChoice cont d i x1 x2 cd cs = case i of
   ChoiceID      _ -> choiceCons d i ((cont $!! x1) cd cs) ((cont $!! x2) cd cs)
-  _               -> internalError "Basics.nfChoice: no ChoiceID" 
+  _               -> internalError "Basics.nfChoice: no ChoiceID"
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
 -- n alternatives of a n-ary choice.
-nfChoices :: (NormalForm a, NonDet b) 
+nfChoices :: (NormalForm a, NonDet b)
           => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> [a] -> Cover -> ConstStore -> b
 nfChoices cont d i xs cd cs = case i of
    ChoiceID _     -> internalError "Basics.nfChoices: ChoiceID"
    FreeID _ _     -> cont (choicesCons d i xs) cd cs
    NarrowedID _ _ -> choicesCons d i (map (\x -> (cont $!! x) cd cs) xs)
-   
+
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the two alternatives of a binary choice.
-gnfChoice :: (NormalForm a, NonDet b) 
+gnfChoice :: (NormalForm a, NonDet b)
           => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> a -> a -> Cover -> ConstStore -> b
 gnfChoice cont d i x1 x2 cd cs = case i of
   ChoiceID _ -> choiceCons d i ((cont $## x1) cd cs) ((cont $## x2) cd cs)
@@ -181,7 +181,7 @@ gnfChoice cont d i x1 x2 cd cs = case i of
 
 -- |Auxiliary function to apply the continuation to the ground normal forms of
 -- the n alternatives of a n-ary choice.
-gnfChoices :: (NormalForm a, NonDet b) 
+gnfChoices :: (NormalForm a, NonDet b)
            => (a -> Cover -> ConstStore -> b) -> Cover -> ID -> [a] -> Cover -> ConstStore -> b
 gnfChoices cont d i xs cd cs = narrows cs d i (\x -> (cont $## x) cd cs) xs
 
@@ -277,19 +277,19 @@ unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HN
   unify hx@(Free cdi i xs) hy@(Free cdj j nfy) cs = lookupCs cs i
     (\x -> unify (try x) hy cs)
     (lookupCs cs j (\y -> unify hx (try y) cs)
-                   (if cdi < cd 
+                   (if cdi < cd
                     then unify (try (narrows cs cdi i id xs)) hy cs
                     else (if cdj < cd
                            then unify hx (try (narrows cs cdj j id nfy)) cs
                            else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_Success)))
   -- one free variable and one value
   unify (Free cdi i xs) hy@(Val y) cs = lookupCs cs i
-    (\x -> unify (try x) hy cs) 
+    (\x -> unify (try x) hy cs)
     (if cdi < cd then unify (try (narrows cs cdi i id xs)) hy cs
                  else bindToVal i y cd cs)
   -- one free variable and one value
   unify hx@(Val x) (Free cdj j ys) cs = lookupCs cs j
-    (\y -> unify hx (try y) cs) 
+    (\y -> unify hx (try y) cs)
     (if cdj < cd then unify hx (try (narrows cs cdj j id ys)) cs
                  else bindToVal j x cd cs)
 
@@ -336,8 +336,8 @@ lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniV
       uniyNarrowed d j ys   = choicesCons d j (map (unifyWith cs') ys)
       uniyGuard d c         = guardCons d c . (unifyWith $! c `addCs` cs')
       uniyVal vy            = (vx =.<= vy) cd cs'
-      uniyFree d j ys       = 
-         lookupCs cs' j (unifyWith cs') 
+      uniyFree d j ys       =
+         lookupCs cs' j (unifyWith cs')
           (if d < cd
            then unifyWith cs' (narrows cs' d j id ys)
            else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
@@ -488,14 +488,14 @@ instance Unifiable C_Success where
   (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
   bind _ i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
   bind cd i (Choice_C_Success  d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_C_Success d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs 
+  bind cd i (Choices_C_Success d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
   bind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
   bind _ _  (Choices_C_Success  _ i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
   bind _ _ (Fail_C_Success _ info) = [Unsolvable info]
   bind cd i (Guard_C_Success _ cs e) = (getConstrList cs) ++ (bind cd i e)
   lazyBind _  i C_Success = [(i :=: (ChooseN 0 0))]
   lazyBind cd i (Choice_C_Success d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
-  lazyBind cd i (Choices_C_Success d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs 
+  lazyBind cd i (Choices_C_Success d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
   lazyBind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
   lazyBind _  _ (Choices_C_Success _ i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _  _(Fail_C_Success _ info) = [Unsolvable info]
