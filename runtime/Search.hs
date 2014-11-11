@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP#-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Search where
 
@@ -26,15 +26,20 @@ type Strategy   a = NonDetExpr a -> IO (IOList a)
 debugSearch :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
 debugSearch _ goal = do
   nf <- getNormalForm goal
---   putStrLn $ header "Normalform"
---   print nf
---   putStrLn $ header "Search Tree"
---   putStrLn $ showChoiceTree' nf
-  let res = evalStateT (searchMSearch' initCover return nf) emptyDecisionMap
---   putStrLn $ header "Results"
-  mapM_ print (dfsSearch res)
+  putStrLn $ header "Normalform"
+  print nf
+  putStrLn $ header "Search Tree"
+  putStrLn $ showChoiceTree' nf
+  let res = runStateT (searchMSearch' initCover return nf) emptyDecisionMap
+  putStrLn $ header "Results"
+  mapM_ showRes (dfsSearch res)
 
-  where header s = s ++ '\n' : replicate (length s) '='
+  where
+    header s = s ++ '\n' : replicate (length s) '='
+    showRes (r, dm) = do
+      putStr "Result   : " >> print r
+      putStr "#Bindings: " >> print (Map.size (decisionMap dm))
+      putStr "Bindings : " >> print (decisionMap dm)
 
 -- ---------------------------------------------------------------------------
 -- Search combinators for top-level search in the IO monad
@@ -205,7 +210,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
   --            of the respective level (for drawing aesthetical corners)
   --   * @k@    is the key for the decision (L, R, constructor index)
   showsTree d l k ndVal
-    | d <= 0    = indent l k . showChar '\x2026' . nl
+    | d <= 0    = indent l k . showChar elli . nl
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
       Fail _ _        -> showChar '!' . nl
@@ -227,10 +232,11 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
   showKey "" = id
   showKey k  = showString k . showString ": "
 
-  vbar = '\x2502'     -- vertical bar
-  hbar = '\x2500'     -- horizontal bar
-  llc  = '\x2514'     -- left lower corner
-  lmc  = '\x251c'     -- left middle corner
+  elli = '\x2026'     -- ellipsis …
+  vbar = '\x2502'     -- vertical bar │
+  hbar = '\x2500'     -- horizontal bar ─
+  llc  = '\x2514'     -- left lower corner └
+  lmc  = '\x251c'     -- left middle corner ├
   nl   = showChar '\n'-- newline :)
 
   showsChildren _ _ []          = id
@@ -628,8 +634,6 @@ startIDS olddepth newdepth act goal = do
       reset <- setUnsetDecision i c
       ids (n - 1) cont y |< reset
 
-
-
 -- ---------------------------------------------------------------------------
 -- Parallel search by mapping search results into monadic structure
 -- ---------------------------------------------------------------------------
@@ -666,8 +670,11 @@ encapsulatedSearch x cd store = searchMSearch cd $ ((\y _ _ -> y) $!! x) cd stor
 newtype DecisionMap = DecisionMap { decisionMap :: Map.Map Integer Decision }
   deriving Show
 
+emptyDecisionMap :: DecisionMap
 emptyDecisionMap = DecisionMap Map.empty
 
+onDecisionMap :: (Map.Map Integer Decision -> Map.Map Integer Decision)
+              -> DecisionMap -> DecisionMap
 onDecisionMap f (DecisionMap m) = DecisionMap (f m)
 
 instance Monad m => Store (StateT DecisionMap m) where
