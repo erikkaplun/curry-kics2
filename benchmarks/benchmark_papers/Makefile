@@ -17,5 +17,5 @@ $(TOOLBIN): ExecuteBenchmarkPaper.curry
 
 .PHONY: clean
 clean: uninstall
-	cleancurry -r
+	$(CLEANCURRY) -r
 
