@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, CPP#-}
+{-# LANGUAGE CPP#-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Search where
 
@@ -191,7 +191,7 @@ showChoiceTree n goal = showsTree n [] "" (try goal) []
   --            of the respective level (for drawing aesthetical corners)
   --   * @k@    is the key for the decision (L, R, constructor index)
   showsTree d l k ndVal
-    | d <= 0    = indent l k . showChar '_' . nl
+    | d <= 0    = indent l k . showChar '\x2026' . nl
     | otherwise = indent l k . case ndVal of
       Val v           -> showString "Val " . shows v . nl
       Fail _ _        -> showChar '!' . nl
@@ -649,18 +649,22 @@ encapsulatedSearch x cd store = searchMSearch cd $ ((\y _ _ -> y) $!! x) cd stor
 -- Generic search using MonadPlus instances for the result
 -- ---------------------------------------------------------------------------
 
-type DecisionMap = Map.Map Integer Decision
+newtype DecisionMap = DecisionMap { decisionMap :: Map.Map Integer Decision }
+emptyDecisionMap = DecisionMap Map.empty
+
+onDecisionMap f (DecisionMap m) = DecisionMap (f m)
 
 instance Monad m => Store (StateT DecisionMap m) where
   getDecisionRaw u        = gets
                           $ Map.findWithDefault defaultDecision (mkInteger u)
+                          . decisionMap
   setDecisionRaw u c
-    | isDefaultDecision c = modify $ Map.delete (mkInteger u)
-    | otherwise           = modify $ Map.insert (mkInteger u) c
-  unsetDecisionRaw u      = modify $ Map.delete (mkInteger u)
+    | isDefaultDecision c = unsetDecisionRaw u
+    | otherwise           = modify $ onDecisionMap $ Map.insert (mkInteger u) c
+  unsetDecisionRaw u      = modify $ onDecisionMap $ Map.delete (mkInteger u)
 
 searchMSearch :: (MonadSearch m, NormalForm a) => Cover -> a -> m a
-searchMSearch cd x = evalStateT (searchMSearch' cd return x) (Map.empty :: DecisionMap)
+searchMSearch cd x = evalStateT (searchMSearch' cd return x) emptyDecisionMap
 
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => Cover -> (a -> m b) -> a -> m b
 searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal x
@@ -682,7 +686,7 @@ searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard 
     follow (ChooseN c _,_)  = searchMSearch' cd cont (xs !! c)
     follow (NoDecision ,j)  = sumF j $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
-    follow c              = internalError $ "Search.smpNarrowed: Bad decision " ++ show c
+    follow c             = internalError $ "Search.smpFree: Bad decision " ++ show c ++ " for " ++ show i
     pns = case i of
       FreeID     pns' _ -> pns'
       NarrowedID pns' _ -> pns'

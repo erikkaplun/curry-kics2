@@ -84,9 +84,9 @@ makeStrictCList :: Constraint -> [Constraint]
 makeStrictCList (_ :=: (LazyBind cs)) = concatMap makeStrictCList cs
 makeStrictCList binding@(_ :=: _)     = [binding]
 makeStrictCList u@(Unsolvable _)      = [u]
-makeStrictCList (ConstraintChoice cd i csl csr) 
+makeStrictCList (ConstraintChoice cd i csl csr)
   = [ConstraintChoice cd i (concatMap makeStrictCList csl)(concatMap makeStrictCList csr)]
-makeStrictCList (ConstraintChoices cd i css) 
+makeStrictCList (ConstraintChoices cd i css)
   = [ConstraintChoices cd i (map (concatMap makeStrictCList) css)]
 -- ---------------------------------------------------------------------------
 -- Decision
@@ -152,7 +152,7 @@ data ID
 instance Show ID where
   show (ChoiceID          i) = "?" ++ showUnique i
   show (FreeID          _ i) = "_x" ++ show i
-  show (NarrowedID      _ i) = "Narrowed" ++ show i
+  show (NarrowedID      _ i) = "Narrowed_" ++ show i
 
 -- |Retrieve the 'IDSupply' from an 'ID'
 supply :: ID -> IDSupply
@@ -195,7 +195,6 @@ getUnique (NarrowedID      _ s) = unique s
 isNarrowed :: ID -> Bool
 isNarrowed (NarrowedID _ _) = True
 isNarrowed _                = False
-
 
 -- ---------------------------------------------------------------------------
 -- Tracing
@@ -245,30 +244,20 @@ lookupID i = snd `liftM` lookupDecisionID i
 
 -- |Lookup the 'Decision' and the 'ID' an 'ID' ultimately is bound to
 lookupDecisionID :: Store m => ID -> m (Decision, ID)
-lookupDecisionID i = getDecisionRaw (getUnique i) >>= unchain
+lookupDecisionID i = getDecisionRaw (getUnique i) >>= follow
   where
-    -- TODO: reactivate shortening of chains as soon as we know how
-    --       to do this correct and efficient
-    -- For BindTo, we shorten chains of multiple BindTos by directly binding
-    -- to the last ID in the chain.
-    unchain (BindTo j) = do
-      retVal@(c, _lastId) <- lookupDecisionID j
+    -- follow BindTo
+    follow (BindTo j) = do
+      retVal@(c, lastId) <- lookupDecisionID j
       case c of
-        NoDecision    -> return () --shortenTo lastId
-        ChooseN _ num -> propagateBind i j num -- lastId num
-        LazyBind _    -> return () --shortenTo lastId
+        NoDecision    -> return ()
+        ChooseN _ num -> propagateBind i j num
+        LazyBind _    -> return ()
         _             -> internalError $ "ID.lookupDecisionID: " ++ show c
       return retVal
---       where
---         shortenTo lastId = when (j /= lastId) $ do
---           trace $ "shorten " ++ show i ++ " to " ++ show lastId
---           setChoiceRaw i (BindTo lastId)
 
-    -- For BoundTo, the chains should already be shortened since the Choice
-    -- "BoundTo j" is only set if the variable j has been set to a "ChooseN"
-    -- and therefore could not have been changed in between.
-    -- TODO: check if the previous statement is correct
-    unchain (BoundTo j num) = do
+    -- follow BoundTo
+    follow (BoundTo j num) = do
       retVal@(c, _) <- lookupDecisionID j
       case c of
         NoDecision     -> return ()
@@ -278,7 +267,7 @@ lookupDecisionID i = getDecisionRaw (getUnique i) >>= unchain
       return retVal
 
     -- For all other choices, there are no chains at all
-    unchain c           = return (c, i)
+    follow c           = return (c, i)
 
 -- ---------------------------------------------------------------------------
 -- Setting decisions
@@ -355,13 +344,12 @@ propagateBind x y cnt = do
 
 -- |Reset a free variable to its former 'Decision' and reset its children if
 --  the binding has already been propagated
---  TODO: use set/lookupDecisionRef to avoid constructor wrapping
 resetFreeVar :: Store m => ID -> Decision -> m ()
-resetFreeVar i oldDecision = reset oldDecision i -- (supply i)
+resetFreeVar i oldDecision = reset oldDecision i
   where
   reset c j = getDecisionRaw (getUnique j) >>= propagate c j
 
-  propagate c j (BindTo _)      = setDecisionRaw (getUnique j) c
+  propagate c j (BindTo  _    ) = setDecisionRaw (getUnique j) c
   propagate c j (BoundTo _ num) = do
     setDecisionRaw (getUnique j) c
     mapM_ (reset NoDecision) $ nextNIDs j num

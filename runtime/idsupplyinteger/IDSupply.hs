@@ -7,10 +7,10 @@ module IDSupply
   , getDecisionRaw, setDecisionRaw, unsetDecisionRaw
   ) where
 
-import Control.Monad (liftM)
-import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
-import qualified Data.Map as Map (Map, empty, delete, findWithDefault, insert)
-import System.IO.Unsafe (unsafePerformIO)
+import           Control.Monad    (liftM)
+import           Data.IORef       (IORef, newIORef, readIORef, modifyIORef)
+import qualified Data.Map as Map  (Map, empty, delete, findWithDefault, insert)
+import           System.IO.Unsafe (unsafePerformIO)
 
 -- SOURCE pragma to allow mutually recursive dependency
 import {-# SOURCE #-} ID (Decision, defaultDecision, isDefaultDecision)
