@@ -248,7 +248,7 @@ lookupDecisionID i = getDecisionRaw (getUnique i) >>= follow
   where
     -- follow BindTo
     follow (BindTo j) = do
-      retVal@(c, lastId) <- lookupDecisionID j
+      retVal@(c, _lastId) <- lookupDecisionID j
       case c of
         NoDecision    -> return ()
         ChooseN _ num -> propagateBind i j num

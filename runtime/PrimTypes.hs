@@ -138,8 +138,9 @@ instance Show Nat where
   showsPrec _ (I x1)                = showString "(I" . showChar ' '
                                     . shows x1 . showChar ')'
 #else
-  showsPrec d x                     = showTerm 1 0 x
+  showsPrec d x1                    = showTerm 1 0 x1
     where
+    showTerm :: Integer -> Integer -> Nat -> String -> String
     showTerm a c IHi   = shows    (a + c)
     showTerm a c (O n) = showTerm (2 * a) c       n
     showTerm a c (I n) = showTerm (2 * a) (c + a) n
