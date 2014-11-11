@@ -516,7 +516,7 @@ processLoad rst args = do
                    return (Just { mainMod := modname, addMods := [] | rst3 }))
              ))
      mbrst
-   
+
 --- Process :reload command
 processReload :: ReplState -> String -> IO (Maybe ReplState)
 processReload rst args
@@ -697,6 +697,7 @@ replOptions =
   , ("bfs"          , \r _ -> return (Just { ndMode       := BFS   | r }))
   , ("dfs"          , \r _ -> return (Just { ndMode       := DFS   | r }))
   , ("prdfs"        , \r _ -> return (Just { ndMode       := PrDFS | r }))
+  , ("debugsearch"  , \r _ -> return (Just { ndMode       := DEBUG | r }))
   , ("choices"      , setOptionNDMode PrtChoices 10                      )
   , ("ids"          , setOptionNDMode IDS        100                     )
   , ("parallel"     , setOptionNDMode Par        0                       )
@@ -778,6 +779,7 @@ printOptions rst = putStrLn $ unlines
   , "parallel [<n>]  - set search mode to parallel search with <n> threads"
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
+  , "debugsearch     - set search mode to print debugging information"
   , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
   , "v<n>            - verbosity level"
   , "                    0: quiet (errors and warnings only)"
@@ -814,6 +816,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   "search mode       : " ++
       (case (rst :> ndMode) of
          PrDFS         -> "primitive non-monadic depth-first search"
+         DEBUG         -> "debugging information for search"
          PrtChoices d  -> "show choice tree structure up to level " ++ show d
          DFS           -> "depth-first search"
          BFS           -> "breadth-first search"

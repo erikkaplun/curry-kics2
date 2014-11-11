@@ -22,6 +22,20 @@ type DetExpr    a =             Cover -> ConstStore -> a
 type NonDetExpr a = IDSupply -> Cover -> ConstStore -> a
 type Strategy   a = NonDetExpr a -> IO (IOList a)
 
+
+debugSearch :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
+debugSearch _ goal = do
+  nf <- getNormalForm goal
+--   putStrLn $ header "Normalform"
+--   print nf
+--   putStrLn $ header "Search Tree"
+--   putStrLn $ showChoiceTree' nf
+  let res = evalStateT (searchMSearch' initCover return nf) emptyDecisionMap
+--   putStrLn $ header "Results"
+  mapM_ print (dfsSearch res)
+
+  where header s = s ++ '\n' : replicate (length s) '='
+
 -- ---------------------------------------------------------------------------
 -- Search combinators for top-level search in the IO monad
 -- ---------------------------------------------------------------------------
@@ -650,6 +664,8 @@ encapsulatedSearch x cd store = searchMSearch cd $ ((\y _ _ -> y) $!! x) cd stor
 -- ---------------------------------------------------------------------------
 
 newtype DecisionMap = DecisionMap { decisionMap :: Map.Map Integer Decision }
+  deriving Show
+
 emptyDecisionMap = DecisionMap Map.empty
 
 onDecisionMap f (DecisionMap m) = DecisionMap (f m)
