@@ -11,7 +11,7 @@ module ID
   , Decision (..), defaultDecision, isDefaultDecision
     -- * IDs
   , ID (..), leftID, rightID, narrowID, getKey, mkInteger, isNarrowed
-  , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID
+  , IDSupply, initSupply, leftSupply, rightSupply, thisID, freeID, supply
     -- * Decision management
   , traceLookup, traceDecision
   , lookupDecision, lookupID, lookupDecisionID, setDecision, setUnsetDecision

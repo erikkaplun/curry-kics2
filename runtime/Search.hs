@@ -285,10 +285,11 @@ printValsDFSMatch backTrack cont goal = do
       where decide bt c a = setDecision i c >> printValsDFSMatch bt cont a
     follow c           = internalError $ "Search.prChoice: " ++ show c
 
-  prFree _ i xs   = lookupDecisionID i >>= follow
+  prFree cd i xs   = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs, _) = processLB backTrack cs i xs
-    follow (ChooseN c _, _) = printValsDFSMatch backTrack cont (xs !! c)
+    follow (ChooseN c _, j) = printValsDFSMatch backTrack cont (ys !! c)
+      where Free _ _ ys = try $ generate (supply j) cd
     follow (NoDecision , j) = cont $ choicesCons initCover j xs
     follow c                = internalError $ "Search.prFree: " ++ show c
 
@@ -344,10 +345,11 @@ printValsDFSTry backTrack cont goal = do
          where decide bt c a = setDecision i c >> printValsDFSTry bt cont a
        follow c           = error $ "Search.prChoice: " ++ show c
 
-    Free _ i xs   -> lookupDecisionID i >>= follow
+    Free cd i xs   -> lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB backTrack cs i xs
-      follow (ChooseN c _, _) = printValsDFSTry backTrack cont (xs !! c)
+      follow (ChooseN c _, j) = printValsDFSTry backTrack cont (ys !! c)
+        where Free _ _ ys = try $ generate (supply j) cd
       follow (NoDecision , j) = cont $ choicesCons initCover j xs
       follow c                = error $ "Search.prFree: " ++ show c
 
@@ -437,7 +439,8 @@ searchDFS act goal = do
     dfsFree cd i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
-      follow (ChooseN c _, _) = dfs cont (xs !! c)
+      follow (ChooseN c _, j) = dfs cont (ys !! c)
+        where Free _ _ ys = try $ generate (supply j) cd
       follow (NoDecision , j) = cont $ choicesCons cd j xs
       follow c                = internalError $ "Search.dfsFree: Bad choice " ++ show c
 
@@ -508,6 +511,14 @@ searchBFS act goal = do
         next cont xs (decide i ChooseLeft a : decide i ChooseRight b : ys)
       follow c           = internalError $ "Search.bfsChoice: Bad choice " ++ show c
 
+    bfsFree cd i zs = set >> lookupDecisionID i >>= follow
+      where
+      follow (LazyBind cs, _) = processLB i cs zs
+      follow (ChooseN c _, j) = bfs cont xs ys set reset (ws !! c)
+        where Free _ _ ws = try $ generate (supply j) cd
+      follow (NoDecision , j) = reset >> (cont (choicesCons initCover j zs) +++ (next cont xs ys))
+      follow c                = internalError $ "Search.bfsFree: Bad choice " ++ show c
+
     bfsNarrowed _ i@(NarrowedID pns _) zs = set >> lookupDecision i >>= follow
       where
       follow (LazyBind cs) = processLB i cs zs
@@ -516,13 +527,6 @@ searchBFS act goal = do
         (zipWith3 (\n pn y -> decide i (ChooseN n pn) y) [0..] pns zs ++ ys)
       follow c             = internalError $ "Search.bfsNarrowed: Bad choice " ++ show c
     bfsNarrowed _ i _ = internalError $ "Search.bfsNarrowed: Bad narrowed ID " ++ show i
-
-    bfsFree _ i zs = set >> lookupDecisionID i >>= follow
-      where
-      follow (LazyBind cs, _) = processLB i cs zs
-      follow (ChooseN c _, _) = bfs cont xs ys set reset (zs !! c)
-      follow (NoDecision , j) = reset >> (cont (choicesCons initCover j zs) +++ (next cont xs ys))
-      follow c                = internalError $ "Search.bfsFree: Bad choice " ++ show c
 
     bfsGuard _ cs e = set >> solve initCover cs e >>= \mbSltn -> case mbSltn of
       Nothing            -> reset >> next cont xs ys
@@ -604,10 +608,11 @@ startIDS olddepth newdepth act goal = do
                          $ decide i ChooseLeft x1 +++ decide i ChooseRight x2
       follow c           = internalError $ "Search.idsChoice: Bad choice " ++ show c
 
-    idsFree _ i xs = lookupDecisionID i >>= follow
+    idsFree cd i xs = lookupDecisionID i >>= follow
       where
       follow (LazyBind cs, _) = processLB i cs xs
-      follow (ChooseN c _, _) = ids n cont (xs !! c)
+      follow (ChooseN c _, j) = ids n cont (ys !! c)
+        where Free _ _ ys = try $ generate (supply j) cd
       follow (NoDecision , j) = cont $ choicesCons initCover j xs
       follow c                = internalError $ "Search.idsFree: Bad choice " ++ show c
 
@@ -690,48 +695,50 @@ searchMSearch :: (MonadSearch m, NormalForm a) => Cover -> a -> m a
 searchMSearch cd x = evalStateT (searchMSearch' cd return x) emptyDecisionMap
 
 searchMSearch' :: (NormalForm a, MonadSearch m, Store m) => Cover -> (a -> m b) -> a -> m b
-searchMSearch' cd cont x = match smpChoice smpNarrowed smpFree smpFail smpGuard smpVal x
+searchMSearch' cd cont x = match mChoice mNarrowed mFree mFail mGuard mVal x
   where
-  smpFail d info  = szero d info
-  smpVal v        = searchNF (searchMSearch' cd) cont v
+  mFail d info  = szero d info
+  mVal v        = searchNF (searchMSearch' cd) cont v
 
-  smpChoice d i a b = lookupDecision i >>= follow
+  mChoice d i a b = lookupDecision i >>= follow
     where
     follow ChooseLeft  = searchMSearch' cd cont a
     follow ChooseRight = searchMSearch' cd cont b
     follow NoDecision  = decide i ChooseLeft a `plus` decide i ChooseRight b
-    follow c           = internalError $ "Search.smpChoice: Bad decision " ++ show c
+    follow c           = internalError $ "Search.mChoice: Bad decision " ++ show c
     plus = if isCovered d then splus d i else mplus
 
-  smpFree d i xs = lookupDecisionID i >>= follow
+  mFree d i xs = lookupDecisionID i >>= follow
     where
     follow (LazyBind cs,_)  = processLB d i cs xs
-    follow (ChooseN c _,_)  = searchMSearch' cd cont (xs !! c)
+    follow (ChooseN c _,j)  = searchMSearch' cd cont (ys !! c)
+      where Free _ _ ys = try $ generate (supply j) d
     follow (NoDecision ,j)  = sumF j $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
-    follow c             = internalError $ "Search.smpFree: Bad decision " ++ show c ++ " for " ++ show i
+    follow c             = internalError $ "Search.mFree: Bad decision "
+                            ++ show c ++ " for " ++ show i
     pns = case i of
       FreeID     pns' _ -> pns'
       NarrowedID pns' _ -> pns'
-      ChoiceID        _ -> internalError "Search.smpFree.pns: ChoiceID"
+      ChoiceID        _ -> internalError "Search.mFree.pns: ChoiceID"
     sumF j | isCovered d  = svar d i
            | otherwise    = var (cont (choicesCons d j xs))
 
-  smpNarrowed d i xs = lookupDecision i >>= follow
+  mNarrowed d i xs = lookupDecision i >>= follow
     where
     follow (LazyBind cs)  = processLB d i cs xs
     follow (ChooseN c _)  = searchMSearch' cd cont (xs !! c)
     follow NoDecision     = sumF $
       zipWith3 (\m pm y -> decide i (ChooseN m pm) y) [0..] pns xs
-    follow c              = error $ "Search.smpNarrowed: Bad decision " ++ show c
+    follow c              = error $ "Search.mNarrowed: Bad decision " ++ show c
     pns = case i of
       FreeID     pns' _ -> pns'
       NarrowedID pns' _ -> pns'
-      ChoiceID        _ -> error "Search.smpFree.pns: ChoiceID"
+      ChoiceID        _ -> error "Search.mNarrowed.pns: ChoiceID"
     sumF | isCovered d = ssum d i
          | otherwise   = msum
 
-  smpGuard d cs e
+  mGuard d cs e
    | isCovered d = constrainMSearch d cs (searchMSearch' cd cont e)
    | otherwise = solve cd cs e >>= maybe (szero d defFailInfo) (searchMSearch' cd cont . snd)
 
