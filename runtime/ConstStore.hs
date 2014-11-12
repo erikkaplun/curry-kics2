@@ -64,7 +64,6 @@ addToGlobalCs              _ = return ()
 
 addCs (StructConstr       _) store = store
 addCs (ValConstr      i v _) store = id $! Map.insert (getKey i) (V v) store
-addCs (CombConstr        cs) store = foldr addCs store (cs [])
 
 combineCs = Map.union
 
