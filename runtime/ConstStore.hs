@@ -2,12 +2,12 @@
 
 module ConstStore where
 
-import Data.IORef       (IORef, readIORef, modifyIORef, newIORef)
-import qualified Data.Map as Map
-import Unsafe.Coerce    (unsafeCoerce)
-import System.IO.Unsafe (unsafePerformIO)
+import           Data.IORef       (IORef, readIORef, modifyIORef, newIORef)
+import qualified Data.Map as Map  (Map, empty, insert, lookup, union)
+import           Unsafe.Coerce    (unsafeCoerce)
+import           System.IO.Unsafe (unsafePerformIO)
 
-import ID
+import           ID               (Constraints (..), ID, getKey)
 
 -- ---------------------------------------------------------------------------
 -- Constraint Store
@@ -62,8 +62,9 @@ addToGlobalCs              _ = return ()
 
 #else
 
-addCs (StructConstr  _) store = store
-addCs (ValConstr i v _) store = id $! Map.insert (getKey i) (V v) store
+addCs (StructConstr       _) store = store
+addCs (ValConstr      i v _) store = id $! Map.insert (getKey i) (V v) store
+addCs (CombConstr        cs) store = foldr addCs store (cs [])
 
 combineCs = Map.union
 

@@ -25,7 +25,11 @@ type Strategy   a = NonDetExpr a -> IO (IOList a)
 
 debugSearch :: NormalForm a => (a -> IO ()) -> NonDetExpr a -> IO ()
 debugSearch _ goal = do
-  nf <- getNormalForm goal
+  s <- initSupply
+  let expr = goal s initCover emptyCs
+  putStrLn $ header "Expression"
+  print expr
+  let nf = ((\x _ _ -> x) $!! expr) initCover emptyCs
   putStrLn $ header "Normalform"
   print nf
   putStrLn $ header "Search Tree"
