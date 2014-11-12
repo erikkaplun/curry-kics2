@@ -25,7 +25,7 @@ CABAL_GHC_OPTS = $(RUNTIMEFLAGS:%=-D%)
 
 .PHONY: install
 install: $(CABAL_FILE)
-	$(CABAL_INSTALL)
+	$(CABAL_INSTALL) -p
 
 .PHONY: unregister
 unregister:

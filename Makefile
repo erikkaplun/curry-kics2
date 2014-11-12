@@ -193,7 +193,7 @@ copylibs:
 $(PKGDB):
 	"$(GHC-PKG)" init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) $(filter-out $(GHC_LIBS),$(ALLDEPS))
+	$(CABAL_INSTALL) -p $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 # create frontend binary
 $(CYMAKE): .FORCE
