@@ -8,22 +8,16 @@
 module Names where
 
 import Char            (isAlphaNum)
-import FilePath        ((</>))
+import FilePath        ( FilePath
+                       , addTrailingPathSeparator, joinPath, normalise
+                       , splitDirectories, splitExtension, splitFileName
+                       , (<.>), (</>)
+                       )
 import List            (intercalate, isPrefixOf, last)
 
 import AbstractHaskell (QName)
 import Classification  (NDClass (..), ConsHOClass (..), FuncHOClass (..))
 import Files           (withComponents, (</?>))
-
-splitIdentifiers :: String -> [String]
-splitIdentifiers s = let (pref, rest) = break (== '.') s in
-  pref : case rest of
-    []     -> []
-    _ : s' -> splitIdentifiers s'
-
-joinIdentifiers :: [String] -> String
-joinIdentifiers = foldr1 combine
-  where combine xs ys = xs ++ '.' : ys
 
 -- ---------------------------------------------------------------------------
 -- Renaming file names
@@ -37,16 +31,28 @@ renameFile trace
 externalFile :: String -> String
 externalFile = withComponents id ("External_" ++) (const "hs")
 
-destFile :: Bool -> String -> String -> String
-destFile trace subdir = withComponents (</?> subdir) (renameFile trace) (const "hs")
+destFile :: Bool -> String -> String -> String -> String
+destFile trace subdir mid fn =
+  withComponents (subdir' </?>) (renameFile trace) (const "hs") file
+  where
+  (pre, file) = splitModuleFileName mid fn
+  subdir'     = normalise $ pre </?> subdir
 
-analysisFile :: String -> String -> String
-analysisFile subdir = withComponents (</?> subdir) (renameFile False) (const "nda")
+analysisFile :: String -> String -> String -> String
+analysisFile subdir mid fn =
+  withComponents (subdir' </?>) (renameFile False) (const "nda") file
+  where
+  (pre, file) = splitModuleFileName mid fn
+  subdir'     = normalise $ pre </?> subdir
 
 --- Auxiliary file containing some basic information about functions
 --- (might become unnecessary in the future)
-funcInfoFile :: String -> String -> String
-funcInfoFile subdir = withComponents (</?> subdir) (renameFile False) (const "info")
+funcInfoFile :: String -> String -> String -> String
+funcInfoFile subdir mid fn =
+  withComponents (subdir' </?>) (renameFile False) (const "info") file
+  where
+  (pre, file) = splitModuleFileName mid fn
+  subdir'     = normalise $ pre </?> subdir
 
 -- ---------------------------------------------------------------------------
 -- Renaming modules
@@ -277,3 +283,33 @@ spanAll p xs = (if null pfx then id else (pfx:)) $ case rest of
   []     -> []
   (x:ys) -> [x] : spanAll p ys
  where (pfx, rest) = span p xs
+
+--- Split the `FilePath` of a module into the directory prefix and the
+--- `FilePath` corresponding to the module name.
+--- For instance, the call `splitModuleFileName "Data.Set" "lib/Data/Set.curry"`
+--- evaluates to `("lib", "Data/Set.curry")`.
+--- This can be useful to compute output directories while retaining the
+--- hierarchical module structure.
+splitModuleFileName :: String -> FilePath -> (FilePath, FilePath)
+splitModuleFileName mid fn = case splitIdentifiers mid of
+  [_] -> splitFileName fn
+  ms  -> let (base, ext)      = splitExtension fn
+             dirs             = splitDirectories base
+             (pre , suf)      = splitAt (length dirs - length ms) dirs
+             path | null pre  = ""
+                  | otherwise = addTrailingPathSeparator (joinPath pre)
+         in  (path, joinPath suf <.> ext)
+
+--- Split up the components of a module identifier. For instance,
+--- `splitIdentifiers "Data.Set"` evaluates to `["Data", "Set"]`.
+splitIdentifiers :: String -> [String]
+splitIdentifiers s = let (pref, rest) = break (== '.') s in
+  pref : case rest of
+    []     -> []
+    _ : s' -> splitIdentifiers s'
+
+--- Join the components of a module identifier. For instance,
+--- `joinIdentifiers ["Data", "Set"]` evaluates to `"Data.Set"`.
+joinIdentifiers :: [String] -> String
+joinIdentifiers = foldr1 combine
+  where combine xs ys = xs ++ '.' : ys

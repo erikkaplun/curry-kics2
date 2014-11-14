@@ -10,7 +10,7 @@ module Files
     -- file creation
   , writeFileInDir, writeQTermFileInDir
     -- file deletion
-  , removeFileIfExists, (</?>), lookupFileInPath
+  , removeFileIfExists, (</?>), lookupFileInPath, getFileInPath
   ) where
 
 import Directory
@@ -18,10 +18,10 @@ import Directory
   , doesFileExist, removeFile
   )
 import FilePath
-  ( FilePath, joinPath, (</>), (<.>), isAbsolute
+  ( FilePath, joinPath, (</>), (<.>), isAbsolute, searchPathSeparator
   , splitFileName, splitExtension, splitDirectories, takeDirectory
   )
-import List         (isPrefixOf, last, scanl1)
+import List         (intersperse, isPrefixOf, last, scanl1)
 import ReadShowTerm (writeQTermFile)
 
 --- Apply functions to all parts of a file name
@@ -97,3 +97,13 @@ lookupFileInPath file exts path
       let fExt = f <.> e
       exists <- doesFileExist fExt
       if exists then return (Just fExt) else lookupExtFile f es
+
+--- Gets the first file with a possible suffix in a list of directories.
+--- An error message is delivered if there is no such file.
+getFileInPath :: FilePath -> [String] -> [FilePath] -> IO FilePath
+getFileInPath file exts path = do
+  mbfile <- lookupFileInPath file exts path
+  maybe (error $ "File " ++ file ++ " not found in path " ++
+                 concat (intersperse [searchPathSeparator] path))
+        return
+        mbfile

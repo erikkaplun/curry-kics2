@@ -10,7 +10,8 @@
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , setExitStatus
-  , writeVerboseInfo, mainGoalFile, initReplState, createAndCompileMain
+  , writeVerboseInfo, mainGoalFile, mainModuleIdent, initReplState
+  , createAndCompileMain
   , getTimeCmd
   ) where
 
@@ -114,6 +115,10 @@ setExitStatus s rst = { exitStatus := s | rst }
 mainGoalFile :: String
 mainGoalFile = "Curry_Main_Goal.curry"
 
+--- Module identifier for Main
+mainModuleIdent :: String
+mainModuleIdent = "Curry_Main_Goal"
+
 --- Show an info message for a given verbosity level
 writeVerboseInfo :: ReplState -> Int -> String -> IO ()
 writeVerboseInfo rst lvl msg =
@@ -122,7 +127,7 @@ writeVerboseInfo rst lvl msg =
 -- Reads the determinism infomation for the main goal file
 readInfoFile :: ReplState -> IO [((String,String),Bool)]
 readInfoFile rst = do
-  readQTermFile (funcInfoFile (rst :> outputSubdir) mainGoalFile)
+  readQTermFile (funcInfoFile (rst :> outputSubdir) mainModuleIdent mainGoalFile)
 
 getGoalInfo :: ReplState -> IO (Bool, Bool)
 getGoalInfo rst = do
