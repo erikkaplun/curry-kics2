@@ -272,7 +272,7 @@ compileProgramWithGoal rst createExecutable goal =
   else compileProgGoal
  where
   compileProgGoal = do
-    let infoFile = funcInfoFile (rst :> outputSubdir) mainGoalFile
+    let infoFile = funcInfoFile (rst :> outputSubdir) mainModuleIdent mainGoalFile
     removeFileIfExists infoFile
     removeFileIfExists $ flatCurryFileName mainGoalFile
     writeSimpleMainGoalFile rst goal
