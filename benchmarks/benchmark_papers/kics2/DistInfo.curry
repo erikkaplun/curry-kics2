@@ -3,6 +3,8 @@
 
 import Distribution
 
+-- Prints some infos about the Curry run-time system.
+runtimeSystem :: IO ()
 runtimeSystem =
   putStrLn $ curryRuntime ++
   " Vers. " ++ show curryRuntimeMajorVersion ++ "." ++ show curryRuntimeMinorVersion
