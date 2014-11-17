@@ -27,7 +27,7 @@ import FlatCurry    ( Prog (..), readFlatCurryFile, flatCurryFileName
 import Function     (second)
 import List         (intercalate, partition)
 import Maybe        (fromJust, isJust, isNothing)
-import Message      (showStatus)
+import Message      (showAnalysis)
 import Names        (splitIdentifiers)
 import System       (system)
 
@@ -121,25 +121,23 @@ preprocessFcyFile :: Options -> FilePath -> IO Prog
 preprocessFcyFile copts fcyname = do
   -- change current verbosity level to main verbosity level in order to
   -- see the status of pre-processing imported modules:
-  let opts = { optVerbosity := opts :> optMainVerbosity | copts}
-  showStatus opts $ "Pre-processing file " ++ fcyname
-  let rcbopt  = rcValue (opts :> rcVars) "bindingoptimization"
-  unless (rcbopt == "no") $ do
-    let optexec = installDir </> "currytools" </> "optimize" </> "bindingopt"
-    existsoptexec <- doesFileExist optexec
-    when existsoptexec $ do
-     let cmpVerb = opts :> optVerbosity
-         verb    = case cmpVerb of
-                     VerbStatus   -> "-v1"
-                     VerbAnalysis -> "-v3"
-                     _            -> "-v0"
-         fastopt = if rcbopt == "full" then "" else "-f"
-     let optcmd = unwords [optexec, verb, fastopt, fcyname]
-     showStatus opts $ "Executing: "++ optcmd
-     status <- system optcmd
-     when (status > 0) $ do
-       putStrLn "WARNING: no binding optimization performed for file:"
-       putStrLn fcyname
+  let opts    = { optVerbosity := opts :> optMainVerbosity | copts}
+      rcbopt  = rcValue (opts :> rcVars) "bindingoptimization"
+      optexec = installDir </> "currytools" </> "optimize" </> "bindingopt"
+  existsoptexec <- doesFileExist optexec
+  when (rcbopt /= "no" && existsoptexec) $ do
+    showAnalysis opts $ "Pre-processing file " ++ fcyname
+    let verb = case opts :> optVerbosity of
+                  VerbAnalysis -> "-v1"
+                  VerbDetails  -> "-v3"
+                  _            -> "-v0"
+        fastopt = if rcbopt == "full" then "" else "-f"
+        optcmd  = unwords [optexec, verb, fastopt, fcyname]
+    showAnalysis opts $ "Executing: " ++ optcmd
+    status <- system optcmd
+    unless (status == 0) $ do
+      putStrLn "WARNING: Binding optimization failed for file:"
+      putStrLn fcyname
   readFlatCurryFile fcyname
 
 -- Parse a Curry program with the front end and return the FlatCurry file name.
