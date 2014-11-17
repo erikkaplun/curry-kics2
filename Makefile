@@ -90,7 +90,7 @@ export SYSTEMDEPS  = Win32
 else
 export SYSTEMDEPS  = unix
 endif
-# All dependency packages. Note that sort also removes duplicates.
+# All dependencies. Note that "sort" also removes duplicates.
 export ALLDEPS     = $(sort $(RUNTIMEDEPS) $(LIBDEPS) $(SYSTEMDEPS))
 
 # GHC and CABAL configuration
@@ -118,12 +118,16 @@ else
 GHC_PKG_OPT = package-conf
 endif
 
+# Libraries installed with GHC
+GHC_LIBS := $(shell "$(GHC-PKG)" list --global --simple-output --names-only)
+# Packages used by the compiler
+GHC_PKGS  = $(foreach pkg,$(ALLDEPS),-package $(pkg))
+
 # Standard options for compiling target programs with ghc.
 # Uses our own package db and explicitly exposes the packages
 # to avoid conflicts with globally installed ones.
 export GHC_OPTS       = -no-user-$(GHC_PKG_OPT) -$(GHC_PKG_OPT) "$(PKGDB)" \
-                        -hide-all-packages \
-                        $(foreach pkg,$(ALLDEPS),-package $(pkg))
+                        -hide-all-packages $(GHC_PKGS)
 # Command to unregister a package
 export GHC_UNREGISTER = "$(GHC-PKG)" unregister --$(GHC_PKG_OPT)="$(PKGDB)"
 # Command to install missing packages using cabal
@@ -189,7 +193,7 @@ copylibs:
 $(PKGDB):
 	"$(GHC-PKG)" init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) -p $(filter-out ghc, $(ALLDEPS))
+	$(CABAL_INSTALL) -p $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 # create frontend binary
 $(CYMAKE): .FORCE
