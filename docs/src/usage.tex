@@ -383,6 +383,23 @@ the cpu time and the elapsed time
 of the computation is always printed together with the result
 of an evaluation.
 
+\item[\fbox{\code{+/-trace}}]\pindex{trace}
+Turn on/off the trace mode. If the trace mode is on,
+it is possible to trace the sources of failing computations.
+
+\item[\fbox{\code{+/-profile}}]\pindex{profile}
+Turn on/off the profile mode. If the profile mode is on,
+expressions as well as programs are compiled with GHC's profiling
+capabilities enabled. For expressions, evaluation will automatically
+generate a file \code{Main.prof} containing the profiling information
+of the evaluation.
+For compiled programs, the profiling has to be manually activated
+using runtime options when executed:
+\begin{curry}
+kics2 :set +profile :load MyProgram.curry :save :quit
+./MyProgram +RTS -p -RTS [additional arguments]
+\end{curry}
+
 \item[\fbox{\code{+/-ghci}}]\pindex{ghci}
 Turn on/off the ghci mode.
 In the ghci mode, the initial goal is send to the interactive version
@@ -604,7 +621,7 @@ in directory \ccode{\cyshome/tools/emacs} which also contains
 the sources of the Curry mode and a short description about
 the use of this mode.
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "manual"
-%%% End: 
+%%% End:
