@@ -92,7 +92,6 @@ export SYSTEMDEPS  = unix
 endif
 # All dependencies. Note that "sort" also removes duplicates.
 export ALLDEPS     = $(sort $(RUNTIMEDEPS) $(LIBDEPS) $(SYSTEMDEPS))
-PROFILEDEPS        = mtl network
 
 # GHC and CABAL configuration
 # ---------------------------
@@ -120,7 +119,6 @@ GHC_PKG_OPT = package-conf
 endif
 
 # Libraries installed with GHC
-GHC_LIBS_VER := $(shell "$(GHC-PKG)" list --global --simple-output)
 GHC_LIBS := $(shell "$(GHC-PKG)" list --global --simple-output --names-only)
 # Packages used by the compiler
 GHC_PKGS  = $(foreach pkg,$(ALLDEPS),-package $(pkg))
@@ -195,7 +193,6 @@ copylibs:
 $(PKGDB):
 	"$(GHC-PKG)" init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) -p $(filter $(PROFILEDEPS:%=%-%),$(GHC_LIBS_VER)) --reinstall --force-reinstalls
 	$(CABAL_INSTALL) -p $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 # create frontend binary
