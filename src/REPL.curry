@@ -408,15 +408,17 @@ compileCurryProgram rst curryprog = do
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ReplState
 execMain rst _ mainexp = do -- _ was cmpstatus
-  let paropts = case rst :> ndMode of
+  let parOpts = case rst :> ndMode of
                   Par n -> "-N" ++ (if n == 0 then "" else show n)
                   _     -> ""
-      maincmd = ("." </> rst :> outputSubdir </> "Main") ++
-                (if null (rst :> rtsOpts) && null paropts
-                 then " "
-                 else " +RTS " ++ rst :> rtsOpts ++ " " ++ paropts ++ " -RTS ") ++
-                rst:>rtsArgs
-  timecmd <- getTimeCmd rst "Execution" maincmd
+      mainCall  = unwords [mainCmd, rtsParams, rst :> rtsArgs]
+      mainCmd   = "." </> rst :> outputSubdir </> "Main"
+      rtsParams = if null (rst :> rtsOpts) && null parOpts && not withProf
+                  then []
+                  else unwords ["+RTS", rst :> rtsOpts, parOpts, profOpt, "-RTS"]
+      profOpt   = if withProf then "-p" else []
+      withProf  = rst :> profile
+  timecmd <- getTimeCmd rst "Execution" mainCall
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
   writeVerboseInfo rst 3 $ "Executing: " ++ timecmd
   cmdstatus <- system timecmd
@@ -721,6 +723,8 @@ replOptions =
   , ("-time"        , \r _ -> return (Just { showTime     := False | r }))
   , ("+trace"       , \r _ -> return (Just { traceFailure := True  | r }))
   , ("-trace"       , \r _ -> return (Just { traceFailure := False | r }))
+  , ("+profile"     , \r _ -> return (Just { profile      := True  | r }))
+  , ("-profile"     , \r _ -> return (Just { profile      := False | r }))
   , ("+ghci"        , \r _ -> return (Just { useGhci      := True  | r }))
   , ("-ghci"        , setNoGhci                                          )
   , ("safe"         , \r _ -> return (Just { safeExec     := True  | r }))
@@ -795,6 +799,7 @@ printOptions rst = putStrLn $ unlines
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show compilation and execution time"
   , "+/-trace        - trace failure in deterministic expression"
+  , "+/-profile      - compile with GHC's profiling capabilities"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
   , "safe            - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
@@ -839,6 +844,7 @@ showCurrentOptions rst = "\nCurrent settings:\n"++
   showOnOff (rst :> showBindings) ++ "bindings "    ++
   showOnOff (rst :> showTime    ) ++ "time "        ++
   showOnOff (rst :> traceFailure) ++ "trace "       ++
+  showOnOff (rst :> profile     ) ++ "profile "     ++
   showOnOff (rst :> useGhci     ) ++ "ghci "
  where
    showOnOff b = if b then "+" else "-"
