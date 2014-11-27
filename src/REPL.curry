@@ -12,7 +12,7 @@ import AbstractCurry
 import Char             (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
 import Directory
 import Distribution
-import FilePath         ( (</>), (<.>), dropExtension
+import FilePath         ( (</>), (<.>)
                         , splitSearchPath, splitFileName, splitExtension
                         )
 import Files            (lookupFileInPath)
@@ -162,7 +162,7 @@ importUnsafeModule rst =
   if "Unsafe" `elem` (rst :> addMods)
   then return True
   else do
-    let fcyMainModFile = inCurrySubdir $ rst :> mainMod <.> "fcy"
+    let fcyMainModFile = flatCurryFileName (rst :> mainMod)
         frontendParams = currentFrontendParams rst
     catch (callFrontendWithParams FCY frontendParams (rst :> mainMod) >>
            readFlatCurryFile fcyMainModFile >>= \p ->
@@ -208,8 +208,9 @@ cleanMainGoalFile rst = unless keepfiles $ do
 -- Return Nothing if some error occurred during parsing.
 getAcyOfMainGoal :: ReplState -> IO (Maybe CurryProg)
 getAcyOfMainGoal rst = do
-  let mainGoalProg    = dropExtension mainGoalFile
-      acyMainGoalFile = inCurrySubdir $ mainGoalProg <.> "acy"
+  let mainGoalProg    = stripCurrySuffix mainGoalFile
+      acyMainGoalFile = --abstractCurryFileName mainGoalProg
+                         inCurrySubdir (stripCurrySuffix mainGoalProg) ++ ".acy"
       frontendParams  = currentFrontendParams rst
   prog <- catch (callFrontendWithParams ACY frontendParams mainGoalProg >>
                  tryReadACYFile acyMainGoalFile)
@@ -500,7 +501,7 @@ processHelp rst _ = do
 processLoad :: ReplState -> String -> IO (Maybe ReplState)
 processLoad rst args = do
   rst' <- terminateSourceProgGUIs rst
-  let dirmodname = dropExtension args
+  let dirmodname = stripCurrySuffix args
   if null dirmodname
     then skipCommand "missing module name"
     else do
@@ -525,7 +526,7 @@ processReload :: ReplState -> String -> IO (Maybe ReplState)
 processReload rst args
   | rst :> mainMod == rst :> preludeName
   = skipCommand "no program loaded!"
-  | null (dropExtension args)
+  | null (stripCurrySuffix args)
   = compileCurryProgram rst (rst :> mainMod) >> return (Just rst)
   | otherwise
   = skipCommand "superfluous argument"
@@ -536,7 +537,7 @@ processAdd rst args
   | null args = skipCommand "Missing module name"
   | otherwise = Just `liftIO` foldIO add rst (words args)
   where
-    add rst' m = let mdl = dropExtension m in
+    add rst' m = let mdl = stripCurrySuffix m in
       if validModuleName mdl
       then do
         mbf <- lookupFileInPath mdl [".curry", ".lcurry"] (loadPaths rst')
@@ -611,10 +612,10 @@ getModuleName :: ReplState -> String -> IO String
 getModuleName rst args =
   if null args
   then return (rst :> mainMod)
-  else let (dirname, mname) = splitFileName (dropExtension args)
+  else let (dirname, mname) = splitFileName (stripCurrySuffix args)
         in if dirname == "./"
            then return mname
-           else getAbsolutePath (dropExtension args)
+           else getAbsolutePath (stripCurrySuffix args)
 
 --- Process :show command
 processShow :: ReplState -> String -> IO (Maybe ReplState)
@@ -637,14 +638,14 @@ processInterface rst args = do
 
 processBrowse :: ReplState -> String -> IO (Maybe ReplState)
 processBrowse rst args
-  | notNull $ dropExtension args = skipCommand "superfluous argument"
-  | otherwise                  = do
+  | notNull $ stripCurrySuffix args = skipCommand "superfluous argument"
+  | otherwise                       = do
       let toolexec = "currytools" </> "browser" </> "BrowserGUI"
       callTool rst toolexec (rst :> mainMod)
 
 processUsedImports :: ReplState -> String -> IO (Maybe ReplState)
 processUsedImports rst args = do
-  let modname  = if null args then rst :> mainMod else dropExtension args
+  let modname  = if null args then rst :> mainMod else stripCurrySuffix args
       toolexec = "currytools" </> "importcalls" </> "ImportCalls"
   callTool rst toolexec modname
 
