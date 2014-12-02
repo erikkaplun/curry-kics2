@@ -5,8 +5,10 @@
 # Some information about this installation
 # ----------------------------------------
 
-# Is this a global installation (with restricted flexibility)(yes/no)?
+# Is this a global installation (with restricted flexibility) (yes/no)?
 GLOBALINSTALL   = yes
+# Should profiling be enabled (yes/no)?
+PROFILING       = yes
 # The major version number
 MAJORVERSION    = 0
 # The minor version number
@@ -134,6 +136,12 @@ export GHC_UNREGISTER = "$(GHC-PKG)" unregister --$(GHC_PKG_OPT)="$(PKGDB)"
 export CABAL_INSTALL  = "$(CABAL)" install --with-compiler="$(GHC)"       \
                         --with-hc-pkg="$(GHC-PKG)" --prefix="$(LOCALPKG)" \
                         --global --package-db="$(PKGDB)" -O2
+# Cabal profiling options
+ifeq ($(PROFILING),yes)
+export CABAL_PROFILE = -p
+else
+export CABAL_PROFILE  =
+endif
 # Additional flags passed to the runtime
 export RUNTIMEFLAGS   =
 
@@ -193,7 +201,7 @@ copylibs:
 $(PKGDB):
 	"$(GHC-PKG)" init $@
 	$(CABAL) update
-	$(CABAL_INSTALL) -p $(filter-out $(GHC_LIBS),$(ALLDEPS))
+	$(CABAL_INSTALL) $(CABAL_PROFILE) $(filter-out $(GHC_LIBS),$(ALLDEPS))
 
 # create frontend binary
 $(CYMAKE): .FORCE
@@ -310,6 +318,13 @@ ifeq ($(GLOBALINSTALL),yes)
 	echo 'installGlobal = True' >> $@
 else
 	echo 'installGlobal = False' >> $@
+endif
+	echo "" >> $@
+	echo 'withProfiling :: Bool' >> $@
+ifeq ($(PROFILING),yes)
+	echo 'withProfiling = True' >> $@
+else
+	echo 'withProfiling = False' >> $@
 endif
 
 ##############################################################################
@@ -441,6 +456,7 @@ $(TARBALL): $(COMP) $(CYMAKE) $(MANUAL)
 	cat Makefile \
 	  | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d" \
 	  | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL   = yes|' \
+	  | sed 's|^PROFILING *=.*$$|PROFILING   = no|' \
 	  | sed 's|^COMPILERDATE *:=.*$$|COMPILERDATE    = $(COMPILERDATE)|' \
 	  > $(TMPDIR)/Makefile
 	# Zip it!
