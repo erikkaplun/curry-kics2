@@ -70,6 +70,8 @@ export CLEANCURRY   = $(BINDIR)/cleancurry$(EXE_SUFFIX)
 export CURRYDOC     = $(BINDIR)/currydoc$(EXE_SUFFIX)
 # The Haskell installation info
 export INSTALLHS    = $(ROOT)/runtime/Installation.hs
+# The Curry installation info
+export INSTALLCURRY = $(ROOT)/src/Installation.curry
 # The version information for the manual
 MANUALVERSION       = $(ROOT)/docs/src/version.tex
 # Logfiles for make
@@ -180,8 +182,8 @@ tools:
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
 kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
-	$(MAKE) $(INSTALLHS) INSTALLPREFIX="$(shell $(PWD))" \
-	                     GHC="$(shell $(WHICH) "$(GHC)")"
+	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
+	                        GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
 	rm -f $(CURRYSYSTEMBIN)
 	ln -s $(BINDIR)/$(CURRYSYSTEM) $(CURRYSYSTEMBIN)
@@ -239,7 +241,7 @@ clean: $(CLEANCURRY)
 	cd utils       && $(MAKE) clean
 	cd www         && $(MAKE) clean
 	rm -f $(MAKELOG) $(CURRYSYSTEMBIN)
-	rm -f $(INSTALLHS)
+	rm -f $(INSTALLHS) $(INSTALLCURRY)
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -266,6 +268,9 @@ maintainer-clean: cleanall
 ##############################################################################
 
 # generate module with basic installation information
+$(INSTALLCURRY): $(INSTALLHS)
+	cp $< $@
+
 $(INSTALLHS): Makefile
 ifneq ($(shell test -x "$(GHC)" ; echo $$?), 0)
 	$(error "Executable 'ghc' not found. You may use 'make <target> GHC=<path>')

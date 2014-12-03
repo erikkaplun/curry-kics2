@@ -29,7 +29,7 @@ Curry_Main_Goal.curry
 # intermediate files
 stage[1,2,3]
 *.bak
-Installation.hs
+Installation.*
 *.log
 .kics2sc
 lib
