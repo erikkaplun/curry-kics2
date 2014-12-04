@@ -775,7 +775,7 @@ setOptionSupply rst args
  where allSupplies = ["integer", "ghc", "ioref", "pureio", "giants"]
 
 printOptions :: ReplState -> IO ()
-printOptions rst = putStrLn $ unlines
+printOptions rst = putStrLn $ unlines $ filter notNull
   [ "Options for ':set' command:"
   , "path <paths>    - set additional search paths for imported modules"
   , "prdfs           - set search mode to primitive depth-first search"
@@ -786,7 +786,8 @@ printOptions rst = putStrLn $ unlines
   , "choices [<n>]   - set search mode to print the choice structure as a tree"
   , "                  (up to level <n>)"
   , "debugsearch     - set search mode to print debugging information"
-  , ifLocal "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
+  , ifLocal
+    "supply <I>      - set idsupply implementation (ghc|giants|integer|ioref|pureio)"
   , "v<n>            - verbosity level"
   , "                    0: quiet (errors and warnings only)"
   , "                    1: frontend status messages (default)"
@@ -800,7 +801,8 @@ printOptions rst = putStrLn $ unlines
   , "+/-bindings     - show bindings of free variables in initial goal"
   , "+/-time         - show compilation and execution time"
   , "+/-trace        - trace failure in deterministic expression"
-  , "+/-profile      - compile with GHC's profiling capabilities"
+  , ifProfiling
+    "+/-profile      - compile with GHC's profiling capabilities"
   , "+/-ghci         - use ghci instead of ghc to evaluate main expression"
   , "safe            - safe execution mode without I/O actions"
   , "prelude <name>  - name of the standard prelude"
@@ -816,39 +818,43 @@ printOptions rst = putStrLn $ unlines
 ifLocal :: String -> String
 ifLocal s = if Inst.installGlobal then "" else s
 
+ifProfiling :: String -> String
+ifProfiling s = if Inst.withProfiling then s else ""
+
 showCurrentOptions :: ReplState -> String
-showCurrentOptions rst = "\nCurrent settings:\n"++
-  "import paths      : " ++
-     intercalate ":" ("." : rst :> importPaths) ++ "\n" ++
-  "search mode       : " ++
-      (case (rst :> ndMode) of
-         PrDFS         -> "primitive non-monadic depth-first search"
-         DEBUG         -> "debugging information for search"
-         PrtChoices d  -> "show choice tree structure up to level " ++ show d
-         DFS           -> "depth-first search"
-         BFS           -> "breadth-first search"
-         IDS d         -> "iterative deepening (initial depth: "++show d++")"
-         Par s         -> "parallel search with "++show s++" threads"
-      ) ++ "\n" ++
-  "idsupply          : " ++ rst :> idSupply ++ "\n" ++
-  "prelude           : " ++ rst :> preludeName ++ "\n" ++
-  "parser options    : " ++ rst :> parseOpts ++ "\n" ++
-  "compiler options  : " ++ rst :> cmpOpts ++ "\n" ++
-  "ghc options       : " ++ rst :> ghcOpts ++ "\n" ++
-  "run-time options  : " ++ rst :> rtsOpts ++ "\n" ++
-  "run-time arguments: " ++ rst :> rtsArgs ++ "\n" ++
-  "verbosity         : " ++ show (rst :> verbose) ++ "\n" ++
-  "prompt            : " ++ show (rst :> prompt)  ++ "\n" ++
-  showOnOff (rst :> interactive ) ++ "interactive " ++
-  showOnOff (rst :> firstSol    ) ++ "first "       ++
-  showOnOff (rst :> optim       ) ++ "optimize "    ++
-  showOnOff (rst :> showBindings) ++ "bindings "    ++
-  showOnOff (rst :> showTime    ) ++ "time "        ++
-  showOnOff (rst :> traceFailure) ++ "trace "       ++
-  showOnOff (rst :> profile     ) ++ "profile "     ++
-  showOnOff (rst :> useGhci     ) ++ "ghci "
- where
-   showOnOff b = if b then "+" else "-"
+showCurrentOptions rst = intercalate "\n" $ filter notNull
+  [ "\nCurrent settings:"
+  , "import paths      : " ++ intercalate ":" ("." : rst :> importPaths)
+  , "search mode       : " ++ case (rst :> ndMode) of
+      PrDFS         -> "primitive non-monadic depth-first search"
+      DEBUG         -> "debugging information for search"
+      PrtChoices d  -> "show choice tree structure up to level " ++ show d
+      DFS           -> "depth-first search"
+      BFS           -> "breadth-first search"
+      IDS d         -> "iterative deepening (initial depth: " ++ show d ++ ")"
+      Par s         -> "parallel search with " ++ show s ++ " threads"
+  , ifLocal $
+    "idsupply          : " ++ rst :> idSupply
+  , "prelude           : " ++ rst :> preludeName
+  , "parser options    : " ++ rst :> parseOpts
+  , "compiler options  : " ++ rst :> cmpOpts
+  , "ghc options       : " ++ rst :> ghcOpts
+  , "run-time options  : " ++ rst :> rtsOpts
+  , "run-time arguments: " ++ rst :> rtsArgs
+  , "verbosity         : " ++ show (rst :> verbose)
+  , "prompt            : " ++ show (rst :> prompt)
+  , unwords $ filter notNull
+    [               showOnOff (rst :> interactive ) ++ "interactive"
+    ,               showOnOff (rst :> firstSol    ) ++ "first"
+    ,               showOnOff (rst :> optim       ) ++ "optimize"
+    ,               showOnOff (rst :> showBindings) ++ "bindings"
+    ,               showOnOff (rst :> showTime    ) ++ "time"
+    ,               showOnOff (rst :> traceFailure) ++ "trace"
+    , ifProfiling $ showOnOff (rst :> profile     ) ++ "profile"
+    ,               showOnOff (rst :> useGhci     ) ++ "ghci"
+    ]
+  ]
+ where showOnOff b = if b then "+" else "-"
 
 printHelpOnCommands :: IO ()
 printHelpOnCommands = putStrLn $ unlines
