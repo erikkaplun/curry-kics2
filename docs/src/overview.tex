@@ -29,6 +29,25 @@ GLOBALINSTALL=no
 \end{lstlisting}
 In this case, all options of \CYS are available.
 \end{description}
+
+Furthermore, \CYS can be installed with experimental support for profiling
+of executables. To use profiling, two requirements have to be met:
+\begin{itemize}
+\item The libraries that are shipped with the GHC that is used by \CYS
+have to be installed with profiling enabled. This is the default for the system
+libraries contained in the GHC release, but may not be the case for additional
+libraries.
+\item The \code{Makefile} of \CYS contains an option \code{PROFILING}
+which has to be set to \code{yes} to enable profiling support. You may
+either change the Makefile to
+\begin{lstlisting}
+PROFILING = yes
+\end{lstlisting}
+or specify this setting while starting the installation process using
+\begin{lstlisting}
+make <optional target> PROFILING=yes
+\end{lstlisting}
+
 In the following, \cyshome denotes the installation directory
 of the \CYS installation.
 
