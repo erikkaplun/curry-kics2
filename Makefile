@@ -484,11 +484,11 @@ bootstrap: $(COMP)
 frontend: $(CYMAKE)
 
 .PHONY: Compile
-Compile: $(PKGDB) $(INSTALLHS) scripts copylibs
+Compile: $(PKGDB) $(INSTALLCURRY) scripts copylibs
 	cd src && $(MAKE) CompileBoot
 
 .PHONY: REPL
-REPL: $(PKGDB) $(INSTALLHS) scripts copylibs
+REPL: $(PKGDB) $(INSTALLCURRY) scripts copylibs
 	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
@@ -500,7 +500,7 @@ typeinference:
 benchmarks:
 	cd benchmarks && $(MAKE)
 
-$(COMP): | $(INSTALLHS) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
+$(COMP): | $(INSTALLCURRY) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	cd src && $(MAKE) bootstrap
 
 # Peform a full bootstrap - distribution - installation - uninstallation
