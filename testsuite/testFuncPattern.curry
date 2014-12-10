@@ -161,6 +161,6 @@ singletonFail _ = [failed]
 
 failingPattern (singletonFail x) = True
 
-test19 = assertValues "test19" (singletonFail x) []
+test19 = assertValues "test19" (failingPattern x) []
   where x free
 
