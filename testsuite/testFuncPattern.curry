@@ -155,3 +155,12 @@ h x | g (id y) y =:<= x = success where y free
 test18 = assertValues "test18" (h (x,failed)) []
   where x free
 
+-- this call tests whether the implementation is too lazy
+
+singletonFail _ = [failed]
+
+failingPattern (singletonFail x) = True
+
+test19 = assertValues "test19" (singletonFail x) []
+  where x free
+

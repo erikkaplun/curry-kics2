@@ -152,6 +152,9 @@ class (NonDet a, Generable a, Show a) => NormalForm a where
   showCons :: a -> String
   showCons = show
   -- new approach
+  -- - 1. argument: the search
+  -- - 2. argument: a continuation that is applied to the normal form of v
+  -- - 3. argument: A value with a value constructor at the root
   searchNF :: (forall b . NormalForm b => (b -> c) -> b -> c) -> (a -> c) -> a -> c
 
 -- |Auxiliary function to apply the continuation to the normal forms of the
@@ -340,7 +343,8 @@ lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniV
          lookupCs cs' j (unifyWith cs')
           (if d < cd
            then unifyWith cs' (narrows cs' d j id ys)
-           else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
+           else guardCons d (StructConstr [head (lazyBind cd j vx)])
+                                          (choicesCons d (narrowID j) (map (\z -> ((vx =:<= z)  cd cs')) ys)))
 
 lazyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
 lazyTry x y cd cs = case try x of
@@ -372,7 +376,8 @@ lazyTry x y cd cs = case try x of
       Free     d j ys    -> lookupCs cs' j (lazyVal cs')
                             (if d < cd
                             then lazyVal cs' (narrows cs' d j id ys)
-                            else guardCons d (StructConstr [j :=: LazyBind (lazyBind cd j vx)]) C_Success)
+                            else guardCons d (StructConstr [head (lazyBind cd j vx)])
+                                             (choicesCons d (narrowID j) (map (\z -> ((vx =:<= z)  cd cs')) ys)))
       Val        vy      -> (vx =.<= vy) cd cs'
 
 -- ---------------------------------------------------------------------------
