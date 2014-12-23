@@ -182,8 +182,8 @@ tools:
 # install the kernel system (binaries and libraries)
 .PHONY: kernel
 kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
-	$(MAKE) $(INSTALLCURRY) INSTALLPREFIX="$(shell $(PWD))" \
-	                        GHC="$(shell $(WHICH) "$(GHC)")"
+	$(MAKE) $(INSTALLHS) INSTALLPREFIX="$(shell $(PWD))" \
+	                     GHC="$(shell $(WHICH) "$(GHC)")"
 	cd src     && $(MAKE) # build compiler
 	rm -f $(CURRYSYSTEMBIN)
 	ln -s $(BINDIR)/$(CURRYSYSTEM) $(CURRYSYSTEMBIN)
@@ -241,7 +241,7 @@ clean: $(CLEANCURRY)
 	cd utils       && $(MAKE) clean
 	cd www         && $(MAKE) clean
 	rm -f $(MAKELOG) $(CURRYSYSTEMBIN)
-	rm -f $(INSTALLHS) $(INSTALLCURRY)
+	rm -f $(INSTALLHS)
 
 # clean everything (including compiler binaries)
 .PHONY: cleanall
@@ -267,10 +267,9 @@ maintainer-clean: cleanall
 # Building the compiler itself
 ##############################################################################
 
-# generate module with basic installation information
-$(INSTALLCURRY): $(INSTALLHS)
-	cp $< $@
-
+# generate Haskell module with basic installation information.
+# This information is used for building the compiler itself as well as the
+# libraries, where the information is exposed by the module Distribution.
 $(INSTALLHS): Makefile
 ifneq ($(shell test -x "$(GHC)" ; echo $$?), 0)
 	$(error "Executable 'ghc' not found. You may use 'make <target> GHC=<path>')
@@ -484,11 +483,11 @@ bootstrap: $(COMP)
 frontend: $(CYMAKE)
 
 .PHONY: Compile
-Compile: $(PKGDB) $(INSTALLCURRY) scripts copylibs
+Compile: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) CompileBoot
 
 .PHONY: REPL
-REPL: $(PKGDB) $(INSTALLCURRY) scripts copylibs
+REPL: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
@@ -500,7 +499,7 @@ typeinference:
 benchmarks:
 	cd benchmarks && $(MAKE)
 
-$(COMP): | $(INSTALLCURRY) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
+$(COMP): | $(INSTALLHS) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	cd src && $(MAKE) bootstrap
 
 # Peform a full bootstrap - distribution - installation - uninstallation

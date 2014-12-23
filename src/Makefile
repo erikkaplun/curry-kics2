@@ -77,7 +77,10 @@ ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 	$(KICS2) $(CURRY_OPTS) :set parser -Wall :set v2 :l Compile :save :quit
 	mv Compile $(COMP)
 else
-	pakcs $(CURRY_OPTS) :l Compile :save :quit
+	mv $(INSTALLCURRY) $(INSTALLCURRY).bak
+	cp $(INSTALLHS) $(INSTALLCURRY)
+	pakcs $(CURRY_OPTS) :l Compile :save :quit || (mv $(INSTALLCURRY).bak $(INSTALLCURRY) ; exit 1)
+	mv $(INSTALLCURRY).bak $(INSTALLCURRY)
 	mv Compile $(COMP)
 endif
 
