@@ -29,6 +29,11 @@ and [Cabal] by
 
     sudo apt-get install ghc cabal-install
 
+If you want to use profiling (see the manual for more details),
+then you also need to install the packages
+`haskell-platform-prof` or `ghc-prof`
+which contain additional profiling libraries.
+
 After unpacking the distribution file, go into the main directory
 of the distribution (which is denoted by `kics2home` in the following):
 

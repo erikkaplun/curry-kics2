@@ -29,8 +29,9 @@ GLOBALINSTALL=no
 \end{lstlisting}
 In this case, all options of \CYS are available.
 \end{description}
-
-Furthermore, \CYS can be installed with experimental support for profiling
+%
+Furthermore, \CYS can be installed with experimental support
+for profiling\index{profiling}
 of executables. To use profiling, two requirements have to be met:
 \begin{itemize}
 \item The libraries that are shipped with the GHC that is used by \CYS
@@ -190,9 +191,6 @@ There is currently no general connection to external constraint solvers.
 \subsection{Modules in \CYS}
 \label{sec-modules}
 
-The current implementation of \CYS supports only flat module names,
-i.e., the notation \code{Dir.Mod.f} is not supported.\index{modules}
-In order to allow the structuring of modules in different directories,
 \CYS searches for imported modules in various directories.
 By default, imported modules are searched in the directory
 of the main program and the system module directories
@@ -218,7 +216,21 @@ if one loads the Curry program \ccode{/home/joe/curryprogs/main}).
       \ccode{libraries}.
 \item The directories \ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
 \end{enumerate}
+The same strategy also applies to modules with a hierarchical
+module name with the only difference that the hierarchy prefix
+of a module name corresponds to a directory prefix of the module.
+For instance, if the main module is stored in directory \code{MAINDIR}
+and imports the module \code{Test.Func}, then the module stored in
+\code{MAINDIR/Test/Func.curry} is imported (without setting
+any additional import path) according to the
+module search strategy described above.
+
 Note that the standard prelude (\code{\cyshome/lib/Prelude.curry})
 will be always implicitly imported to all modules if a module
 does not contain an explicit import declaration for the module
 \code{Prelude}.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "manual"
+%%% End:
