@@ -8,6 +8,7 @@ Changes to version 0.3.2:
 
   * Curry programs compiled with `kics2` can now be profiled using the GHC's
     profiling capabilities. Please see the manual for additional information.
+  * Library `AbstractCurryGoodies` added.
   * Tool `data2xml` for data conversion to XML and back added.
 
 
