@@ -26,7 +26,7 @@ COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
                Names SimpleMake State TransFunctions TransTypes Utils
 
 # Source modules of the REPL (without standard libraries)
-REPL_DEPS = AbstractCurryGoodies Files GhciComm Linker Names RCFile Utils
+REPL_DEPS = Files GhciComm Linker Names RCFile Utils
 
 .PHONY: all
 all: CompileBoot updateInstallInfo REPLBoot
