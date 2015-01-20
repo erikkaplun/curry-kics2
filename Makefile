@@ -247,6 +247,7 @@ clean: $(CLEANCURRY)
 .PHONY: cleanall
 cleanall: clean
 	-cd docs/src && $(MAKE) cleanall
+	cd frontend  && $(MAKE) cleanall
 	-cd lib      && $(MAKE) cleanall
 	cd scripts   && $(MAKE) cleanall
 	cd src       && $(MAKE) cleanall
@@ -259,6 +260,8 @@ cleanall: clean
 maintainer-clean: cleanall
 	rm -rf $(BINDIR)
 	rm -rf $(LIBDIR)
+	cd currytools && git clean -fdX
+	cd lib-trunk  && git clean -fdX
 
 .PHONY: .FORCE
 .FORCE:
