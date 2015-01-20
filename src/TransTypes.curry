@@ -198,11 +198,14 @@ readInstance tdecl = case tdecl of
   _ -> error "TransTypes.readInstance"
 
 -- Generate special Read instance rule for lists
-
---instance Read t0 => Read (OP_List t0) where
+-- according to the following scheme:
+-- @
+-- instance Read t0 => Read (OP_List t0) where
 --  readsPrec d s = map readList (readsPrec d s)
 --   where
---     readList (xs,s) = (foldr OP_Cons OP_List xs,s)
+--     readList :: ([a], String) -> (OP_List a, String)
+--     readList (xs,s) = (foldr OP_Cons OP_List xs, s)
+-- @
 readListRule :: QName -> (QName, Rule)
 readListRule (mn, _) =
   ( pre "readsPrec"
@@ -210,7 +213,9 @@ readListRule (mn, _) =
       [noGuard $ applyF (pre "map") [ constF (mn,"readList")
                                     , applyF (pre "readsPrec") [Var d, Var s]
                                     ]]
-      [LocalFunc (ufunc (mn, "readList") 1 Private
+      [LocalFunc (tfunc (mn, "readList") 1 Private
+        (tupleType [listType (TVar (0, "a")), stringType] ~>
+         tupleType [TCons (mn, "OP_List") [TVar (0, "a")], stringType])
         [simpleRule [tuplePat [PVar xs, PVar s2]]
            (tupleExpr [applyF (pre "foldr") [ constF (mn,"OP_Cons")
                                             , constF (mn,"OP_List")
@@ -219,23 +224,32 @@ readListRule (mn, _) =
       ]
   ) where [d,s,xs,s2] = newVars ["d","s","xs","s2"]
 
--- Generate special Read instance rule for tuple constructors:
-
---readTup ((x1, x2), s) = (OP_Tuple2 x1 x2, s)
+-- Generate special Read instance rule for tuple constructors
+-- according to the following scheme:
+-- @
+-- instance (Read t1, ..., tn) => Read (OP_TupleN t1 ... tn) where
+--   readsPrec d s = map readTuple (readsPrec d s)
+--    where
+--     readTuple :: ((t1, ..., tn), String) -> (OP_TupleN, String)
+--     readTuple ((x1, ..., xn), s) = (OP_TupleN x1 ... xn, s)
+-- @
 readTupleRule :: FC.ConsDecl -> (QName, Rule)
 readTupleRule (FC.Cons qn@(mn,_) carity _ _) =
   ( pre "readsPrec"
   , Rule [PVar d, PVar s]
-      [noGuard $ applyF (pre "map") [ constF (mn,"readTup")
+      [noGuard $ applyF (pre "map") [ constF (mn,"readTuple")
                                     , applyF (pre "readsPrec") [Var d, Var s]
                                     ]]
-      [LocalFunc (ufunc (mn,"readTup") 1 Private
+      [LocalFunc (tfunc (mn,"readTuple") 1 Private
+        (tupleType [tupleType tvars, stringType] ~>
+         tupleType [TCons (mn, "OP_Tuple" ++ show carity) tvars, stringType])
         [simpleRule [tuplePat [ tuplePat $ map (mkPVar "x") [1 .. carity]
                               , PVar s2
                               ]]
           (tupleExpr [ applyF qn (map (mkVar "x") [1 .. carity])
                      , Var s2])])]
   ) where [d,s,s2] = newVars ["d","s","s2"]
+          tvars    = map mkTVar [0 .. carity - 1]
 
 
 -- Generate Read instance rule for data constructors:
@@ -301,7 +315,7 @@ nondetInstance tdecl = case tdecl of
        targs = map fcy2absTVar tnums
        ctype = TCons qf (map TVar targs)
   _ -> error "TransTypes.nondetInstance"
-    
+
 specialConsRules :: QName -> [(QName, Rule)]
 specialConsRules qf = map nameRule
   [ ("choiceCons" , mkChoiceName  qf)
@@ -849,6 +863,9 @@ mkPVar n i = PVar $ mkVarName n i
 
 mkVar :: String -> Int -> Expr
 mkVar n i = Var $ mkVarName n i
+
+mkTVar :: Int -> TypeExpr
+mkTVar i = TVar (i, 't' : show i)
 
 mkVarName :: String -> Int -> (Int, String)
 mkVarName n i
