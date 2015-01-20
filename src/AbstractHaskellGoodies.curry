@@ -11,10 +11,112 @@ import List            (union)
 
 infixr 9 ~>
 
--- lower the first character in a string
+--- lower the first character in a string
 lowerFirst :: String -> String
-lowerFirst (y:ys) = (toLower y) : ys
 lowerFirst []     = [] -- this case should not occur, but one never knows...
+lowerFirst (y:ys) = toLower y : ys
+
+--- Construct the name of an n-ary tuple.
+tupleName :: Int -> QName
+tupleName arity | arity > 1 = pre ('(' : replicate (arity - 1) ',' ++ ")")
+                | otherwise = error $ "tupleName: illegal arity " ++ show arity
+
+-- -----------------------------------------------------------------------------
+-- Goodies for types
+-- -----------------------------------------------------------------------------
+
+--- A type variable.
+ctvar :: String -> TypeExpr
+ctvar s = TVar (1, s)
+
+--- A function type.
+(~>) :: TypeExpr -> TypeExpr -> TypeExpr
+t1 ~> t2 = FuncType t1 t2
+
+--- A base type (type constructor without arguments).
+baseType :: QName -> TypeExpr
+baseType t = TCons t []
+
+--- Constructs a list type from element type.
+listType :: TypeExpr -> TypeExpr
+listType a = TCons (pre "[]") [a]
+
+--- Constructs a tuple type from list of component types.
+tupleType :: [TypeExpr] -> TypeExpr
+tupleType ts | l == 0    = baseType (pre "()")
+             | l == 1    = head ts
+             | otherwise = TCons (tupleName l) ts
+ where l = length ts
+
+--- Constructs an IO type from a type.
+ioType :: TypeExpr -> TypeExpr
+ioType a = TCons (pre "IO") [a]
+
+--- Constructs a Maybe type from element type.
+maybeType :: TypeExpr -> TypeExpr
+maybeType a = TCons (pre "Maybe") [a]
+
+--- The `String` type.
+stringType :: TypeExpr
+stringType = baseType (pre "String")
+
+--- The `Int` type.
+intType :: TypeExpr
+intType = baseType (pre "Int")
+
+--- The `Bool` type.
+boolType :: TypeExpr
+boolType = baseType (pre "Bool")
+
+--- The `Date` type.
+dateType :: TypeExpr
+dateType = baseType ("Time", "CalendarTime")
+
+tyVarsOf :: TypeExpr -> [TVarIName]
+tyVarsOf (TVar        tv) = [tv]
+tyVarsOf (FuncType t1 t2) = tyVarsOf t1 `union` tyVarsOf t2
+tyVarsOf (TCons    _ tys) = foldr union [] (map tyVarsOf tys)
+
+-- -----------------------------------------------------------------------------
+-- Goodies for function declarations
+-- -----------------------------------------------------------------------------
+
+--- A typed function declaration.
+tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
+tfunc name arity v t rules = Func "" name arity v (FType t) (Rules rules)
+
+--- A typed function declaration with a type context.
+ctfunc :: QName -> Int -> Visibility -> [Context] -> TypeExpr -> [Rule]
+       -> FuncDecl
+ctfunc name arity v tc t rules = Func "" name arity v (CType tc t) (Rules rules)
+
+--- A typed function declaration with a documentation comment.
+cmtfunc :: String -> QName -> Int -> Visibility -> [Context] -> TypeExpr
+        -> [Rule] -> FuncDecl
+cmtfunc comment name arity v tc t rules =
+  Func comment name arity v (CType tc t) (Rules rules)
+
+funcDecls :: Prog -> [FuncDecl]
+funcDecls (Prog _ _ _ fs _) = fs
+
+funcName :: FuncDecl -> QName
+funcName (Func _ f _ _ _ _) = f
+
+typeOf :: FuncDecl -> TypeSig
+typeOf (Func _ _ _ _ ty _) = ty
+
+commentOf :: FuncDecl -> String
+commentOf (Func cmt _ _ _ _ _) = cmt
+
+simpleRule :: [Pattern] -> Expr -> Rules
+simpleRule ps e = Rules [Rule ps [noGuard e] []]
+
+noGuard :: Expr -> (Expr, Expr)
+noGuard e = (Symbol (pre "success"), e)
+
+-- -----------------------------------------------------------------------------
+-- Building expressions
+-- -----------------------------------------------------------------------------
 
 --- An application of a qualified function name to a list of arguments.
 applyF :: QName -> [Expr] -> Expr
@@ -30,100 +132,21 @@ applyV v es = foldl Apply (Var v) es
 
 --- Constructs a tuple pattern from list of component patterns.
 tuplePat :: [Pattern] -> Pattern
-tuplePat ps | l==0 = PComb (pre "()") []
-            | l==1 = head ps
-            | otherwise = PComb (pre ('(' : take (l-1) (repeat ',') ++ ")")) ps
+tuplePat ps | l == 0    = PComb (pre "()") []
+            | l == 1    = head ps
+            | otherwise = PComb (tupleName l) ps
  where l = length ps
 
 --- Constructs a tuple expression from list of component expressions.
 tupleExpr :: [Expr] -> Expr
-tupleExpr es | l==0 = constF (pre "()")
-             | l==1 = head es
-             | otherwise = applyF (pre ('(' : take (l-1) (repeat ',') ++ ")"))
-                                  es
+tupleExpr es | l == 0    = constF (pre "()")
+             | l == 1    = head es
+             | otherwise = applyF (tupleName l) es
  where l = length es
 
---- Constructs a tuple pattern from list of component patterns.
-tuplePattern :: [Pattern] -> Pattern
-tuplePattern ps
-  | l==0 = PComb (pre "()") []
-  | l==1 = head ps
-  | otherwise = PComb (pre ('(' : take (l-1) (repeat ',') ++ ")")) ps
- where l = length ps
-
---- A function type.
-(~>) :: TypeExpr -> TypeExpr -> TypeExpr
-t1 ~> t2 = FuncType t1 t2
-
--- A base type.
-baseType :: QName -> TypeExpr
-baseType t = TCons t []
-
---- Constructs a list type from element type.
-listType :: TypeExpr -> TypeExpr
-listType a = TCons (pre "[]") [a]
-
---- Constructs a tuple type from list of component types.
-tupleType :: [TypeExpr] -> TypeExpr
-tupleType ts | l==0 = baseType (pre "()")
-             | l==1 = head ts
-             | otherwise = TCons (pre ('(' : take (l-1) (repeat ',') ++ ")"))
-                                  ts
- where l = length ts
-
---- Constructs an IO type from a type.
-ioType :: TypeExpr -> TypeExpr
-ioType a = TCons (pre "IO") [a]
-
---- Constructs a Maybe type from element type.
-maybeType :: TypeExpr -> TypeExpr
-maybeType a = TCons (pre "Maybe") [a]
-
-stringType :: TypeExpr
-stringType = baseType (pre "String")
-
-intType :: TypeExpr
-intType = baseType (pre "Int")
-
-boolType :: TypeExpr
-boolType = baseType (pre "Bool")
-
-dateType :: TypeExpr
-dateType = baseType ("Time", "CalendarTime")
-
-tyVarsOf :: TypeExpr -> [TVarIName]
-tyVarsOf (TVar        tv) = [tv]
-tyVarsOf (FuncType t1 t2) = tyVarsOf t1 `union` tyVarsOf t2
-tyVarsOf (TCons    _ tys) = foldr union [] (map tyVarsOf tys)
-
---- A typed function declaration.
-tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-tfunc name arity v t rules = Func "" name arity v (FType t) (Rules rules)
-
---- A typed function declaration with a type context.
-ctfunc :: QName -> Int -> Visibility -> [Context] -> TypeExpr -> [Rule]
-       -> FuncDecl
-ctfunc name arity v tc t rules = Func "" name arity v (CType tc t) (Rules rules)
-
---- An untyped function declaration.
-ufunc :: QName -> Int -> Visibility -> [Rule] -> FuncDecl
-ufunc name arity v rules = Func "" name arity v Untyped (Rules rules)
-
---- A typed function declaration with a documentation comment.
-cmtfunc :: String -> QName -> Int -> Visibility -> [Context] -> TypeExpr
-        -> [Rule] -> FuncDecl
-cmtfunc comment name arity v tc t rules =
-  Func comment name arity v (CType tc t) (Rules rules)
-
--- transform a string constant into AbstractHaskell term:
+--- transform a string constant into AbstractHaskell term
 string2ac :: String -> Expr
 string2ac = Lit . Stringc
-
-simpleRule :: [Pattern] -> Expr -> Rules
-simpleRule ps e = Rules [Rule ps [noGuard e] []]
-
-noGuard :: Expr -> (Expr, Expr)
-noGuard e = (Symbol (pre "success"), e)
 
 pre :: String -> QName
 pre f = ("Prelude", f)
@@ -131,14 +154,10 @@ pre f = ("Prelude", f)
 cvar :: String -> Expr
 cvar s = Var (1,s)
 
--- let declaration (with possibly empty local declarations):
+--- Build a let declaration (with a possibly empty list of local declarations)
 clet :: [LocalDecl] -> Expr -> Expr
 clet locals cexp = if null locals then cexp else Let locals cexp
 
-ctvar :: String -> TypeExpr
-ctvar s = TVar (1,s)
-
--- from Spicey Framework
 list2ac :: [Expr] -> Expr
 list2ac []     = applyF (pre "[]") []
 list2ac (c:cs) = applyF (pre ":") [c, list2ac cs]
@@ -146,7 +165,10 @@ list2ac (c:cs) = applyF (pre ":") [c, list2ac cs]
 declVar :: VarIName -> Expr -> LocalDecl
 declVar v e = LocalPat (PVar v) e []
 
------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
+-- Perform a renaming
+-- -----------------------------------------------------------------------------
+
 renameSymbolInProg :: (QName -> QName) -> Prog -> Prog
 renameSymbolInProg ren (Prog name imports typedecls fundecls opdecls) =
   Prog
@@ -183,6 +205,8 @@ renameSymbolInTypeExpr ren texp = case texp of
 
 renameSymbolInExpr :: (QName -> QName) -> Expr -> Expr
 renameSymbolInExpr ren exp = case exp of
+  Var _               -> exp
+  Lit _               -> exp
   Symbol qf           -> Symbol (ren qf)
   Apply e1 e2         -> Apply (renameSymbolInExpr ren e1)
                                  (renameSymbolInExpr ren e2)
@@ -199,7 +223,6 @@ renameSymbolInExpr ren exp = case exp of
   IfThenElse e1 e2 e3 -> IfThenElse (renameSymbolInExpr ren e1)
                                       (renameSymbolInExpr ren e2)
                                         (renameSymbolInExpr ren e3)
-  _ -> exp -- Var or Lit
 
 renameSymbolInPat :: (QName -> QName) -> Pattern -> Pattern
 renameSymbolInPat ren pat = case pat of
@@ -252,18 +275,3 @@ renameSymbolInRule ren (Rule pats crhss locals) =
 
 renameOpDecl :: (QName -> QName) -> OpDecl -> OpDecl
 renameOpDecl ren (Op qf fix prio) = Op (ren qf) fix prio
-
--- ---------------------------------------------------------------
--- Some selector functions.
-
-funcDecls :: Prog -> [FuncDecl]
-funcDecls (Prog _ _ _ fs _) = fs
-
-funcName :: FuncDecl -> QName
-funcName (Func _ f _ _ _ _) = f
-
-typeOf :: FuncDecl -> TypeSig
-typeOf (Func _ _ _ _ ty _) = ty
-
-commentOf :: FuncDecl -> String
-commentOf (Func cmt _ _ _ _ _) = cmt
