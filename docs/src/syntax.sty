@@ -5,8 +5,8 @@
 
 % Syntax extension
 % This annotates the new/changed parts of the syntax.
-\definecolor{extend}{named}{DarkOrchid}
-\newcommand{\extension}[1]{\color{extend}\trim{#1}\normalcolor}
+\definecolor{extensioncolor}{named}{DarkOrchid}
+\newcommand{\extension}[1]{\color{extensioncolor}\trim{#1}\normalcolor}%
 
 \newcommand{\removelinebreaks}[1]{\begingroup\def\\{ }#1\endgroup}
 \newcommand{\trim}[1]{\ignorespaces#1\unskip}
@@ -21,7 +21,7 @@
 \newcommand{\alt}{\\\head{}\makebox[3em][c]{\sor}}
 
 % inline alternative (no linebreak)
-\newcommand{\sor}{\ensuremath{|} }
+\newcommand{\sor}{\ensuremath{\vert}~}
 \newcommand{\opt}[1]{{\rm [}\trim{#1}{\rm ]}}
 \newcommand{\group}[1]{{\rm (}\trim{#1}{\rm )}}
 \newcommand{\many}[1]{{\rm \{}\trim{#1}{\rm \}}}
@@ -40,6 +40,6 @@
 \newcommand{\lexicon}[1]{\production{#1}{\text{see lexicon}}}
 
 \newcommand{\comment}[1]{} % ignore the argument
-\newcommand{\bs}{\mbox{\char92}}
-\newcommand{\caret}{\mbox{\char94}}
-\newcommand{\us}{\mbox{\char95}}
+\newcommand{\bs}{\mbox{\char92}} % backspace \
+\newcommand{\caret}{\mbox{\char94}} % caret ^
+\newcommand{\us}{\mbox{\char95}} % underscore _

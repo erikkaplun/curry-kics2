@@ -93,7 +93,7 @@ and can be used as ordinary identifiers.
 The following symbols also have a special meaning and cannot
 be used as an infix operator identifier:
 \begin{lstlisting}[escapechar=',literate=]
-..    :     ::    =     \\     |     <-    ->    @     ~     '\extension{:>}'    '\extension{:=}'
+..    :     ::    =     \     |     <-    ->    @     ~     '\extension{:>}'    '\extension{:=}'
 \end{lstlisting}
 
 \subsubsection{Comments}
@@ -156,16 +156,16 @@ The precise syntax for both kinds is given below.
 \production{Char}{
   \term{'}%
   \group{
-    \without{Graphic}{\term{\bs}}
+    \without{\nonterm{Graphic}}{\term{\bs}}
     \sor Space
-    \sor \without{Escape}{\term{{\tt \bs \&}}}
+    \sor \without{\nonterm{Escape}}{\term{{\tt \bs \&}}}
   }%
   \term{'}
 }
 \production{String}{
   \term{"}%
   \many{
-    \without{Graphic}{\term{"}\sor\term{\bs}}
+    \without{\nonterm{Graphic}}{\term{"} \sor \term{\bs}}
     \sor Space
     \sor Escape
     \sor Gap
@@ -276,7 +276,7 @@ assumed to start in column 0.
 }
 \extension{
 \production{ConsLabelName}{LabelID \sor DataConstr}
-}
+}%
 
 % Block
 \production{Block}{
@@ -336,7 +336,7 @@ assumed to start in column 0.
     \seq{LabelID}{,}{n} \term{::} TypeExpr \margin{n > 0}
   }
   \lexicon{LabelID}
-}
+}%
 
 % Data type
 \production{DataDeclaration}{
@@ -361,7 +361,7 @@ assumed to start in column 0.
   QTypeConstrID \seq{SimpleTypeExpr}{}{n} \margin{n > 0}
   \alt SimpleTypeExpr
 }
-}
+}%
 \production{SimpleTypeExpr}{
        TypeVarID
   \extension{\alt QTypeConstrID}
@@ -525,7 +525,7 @@ assumed to start in column 0.
        \margcomb{list comprehension}{n\geq 1}
   \alt \term{(} \extension{InfixExpr QOp} \term{)}
        \margtext{left section}
-  \alt \term{(} \extension{\without{QOp}{\term{-}, \term{-.}} InfixExpr} \term{)}
+  \alt \term{(} \extension{\without{\nonterm{QOp}}{\term{-}, \term{-.}} InfixExpr} \term{)}
        \margtext{right section}%
 \extension{
   \alt \term{\{} \seq{FBind}{,}{n} \term{\}}
