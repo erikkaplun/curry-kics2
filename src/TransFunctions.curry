@@ -331,7 +331,7 @@ trGlobalDecl (Func qn a v t r) = case r of
       , AH.Func "" (mkGlobalName qn) 0 AH.Private
         (toTypeSig $ trHOTypeExpr AH.FuncType t)
         (AHG.simpleRule [] (AHG.applyF global'
-              [ AH.Let (map (uncurry AHG.declVar)
+              [ AHG.clet (map (uncurry AHG.declVar)
                             [ (constStoreName, emptyCs  )
                             , (coverName     , initCover)
                             ])
@@ -661,7 +661,7 @@ trExpr (Let ds e) =
   let (vs, es) = unzip ds in
   mapM trExpr es >+= unzipArgs >+= \(g, es') ->
   trExpr e       >+=               \(ge, e') ->
-  genIds (g ++ ge) (AH.Let (zipWith AHG.declVar (map cvVarIndex vs) es') e')
+  genIds (g ++ ge) (AHG.clet (zipWith AHG.declVar (map cvVarIndex vs) es') e')
 
 trExpr (Or e1 e2) =
   trExpr e1  >+= \(vs1, e1') ->
@@ -673,7 +673,7 @@ trExpr (Or e1 e2) =
 trExpr (Free vs e) =
   takeNextIDs (length vs) >+= \is   ->
   trExpr e             >+= \(g, e') ->
-  genIds (is ++ g) (AH.Let (zipWith mkFree vs is) e')
+  genIds (is ++ g) (AHG.clet (zipWith mkFree vs is) e')
   where mkFree v i = AHG.declVar (cvVarIndex v) (generate $ supplyVar i)
 
 -- This case should not occur because:
@@ -874,7 +874,7 @@ funId  = AHG.applyF (prelude, "id") []
 letIdVar :: [(AH.VarIName, AH.Expr)] -> AH.Expr -> M AH.Expr
 letIdVar ds e =
   strictSupply >+= \strict ->
-  returnM $ AH.Let (map (uncurry AHG.declVar) ds)
+  returnM $ AHG.clet (map (uncurry AHG.declVar) ds)
           $ if strict then foldr seqCall e (map (AH.Var . fst) ds) else e
 
 curryInt :: QName
