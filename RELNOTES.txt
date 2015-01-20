@@ -6,6 +6,13 @@ Release notes for KiCS2 Version 0.3.3
 
 Changes to version 0.3.2:
 
+  * Changed target code representation of strings. Before, strings were
+    desugared into lists of characters by the frontend and then translated
+    character-wise, resulting in large Haskell code that was hard to read.
+    We represent strings like `"Hello from Curry"` at runtime by a call to
+    a primitive function: `toCurryString "Hello from Curry"`.
+    While adding some (small) runtime overhead, this improves the readability
+    of the code and shortens the code size.
   * Curry programs compiled with `kics2` can now be profiled using the GHC's
     profiling capabilities. Please see the manual for additional information.
   * Library `AbstractCurryGoodies` added.

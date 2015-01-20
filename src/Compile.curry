@@ -178,7 +178,7 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let ahs = (AH.Prog n (defaultModules ++ imps) typeDecls funs ops)
 
   -- TODO: HACK: manually patch export of type class curry into Prelude
-  let ahsPatched = patchCurryTypeClassIntoPrelude ahs
+  let ahsPatched = patchPreludeExports ahs
   dump DumpTranslated opts abstractHsName (show ahsPatched)
 
   showDetail opts "Integrating external declarations"
@@ -224,12 +224,14 @@ extractFuncInfos funs =
   withIOResult (AH.TCons    tc _) = tc == (curryPrelude, "C_IO")
 
 -- Patch Prelude in order to add some exports for predefined items
-patchCurryTypeClassIntoPrelude :: AH.Prog -> AH.Prog
-patchCurryTypeClassIntoPrelude p@(AH.Prog m imps td fd od)
-  | m == curryPrelude = AH.Prog m imps (curryDecl:td) fd od
+patchPreludeExports :: AH.Prog -> AH.Prog
+patchPreludeExports p@(AH.Prog m imps td fd od)
+  | m == curryPrelude = AH.Prog m imps (curryDecl:td) (toCurryString:fd) od
   | otherwise         = p
  where
-  curryDecl = AH.Type (curryPrelude, "Curry") AH.Public [] []
+  curryDecl     = AH.Type (curryPrelude, "Curry") AH.Public [] []
+  toCurryString = AH.Func "" (curryPrelude, "toCurryString") 1 AH.Public
+                          AH.Untyped AH.External
 
 compMessage :: (Int, Int) -> String -> String -> (FilePath, FilePath) -> String
 compMessage (curNum, maxNum) what m (src, dst)

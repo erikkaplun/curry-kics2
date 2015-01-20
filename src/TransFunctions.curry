@@ -608,12 +608,13 @@ trCompleteExpr e =
 --- Transform an expression and compute a list of new supply variables
 --- to be bound.
 trExpr :: Expr -> M ([VarIndex], AH.Expr)
-trExpr (Var               i) = returnM ([], cvVar     i)
-trExpr (Lit               l) = returnM ([], cvLitExpr l)
-trExpr (Comb ConsCall qn es) =
-  renameCons     qn               >+= \qn'      ->
-  mapM trExpr es >+= unzipArgs >+= \(g, es') ->
-  genIds g (AHG.applyF qn' es')
+trExpr (Var                 i) = returnM ([], cvVar     i)
+trExpr (Lit                 l) = returnM ([], cvLitExpr l)
+trExpr e@(Comb ConsCall qn es) = case getString e of
+  Just s -> returnM ([], toCurryString s)
+  _      -> renameCons     qn            >+= \qn'      ->
+            mapM trExpr es >+= unzipArgs >+= \(g, es') ->
+            genIds g (AHG.applyF qn' es')
 
 -- fully applied functions
 trExpr (Comb FuncCall qn es) =
@@ -684,6 +685,23 @@ trExpr (Typed e ty) =
   trExpr e      >+= \(g, e') ->
   trExprType ty >+= \ty'     ->
   genIds g (AH.Typed e' ty')
+
+getString :: Expr -> Maybe String
+getString e = case e of
+  Comb ConsCall cons [Lit (Charc c), s]
+    | cons == renameQName ("Prelude", ":") -> case getString' s of
+        Just s' -> Just (c:s')
+        _       -> Nothing
+  _             -> Nothing
+ where
+  getString' s0 = case s0 of
+    Comb ConsCall cons [Lit (Charc c), s]
+      | cons == renameQName ("Prelude", ":") -> case getString' s of
+        Just s' -> Just (c:s')
+        _       -> Nothing
+    Comb ConsCall nil []
+      | nil == renameQName ("Prelude", "[]") -> Just []
+    _                                        -> Nothing
 
 unzipArgs :: [([VarIndex], AH.Expr)] -> M ([VarIndex], [AH.Expr])
 unzipArgs ises = returnM (concat is, es) where (is, es) = unzip ises
@@ -952,6 +970,10 @@ rightSupply = funcCall (basics, "rightSupply")
 
 generate :: AH.Expr -> AH.Expr
 generate s = funcCall (basics, "generate") [s, coverVar]
+
+toCurryString :: String -> AH.Expr
+toCurryString s = funcCall (curryPrelude, "toCurryString")
+                           [AH.Lit (AH.Stringc s)]
 
 newVars :: [String] -> [AH.VarIName]
 newVars = zip [1 ..]

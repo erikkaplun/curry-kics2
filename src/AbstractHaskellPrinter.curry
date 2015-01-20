@@ -234,9 +234,7 @@ showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
         if arity' /= 0
           then fstArg  ++ " " ++ name   ++ rest
           else bolName ++ " " ++ fstArg ++ rest
-showFuncDeclOpt opts (Func cmt (_,name) _ _ ftype (External _)) =
-  funcComment cmt ++ showTypeSig opts name ftype ++ bolName ++ " external"
-  where bolName = if isInfixOpName name then "(" ++ name ++ ")" else name
+showFuncDeclOpt _ (Func _ _ _ _ _ External) = ""
 
 -- format function comment as documentation comment
 funcComment :: String -> String

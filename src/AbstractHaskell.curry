@@ -126,8 +126,7 @@ type VarIName = (Int, String)
 --- Note: the variable indices are unique inside each rule
 ---
 --- External functions are represented as
---- <code>(Func cmt name arity type (External s))</code>
---- where s is the external name associated to this function.
+--- <code>(Func cmt name arity type External)</code>.
 ---
 --- Thus, a function declaration consists of the comment, name, arity, type,
 --- and a list of rules. The type is optional according to its occurrence in
@@ -136,12 +135,11 @@ type VarIName = (Int, String)
 --- containing documentation comments.
 data FuncDecl = Func String QName Int Visibility TypeSig Rules
 
---- A rule is either a list of formal parameters together with an expression
---- (i.e., a rule in flat form), a list of general program rules with
---- an evaluation annotation, or it is externally defined
+--- Rules are either a list of single rules or no rule at all
+--- if then function is defined externally.
 data Rules
   = Rules [Rule]
-  | External String
+  | External
 
 --- The most general form of a rule. It consists of a list of patterns
 --- (left-hand side), a list of guards ("success" if not present in the

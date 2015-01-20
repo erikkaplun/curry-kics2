@@ -240,9 +240,8 @@ renameSymbolInFunc ren (Func cmt qf ar vis ctype rules) =
        (renameSymbolInRules ren rules)
 
 renameSymbolInRules :: (QName -> QName) -> Rules -> Rules
-renameSymbolInRules ren (Rules rules) =
-  Rules (map (renameSymbolInRule ren) rules)
-renameSymbolInRules _ (External s) = External s
+renameSymbolInRules ren (Rules rs) = Rules (map (renameSymbolInRule ren) rs)
+renameSymbolInRules _   External   = External
 
 renameSymbolInRule :: (QName -> QName) -> Rule -> Rule
 renameSymbolInRule ren (Rule pats crhss locals) =
