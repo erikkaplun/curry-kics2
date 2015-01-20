@@ -112,6 +112,9 @@ The precise syntax for both kinds is given below.
 \begin{grammar}
 \production{Int}{
        Decimal
+\extension{
+  \alt \term{0b} Binary      \sor \term{0B} Binary
+}
   \alt \term{0o} Octal       \sor \term{0O} Octal
   \alt \term{0x} Hexadecimal \sor \term{0X} Hexadecimal
 }
@@ -125,6 +128,9 @@ The precise syntax for both kinds is given below.
 }
 
 \production{Decimal    }{Digit \opt{Decimal}    }
+\extension{
+\production{Binary     }{Binit \opt{Binary}     }
+}%
 \production{Octal      }{Octit \opt{Octal}      }
 \production{Hexadecimal}{Hexit \opt{Hexadecimal}}
 
@@ -132,6 +138,9 @@ The precise syntax for both kinds is given below.
  \term{0} \sor \term{1} \sor \term{2} \sor \term{3} \sor \term{4} \sor
  \term{5} \sor \term{6} \sor \term{7} \sor \term{8} \sor \term{9}
 }
+\extension{
+\production{Binit}{\term{0} \sor \term{1}}
+}%
 \production{Octit}{
  \term{0} \sor \term{1} \sor \term{2} \sor \term{3} \sor \term{4} \sor
  \term{5} \sor \term{6} \sor \term{7}

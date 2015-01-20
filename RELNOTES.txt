@@ -6,6 +6,9 @@ Release notes for KiCS2 Version 0.3.3
 
 Changes to version 0.3.2:
 
+  * The Curry syntax is extended to also support binary integer literals.
+    For instance, `0b101010` or `0B101010` can now be lexed
+    and are converted to the integer value `42`.
   * Changed target code representation of string literals. Before, string
     literals s were desugared into lists of characters by the frontend
     and then translated character-wise,
