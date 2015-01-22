@@ -31,7 +31,7 @@ import AbstractCurryGoodies
 import Files                (removeFileIfExists)
 import GhciComm             (stopGhciComm)
 import qualified Installation as Inst
-import Names               (funcInfoFile)
+import Names               (funcInfoFile, moduleNameToPath)
 import RCFile
 import Utils               (showMonoTypeExpr, notNull, strip)
 
@@ -511,9 +511,9 @@ processLoad rst args = do
                      processCd rst' dirname
     maybe (return Nothing)
      (\rst2 ->
-       (lookupFileInPath modname [".curry", ".lcurry"] ["."]) >>=
+       (lookupModuleSourceInLoadPath modname) >>=
        maybe (skipCommand $ "source file of module "++dirmodname++" not found")
-             (\fn ->
+             (\ (_,fn) ->
                  readAndProcessSourceFileOptions rst2 fn >>=
                  maybe (return Nothing)
                    (\rst3 -> compileCurryProgram rst3 modname >>
@@ -540,7 +540,8 @@ processAdd rst args
     add rst' m = let mdl = stripCurrySuffix m in
       if validModuleName mdl
       then do
-        mbf <- lookupFileInPath mdl [".curry", ".lcurry"] (loadPaths rst')
+        mbf <- lookupFileInPath (moduleNameToPath mdl) [".curry", ".lcurry"]
+	                        (loadPaths rst')
         case mbf of
           Nothing -> do
             writeErrorMsg $ "Source file of module '" ++ mdl ++ "' not found"
@@ -557,7 +558,7 @@ processAdd rst args
 
 --- Is a string a valid module name?
 validModuleName :: String -> Bool
-validModuleName = all (\c -> isAlphaNum c || c == '_')
+validModuleName = all (\c -> isAlphaNum c || c == '_' || c == '.')
 
 --- Process expression evaluation
 processEval :: ReplState -> String -> IO (Maybe ReplState)
@@ -585,7 +586,8 @@ processPrograms rst _ = printAllLoadPathPrograms rst >> return (Just rst)
 processEdit :: ReplState -> String -> IO (Maybe ReplState)
 processEdit rst args = do
   modname <- getModuleName rst args
-  mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
+  mbf <- lookupFileInPath (moduleNameToPath modname) [".curry", ".lcurry"]
+                          (loadPaths rst)
   editenv <- getEnviron "EDITOR"
   let editcmd  = rcValue (rst :> rcvars) "editcommand"
       editprog = if null editcmd then editenv else editcmd
@@ -621,7 +623,8 @@ getModuleName rst args =
 processShow :: ReplState -> String -> IO (Maybe ReplState)
 processShow rst args = do
   modname <- getModuleName rst args
-  mbf <- lookupFileInPath modname [".curry", ".lcurry"] (loadPaths rst)
+  mbf <- lookupFileInPath (moduleNameToPath modname) [".curry", ".lcurry"]
+                          (loadPaths rst)
   case mbf of
     Nothing -> skipCommand "source file not found"
     Just fn -> do

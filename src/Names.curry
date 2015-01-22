@@ -300,6 +300,11 @@ splitModuleFileName mid fn = case splitIdentifiers mid of
                   | otherwise = addTrailingPathSeparator (joinPath pre)
          in  (path, joinPath suf <.> ext)
 
+--- Transforms a hierarchical module identifier into a file path.
+--- `moduleNameToPath "Data.Set"` evaluates to `"Data/Set"`.
+moduleNameToPath :: String -> FilePath
+moduleNameToPath = foldr1 (</>) . splitIdentifiers
+
 --- Split up the components of a module identifier. For instance,
 --- `splitIdentifiers "Data.Set"` evaluates to `["Data", "Set"]`.
 splitIdentifiers :: String -> [String]

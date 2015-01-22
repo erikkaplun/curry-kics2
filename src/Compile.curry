@@ -11,6 +11,7 @@ import Char             (isSpace)
 import Maybe            (fromJust)
 import List             (intercalate, isPrefixOf)
 import Directory        (doesFileExist)
+import Distribution
 import FilePath         (FilePath, (</>), dropExtension, normalise)
 import FiniteMap
 import FlatCurry
@@ -42,42 +43,44 @@ import TransFunctions
 import TransTypes
 import Utils                     (notNull, lpad, rpad)
 
---- Parse the command-line arguments and build the specified files.
+--- Parse the command-line arguments and build the specified modules.
 main :: IO ()
 main = do
-  rcdefs        <- readRC
-  (opts, files) <- getCompilerOpts
+  rcdefs          <- readRC
+  (opts, modules) <- getCompilerOpts
   mapIO_ (build { rcVars := rcdefs
                 , optMainVerbosity := opts :> optVerbosity
                 | opts })
-         files
+         modules
 
 --- Load the module, resolve the dependencies and compile the source files
 --- if necessary.
 build :: Options -> String -> IO ()
-build opts fn = do
-  mbFn <- locateCurryFile fn
-  case mbFn of
-    Nothing -> putErrLn $ "Could not find file " ++ fn
+build opts mn = do
+  mbMn <- locateCurryFile mn
+  case mbMn of
+    Nothing -> putErrLn $ "Could not find module " ++ mn
     Just f -> do
-      (mods, errs) <- deps opts f
+      (mods, errs) <- deps opts mn f
       if null errs
         then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
         else mapIO_ putErrLn errs
         where initState = { compOptions := opts | defaultState }
 
 
---- Checks if the given string corresponds to a Curry-File and
+--- Checks if the given string corresponds to a Curry module and
 --- returns the actual file path
---- @param fn - the (relative) path to the Curry file with or without extension
+--- @param mn - the (relative) path to the Curry module with or without extension
 --- @return `Just path` if the module was found, `Nothing` if not
 locateCurryFile :: String -> IO (Maybe FilePath)
-locateCurryFile fn = do
-  exists <- doesFileExist fn
+locateCurryFile mn = do
+  exists <- doesFileExist mn
   if exists
-    then return (Just fn)
-    else lookupFileInPath fn [".curry", ".lcurry", ".fcy"] ["."]
-
+    then return (Just mn)
+    else lookupModuleSourceInLoadPath (stripCurrySuffix mn) >>=
+         maybe (-- try to find a FlatCurry file without source
+	        lookupFileInLoadPath (flatCurryFileName mn))
+	       (\ (_,fn) -> return (Just fn))
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State

@@ -12,14 +12,14 @@ module ModuleDeps (ModuleIdent, Source, Errors, deps) where
 
 import Directory    (doesFileExist, getModificationTime)
 import Distribution (defaultParams, setFullPath, setQuiet, setSpecials
-                    , lookupFileInLoadPath, findFileInLoadPath
+                    , stripCurrySuffix
                     , FrontendTarget(..), FrontendParams, callFrontendWithParams
                     , installDir
                     )
 import FilePath     ( FilePath, dropExtension, takeExtension, takeBaseName
                     , dropTrailingPathSeparator, (</>), (<.>), normalise
                     )
-import Files        (lookupFileInPath)
+import Files        (lookupFileInPath, getFileInPath)
 import FiniteMap    (FM, emptyFM, addToFM, fmToList, lookupFM)
 import FlatCurry    ( Prog (..), readFlatCurryFile, flatCurryFileName
                     , readFlatCurryWithParseOptions
@@ -27,8 +27,8 @@ import FlatCurry    ( Prog (..), readFlatCurryFile, flatCurryFileName
 import Function     (second)
 import List         (intercalate, partition)
 import Maybe        (fromJust, isJust, isNothing)
-import Message      (showAnalysis)
-import Names        (splitIdentifiers)
+import Message      (showStatus,showAnalysis)
+import Names        (moduleNameToPath)
 import System       (system)
 
 import CompilerOpts
@@ -44,13 +44,15 @@ type SourceEnv   = FM ModuleIdent (Maybe Source)
 
 --- Compute all dependendies for a given module
 --- @param opts - compiler options
---- @param fn   - file name of the module
+--- @param mn   - module name
+--- @param fn   - file name of the module (or FlatCurry file name)
 --- @return     - topologically sorted list of all dependendies
 ---               and a list of errors (empty in case of success)
-deps :: Options -> FilePath -> IO ([(ModuleIdent, Source)], Errors)
-deps opts fn = do
-  mEnv <- sourceDeps opts (fileNameToModuleIdent fn) fn (emptyFM (<))
-  fcyvalid <- isFlatCurryValid fn
+deps :: Options -> ModuleIdent -> FilePath
+     -> IO ([(ModuleIdent, Source)], Errors)
+deps opts mn fn = do
+  mEnv <- sourceDeps opts mn fn (emptyFM (<))
+  fcyvalid <- isFlatCurryValid mn fn
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports
                                           -- and sort topologically
@@ -58,17 +60,13 @@ deps opts fn = do
             | otherwise = ["Compilation aborted"]
   return (mods2, concat [errs1, errs2, errs3])
 
---- Extract the `ModuleIdent` from a `FilePath`.
-fileNameToModuleIdent :: FilePath -> ModuleIdent
-fileNameToModuleIdent fn = dropExtension $ takeBaseName fn
-
 -- Has the given program name a valid FlatCurry file?
 -- Used to check the result of the front end.
-isFlatCurryValid :: String -> IO Bool
-isFlatCurryValid fname
+isFlatCurryValid :: ModuleIdent -> String -> IO Bool
+isFlatCurryValid mname fname
   | isFlatCurryFile fname = return True
   | otherwise             = do
-    let fcyname = flatCurryFileName fname
+    let fcyname = flatCurryFileName mname
     existcy  <- doesFileExist fname
     existfcy <- doesFileExist fcyname
     if existcy && existfcy
@@ -87,27 +85,26 @@ moduleDeps opts mEnv m = case lookupFM mEnv m of
       Just fn -> sourceDeps { optVerbosity := VerbQuiet | opts } m fn mEnv
 
 lookupModule :: Options -> String -> IO (Maybe FilePath)
-lookupModule opts m = lookupFileInPath (moduleNameToFile m)
+lookupModule opts m = lookupFileInPath (moduleNameToPath m)
                       [".curry", ".lcurry", ".fcy"]
                       (map dropTrailingPathSeparator importPaths)
   where importPaths = "." : opts :> optImportPaths
 
-moduleNameToFile :: String -> FilePath
-moduleNameToFile = foldr1 (</>) . splitIdentifiers
-
 sourceDeps :: Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
-sourceDeps opts m fn mEnv = do
-  fcy@(Prog _ is _ _ _) <- readCurrySource opts fn
+sourceDeps opts mn fn mEnv = do
+  fcy@(Prog m is _ _ _) <- readCurrySource opts mn fn
   foldIO (moduleDeps opts) (addToFM mEnv m (Just (fn, fcy))) is
 
+-- Reads a FlatCurry file or parses a Curry module.
 -- TODO: This should better return `Either Errors Prog` so that compilation
 -- errors can be recognized.
-readCurrySource :: Options -> FilePath -> IO Prog
-readCurrySource opts fn
+readCurrySource :: Options -> ModuleIdent -> FilePath -> IO Prog
+readCurrySource opts mn fn
   | isFlatCurryFile fn
-  = preprocessFcyFile opts fn
+  = do showStatus opts $ "Reading directly from FlatCurry file '"++fn++"'"
+       preprocessFcyFile opts fn
   | otherwise
-  = do fcyname <- parseCurryWithOptions (dropExtension fn)
+  = do fcyname <- parseCurryWithOptions opts (stripCurrySuffix mn)
                   $ setFullPath importPaths
                   $ setQuiet    (opts :> optVerbosity == VerbQuiet)
                   $ setSpecials (opts :> optParser)
@@ -141,13 +138,15 @@ preprocessFcyFile copts fcyname = do
   readFlatCurryFile fcyname
 
 -- Parse a Curry program with the front end and return the FlatCurry file name.
-parseCurryWithOptions :: String -> FrontendParams -> IO String
-parseCurryWithOptions progname options = do
-  mbCurryFile  <- lookupFileInLoadPath (progname <.> "curry")
-  mbLCurryFile <- lookupFileInLoadPath (progname <.> "lcurry")
-  unless (isNothing mbCurryFile && isNothing mbLCurryFile) $
-    callFrontendWithParams FCY options progname
-  liftIO normalise $ findFileInLoadPath (progname <.> "fcy")
+parseCurryWithOptions :: Options -> ModuleIdent -> FrontendParams -> IO String
+parseCurryWithOptions opts modname options = do
+  mbCurryFile  <- lookupModule opts modname
+  unless (isNothing mbCurryFile) $
+    callFrontendWithParams FCY options modname
+  liftIO normalise $ getFileInPath (flatCurryFileName modname)
+                      [""]
+                      (map dropTrailingPathSeparator importPaths)
+ where importPaths = "." : opts :> optImportPaths
 
 isFlatCurryFile :: FilePath -> Bool
 isFlatCurryFile fn = takeExtension fn == ".fcy"
