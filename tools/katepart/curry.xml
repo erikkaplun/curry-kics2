@@ -19,6 +19,8 @@
   <!-- Control escape sequence, e.g., \^X -->
   <!ENTITY escSeqCntrl "\^[A-Z@\[&backslash;\]\^_]" >
 
+  <!-- binary number -->
+  <!ENTITY binary      "[0-1]+" >
   <!-- octal number -->
   <!ENTITY octal       "[0-7]+" >
   <!-- decimal number -->
@@ -198,6 +200,7 @@
 
       <!-- Literals -->
       <Float        attribute="Float"   context="#stay"   />
+      <RegExpr      attribute="Binary"  context="#stay"   String="0(b|B)&binary;" />
       <RegExpr      attribute="Octal"   context="#stay"   String="0(o|O)&octal;" />
       <HlCHex       attribute="Hex"     context="#stay"   />
       <Int          attribute="Decimal" context="#stay"   />
@@ -332,6 +335,7 @@
 
     <!-- Literals -->
     <itemData name="Float"               defStyleNum="dsFloat"    spellChecking="false" />
+    <itemData name="Binary"              defStyleNum="dsBaseN"    spellChecking="false" />
     <itemData name="Octal"               defStyleNum="dsBaseN"    spellChecking="false" />
     <itemData name="Hex"                 defStyleNum="dsBaseN"    spellChecking="false" />
     <itemData name="Decimal"             defStyleNum="dsDecVal"   spellChecking="false" />
