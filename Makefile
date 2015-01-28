@@ -173,7 +173,7 @@ uninstall:
 
 # install additional tools
 .PHONY: tools
-tools:
+tools: $(CURRYSYSTEMBIN)
 	cd currytools && $(MAKE) # shared tools
 	cd tools      && $(MAKE) # compiler specific tools
 	cd cpns       && $(MAKE) # Curry Port Name Server demon
@@ -184,15 +184,18 @@ tools:
 kernel: $(PWD) $(WHICH) $(PKGDB) $(CYMAKE) $(CLEANCURRY) scripts copylibs
 	$(MAKE) $(INSTALLHS) INSTALLPREFIX="$(shell $(PWD))" \
 	                     GHC="$(shell $(WHICH) "$(GHC)")"
-	cd src     && $(MAKE) # build compiler
-	rm -f $(CURRYSYSTEMBIN)
-	ln -s $(BINDIR)/$(CURRYSYSTEM) $(CURRYSYSTEMBIN)
+	cd src && $(MAKE) # build compiler
+	$(MAKE) $(CURRYSYSTEMBIN)
 ifeq ($(GLOBALINSTALL),yes)
 	cd lib     && $(MAKE) unregister
 	cd runtime && $(MAKE) unregister
 	cd runtime && $(MAKE)
 	cd lib     && $(MAKE)
 endif
+
+$(CURRYSYSTEMBIN): $(BINDIR)/$(CURRYSYSTEM)
+	rm -f $@
+	ln -s $< $@
 
 # install the library sources from the trunk directory:
 .PHONY: copylibs
@@ -349,7 +352,7 @@ libdoc: $(CURRYDOC)
 .PHONY: currydoc
 currydoc: $(CURRYDOC)
 
-$(CURRYDOC):
+$(CURRYDOC): $(CURRYSYSTEMBIN)
 	cd currytools && $(MAKE) currydoc
 
 ##############################################################################
@@ -494,7 +497,7 @@ REPL: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) REPLBoot
 
 .PHONY: typeinference
-typeinference:
+typeinference: $(CURRYSYSTEMBIN)
 	cd currytools && $(MAKE) typeinference
 
 # install the benchmark system
