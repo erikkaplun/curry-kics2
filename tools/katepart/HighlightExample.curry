@@ -25,6 +25,8 @@ data Data
   = Cons1 Bool
   | Cons2 (() -> ())
 
+newtype Identity a = Id a
+
 type Record =
   { field1 :: Bool
   , field2 :: Int

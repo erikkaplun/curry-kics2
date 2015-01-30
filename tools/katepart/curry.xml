@@ -57,6 +57,7 @@
     <item> infixr </item>
     <item> let </item>
     <item> module </item>
+    <item> newtype </item>
     <item> of </item>
     <item> then </item>
     <item> type </item>
