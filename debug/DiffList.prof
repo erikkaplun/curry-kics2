@@ -1,0 +1,443 @@
+	Thu Dec  4 16:02 2014 Time and Allocation Profiling Report  (Final)
+
+	   DiffList +RTS -p -RTS -- standard translation + guard - $! - addCs
+
+	total time  =        0.06 secs   (58 ticks @ 1000 us, 1 processor)
+	total alloc =  45,966,216 bytes  (excludes profiling overheads)
+
+COST CENTRE                  MODULE          %time %alloc
+
+getDecisionRaw               Search           10.3   10.3
+getPureSupply                IDSupply          8.6    4.6
+onDecisionMap                Search            6.9    9.4
+lookupID                     ID                6.9    4.9
+mkInteger                    IDSupply          5.2    5.4
+MAIN                         MAIN              3.4    0.0
+>>-                          Solver            3.4    3.8
+unqKey                       IDSupply          3.4    0.0
+setDecisionGetChange         ID                3.4    3.4
+setDecisionGetChange.unchain ID                3.4    3.9
+lookupDecisionID             ID                3.4    5.3
+d_C__case_17                 Curry_Prelude     3.4    0.2
+CAF                          Main              3.4    0.6
+CAF                          GHC.Conc.Signal   1.7    0.0
+CAF                          GHC.IO.Encoding   1.7    0.0
+solveOne                     Solver            1.7    3.9
+solveOne.follow              Solver            1.7    1.2
+mkDecision                   Solver            1.7    1.4
+printBFS                     Search            1.7    0.0
+computeWithBFS               Search            1.7    0.0
+searchMSearch                Search            1.7    0.0
+searchMSearch'               Search            1.7    4.9
+searchMSearch'.mFree.follow  Search            1.7    4.9
+initSupply                   IDSupply          1.7    1.7
+getPureSupply.(...)          IDSupply          1.7    0.2
+setUnsetDecision             ID                1.7    3.0
+setDecision                  ID                1.7    0.9
+getUnique                    ID                1.7    0.0
+unifyMatch.uniFree.bindTo    Types             1.7    0.4
+generate                     Curry_Prelude     1.7    0.1
+$!!                          Curry_Prelude     1.7    0.0
+<?=                          Curry_Prelude     1.7    0.0
+d_C__case_2                  Curry_DiffList    1.7    0.0
+solve.solve'                 Solver            0.0    1.6
+setDecisionRaw               Search            0.0    1.8
+searchMSearch'.mFree         Search            0.0    1.4
+lookupDecision               ID                0.0    2.4
+propagateBind                ID                0.0    1.6
+lookupDecisionID.follow      ID                0.0    3.4
+nextSupplies.nextNSupplies'  ID                0.0    1.1
+unifyMatch                   Types             0.0    1.0
+
+
+                                                                                            individual     inherited
+COST CENTRE                                       MODULE                  no.     entries  %time %alloc   %time %alloc
+
+MAIN                                              MAIN                    131           0    3.4    0.0   100.0  100.0
+ main                                             Main                    264           0    0.0    0.0    87.9   99.3
+  printBFS                                        Search                  265           0    0.0    0.0    87.9   99.3
+   printAllValues                                 MonadList               632           2    0.0    0.0     0.0    0.6
+    showsPrec                                     Curry_Prelude           634           0    0.0    0.0     0.0    0.6
+     showsPrec4CurryList                          Curry_Prelude           635           1    0.0    0.5     0.0    0.6
+      showsPrec                                   Curry_Prelude           639        1000    0.0    0.0     0.0    0.0
+      showsPrec4CurryList.clist2hlist             Curry_Prelude           638        1001    0.0    0.1     0.0    0.1
+      showsPrec4CurryList.isStandardCurryList     Curry_Prelude           636        1001    0.0    0.0     0.0    0.0
+   computeWithBFS                                 Search                  267           0    1.7    0.0    87.9   98.7
+    searchMSearch                                 Search                  278           1    1.7    0.0    63.8   86.0
+     searchMSearch'                               Search                  279        4003    1.7    4.9    62.1   86.0
+      match                                       Curry_Prelude           534        2000    0.0    0.2     0.0    2.8
+       searchMSearch'.mVal                        Search                  551        1000    0.0    0.0     0.0    1.2
+        searchNF                                  Curry_Prelude           554           0    0.0    0.0     0.0    1.2
+         searchNF.\                               Curry_Prelude           555        1000    0.0    0.1     0.0    1.2
+          match                                   Curry_Prelude           556           0    0.0    0.0     0.0    1.2
+           searchMSearch'.mGuard                  Search                  557           0    0.0    0.0     0.0    1.2
+            searchMSearch'.mFree                  Search                  558           0    0.0    0.0     0.0    1.2
+             searchMSearch'.mFree.follow          Search                  559           0    0.0    1.2     0.0    1.2
+        searchNF                                  Curry_Prelude           552        1000    0.0    0.0     0.0    0.0
+         match                                    Curry_Prelude           553           0    0.0    0.0     0.0    0.0
+       searchMSearch'.mFree                       Search                  536        1000    0.0    0.6     0.0    1.4
+        lookupDecisionID                          ID                      538        1000    0.0    0.4     0.0    0.8
+         getUnique                                ID                      544        1000    0.0    0.0     0.0    0.0
+          unique                                  IDSupply                545        1000    0.0    0.0     0.0    0.0
+         getDecisionRaw                           Search                  539        1000    0.0    0.2     0.0    0.4
+          mkInteger                               IDSupply                542           0    0.0    0.2     0.0    0.2
+           unqKey                                 IDSupply                543        1000    0.0    0.0     0.0    0.0
+      searchMSearch'.mGuard                       Search                  330           0    0.0    0.0     0.0    0.0
+      match                                       Curry_Prelude           280        2003    0.0    0.2    60.3   78.2
+       searchMSearch'.mVal                        Search                  529        1001    0.0    0.0     1.7    1.3
+        searchNF                                  Curry_Prelude           530        1001    0.0    0.1     1.7    1.3
+         searchNF.\                               Curry_Prelude           623           0    0.0    0.0     0.0    0.1
+          searchNF.\.\                            Curry_Prelude           624        1000    0.0    0.1     0.0    0.1
+           match                                  Curry_Prelude           625           0    0.0    0.0     0.0    0.0
+         match                                    Curry_Prelude           622           0    0.0    0.0     0.0    0.0
+         searchMSearch'.mGuard                    Search                  531           0    0.0    0.0     1.7    1.2
+          searchMSearch'.mFree                    Search                  532           0    0.0    0.0     1.7    1.2
+           searchMSearch'.mFree.follow            Search                  533           0    1.7    1.2     1.7    1.2
+       searchMSearch'.mFree                       Search                  508        1001    0.0    0.6     1.7    1.4
+        lookupDecisionID                          ID                      511        1001    0.0    0.4     1.7    0.8
+         getUnique                                ID                      519        1001    0.0    0.0     0.0    0.0
+          unique                                  IDSupply                520        1001    0.0    0.0     0.0    0.0
+         getDecisionRaw                           Search                  513        1001    0.0    0.2     1.7    0.4
+          mkInteger                               IDSupply                517           0    0.0    0.2     1.7    0.2
+           unqKey                                 IDSupply                518        1001    1.7    0.0     1.7    0.0
+       searchMSearch'.mGuard                      Search                  328           1    0.0    0.0    56.9   75.3
+        searchMSearch'.mFree                      Search                  510           0    0.0    0.2    24.1   34.0
+         searchMSearch'.mVal                      Search                  626           0    0.0    0.0     0.0    0.0
+          searchNF                                Curry_Prelude           627           0    0.0    0.0     0.0    0.0
+           searchNF.\                             Curry_Prelude           628           0    0.0    0.0     0.0    0.0
+            searchNF.\.\                          Curry_Prelude           629           0    0.0    0.0     0.0    0.0
+         match                                    Curry_Prelude           537           0    0.0    0.0     0.0    0.0
+         searchMSearch'.mFree.follow              Search                  521        2001    0.0    2.6     1.7    4.7
+          searchMSearch'.mFree.follow.ys          Search                  528        2001    0.0    0.0     0.0    0.0
+          searchMSearch'.mFree.follow.(...)       Search                  522        2001    0.0    0.9     1.7    2.1
+           generate                               Curry_Prelude           549        1000    1.7    0.1     1.7    0.1
+           try                                    Curry_Prelude           548        1000    0.0    0.0     0.0    0.2
+            tryChoices                            Types                   550        1000    0.0    0.2     0.0    0.2
+           supply                                 ID                      547        1000    0.0    0.0     0.0    0.0
+           generate                               Curry_Prelude           526        2001    0.0    0.8     0.0    0.9
+            rightSupply                           IDSupply                560        1000    0.0    0.0     0.0    0.0
+            leftSupply                            IDSupply                546        1000    0.0    0.0     0.0    0.0
+            generate                              Curry_Prelude           535        1000    0.0    0.1     0.0    0.1
+           try                                    Curry_Prelude           525        1001    0.0    0.0     0.0    0.2
+            tryChoices                            Types                   527        1001    0.0    0.2     0.0    0.2
+         lookupDecisionID                         ID                      512        3997    0.0    1.9    22.4   29.1
+          getUnique                               ID                      565        3997    0.0    0.0     0.0    0.0
+           unique                                 IDSupply                566        3997    0.0    0.0     0.0    0.0
+          match                                   Curry_Prelude           540           0    0.0    0.0     0.0    0.0
+          lookupDecisionID.follow                 ID                      515        5998    0.0    2.4    22.4   24.7
+           checkPropagation                       ID                      621         999    0.0    0.2     0.0    0.2
+           propagateBind                          ID                      567        1000    0.0    1.6    20.7   21.8
+            getUnique                             ID                      596        1000    0.0    0.0     0.0    0.0
+             unique                               IDSupply                597        1000    0.0    0.0     0.0    0.0
+            propagateBind.\                       ID                      576        1998    0.0    0.0    20.7   17.3
+             setDecision                          ID                      577        1998    1.7    0.9    20.7   17.3
+              setDecisionGetChange                ID                      578        1998    1.7    1.1    19.0   16.4
+               getUnique                          ID                      591        1998    0.0    0.0     0.0    0.0
+                unique                            IDSupply                592        1998    0.0    0.0     0.0    0.0
+               setDecisionGetChange.unchain       ID                      587        1998    0.0    1.6    13.8   14.5
+                getUnique                         ID                      612        1998    0.0    0.0     0.0    0.0
+                 unique                           IDSupply                613        1998    0.0    0.0     0.0    0.0
+                setDecisionRaw                    Search                  606        1998    0.0    0.2     0.0    0.6
+                 mkInteger                        IDSupply                610           0    0.0    0.4     0.0    0.4
+                  unqKey                          IDSupply                611        1998    0.0    0.0     0.0    0.0
+                 onDecisionMap                    Search                  609           2    0.0    0.0     0.0    0.0
+                 isDefaultDecision                ID                      607        1998    0.0    0.0     0.0    0.0
+                getKey                            ID                      601           0    0.0    0.1     0.0    0.5
+                 getUnique                        ID                      604        2000    0.0    0.0     0.0    0.0
+                  unique                          IDSupply                605        2000    0.0    0.0     0.0    0.0
+                 mkInteger                        IDSupply                602           0    0.0    0.4     0.0    0.4
+                  unqKey                          IDSupply                603        2000    0.0    0.0     0.0    0.0
+                lookupID                          ID                      598        1998    6.9    4.3    13.8   11.8
+                 getKey                           ID                      616           0    0.0    0.1     1.7    0.5
+                  getUnique                       ID                      619        1996    1.7    0.0     1.7    0.0
+                   unique                         IDSupply                620        1996    0.0    0.0     0.0    0.0
+                  mkInteger                       IDSupply                617           0    0.0    0.4     0.0    0.4
+                   unqKey                         IDSupply                618        1996    0.0    0.0     0.0    0.0
+                 setDecisionRaw                   Search                  614           0    0.0    0.5     1.7    5.0
+                  onDecisionMap                   Search                  615        2995    1.7    4.4     1.7    4.4
+                 getDecisionRaw                   Search                  599           0    3.4    2.1     3.4    2.1
+                  decisionMap                     Search                  600        4993    0.0    0.0     0.0    0.0
+               getDecisionRaw                     Search                  586        1998    0.0    0.5     3.4    0.8
+                mkInteger                         IDSupply                589           0    3.4    0.4     3.4    0.4
+                 unqKey                           IDSupply                590        1998    0.0    0.0     0.0    0.0
+                decisionMap                       Search                  588           2    0.0    0.0     0.0    0.0
+               supply                             ID                      581        3996    0.0    0.0     0.0    0.0
+               ==                                 IDSupply                580        1998    0.0    0.0     0.0    0.0
+                ==                                IDSupply                585        1998    0.0    0.0     0.0    0.0
+               unique                             IDSupply                579        3996    0.0    0.0     0.0    0.0
+            nextNIDs                              ID                      571           0    0.0    0.4     0.0    2.6
+             supply                               ID                      584        1998    0.0    0.0     0.0    0.0
+             nextNIDsFromSupply                   ID                      572        1999    0.0    1.0     0.0    2.2
+              nextSupplies                        ID                      573        1999    0.0    0.0     0.0    1.2
+               nextSupplies.nextNSupplies'        ID                      574        5994    0.0    1.1     0.0    1.2
+                rightSupply                       IDSupply                608        1998    0.0    0.0     0.0    0.0
+                leftSupply                        IDSupply                583        1998    0.0    0.0     0.0    0.0
+                nextSupplies.nextNSupplies'.halfn ID                      575        1998    0.0    0.1     0.0    0.1
+            setDecisionRaw                        Search                  568        1000    0.0    0.1     0.0    0.3
+             mkInteger                            IDSupply                594           0    0.0    0.2     0.0    0.2
+              unqKey                              IDSupply                595        1000    0.0    0.0     0.0    0.0
+             onDecisionMap                        Search                  593           1    0.0    0.0     0.0    0.0
+             isDefaultDecision                    ID                      569        1000    0.0    0.0     0.0    0.0
+           getDecisionRaw                         Search                  561           0    1.7    0.4     1.7    0.4
+            decisionMap                           Search                  562        1000    0.0    0.0     0.0    0.0
+          getDecisionRaw                          Search                  514        3997    0.0    1.7     0.0    2.5
+           mkInteger                              IDSupply                563           0    0.0    0.8     0.0    0.8
+            unqKey                                IDSupply                564        3997    0.0    0.0     0.0    0.0
+           match                                  Curry_Prelude           541           0    0.0    0.0     0.0    0.0
+           decisionMap                            Search                  516        2001    0.0    0.0     0.0    0.0
+        solve                                     Solver                  331           1    0.0    0.0    32.8   41.3
+         solve.solve'                             Solver                  358        3002    0.0    1.6    32.8   40.4
+          mkSolution                              Solver                  501           1    0.0    0.0     0.0    0.0
+          solveOne                                Solver                  360        3001    1.7    3.6     6.9   11.5
+           solveOne.follow                        Solver                  380           0    0.0    0.0     3.4    4.6
+            mkDecision                            Solver                  381        2001    0.0    0.7     3.4    4.6
+             setUnsetDecision                     ID                      383        2001    0.0    1.1     3.4    3.9
+              setDecisionGetChange                ID                      385        2001    1.7    1.1     3.4    2.8
+               setDecisionGetChange.unchain       ID                      395           0    0.0    0.2     0.0    0.8
+                getUnique                         ID                      407        2001    0.0    0.0     0.0    0.0
+                 unique                           IDSupply                408        2001    0.0    0.0     0.0    0.0
+                setDecisionRaw                    Search                  396        2001    0.0    0.2     0.0    0.6
+                 mkInteger                        IDSupply                405           0    0.0    0.4     0.0    0.4
+                  unqKey                          IDSupply                406        2001    0.0    0.0     0.0    0.0
+                 isDefaultDecision                ID                      397        2001    0.0    0.0     0.0    0.0
+               getUnique                          ID                      393        2001    0.0    0.0     0.0    0.0
+                unique                            IDSupply                394        2001    0.0    0.0     0.0    0.0
+               getDecisionRaw                     Search                  387        2001    0.0    0.5     1.7    0.8
+                mkInteger                         IDSupply                391           0    0.0    0.4     1.7    0.4
+                 unqKey                           IDSupply                392        2001    1.7    0.0     1.7    0.0
+           lookupDecision                         ID                      362        3001    0.0    0.8     1.7    3.3
+            lookupDecisionID                      ID                      364        3001    0.0    1.3     1.7    2.5
+             getUnique                            ID                      373        3001    0.0    0.0     0.0    0.0
+              unique                              IDSupply                374        3001    0.0    0.0     0.0    0.0
+             getDecisionRaw                       Search                  366        3001    0.0    0.7     1.7    1.3
+              mkInteger                           IDSupply                371           0    1.7    0.6     1.7    0.6
+               unqKey                             IDSupply                372        3001    0.0    0.0     0.0    0.0
+          >>-                                     Solver                  359        3001    3.4    3.8    25.9   27.3
+           mkSolution                             Solver                  502           0    0.0    0.0     0.0    0.0
+           solveOne                               Solver                  361           0    0.0    0.3    22.4   23.5
+            solveOne.follow                       Solver                  379        3001    1.7    1.2    19.0   20.0
+             solveOne.follow.\                    Solver                  423        1000    0.0    0.0     6.9    9.1
+              check                               Solver                  424        1000    0.0    0.0     6.9    9.1
+               mkDecision                         Solver                  425        1000    0.0    0.5     6.9    9.1
+                mkDecision.\                      Solver                  456        1000    0.0    0.2     0.0    0.2
+                setUnsetDecision                  ID                      426        1000    0.0    1.0     6.9    8.4
+                 setDecisionGetChange             ID                      427        1000    0.0    0.8     6.9    7.4
+                  getUnique                       ID                      437        1000    0.0    0.0     0.0    0.0
+                   unique                         IDSupply                438        1000    0.0    0.0     0.0    0.0
+                  setDecisionGetChange.unchain    ID                      433        1000    1.7    1.0     6.9    5.8
+                   getUnique                      ID                      469        1000    0.0    0.0     0.0    0.0
+                    unique                        IDSupply                470        1000    0.0    0.0     0.0    0.0
+                   setDecisionRaw                 Search                  454        1000    0.0    0.3     3.4    2.1
+                    mkInteger                     IDSupply                467           0    0.0    0.2     0.0    0.2
+                     unqKey                       IDSupply                468        1000    0.0    0.0     0.0    0.0
+                    onDecisionMap                 Search                  466        1000    3.4    1.6     3.4    1.6
+                    isDefaultDecision             ID                      455        1000    0.0    0.0     0.0    0.0
+                   getKey                         ID                      449           0    0.0    0.1     0.0    0.5
+                    getUnique                     ID                      452        2000    0.0    0.0     0.0    0.0
+                     unique                       IDSupply                453        2000    0.0    0.0     0.0    0.0
+                    mkInteger                     IDSupply                450           0    0.0    0.4     0.0    0.4
+                     unqKey                       IDSupply                451        2000    0.0    0.0     0.0    0.0
+                   lookupID                       ID                      439        1000    0.0    0.6     1.7    2.2
+                    lookupDecisionID              ID                      440        1000    0.0    0.5     1.7    1.6
+                     getUnique                    ID                      446        1000    0.0    0.0     0.0    0.0
+                      unique                      IDSupply                447        1000    0.0    0.0     0.0    0.0
+                     lookupDecisionID.follow      ID                      442        1000    0.0    0.2     0.0    0.2
+                     getDecisionRaw               Search                  441        1000    1.7    0.6     1.7    0.8
+                      mkInteger                   IDSupply                444           0    0.0    0.2     0.0    0.2
+                       unqKey                     IDSupply                445        1000    0.0    0.0     0.0    0.0
+                      decisionMap                 Search                  443        1000    0.0    0.0     0.0    0.0
+                  getDecisionRaw                  Search                  432        1000    0.0    0.6     0.0    0.8
+                   mkInteger                      IDSupply                435           0    0.0    0.2     0.0    0.2
+                    unqKey                        IDSupply                436        1000    0.0    0.0     0.0    0.0
+                   decisionMap                    Search                  434        1000    0.0    0.0     0.0    0.0
+                  supply                          ID                      430        2000    0.0    0.0     0.0    0.0
+                  ==                              IDSupply                429        1000    0.0    0.0     0.0    0.0
+                   ==                             IDSupply                431        1000    0.0    0.0     0.0    0.0
+                  unique                          IDSupply                428        2000    0.0    0.0     0.0    0.0
+             lookupDecision                       ID                      414        1000    0.0    0.6     3.4    2.2
+              lookupDecisionID                    ID                      415        1000    1.7    0.5     3.4    1.6
+               getUnique                          ID                      421        1000    0.0    0.0     0.0    0.0
+                unique                            IDSupply                422        1000    0.0    0.0     0.0    0.0
+               lookupDecisionID.follow            ID                      417        1000    0.0    0.2     0.0    0.2
+               getDecisionRaw                     Search                  416        1000    1.7    0.6     1.7    0.8
+                mkInteger                         IDSupply                419           0    0.0    0.2     0.0    0.2
+                 unqKey                           IDSupply                420        1000    0.0    0.0     0.0    0.0
+                decisionMap                       Search                  418        1000    0.0    0.0     0.0    0.0
+             mkDecision                           Solver                  382           0    1.7    0.2     6.9    7.6
+              mkDecision.\                        Solver                  399        2001    0.0    0.5     0.0    0.5
+              setUnsetDecision                    ID                      384           0    1.7    0.9     5.2    6.9
+               setDecisionGetChange               ID                      386           0    0.0    0.5     3.4    6.0
+                setDecisionGetChange.unchain      ID                      389        2001    1.7    1.0     3.4    4.7
+                 setDecisionRaw                   Search                  398           0    0.0    0.3     1.7    3.6
+                  onDecisionMap                   Search                  404        2001    1.7    3.3     1.7    3.3
+                getDecisionRaw                    Search                  388           0    0.0    0.8     0.0    0.8
+                 decisionMap                      Search                  390        2001    0.0    0.0     0.0    0.0
+            lookupDecision                        ID                      363           0    0.0    0.9     3.4    3.1
+             lookupDecisionID                     ID                      365           0    1.7    0.3     3.4    2.2
+              lookupDecisionID.follow             ID                      368        3001    0.0    0.6     0.0    0.6
+              getDecisionRaw                      Search                  367           0    1.7    1.3     1.7    1.3
+               decisionMap                        Search                  369        3001    0.0    0.0     0.0    0.0
+         getConstrList                            ID                      332           1    0.0    0.0     0.0    0.9
+          getConstrList.get                       ID                      333        1002    0.0    0.7     0.0    0.9
+           getNormalForm                          Search                  338           0    0.0    0.0     0.0    0.2
+            nd_C_kics2MainGoal                    Curry_Curry_Main_Goal   339           0    0.0    0.0     0.0    0.2
+             nd_C_main1                           Curry_DiffList          340           0    0.0    0.0     0.0    0.2
+              nd_C_revD                           Curry_DiffList          345           0    0.0    0.0     0.0    0.2
+               d_C_appD                           Curry_DiffList          346           0    0.0    0.0     0.0    0.2
+                d_C__case_2                       Curry_DiffList          352           0    0.0    0.0     0.0    0.1
+                 d_C___cond_0__case_2             Curry_DiffList          353           0    0.0    0.0     0.0    0.1
+                  guard                           Basics                  354           0    0.0    0.0     0.0    0.1
+                   guard.cComb                    Basics                  355           0    0.0    0.0     0.0    0.1
+                    combConstr                    ID                      356           0    0.0    0.1     0.0    0.1
+                guard                             Basics                  347           0    0.0    0.0     0.0    0.1
+                 guard.cComb                      Basics                  348           0    0.0    0.0     0.0    0.1
+                  combConstr                      ID                      349           0    0.0    0.1     0.0    0.1
+              d_C_fromDList                       Curry_DiffList          341           0    0.0    0.0     0.0    0.0
+               d_C___cond_0_fromDList             Curry_DiffList          491           0    0.0    0.0     0.0    0.0
+                guard                             Basics                  492           0    0.0    0.0     0.0    0.0
+                 guard.cComb                      Basics                  493           0    0.0    0.0     0.0    0.0
+                  combConstr                      ID                      494           0    0.0    0.0     0.0    0.0
+               guard                              Basics                  342           0    0.0    0.0     0.0    0.0
+                guard.cComb                       Basics                  343           0    0.0    0.0     0.0    0.0
+                 combConstr                       ID                      344           0    0.0    0.0     0.0    0.0
+        searchMSearch'.isCovered                  Search                  329           1    0.0    0.0     0.0    0.0
+    bfsSearch                                     Strategies              275           1    0.0    0.0     0.0    0.0
+     bfsSearch.bfs                                Strategies              276           2    0.0    0.0     0.0    0.0
+      bfsSearch.children                          Strategies              641           2    0.0    0.0     0.0    0.0
+      bfsSearch.values                            Strategies              277           2    0.0    0.0     0.0    0.0
+    fromList                                      MonadList               274           0    0.0    0.0     0.0    0.0
+     mcons                                        MonadList               630           1    0.0    0.0     0.0    0.0
+    getNormalForm                                 Search                  268           1    0.0    0.0    22.4   12.7
+     nd_C_kics2MainGoal                           Curry_Curry_Main_Goal   282           1    0.0    0.0     8.6    6.3
+      nd_C_main1                                  Curry_DiffList          284           1    0.0    0.0     8.6    6.3
+       d_C_fromDList                              Curry_DiffList          325           2    0.0    0.0     0.0    0.0
+        d_C___cond_0_fromDList                    Curry_DiffList          487           2    0.0    0.0     0.0    0.0
+         guard                                    Basics                  488           1    0.0    0.0     0.0    0.0
+          guard.e2                                Basics                  504           1    0.0    0.0     0.0    0.0
+          guard.(...)                             Basics                  498           1    0.0    0.0     0.0    0.0
+           try                                    Curry_Prelude           499           1    0.0    0.0     0.0    0.0
+            tryChoices                            Types                   500           1    0.0    0.0     0.0    0.0
+          guard.c2                                Basics                  497           1    0.0    0.0     0.0    0.0
+          guard.cComb                             Basics                  489           1    0.0    0.0     0.0    0.0
+           combConstr                             ID                      490           1    0.0    0.0     0.0    0.0
+            combConstr.f                          ID                      496           1    0.0    0.0     0.0    0.0
+        d_OP_eq_colon_eq                          Curry_Prelude           476           1    0.0    0.0     0.0    0.0
+         external_d_OP_eq_colon_eq                Curry_Prelude           477           1    0.0    0.0     0.0    0.0
+          =:=                                     Types                   478           1    0.0    0.0     0.0    0.0
+           unifyMatch                             Types                   479           1    0.0    0.0     0.0    0.0
+            match                                 Curry_Prelude           480           2    0.0    0.0     0.0    0.0
+             unifyMatch.uniFree.bindTo.bindVal    Types                   484           1    0.0    0.0     0.0    0.0
+              bindToVal                           Types                   485           1    0.0    0.0     0.0    0.0
+               constrain                          Types                   486           1    0.0    0.0     0.0    0.0
+                bind                              Curry_Prelude           495           1    0.0    0.0     0.0    0.0
+             unifyMatch.uniFree                   Types                   481           1    0.0    0.0     0.0    0.0
+              unifyMatch.uniFree.bindTo           Types                   483           1    0.0    0.0     0.0    0.0
+              lookupCs                            ConstStore              482           1    0.0    0.0     0.0    0.0
+        guard                                     Basics                  326           1    0.0    0.0     0.0    0.0
+         guard.e2                                 Basics                  503           1    0.0    0.0     0.0    0.0
+         guard.(...)                              Basics                  474           1    0.0    0.0     0.0    0.0
+          try                                     Curry_Prelude           475           1    0.0    0.0     0.0    0.0
+         guard.c2                                 Basics                  473           1    0.0    0.0     0.0    0.0
+         guard.cComb                              Basics                  334           1    0.0    0.0     0.0    0.0
+          combConstr                              ID                      335           1    0.0    0.0     0.0    0.0
+           combConstr.f                           ID                      472           1    0.0    0.0     0.0    0.0
+       nd_C_revD                                  Curry_DiffList          294        1001    0.0    0.2     3.4    5.6
+        nd_C_revD.x5                              Curry_DiffList          409        1000    0.0    0.5     0.0    0.5
+         generate                                 Curry_Prelude           410        1000    0.0    0.1     0.0    0.1
+        nd_C_revD.x2                              Curry_DiffList          310           1    0.0    0.0     0.0    0.0
+         generate                                 Curry_Prelude           311           1    0.0    0.0     0.0    0.0
+        d_C_appD                                  Curry_DiffList          303        1999    0.0    0.2     3.4    4.9
+         guard                                    Basics                  324         999    0.0    0.3     0.0    0.6
+          guard.e2                                Basics                  471         999    0.0    0.0     0.0    0.0
+          guard.(...)                             Basics                  463         999    0.0    0.1     0.0    0.1
+           try                                    Curry_DiffList          464         999    0.0    0.0     0.0    0.0
+          guard.c2                                Basics                  462         999    0.0    0.0     0.0    0.0
+          guard.cComb                             Basics                  336         999    0.0    0.1     0.0    0.2
+           combConstr                             ID                      337         999    0.0    0.1     0.0    0.1
+            combConstr.f                          ID                      461         999    0.0    0.0     0.0    0.0
+         d_C__case_2                              Curry_DiffList          304        1000    1.7    0.0     3.4    4.2
+          d_C___cond_0__case_2                    Curry_DiffList          321        2000    0.0    0.1     0.0    0.7
+           guard                                  Basics                  322        1000    0.0    0.3     0.0    0.6
+            guard.e2                              Basics                  465        1000    0.0    0.0     0.0    0.0
+            guard.(...)                           Basics                  459        1000    0.0    0.1     0.0    0.1
+             try                                  Curry_DiffList          460        1000    0.0    0.0     0.0    0.0
+            guard.c2                              Basics                  458        1000    0.0    0.0     0.0    0.0
+            guard.cComb                           Basics                  350        1000    0.0    0.1     0.0    0.2
+             combConstr                           ID                      351        1000    0.0    0.1     0.0    0.1
+              combConstr.f                        ID                      457        1000    0.0    0.0     0.0    0.0
+          d_OP_eq_colon_eq                        Curry_Prelude           305        1000    0.0    0.0     1.7    3.5
+           external_d_OP_eq_colon_eq              Curry_Prelude           306        1000    0.0    0.0     1.7    3.5
+            =:=                                   Types                   307        1000    0.0    0.3     1.7    3.5
+             unifyMatch                           Types                   308        1000    0.0    1.0     1.7    3.2
+              match                               Curry_Prelude           309        2000    0.0    0.1     1.7    2.2
+               unifyMatch.uniFree.bindTo.bindVal  Types                   317        1000    0.0    0.0     0.0    1.3
+                bindToVal                         Types                   318        1000    0.0    0.0     0.0    1.3
+                 constrain                        Types                   319        1000    0.0    0.2     0.0    1.3
+                  bind                            Curry_Prelude           357        2000    0.0    0.6     0.0    1.0
+                   rightID                        ID                      412        1000    0.0    0.1     0.0    0.1
+                    rightSupply                   IDSupply                413        1000    0.0    0.0     0.0    0.0
+                   bindOrNarrow                   Types                   411        1000    0.0    0.1     0.0    0.1
+                   leftID                         ID                      401        1000    0.0    0.1     0.0    0.1
+                    leftSupply                    IDSupply                402        1000    0.0    0.0     0.0    0.0
+                   bind                           Curry_Prelude           400        1000    0.0    0.1     0.0    0.1
+               unifyMatch.uniFree                 Types                   313        1000    0.0    0.4     1.7    0.9
+                unifyMatch.uniFree.bindTo         Types                   316        1000    1.7    0.4     1.7    0.4
+                lookupCs                          ConstStore              314        1000    0.0    0.0     0.0    0.0
+        nd_C_revD.s0                              Curry_DiffList          302           1    0.0    0.0     0.0    0.0
+        nd_C_revD.s1                              Curry_DiffList          299        1000    0.0    0.0     0.0    0.0
+        rightSupply                               IDSupply                298        1000    0.0    0.0     0.0    0.0
+        nd_C_revD.s0                              Curry_DiffList          297        1000    0.0    0.0     0.0    0.0
+        leftSupply                                IDSupply                296        1000    0.0    0.0     0.0    0.0
+        nd_C_revD.s2                              Curry_DiffList          295        1000    0.0    0.0     0.0    0.0
+       d_C_repeat                                 Curry_Prelude           293        1000    0.0    0.1     0.0    0.1
+       d_C_take                                   Curry_Prelude           286        1001    0.0    0.2     5.2    0.5
+        d_C__case_17                              Curry_Prelude           291        1001    3.4    0.2     3.4    0.4
+         d_OP_take_dot_takep_dot_214              Curry_Prelude           292        1000    0.0    0.2     0.0    0.2
+          d_OP_minus                              Curry_Prelude           300        1000    0.0    0.0     0.0    0.0
+           external_d_OP_minus                    Curry_Prelude           301        1000    0.0    0.0     0.0    0.0
+        d_OP_lt_eq                                Curry_Prelude           287        1001    0.0    0.0     1.7    0.0
+         <?=                                      Curry_Prelude           289        1001    1.7    0.0     1.7    0.0
+          toCurry                                 Curry_Prelude           290        1001    0.0    0.0     0.0    0.0
+         external_d_OP_lt_eq                      Curry_Prelude           288        1001    0.0    0.0     0.0    0.0
+       nd_C_main1.s0                              Curry_DiffList          285           1    0.0    0.0     0.0    0.0
+      nd_C_kics2MainGoal.s0                       Curry_Curry_Main_Goal   283           1    0.0    0.0     0.0    0.0
+     $!!                                          Curry_Prelude           281           2    1.7    0.0     1.7    0.0
+      nfChoices                                   Types                   505           1    0.0    0.0     0.0    0.0
+       getNormalForm.\                            Search                  506           1    0.0    0.0     0.0    0.0
+     initSupply                                   IDSupply                270           0    1.7    1.7    12.1    6.4
+      getPureSupply                               IDSupply                271        5999    8.6    4.6    10.3    4.8
+       getPureSupply.leftS                        IDSupply                403        2999    0.0    0.0     0.0    0.0
+       getPureSupply.(...)                        IDSupply                376        2999    1.7    0.2     1.7    0.2
+       getPureSupply.rightS                       IDSupply                375        2999    0.0    0.0     0.0    0.0
+ CAF                                              Main                    261           0    3.4    0.6     5.2    0.6
+  showsPrec                                       Curry_Prelude           633           1    0.0    0.0     0.0    0.0
+  main                                            Main                    262           1    0.0    0.0     1.7    0.0
+   printBFS                                       Search                  263           1    1.7    0.0     1.7    0.0
+    computeWithBFS                                Search                  266           1    0.0    0.0     0.0    0.0
+ CAF                                              Curry_DiffList          257           0    0.0    0.0     0.0    0.0
+  guardCons                                       Curry_DiffList          323           1    0.0    0.0     0.0    0.0
+ CAF                                              Curry_Prelude           256           0    0.0    0.0     0.0    0.0
+  showsPrec                                       Curry_Prelude           640           0    0.0    0.0     0.0    0.0
+  choicesCons                                     Curry_Prelude           507           1    0.0    0.0     0.0    0.0
+  guardCons                                       Curry_Prelude           327           1    0.0    0.0     0.0    0.0
+ CAF                                              Types                   251           0    0.0    0.0     0.0    0.0
+  guardCons                                       Types                   320           1    0.0    0.0     0.0    0.0
+ CAF                                              ID                      249           0    0.0    0.0     0.0    0.0
+  nextNIDsFromSupply                              ID                      582           0    0.0    0.0     0.0    0.0
+  nextNIDs                                        ID                      570           1    0.0    0.0     0.0    0.0
+  getKey                                          ID                      448           1    0.0    0.0     0.0    0.0
+  defaultDecision                                 ID                      378           1    0.0    0.0     0.0    0.0
+  initCover                                       ID                      315           1    0.0    0.0     0.0    0.0
+  freeID                                          ID                      312           1    0.0    0.0     0.0    0.0
+ CAF                                              IDSupply                248           0    0.0    0.0     0.0    0.0
+  mkInteger                                       IDSupply                370           1    0.0    0.0     0.0    0.0
+  initSupply                                      IDSupply                269           1    0.0    0.0     0.0    0.0
+ CAF                                              Search                  247           0    0.0    0.0     0.0    0.0
+  emptyDecisionMap                                Search                  377           1    0.0    0.0     0.0    0.0
+  computeWithBFS                                  Search                  272           0    0.0    0.0     0.0    0.0
+   fromList                                       MonadList               273           1    0.0    0.0     0.0    0.0
+    mnil                                          MonadList               642           1    0.0    0.0     0.0    0.0
+ CAF                                              GHC.IO.Encoding         186           0    1.7    0.0     1.7    0.0
+ CAF                                              GHC.IO.Handle.FD        184           0    0.0    0.1     0.0    0.1
+ CAF                                              GHC.Conc.Signal         168           0    1.7    0.0     1.7    0.0
+ CAF                                              GHC.IO.Encoding.Iconv   165           0    0.0    0.0     0.0    0.0
