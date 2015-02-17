@@ -15,6 +15,12 @@ data CurryException
   | UserException     String
   | FailException     String
   | NondetException   String
-  deriving (Show, Typeable)
+  deriving (Typeable)
+
+instance Show CurryException where
+  show (IOException     s) = "*** IOException: "     ++ s
+  show (UserException   s) = "*** UserException: "   ++ s
+  show (FailException   s) = "*** FailException: "   ++ s
+  show (NondetException s) = "*** NondetException: " ++ s
 
 instance Exception CurryException
