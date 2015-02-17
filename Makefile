@@ -387,9 +387,8 @@ cleanmanual:
 ##############################################################################
 
 # temporary directory to create distribution version
-TMP      = /tmp
 FULLNAME = kics2-$(VERSION)
-TMPDIR   = $(TMP)/$(FULLNAME)
+DISTDIR  = $(FULLNAME)
 TARBALL  = $(FULLNAME).tar.gz
 
 # generate a source distribution of KiCS2
@@ -400,23 +399,21 @@ dist:
 	$(MAKE) $(TARBALL)
 
 # publish the distribution files in the local web pages
-HTMLDIR = ${HOME}/public_html/kics2/download
+HTMLDIR = $(HOME)/public_html/kics2/download
 .PHONY: publish
 publish: $(TARBALL)
-	cp $(TARBALL) docs/INSTALL.html ${HTMLDIR}
-	chmod -R go+rX ${HTMLDIR}
+	cp $(TARBALL) docs/INSTALL.html $(HTMLDIR)
+	chmod -R go+rX $(HTMLDIR)
 	@echo "Don't forget to run 'update-kics2' to make the update visible!"
 
 # test installation of created distribution
 .PHONY: testdist
 testdist: $(TARBALL)
-	cp $(TARBALL) $(TMP)
-	rm -rf $(TMPDIR)
-	cd $(TMP) && tar xzfv $(TARBALL)
-	cd $(TMPDIR) && $(MAKE) install
-	cd $(TMPDIR) && $(MAKE) runtest
-	rm -rf $(TMPDIR)
-	rm -rf $(TMP)/$(TARBALL)
+	rm -rf $(DISTDIR)
+	tar xzfv $(TARBALL)
+	cd $(DISTDIR) && $(MAKE) install
+	cd $(DISTDIR) && $(MAKE) runtest
+	rm -rf $(DISTDIR)
 	@echo "Integration test successfully completed."
 
 # Directories containing development stuff only
@@ -425,9 +422,6 @@ DEV_DIRS = benchmarks debug docs experiments talks
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
 cleandist:
-ifneq ($(CURDIR), $(TMPDIR))
-	$(error cleandist target called outside $(TMPDIR))
-endif
 	rm -rf .dist-modules .git .gitignore .gitmodules
 	cd currytools              && rm -rf .git .gitignore
 	cd frontend/curry-base     && rm -rf .git .gitignore dist
@@ -439,41 +433,39 @@ endif
 	rm -rf $(LOCALPKG)
 
 $(TARBALL): $(COMP) $(CYMAKE) $(MANUAL)
-	rm -rf $(TMPDIR)
+	rm -rf $(DISTDIR)
 	# clone current git repository
-	git clone . $(TMPDIR)
+	git clone . $(DISTDIR)
 	# adopt paths for submodules
-	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(TMPDIR)/.gitmodules
+	cat .dist-modules | sed 's|ROOT|$(ROOT)|' > $(DISTDIR)/.gitmodules
 	# check out submodules
-	cd $(TMPDIR) && git submodule init && git submodule update
+	cd $(DISTDIR) && git submodule init && git submodule update
 	# create local binary directory
-	mkdir -p $(TMPDIR)/bin/.local
+	mkdir -p $(DISTDIR)/bin/.local
 	# copy frontend binary
-	cp -p $(CYMAKE) $(TMPDIR)/bin/
+	cp -p $(CYMAKE) $(DISTDIR)/bin/
 	# copy bootstrap compiler
-	cp -p $(COMP) $(TMPDIR)/bin/.local/
+	cp -p $(COMP) $(DISTDIR)/bin/.local/
 	# generate compiler and REPL in order to have the bootstrapped
 	# Haskell translations in the distribution
-	cd $(TMPDIR) && $(MAKE) Compile       # translate compiler
-	cd $(TMPDIR) && $(MAKE) REPL          # translate REPL
-	cd $(TMPDIR) && $(MAKE) clean         # clean object files
-	cd $(TMPDIR) && $(MAKE) typeinference # precompile typeinference
-	cd $(TMPDIR) && $(MAKE) cleandist     # delete unnessary files
+	cd $(DISTDIR) && $(MAKE) Compile       # translate compiler
+	cd $(DISTDIR) && $(MAKE) REPL          # translate REPL
+	cd $(DISTDIR) && $(MAKE) clean         # clean object files
+	cd $(DISTDIR) && $(MAKE) typeinference # precompile typeinference
+	cd $(DISTDIR) && $(MAKE) cleandist     # delete unnessary files
 	# copy documentation
-	mkdir -p $(TMPDIR)/docs
-	cp $(MANUAL) $(TMPDIR)/docs
+	mkdir -p $(DISTDIR)/docs
+	cp $(MANUAL) $(DISTDIR)/docs
 	# update Makefile
 	cat Makefile \
 	  | sed -e "/^# SNIP FOR DISTRIBUTION/,\$$d" \
 	  | sed 's|^GLOBALINSTALL *=.*$$|GLOBALINSTALL   = yes|' \
 	  | sed 's|^PROFILING *=.*$$|PROFILING   = no|' \
 	  | sed 's|^COMPILERDATE *:=.*$$|COMPILERDATE    = $(COMPILERDATE)|' \
-	  > $(TMPDIR)/Makefile
+	  > $(DISTDIR)/Makefile
 	# Zip it!
-	cd $(TMP) && tar cf $(FULLNAME).tar $(FULLNAME) && gzip $(FULLNAME).tar
-	mv $(TMP)/$(TARBALL) ./$(TARBALL)
-	chmod 644 ./$(TARBALL)
-	rm -rf $(TMPDIR)
+	tar cfvz $(TARBALL) $(DISTDIR)
+	rm -rf $(DISTDIR)
 	@echo "----------------------------------"
 	@echo "Distribution $(TARBALL) generated."
 
