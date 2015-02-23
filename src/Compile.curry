@@ -4,7 +4,6 @@
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
 --- @version July 2012
 --- --------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module Compile where
 
 import Char             (isSpace)
@@ -48,9 +47,9 @@ main :: IO ()
 main = do
   rcdefs          <- readRC
   (opts, modules) <- getCompilerOpts
-  mapIO_ (build { rcVars := rcdefs
-                , optMainVerbosity := opts :> optVerbosity
-                | opts })
+  mapIO_ (build opts { rcVars = rcdefs
+                     , optMainVerbosity = optVerbosity opts
+                     })
          modules
 
 --- Load the module, resolve the dependencies and compile the source files
@@ -65,7 +64,7 @@ build opts mn = do
       if null errs
         then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
         else mapIO_ putErrLn errs
-        where initState = { compOptions := opts | defaultState }
+  where initState = defaultState { compOptions = opts }
 
 
 --- Checks if the given string corresponds to a Curry module and
@@ -85,20 +84,20 @@ locateCurryFile mn = do
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State
 makeModule mods state mod@((mid, (fn, fcy)), _)
-  | opts :> optForce  = compileModule progs modCnt state mod
-  | otherwise         = do
-                        depFiles <- getDepFiles
-                        smake (destFile (opts :> optTraceFailure)
-                                        (opts :> optOutputSubdir) mid fn)
-                              depFiles
-                              (compileModule progs modCnt state mod)
-                              (loadAnalysis modCnt state mod)
+  | optForce opts = compileModule progs modCnt state mod
+  | otherwise     = do
+                    depFiles <- getDepFiles
+                    smake (destFile (optTraceFailure opts)
+                                    (optOutputSubdir opts) mid fn)
+                          depFiles
+                          (compileModule progs modCnt state mod)
+                          (loadAnalysis modCnt state mod)
   where
     getDepFiles = do
       hasExternals <- doesFileExist extFile
       let ownModule = fn : [extFile | hasExternals]
-      let imported  = map (\i -> destFile (opts :> optTraceFailure)
-                                          (opts :> optOutputSubdir)
+      let imported  = map (\i -> destFile (optTraceFailure opts)
+                                          (optOutputSubdir opts)
                                           i
                                $ fst $ fromJust $ lookup i mods) imps
       return $ ownModule ++ imported
@@ -106,33 +105,33 @@ makeModule mods state mod@((mid, (fn, fcy)), _)
     (Prog _ imps _ _ _) = fcy
     modCnt = length mods
     progs = [ (m, p) | (m, (_, p)) <- mods]
-    opts = state :> compOptions
+    opts = compOptions state
 
 writeAnalysis :: Options -> ModuleIdent -> FilePath -> AnalysisResult -> IO ()
 writeAnalysis opts mid fn analysis = do
   showDetail opts $ "Writing Analysis file " ++ ndaFile
   writeQTermFileInDir ndaFile (showAnalysisResult analysis)
-    where ndaFile = analysisFile (opts :> optOutputSubdir) mid fn
+    where ndaFile = analysisFile (optOutputSubdir opts) mid fn
 
 readAnalysis :: Options -> ModuleIdent -> FilePath -> IO AnalysisResult
 readAnalysis opts mid fn = do
   showDetail opts $ "Reading Analysis file " ++ ndaFile
   readAnalysisResult `liftIO` readQTermFile ndaFile
-    where ndaFile = analysisFile (opts :> optOutputSubdir) mid fn
+    where ndaFile = analysisFile (optOutputSubdir opts) mid fn
 
 loadAnalysis :: Int -> State -> ((ModuleIdent, Source), Int) -> IO State
 loadAnalysis total state ((mid, (fn, _)), current) = do
   showStatus opts $ compMessage (current, total) "Analyzing" mid (fn, ndaFile)
   (types, ndAna, hoType, hoCons, hoFunc) <- readAnalysis opts mid fn
-  return { typeMap      := (state :> typeMap     ) `plusFM` types
-         , ndResult     := (state :> ndResult    ) `plusFM` ndAna
-         , hoResultType := (state :> hoResultType) `plusFM` hoType
-         , hoResultCons := (state :> hoResultCons) `plusFM` hoCons
-         , hoResultFunc := (state :> hoResultFunc) `plusFM` hoFunc
-         | state }
+  return state { typeMap      = (typeMap state)      `plusFM` types
+               , ndResult     = (ndResult state)     `plusFM` ndAna
+               , hoResultType = (hoResultType state) `plusFM` hoType
+               , hoResultCons = (hoResultCons state) `plusFM` hoCons
+               , hoResultFunc = (hoResultFunc state) `plusFM` hoFunc
+               }
     where
-      ndaFile = analysisFile (opts :> optOutputSubdir) mid fn
-      opts = state :> compOptions
+      ndaFile = analysisFile (optOutputSubdir opts) mid fn
+      opts = compOptions state
 
 compileModule :: [(ModuleIdent, Prog)] -> Int -> State
               -> ((ModuleIdent, Source), Int) -> IO State
@@ -170,11 +169,11 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   transFuncs <- runIOES (trProg renamed) state
   let ((ahsFun@(AH.Prog n imps _ funs ops), modAnalysisResult), state')
         = either error id transFuncs
-  writeAnalysis (state' :> compOptions) mid fn modAnalysisResult
+  writeAnalysis (compOptions state') mid fn modAnalysisResult
   dump DumpFunDecls opts funDeclName (show ahsFun)
 
   showDetail opts "Transforming type declarations"
-  let typeDecls = transTypes (state' :> hoResultCons) ts
+  let typeDecls = transTypes (hoResultCons state') ts
   dump DumpTypeDecls opts typeDeclName (show typeDecls)
 
   showDetail opts "Combining to Abstract Haskell"
@@ -207,9 +206,9 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
     funDeclName    = ahsFile $ withBaseName (++ "FunDecls"  ) mid
     typeDeclName   = ahsFile $ withBaseName (++ "TypeDecls" ) mid
     abstractHsName = ahsFile mid
-    dest           = destFile (opts :> optTraceFailure) (opts :> optOutputSubdir) mid fn
-    funcInfo       = funcInfoFile (opts :> optOutputSubdir) mid fn
-    opts           = state :> compOptions
+    dest           = destFile (optTraceFailure opts) (optOutputSubdir opts) mid fn
+    funcInfo       = funcInfoFile (optOutputSubdir opts) mid fn
+    opts           = compOptions state
     fcyFile f      = withExtension (const ".fcy") f
     ahsFile f      = withExtension (const ".ahs") f
 
@@ -247,7 +246,7 @@ filterPrelude :: Options -> Prog -> Prog
 filterPrelude opts p@(Prog m imps td fd od)
   | noPrelude = Prog m (filter (/= prelude) imps) td fd od
   | otherwise = p
-  where noPrelude = NoImplicitPrelude `elem` opts :> optExtensions
+  where noPrelude = NoImplicitPrelude `elem` optExtensions opts
 
 --
 integrateExternals :: Options -> AH.Prog -> FilePath -> IO String
@@ -256,9 +255,9 @@ integrateExternals opts (AH.Prog m imps td fd od) fn = do
   let (pragmas, extimps, extdecls) = splitExternals exts
   return $ intercalate "\n\n" $ filter notNull
     [ unlines (defaultPragmas ++ pragmas)
-    , showModuleHeader (opts :> optTraceFailure) m td fd imps
+    , showModuleHeader (optTraceFailure opts) m td fd imps
     , unlines extimps
-    , showDecls (opts :> optTraceFailure) m od td fd
+    , showDecls (optTraceFailure opts) m od td fd
     , unlines extdecls
     ]
  where
@@ -292,9 +291,9 @@ splitExternals content = (pragmas, imports, decls)
 
 --- Dump an intermediate result to a file
 dump :: DumpFormat -> Options -> FilePath -> String -> IO ()
-dump format opts file src = when (format `elem` opts :> optDump) $ do
+dump format opts file src = when (format `elem` optDump opts) $ do
   showDetail opts $ "Dumping " ++ file
-  writeFileInDir (withDirectory (</> opts :> optOutputSubdir) file) src
+  writeFileInDir (withDirectory (</> optOutputSubdir opts) file) src
 
 rename :: Prog -> Prog
 rename p@(Prog name imports _ _ _) =

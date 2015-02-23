@@ -23,5 +23,5 @@ showDetail :: Options -> String -> IO ()
 showDetail opts msg = showLevel VerbDetails opts msg
 
 showLevel :: Verbosity -> Options -> String -> IO ()
-showLevel level opts msg = unless (opts :> optVerbosity < level)
+showLevel level opts msg = unless (optVerbosity opts < level)
                                   (putStrLn msg >> hFlush stdout)

@@ -8,7 +8,6 @@
 ---         Parissa Sadeghi, Bjoern Peemoeller
 --- @version May 2014
 ------------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module AbstractHaskellPrinter
   ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl
   , showTypeExpr, showFuncDecl, showLiteral, showExpr, showPattern
@@ -22,10 +21,10 @@ import Read  (readNat)
 import AbstractHaskell
 import Names (isHaskellModule, prelude, curryPrelude, addTrace)
 
-type Options = { currentModule :: String, traceFailure :: Bool }
+data Options = Options { currentModule :: String, traceFailure :: Bool }
 
 defaultOptions :: Options
-defaultOptions = { currentModule := "", traceFailure := False }
+defaultOptions = Options { currentModule = "", traceFailure = False }
 
 -- ---------------------------------------------------------------------------
 -- Functions to print an AbstractHaskell program in standard Curry syntax
@@ -61,7 +60,7 @@ showDecls trace m opdecls typedecls funcdecls
     , showTypeDecls opts typedecls
     , showFuncDecls opts funcdecls
     ]
-  where opts = { currentModule := m, traceFailure := trace }
+  where opts = Options { currentModule = m, traceFailure = trace }
 
 -- ---------------------------------------------------------------------------
 -- Module Header
@@ -310,7 +309,7 @@ showSymbol opts (modName, symName)
     -- all Haskell modules are imported unqualified
   | isHaskellModule modName            = symName
     -- the current module isn't imported at all
-  | modName == (opts :> currentModule) = symName
+  | modName == (currentModule opts) = symName
     -- all Curry modules are imported qualified
   | otherwise                          = modName ++ "." ++ symName
 

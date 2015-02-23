@@ -5,7 +5,6 @@
 --- @author Bjoern Peemoeller, Fabian Skrlac
 --- @version May 2014
 --- --------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module TransFunctions ( State (..), defaultState, trProg, runIOES ) where
 
 import FiniteMap (lookupFM, plusFM, delListFromFM)
@@ -79,7 +78,7 @@ foldM f e (x : xs) = f e x >+= \fex -> foldM f fex xs
 -- Internal state and access functions
 -- ---------------------------------------------------------------------------
 
-type State =
+data State = State
   { typeMap      :: TypeMap
   , ndResult     :: NDResult
   , hoResultType :: TypeHOResult
@@ -91,15 +90,15 @@ type State =
   }
 
 defaultState :: State
-defaultState =
-  { typeMap      := initTypeMap
-  , ndResult     := initNDResult
-  , hoResultType := initTypeHOResult
-  , hoResultCons := initHOResult
-  , hoResultFunc := initHOResult
-  , nextID       := 0
-  , detMode      := False
-  , compOptions  := defaultOptions
+defaultState = State
+  { typeMap      = initTypeMap
+  , ndResult     = initNDResult
+  , hoResultType = initTypeHOResult
+  , hoResultCons = initHOResult
+  , hoResultFunc = initHOResult
+  , nextID       = 0
+  , detMode      = False
+  , compOptions  = defaultOptions
   }
 
 type M a = IOES State a
@@ -108,87 +107,87 @@ type M a = IOES State a
 
 addTypeMap :: TypeMap -> M ()
 addTypeMap newTypes =
- updState (\st -> { typeMap :=  st :> typeMap `plusFM` newTypes  | st })
+ updState (\st -> st { typeMap = typeMap st `plusFM` newTypes })
 
 
 getType :: QName -> M QName
 getType qn = getState >+= \st ->
   maybe (failM $ show qn ++ " not in type map") returnM
-  $ (flip lookupFM) qn (st :> typeMap)
+  $ (flip lookupFM) qn (typeMap st)
 
 -- NDResult
 
 addNDAnalysis :: NDResult -> M ()
 addNDAnalysis newRes = updState $ \st ->
-  { ndResult := newRes `plusFM` st :> ndResult | st }
+  st { ndResult = newRes `plusFM` ndResult st }
 
 getNDClass :: QName -> M NDClass
 getNDClass qn = getState >+= \st ->
   maybe (failM $ show qn ++ " not analysed") returnM
-  $ (flip lookupFM) qn (st :> ndResult)
+  $ (flip lookupFM) qn (ndResult st)
 
 -- HOTypeResult
 
 addHOTypeAnalysis :: TypeHOResult -> M ()
 addHOTypeAnalysis newRes = updState$ \st ->
-  { hoResultType := (newRes `plusFM` st :> hoResultType) | st }
+  st { hoResultType = newRes `plusFM` hoResultType st }
 
 getTypeHOClass :: QName -> M TypeHOClass
 getTypeHOClass qn = getState >+= \st ->
   maybe (failM $ show qn ++ " not analysed") returnM
-  $ (flip lookupFM) qn (st :> hoResultType)
+  $ (flip lookupFM) qn (hoResultType st)
 
 -- HOConsResult
 
 addHOConsAnalysis :: ConsHOResult -> M ()
 addHOConsAnalysis newRes = updState$ \st ->
-  { hoResultCons := (newRes `plusFM` st :> hoResultCons) | st }
+  st { hoResultCons = newRes `plusFM` hoResultCons st }
 
 getConsHOClass :: QName -> M ConsHOClass
 getConsHOClass qn = getState >+= \st ->
   maybe (failM $ show qn ++ " not analysed") returnM
-  $ (flip lookupFM) qn $ (st :> hoResultCons)
+  $ (flip lookupFM) qn $ (hoResultCons st)
 
 -- HOFunResult
 
 addHOFuncAnalysis :: FuncHOResult -> M ()
 addHOFuncAnalysis newRes = updState$ \st ->
-  { hoResultFunc := newRes `plusFM` st :> hoResultFunc | st }
+  st { hoResultFunc = newRes `plusFM` hoResultFunc st }
 
 getFuncHOClass :: QName -> M FuncHOClass
 getFuncHOClass qn = getState >+= \st ->
   maybe (failM $ show qn ++ " not analysed") returnM
-  $ (flip lookupFM) qn $ (st :> hoResultFunc)
+  $ (flip lookupFM) qn $ (hoResultFunc st)
 
 -- IDs
 
 getNextID :: M Int
-getNextID = getState >+= \st -> returnM (st :> nextID)
+getNextID = getState >+= \st -> returnM (nextID st)
 
 setNextID :: Int -> M ()
-setNextID i = updState (\st -> { nextID := i | st })
+setNextID i = updState (\st -> st { nextID = i })
 
 takeNextID :: M Int
 takeNextID =
   getState >+= \st ->
-  let i = st :> nextID in
-  putState ({ nextID := (i + 1) | st }) >+
+  let i = nextID st in
+  putState (st { nextID = (i + 1) }) >+
   returnM i
 
 takeNextIDs :: Int -> M [Int]
 takeNextIDs n =
   getState >+= \st ->
-  let i = st :> nextID in
-  putState ({ nextID := (i + n) | st }) >+
+  let i = nextID st in
+  putState (st { nextID = (i + n) }) >+
   returnM [i .. i+n-1]
 
 -- DetMode
 
 isDetMode :: M Bool
-isDetMode = getState >+= \st -> returnM (st :> detMode)
+isDetMode = getState >+= \st -> returnM (detMode st)
 
 setDetMode :: Bool -> M ()
-setDetMode dm = updState (\st -> { detMode := dm | st})
+setDetMode dm = updState (\st -> st { detMode = dm })
 
 -- Perform an action in a given detMode and restore the original mode
 -- afterwards
@@ -202,18 +201,18 @@ doInDetMode dm action =
 
 isTraceFailure :: M Bool
 isTraceFailure = getState >+= \st ->
-                 returnM (st :> compOptions :> optTraceFailure)
+                 returnM (optTraceFailure (compOptions st))
 
 -- Compiler options
 getCompOptions :: M Options
-getCompOptions = getState >+= \ st -> returnM (st :> compOptions)
+getCompOptions = getState >+= \ st -> returnM (compOptions st)
 
 getCompOption :: (Options -> a) -> M a
 getCompOption select = getCompOptions >+= (returnM . select)
 
 strictSupply :: M Bool
 strictSupply = getCompOption $ \opts ->
-  (opts :> optOptimization >= OptimStrictSupply)
+  (optOptimization opts >= OptimStrictSupply)
 
 -- ---------------------------------------------------------------------------
 -- Program translation
@@ -222,10 +221,10 @@ strictSupply = getCompOption $ \opts ->
 trProg :: Prog -> M (AH.Prog, AnalysisResult)
 trProg p@(Prog m is ts fs _) =
   getState >+= \st ->
-  let modNDRes     = analyseND     p (st :> ndResult)
-      modHOResType = analyseHOType p (st :> hoResultType)
+  let modNDRes     = analyseND     p (ndResult st)
+      modHOResType = analyseHOType p (hoResultType st)
       modHOResCons = analyseHOCons p
-      modHOResFunc = analyseHOFunc p (st :> hoResultType `plusFM` modHOResType)
+      modHOResFunc = analyseHOFunc p (hoResultType st `plusFM` modHOResType)
       modTypeMap   = getTypeMap    ts
       visInfo      = analyzeVisibility p
 
@@ -255,7 +254,7 @@ trFunc :: FuncDecl -> M [AH.FuncDecl]
 trFunc f@(Func qn _ _ _ _) =
   checkGlobal f  >+
   getCompOptions >+= \opts ->
-  case opts :> optOptimization > OptimNone of
+  case optOptimization opts > OptimNone of
     -- translate all functions as non-deterministic by default
     False -> trNDFunc f >+= \ fn -> returnM [fn]
     True  ->
@@ -618,7 +617,7 @@ trExpr e@(Comb ConsCall qn es) = case getString e of
 
 -- fully applied functions
 trExpr (Comb FuncCall qn es) =
-  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
+  getCompOption (\opts -> optOptimization opts > OptimNone) >+= \opt ->
   getNDClass qn     >+= \ndCl ->
   getFuncHOClass qn >+= \hoCl ->
   isDetMode         >+= \dm   ->
@@ -641,7 +640,7 @@ trExpr (Comb FuncCall qn es) =
 
 -- partially applied functions
 trExpr (Comb (FuncPartCall i) qn es) =
-  getCompOption (\opts -> opts :> optOptimization > OptimNone) >+= \opt ->
+  getCompOption (\opts -> optOptimization opts > OptimNone) >+= \opt ->
   getNDClass qn     >+= \ndCl ->
   getFuncHOClass qn >+= \hoCl ->
   isDetMode         >+= \dm   ->
