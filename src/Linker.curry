@@ -169,10 +169,10 @@ createAndCompileMain rst createExecutable mainExp bindings = do
   (rst',wasUpdated) <- updateGhcOptions rst
   writeFile mainFile $ mainModule rst' isdet isio (traceFailure rst) bindings
 
-  let ghcCompile = ghcCall rst' useGhci wasUpdated mainFile
+  let ghcCompile = ghcCall rst' useGhci' wasUpdated mainFile
   tghcCompile <- getTimeCmd rst' "GHC compilation" ghcCompile
   writeVerboseInfo rst' 3 $ "Compiling " ++ mainFile ++ " with: " ++ tghcCompile
-  (rst'', status) <- if useGhci
+  (rst'', status) <- if useGhci'
                       then compileWithGhci rst' ghcCompile mainExp
                       else system tghcCompile >>= \stat -> return (rst', stat)
   return (if status > 0
@@ -182,7 +182,7 @@ createAndCompileMain rst createExecutable mainExp bindings = do
  where
   mainFile = "." </> outputSubdir rst </> "Main.hs"
   -- option parsing
-  useGhci = useGhci rst && not createExecutable && not (interactive rst)
+  useGhci' = useGhci rst && not createExecutable && not (interactive rst)
 
 compileWithGhci :: ReplState -> String -> String -> IO (ReplState, Int)
 compileWithGhci rst ghcCompile mainExp = do
@@ -309,7 +309,7 @@ getTimeCmd :: ReplState -> String -> String -> IO String
 getTimeCmd rst timename cmd
   | showTime rst = do dist <- getDistribution
                       return (getTimeCmdForDist dist ++ cmd)
-  | otherwise       = return cmd
+  | otherwise    = return cmd
  where
   -- Time command for specific distributions. It might be necessary
   -- to adapt this command.

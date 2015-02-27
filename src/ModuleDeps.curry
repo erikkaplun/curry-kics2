@@ -117,7 +117,7 @@ preprocessFcyFile :: Options -> FilePath -> IO Prog
 preprocessFcyFile copts fcyname = do
   -- change current verbosity level to main verbosity level in order to
   -- see the status of pre-processing imported modules:
-  let opts    = copts { optVerbosity = optMainVerbosity opts }
+  let opts    = copts { optVerbosity = optMainVerbosity copts }
       rcbopt  = rcValue (rcVars opts) "bindingoptimization"
       optexec = installDir </> "currytools" </> "optimize" </> "bindingopt"
   existsoptexec <- doesFileExist optexec

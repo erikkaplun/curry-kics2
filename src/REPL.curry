@@ -254,8 +254,9 @@ getModuleOfFunction rst funname = do
                     modOfMain mainrules)
                  mbprog
  where modOfMain r = case r of
-        CRules _ [CRule [] [(_, CSymbol (m, _))] []] -> m
-        _ -> ""
+        [CRule [] (CSimpleRhs (CSymbol (m, _)) [])]       -> m
+        [CRule [] (CGuardedRhs [(_, CSymbol (m, _))] [])] -> m
+        _                                                 -> ""
 
 -- Compile main program with goal:
 compileProgramWithGoal :: ReplState -> Bool -> String
@@ -335,11 +336,15 @@ insertFreeVarsInMainGoal rst goal (Just prog) = case prog of
     PrtChoices _ -> True
     _            -> False
   freeVarsInFuncRule f = case f of
-    CFunc _ _ _ _ (CRules _ [CRule _ _ ldecls]) -> concatMap lvarName ldecls
+    CFunc _ _ _ _ (CRule _ rhs : _) -> freeVarsInRhs rhs
     _ -> error "REPL.insertFreeVarsInMainGoal.freeVarsInFuncRule"
 
-  lvarName ldecl = case ldecl of CLocalVar (_,v) -> [v]
-                                 _               -> []
+  freeVarsInRhs rhs = case rhs of
+    CSimpleRhs  _ ldecls -> concatMap lvarName ldecls
+    CGuardedRhs _ ldecls -> concatMap lvarName ldecls
+
+  lvarName ldecl = case ldecl of CLocalVars vs -> map snd vs
+                                 _             -> []
 
   -- Breaks a main expression into an expression and a where...free clause.
   -- If the where clause is not present, this part is empty.

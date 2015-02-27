@@ -64,7 +64,7 @@ build opts mn = do
       if null errs
         then foldIO (makeModule mods) initState (zip mods [1 .. ]) >> done
         else mapIO_ putErrLn errs
-  where initState = defaultState { compOptions = opts }
+ where initState = defaultState { compOptions = opts }
 
 
 --- Checks if the given string corresponds to a Curry module and
