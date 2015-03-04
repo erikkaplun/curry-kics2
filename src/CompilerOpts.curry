@@ -282,8 +282,8 @@ processOpts :: String -> (Options, [String], [String])
             -> IO (Options, [String])
 processOpts prog (opts, files, errs)
   | optHelp opts     = printUsage prog
-  | not (null errs') = badUsage prog errs'
   | optVersion opts  = printVersion
+  | not (null errs') = badUsage prog errs'
   | otherwise        = return (opts, files)
     where errs' = errs ++ checkOpts opts files
 
