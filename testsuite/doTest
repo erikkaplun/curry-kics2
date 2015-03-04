@@ -13,7 +13,7 @@ if [ "$1" = "--nogui" ] ; then
 fi
 
 # test for basic language features
-TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testNarr testUnification testNonLinearPattern testNonStrictUnif testFuncPattern testAsPattern testPolySubExp"
+TESTLANG="testFunctional testInfinite testHigher testNondet testCase testLetRec testRecords testNarr testUnification testNonLinearPattern testNonStrictUnif testFuncPattern testAsPattern testPolySubExp"
 
 # test for standard libraries
 TESTLIBS="testPrelude testArray testCombinatorial testDequeue testDirectory testFiniteMap testFlatCurryGoodies testFormat testGlobal testInteger testIO testIOExts testKeyDatabaseSQLite testList testRedBlackTree testRegExp testSetFunctions testSort testSystem testTraversal testUnsafeSearchTree testExpTypeInference"

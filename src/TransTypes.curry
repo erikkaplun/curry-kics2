@@ -36,9 +36,10 @@ genTypeDeclarations hoResult tdecl = case tdecl of
   (FC.TypeSyn qf vis tnums texp)
     -> [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
   t@(FC.Type qf vis tnums cdecls)
-    | null cdecls -> Type qf Public  targs []   : []
+      -- type names are always exported to avoid ghc type errors.
+      -- TODO: Describe why/which errors may occur.
+    | null cdecls -> Type qf Public targs []    : []
     | otherwise   -> Type qf Public targs decls : instanceDecls
-         -- type names are always exported to avoid ghc type errors
     where
       decls = concatMap (fcy2absCDecl hoResult) cdecls ++
               [ Cons (mkChoiceName  qf) 3 acvis [coverType, idType, ctype, ctype]

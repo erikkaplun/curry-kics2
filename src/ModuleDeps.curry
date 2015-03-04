@@ -7,7 +7,6 @@
 --- @author  Björn Peemöller, Fabian Skrlac
 --- @version May 2014
 --- --------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module ModuleDeps (ModuleIdent, Source, Errors, deps) where
 
 import Directory    (doesFileExist, getModificationTime)
@@ -82,13 +81,13 @@ moduleDeps opts mEnv m = case lookupFM mEnv m of
     mbFile <- lookupModule opts m
     case mbFile of
       Nothing -> return $ addToFM mEnv m Nothing
-      Just fn -> sourceDeps { optVerbosity := VerbQuiet | opts } m fn mEnv
+      Just fn -> sourceDeps opts { optVerbosity = VerbQuiet } m fn mEnv
 
 lookupModule :: Options -> String -> IO (Maybe FilePath)
 lookupModule opts m = lookupFileInPath (moduleNameToPath m)
                       [".curry", ".lcurry", ".fcy"]
                       (map dropTrailingPathSeparator importPaths)
-  where importPaths = "." : opts :> optImportPaths
+  where importPaths = "." : optImportPaths opts
 
 sourceDeps :: Options -> ModuleIdent -> String -> SourceEnv -> IO SourceEnv
 sourceDeps opts mn fn mEnv = do
@@ -106,11 +105,11 @@ readCurrySource opts mn fn
   | otherwise
   = do fcyname <- parseCurryWithOptions opts (stripCurrySuffix mn)
                   $ setFullPath importPaths
-                  $ setQuiet    (opts :> optVerbosity == VerbQuiet)
-                  $ setSpecials (opts :> optParser)
+                  $ setQuiet    (optVerbosity opts == VerbQuiet)
+                  $ setSpecials (optParser opts)
                   defaultParams
        preprocessFcyFile opts fcyname
-  where importPaths = "." : opts :> optImportPaths
+  where importPaths = "." : optImportPaths opts
 
 -- Pre-process a FlatCurry program and load it for compilation.
 -- Currently, the binding optimizer (replace =:=/2 by ==/2) is applied.
@@ -118,13 +117,13 @@ preprocessFcyFile :: Options -> FilePath -> IO Prog
 preprocessFcyFile copts fcyname = do
   -- change current verbosity level to main verbosity level in order to
   -- see the status of pre-processing imported modules:
-  let opts    = { optVerbosity := opts :> optMainVerbosity | copts}
-      rcbopt  = rcValue (opts :> rcVars) "bindingoptimization"
+  let opts    = copts { optVerbosity = optMainVerbosity copts }
+      rcbopt  = rcValue (rcVars opts) "bindingoptimization"
       optexec = installDir </> "currytools" </> "optimize" </> "bindingopt"
   existsoptexec <- doesFileExist optexec
   when (rcbopt /= "no" && existsoptexec) $ do
     showAnalysis opts $ "Pre-processing file " ++ fcyname
-    let verb = case opts :> optVerbosity of
+    let verb = case optVerbosity opts of
                   VerbAnalysis -> "-v1"
                   VerbDetails  -> "-v3"
                   _            -> "-v0"
@@ -146,7 +145,7 @@ parseCurryWithOptions opts modname options = do
   liftIO normalise $ getFileInPath (flatCurryFileName modname)
                       [""]
                       (map dropTrailingPathSeparator importPaths)
- where importPaths = "." : opts :> optImportPaths
+    where importPaths = "." : optImportPaths opts
 
 isFlatCurryFile :: FilePath -> Bool
 isFlatCurryFile fn = takeExtension fn == ".fcy"

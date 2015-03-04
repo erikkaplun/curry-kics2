@@ -4,7 +4,6 @@
 --- @author Fabian Reck, Bjoern Peemoeller
 --- @version April 2014
 ------------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module CompilerOpts
   ( Options (..), Verbosity (..), OptimLevel (..), DumpFormat (..)
   , Extension (..), defaultOptions, getCompilerOpts
@@ -27,7 +26,7 @@ version = concat
   ]
 
 --- Compiler options
-type Options =
+data Options = Opts
   { optHelp               :: Bool         -- show usage and exit
   , optVersion            :: Bool         -- show version and exit
   , optVerbosity          :: Verbosity    -- current verbosity level
@@ -45,20 +44,20 @@ type Options =
 
 --- Default compiler options
 defaultOptions :: Options
-defaultOptions =
-  { optHelp          := False
-  , optVersion       := False
-  , optVerbosity     := VerbStatus
-  , optMainVerbosity := VerbStatus
-  , optForce         := False
-  , optImportPaths   := []
-  , optOutputSubdir  := ".curry" </> "kics2"
-  , optOptimization  := OptimStrictSupply
-  , optExtensions    := []
-  , optDump          := []
-  , optParser        := ""
-  , optTraceFailure  := False
-  , rcVars           := []
+defaultOptions = Opts
+  { optHelp          = False
+  , optVersion       = False
+  , optVerbosity     = VerbStatus
+  , optMainVerbosity = VerbStatus
+  , optForce         = False
+  , optImportPaths   = []
+  , optOutputSubdir  = ".curry" </> "kics2"
+  , optOptimization  = OptimStrictSupply
+  , optExtensions    = []
+  , optDump          = []
+  , optParser        = ""
+  , optTraceFailure  = False
+  , rcVars           = []
   }
 
 --- Verbosity levels of the compiler
@@ -96,7 +95,6 @@ data Extension
   = AnonFreeVars       -- anonymous free variables
   | FunctionalPatterns -- functional patterns
   | NoImplicitPrelude  -- no implicit import of the prelude
-  | Records            -- record syntax
 
 --- Description and flag of language extensions
 extensions :: [(Extension, String, String)]
@@ -107,8 +105,6 @@ extensions =
     , "enable functional patterns"          )
   , ( NoImplicitPrelude , "NoImplicitPrelude"
     , "do not implicitly import the Prelude")
-  , ( Records           , "Records"
-    , "enable record syntax"                )
   ]
 
 --- Dump formats of the compiler
@@ -191,31 +187,30 @@ renderOptErrTable ds
 options :: [OptDescr (OptErr -> OptErr)]
 options =
   [ Option ['h', '?'] ["help"]
-      (NoArg (onOpts $ \opts -> { optHelp      := True | opts }))
+      (NoArg (onOpts $ \opts -> opts { optHelp    = True }))
       "display this help and exit"
   , Option ['V'] ["version"]
-      (NoArg (onOpts $ \opts -> { optVersion   := True | opts }))
+      (NoArg (onOpts $ \opts -> opts { optVersion = True }))
       "show the version number and exit"
   , mkOptErrOption "v" ["verbosity"] "n" "verbosity level" verbDescriptions
   , Option ['f'] ["force"]
-      (NoArg (onOpts $ \opts -> { optForce     := True | opts }))
+      (NoArg (onOpts $ \opts -> opts { optForce   = True }))
       "force recompilation of target files"
   , Option ['i'] ["import-dir"]
-      (ReqArg (onOptsArg $ \arg opts -> { optImportPaths := nub
-        (opts :> optImportPaths ++ splitSearchPath arg) | opts }) "dir[:dir]")
+      (ReqArg (onOptsArg $ \arg opts -> opts { optImportPaths = nub
+        ((optImportPaths opts) ++ splitSearchPath arg) }) "dir[:dir]")
       "search for imports in `dir[:dir]'"
   , Option ['o'] ["output-subdir"]
-      (ReqArg (onOptsArg $ \arg opts ->
-        { optOutputSubdir := arg | opts }) "dir")
+      (ReqArg (onOptsArg $ \arg opts -> opts { optOutputSubdir = arg }) "dir")
       "output compiled modules to `dir'"
   , mkOptErrOption ['X'] [] "ext" "language extension" extDescriptions
   , mkOptErrOption ['O'] [] "n"   "optimization level" optimDescriptions
   , mkOptErrOption ['d'] [] "opt" "debug option"       dumpDescriptions
   , Option [] ["parse-options"]
-      (ReqArg (onOptsArg $ \arg opts -> { optParser := arg | opts }) "options")
+      (ReqArg (onOptsArg $ \arg opts -> opts { optParser = arg }) "options")
       "additional options for the parser"
   , Option [] ["trace-failure"]
-      (NoArg (onOpts $ \opts -> { optTraceFailure := True | opts }))
+      (NoArg (onOpts $ \opts -> opts { optTraceFailure = True }))
       "Trace failures in deterministic program"
   ]
 
@@ -224,33 +219,33 @@ verbDescriptions :: OptErrTable
 verbDescriptions = map toDescr verbosities
   where
   toDescr (flag, name, desc) = (name, desc, set flag)
-  set f opts = { optVerbosity := f | opts }
+  set f opts = opts { optVerbosity = f }
 
 --- Optimization descriptions
 optimDescriptions :: OptErrTable
 optimDescriptions = map toDescr optimizations
   where
   toDescr (flag, name, desc) = (name, desc, set flag)
-  set f opts = { optOptimization := f | opts }
+  set f opts = opts { optOptimization = f }
 
 --- Extension descriptions
 extDescriptions :: OptErrTable
 extDescriptions = map toDescr extensions
   where
   toDescr (flag, name, desc) = (name, desc, set flag)
-  set f opts = { optExtensions := addFlag f (opts :> optExtensions) | opts }
+  set f opts = opts { optExtensions = addFlag f (optExtensions opts) }
 
 --- Dump descriptions
 dumpDescriptions :: OptErrTable
 dumpDescriptions =
   [ ( "dump-all", "dump everything"
-    , \ opts -> { optDump := map (\ (l, _, _) -> l) dumpLevel | opts })
+    , \ opts -> opts { optDump = map (\ (l, _, _) -> l) dumpLevel })
   , ( "dump-none", "dump nothing"
-    , \ opts -> { optDump := []                               | opts })
+    , \ opts -> opts { optDump = []                               })
   ] ++ map toDescr dumpLevel
   where
   toDescr (flag, name, desc) = (name , "dump " ++ desc, set flag)
-  set f opts = { optDump := addFlag f (opts :> optDump) | opts }
+  set f opts = opts { optDump = addFlag f (optDump opts) }
 
 addFlag :: a -> [a] -> [a]
 addFlag o opts = nub $ o : opts
@@ -286,10 +281,10 @@ parseOpts args = (opts, files, errs ++ errs2)
 processOpts :: String -> (Options, [String], [String])
             -> IO (Options, [String])
 processOpts prog (opts, files, errs)
-  | opts :> optHelp    = printUsage prog
-  | not (null errs')   = badUsage prog errs'
-  | opts :> optVersion = printVersion
-  | otherwise          = return (opts, files)
+  | optHelp opts     = printUsage prog
+  | optVersion opts  = printVersion
+  | not (null errs') = badUsage prog errs'
+  | otherwise        = return (opts, files)
     where errs' = errs ++ checkOpts opts files
 
 --- Check the parsed command line arguments for errors.

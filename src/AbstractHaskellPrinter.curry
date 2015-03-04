@@ -8,7 +8,6 @@
 ---         Parissa Sadeghi, Bjoern Peemoeller
 --- @version May 2014
 ------------------------------------------------------------------------------
-{-# LANGUAGE Records #-}
 module AbstractHaskellPrinter
   ( showProg, showModuleHeader, showDecls, showTypeDecls, showTypeDecl
   , showTypeExpr, showFuncDecl, showLiteral, showExpr, showPattern
@@ -22,10 +21,10 @@ import Read  (readNat)
 import AbstractHaskell
 import Names (isHaskellModule, prelude, curryPrelude, addTrace)
 
-type Options = { currentModule :: String, traceFailure :: Bool }
+data Options = Options { currentModule :: String, traceFailure :: Bool }
 
 defaultOptions :: Options
-defaultOptions = { currentModule := "", traceFailure := False }
+defaultOptions = Options { currentModule = "", traceFailure = False }
 
 -- ---------------------------------------------------------------------------
 -- Functions to print an AbstractHaskell program in standard Curry syntax
@@ -61,44 +60,41 @@ showDecls trace m opdecls typedecls funcdecls
     , showTypeDecls opts typedecls
     , showFuncDecls opts funcdecls
     ]
-  where opts = { currentModule := m, traceFailure := trace }
+  where opts = Options { currentModule = m, traceFailure = trace }
 
 -- ---------------------------------------------------------------------------
 -- Module Header
 -- ---------------------------------------------------------------------------
 
+--- Create the export specification for a list of types and a list of functions.
+--- Note that for types all constructors are exported regardless of the Curry
+--- export specification (= the visibility information of the constructors)
+--- because record update expressions have been previously desugared into
+--- case expressions mentioning all constructors belonging to the set of labels
+--- in the update. While the record update expression is valid in Curry even if
+--- the constructors are not imported (they are, at least implicitly), the case
+--- expression is only valid if all mentioned constructors are exported.
+--- Therefore, to avoid any GHC errors, we simply export all constructors.
+--- This should be no problem since imported entities are always used fully
+--- qualified after the translation process.
+--- (bjp, jrt 2015-03-04)
 showExports :: [TypeDecl] -> [FuncDecl] -> String
-showExports types funcs =
-  let publicTypes = filter isPublicType types
-      (withCons, withoutCons) = partition allPublicCons publicTypes
-  in
-   intercalate ", " $
-       map ((++ " (..)") . getTypeName) withCons
-    ++ map getTypeName withoutCons
-    ++ map getFuncName (filter isPublicFunc funcs)
-  where
-    isPublicType :: TypeDecl -> Bool
-    isPublicType (Type    _ vis _ _) = vis == Public
-    isPublicType (TypeSyn _ vis _ _) = vis == Public
-    isPublicType (Instance  _ _ _ _) = False
+showExports types funcs = intercalate ", " $
+  concatMap mkTypeExport types ++ concatMap mkFuncExport funcs
+ where
+  mkTypeExport :: TypeDecl -> [String]
+  mkTypeExport (Type     (_, name) vis _ _)
+    | vis == Public = [name ++ " (..)"]
+    | otherwise     = []
+  mkTypeExport (TypeSyn  (_, name) vis _ _)
+    | vis == Public = [name]
+    | otherwise     = []
+  mkTypeExport (Instance _         _   _ _) = []
 
-    isPublicFunc :: FuncDecl -> Bool
-    isPublicFunc (Func _ _ _ vis _ _) = vis == Public
-
-    getTypeName :: TypeDecl -> String
-    getTypeName (Type     (_,name) _ _ _) = name
-    getTypeName (TypeSyn  (_,name) _ _ _) = name
-    getTypeName (Instance (_,name) _ _ _) = name
-
-    allPublicCons :: TypeDecl -> Bool
-    allPublicCons (Type _ _ _ c) = length (filter isPublicCons c) == length c
-      where isPublicCons (Cons _ _ vis _) = vis == Public
-    allPublicCons (TypeSyn _ _ _ _)  = False
-    allPublicCons (Instance _ _ _ _) = False
-
-    getFuncName :: FuncDecl -> String
-    getFuncName (Func _ (_,name) _ _ _ _) =
-      if isInfixOpName name then "(" ++ name ++ ")" else name
+  mkFuncExport :: FuncDecl -> [String]
+  mkFuncExport (Func _ (_,name) _ vis _ _)
+    | vis == Public = [showPrefixOp name]
+    | otherwise     = []
 
 showImports :: Bool -> [String] -> String
 showImports trace imports = prefixInter showImport imports "\n"
@@ -177,22 +173,21 @@ showConsDecl opts (Cons qname _ _ typelist)
 showTypeExpr :: Options -> Bool -> TypeExpr -> String
 showTypeExpr _    _      (TVar (_, name)) = showTypeVar (showIdentifier name)
 showTypeExpr opts nested (FuncType dom rng) =
-  maybeShowBrackets nested $ showTypeExpr opts (isFuncType dom) dom
+  parensIf nested $ showTypeExpr opts (isFuncType dom) dom
                              ++ " -> " ++ showTypeExpr opts False rng
 showTypeExpr opts nested (TCons qname@(mod,name) typelist)
    | mod==prelude && name == "untyped" = "-" -- TODO: Can this happen?
-   | otherwise  = maybeShowBrackets (nested && not (null typelist))
-                                    (showTypeCons opts qname typelist)
+   | otherwise  = parensIf (nested && not (null typelist))
+                           (showTypeCons opts qname typelist)
 
 --- Shows an AbstractHaskell type signature of a given function name.
 showTypeSig :: Options -> String -> TypeSig -> String
 showTypeSig _    _     Untyped           = ""
 showTypeSig opts fname (FType texp)      =
-  (if isInfixOpName fname then "(" ++ fname ++ ")" else fname)
-  ++ " :: " ++ showTypeExpr opts False texp ++ "\n"
+  showPrefixOp fname ++ " :: " ++ showTypeExpr opts False texp ++ "\n"
 showTypeSig opts fname (CType ctxt texp) =
-  (if isInfixOpName fname then "(" ++ fname ++ ")" else fname)
-  ++ " :: " ++ showContext opts ctxt ++ showTypeExpr opts False texp ++ "\n"
+  showPrefixOp fname ++ " :: " ++ showContext opts ctxt
+  ++ showTypeExpr opts False texp ++ "\n"
 
 -- Show a1,a2,a3 as a_1,a_2,a_3 (due to bug in PAKCS front-end):
 showTypeVar :: String -> String
@@ -222,12 +217,11 @@ showFuncDecls opts fdecls = prefixInter (showFuncDeclOpt opts) fdecls "\n\n"
 showFuncDeclOpt :: Options -> FuncDecl -> String
 showFuncDeclOpt opts (Func cmt (_,name) arity _ ftype (Rules rules)) =
   funcComment cmt ++ showTypeSig opts name ftype ++
-  (if funcIsInfixOp
+  (if isInfixOpName name
     then rulePrints arity
     else name ++ (prefixInter (showRule opts) rules ("\n"++name)))
   where
-    funcIsInfixOp     = isInfixOpName name
-    bolName           = if funcIsInfixOp then "(" ++ name ++ ")" else name
+    bolName           = showPrefixOp name
     rulePrints arity' = intercalate "\n" $
       map (insertName arity' . (span (/= ' ')) . tail . (showRule opts)) rules
     insertName arity' (fstArg, rest) =
@@ -310,7 +304,7 @@ showSymbol opts (modName, symName)
     -- all Haskell modules are imported unqualified
   | isHaskellModule modName            = symName
     -- the current module isn't imported at all
-  | modName == (opts :> currentModule) = symName
+  | modName == (currentModule opts) = symName
     -- all Curry modules are imported qualified
   | otherwise                          = modName ++ "." ++ symName
 
@@ -520,6 +514,9 @@ showBoxedExpr opts expr
   | isSimpleExpr expr = showExprOpt opts expr
   | otherwise         = "(" ++ showExprOpt opts expr ++ ")"
 
+showPrefixOp :: String -> String
+showPrefixOp op = parensIf (isInfixOpName op) op
+
 ------------------------------------------------------------------------------
 --- composition functions for AbstractHaskellPrinter
 ------------------------------------------------------------------------------
@@ -626,7 +623,7 @@ infixIDs :: String
 infixIDs =  "~!@#$%^&*+-=<>?./|\\:"
 
 -- enclose string with brackets, if required by first argument
-maybeShowBrackets :: Bool -> String -> String
-maybeShowBrackets nested s
+parensIf :: Bool -> String -> String
+parensIf nested s
   | nested    = "(" ++ s ++ ")"
   | otherwise = s
