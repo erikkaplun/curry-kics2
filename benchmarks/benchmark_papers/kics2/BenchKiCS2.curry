@@ -1,4 +1,4 @@
-{-# OPTIONS_CYMAKE -F --pgmF=currypp #-}
+{-# OPTIONS_CYMAKE -F --pgmF=currypp --optF=--foreigncode #-}
 
 -----------------------------------------------------------------------
 --- Benchmark different Curry systems with various example programs.
@@ -21,7 +21,7 @@ numberOfRuns = 1
 
 -- The KiCS2 systems to be benchmarked:
 kics2Systems = [KiCS2 "0.2.3", KiCS2 "0.2.4",
-                KiCS2 "0.3.0", KiCS2 "0.3.1", KiCS2 "0.3.2",
+                KiCS2 "0.3.0", KiCS2 "0.3.1", KiCS2 "0.3.2", KiCS2 "0.3.3",
                 KiCS2 ""]
 
 -- Directory containing the benchmark programs:

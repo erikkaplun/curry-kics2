@@ -4,8 +4,8 @@
 --- This program defines the execution of benchmarks and summarizes
 --- their results.
 ---
---- @author  Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version January 2012
+--- @author  Michael Hanus, Bjoern Peemoeller, Fabian Skrlac
+--- @version March 2015
 --- --------------------------------------------------------------------------
 
 import Char
@@ -124,7 +124,7 @@ getTotalMemory :: IO String
 getTotalMemory = dropWhile (not . isDigit)
                 `liftIO` runCmd ("grep", ["MemTotal", "/proc/meminfo"])
 
-type TimeInfo =
+data TimeInfo = TimeInfo
   { tiCommand       :: String -- Command being timed
   , tiUserTime      :: Float  -- User time (seconds)
   , tiSystemTime    :: Float  -- System time (seconds)
@@ -152,18 +152,19 @@ type TimeInfo =
 
 toInfo :: [String] -> TimeInfo
 toInfo [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17,x18,x19,x20,x21,x22,x23]
-  = { tiCommand       := readQTerm   x1, tiUserTime      := readQTerm x2
-    , tiSystemTime    := readQTerm   x3, tiPercentCPU    := readQTerm $ init x4
-    , tiElapsedTime   := readElapsed x5, tiSharedMem     := readQTerm x6
-    , tiUnsharedMem   := readQTerm   x7, tiAvgStack      := readQTerm x8
-    , tiAvgTotal      := readQTerm   x9, tiMaxResident   := readQTerm x10
-    , tiAvgResident   := readQTerm  x11, tiMajorFaults   := readQTerm x12
-    , tiMinorFaults   := readQTerm  x13, tiVolSwitch     := readQTerm x14
-    , tiNonvolSwitch  := readQTerm  x15, tiSwaps         := readQTerm x16
-    , tiFSInputs      := readQTerm  x17, tiFSOutputs     := readQTerm x18
-    , tiSocketMsgSent := readQTerm  x19, tiSocketMsgRecv := readQTerm x20
-    , tiSignalsDelivd := readQTerm  x21, tiPageSize      := readQTerm x22
-    , tiExitStatus    := readQTerm  x23  }
+  = TimeInfo
+    { tiCommand       = readQTerm   x1, tiUserTime      = readQTerm x2
+    , tiSystemTime    = readQTerm   x3, tiPercentCPU    = readQTerm $ init x4
+    , tiElapsedTime   = readElapsed x5, tiSharedMem     = readQTerm x6
+    , tiUnsharedMem   = readQTerm   x7, tiAvgStack      = readQTerm x8
+    , tiAvgTotal      = readQTerm   x9, tiMaxResident   = readQTerm x10
+    , tiAvgResident   = readQTerm  x11, tiMajorFaults   = readQTerm x12
+    , tiMinorFaults   = readQTerm  x13, tiVolSwitch     = readQTerm x14
+    , tiNonvolSwitch  = readQTerm  x15, tiSwaps         = readQTerm x16
+    , tiFSInputs      = readQTerm  x17, tiFSOutputs     = readQTerm x18
+    , tiSocketMsgSent = readQTerm  x19, tiSocketMsgRecv = readQTerm x20
+    , tiSignalsDelivd = readQTerm  x21, tiPageSize      = readQTerm x22
+    , tiExitStatus    = readQTerm  x23  }
   where
     readElapsed hms = hh *. 3600 +. mm *. 60 +. ss
       where hh = if noHours then 0.0 else readQTerm p1
@@ -205,7 +206,7 @@ benchCmd cmd = do
   (exitcode, outcnt, errcnt, ti) <- timeCmd cmd
   trace outcnt
   trace errcnt
-  return $ (exitcode, ti :> tiUserTime, ti :> tiMaxResident)
+  return $ (exitcode, tiUserTime ti, tiMaxResident ti)
 
 -- ---------------------------------------------------------------------------
 -- Operations for running benchmarks.
@@ -214,7 +215,7 @@ benchCmd cmd = do
 -- Each benchmark consists of a name, an action to prepare the benchmark
 -- (e.g., compile the program), a command to run the benchmark
 -- and a command to clean up all auxiliary files at the end of a benchmark
-type Benchmark =
+data Benchmark = Benchmark
   { bmName    :: String
   , bmPrepare :: IO Int
   , bmCommand :: Command
@@ -229,16 +230,16 @@ runBenchmark rpts totalNum (currentNum, benchMark) = do
   let totalStr = show totalNum
       curntStr = show currentNum
   flushStr $ "Running benchmark [" ++ lpad (length totalStr) curntStr ++ " of "
-             ++ totalStr ++ "]: " ++ (benchMark :> bmName) ++ ": "
-  benchMark :> bmPrepare
+             ++ totalStr ++ "]: " ++ (bmName benchMark) ++ ": "
+  bmPrepare benchMark
   infos <- sequenceIO $ replicate rpts $ benchCmd
-                      $ timeout benchTimeout $ benchMark :> bmCommand
-  silentCmd $ benchMark :> bmCleanup
+                      $ timeout benchTimeout $ bmCommand benchMark
+  silentCmd $ bmCleanup benchMark
   let (codes, times, mems) = unzip3 infos
   flushStrLn $ if all (==0) codes then "PASSED" else "FAILED"
   trace $ "RUNTIMES: " ++ intercalate " | " (map show times)
   trace $ "MEMUSAGE: " ++ intercalate " | " (map show mems)
-  return (benchMark :> bmName, times, mems)
+  return (bmName benchMark, times, mems)
 
 showResult :: Int -> BenchResult -> String
 showResult maxName (n, ts, ms) = rpad maxName n
@@ -389,60 +390,68 @@ mkTag mod goal comp
   | otherwise      = mod ++ ':' : goal ++ '@' : comp
 
 kics2Benchmark tag hooptim ghcoptim idsupply mod goal mainexp =
-  [ { bmName    := mkTag mod goal tag
-    , bmPrepare := kics2Compile mod hooptim ghcoptim idsupply mainexp
-    , bmCommand := ("./Main", [])
-    , bmCleanup := ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
+  [Benchmark
+    { bmName    = mkTag mod goal tag
+    , bmPrepare = kics2Compile mod hooptim ghcoptim idsupply mainexp
+    , bmCommand = ("./Main", [])
+    , bmCleanup = ("rm", ["-f", "Main*"]) -- , ".curry/" ++ mod ++ ".*", ".curry/kics2/Curry_*"])
     }
   ]
 monBenchmark optim mod mainexp = if monInstalled && not onlyKiCS2
-  then [ { bmName    := mkTag mod "main" "MON+"
-         , bmPrepare := monCompile mod optim mainexp
-         , bmCommand := ("./Main", [])
-         , bmCleanup := ("rm", ["-f", "Main*", "Curry_*"])
+  then [Benchmark
+         { bmName    = mkTag mod "main" "MON+"
+         , bmPrepare = monCompile mod optim mainexp
+         , bmCommand = ("./Main", [])
+         , bmCleanup = ("rm", ["-f", "Main*", "Curry_*"])
          }
        ]
   else []
 pakcsBenchmark mod goal = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod goal "PAKCS"
-    , bmPrepare := pakcsCompile (if goal == "main" then "" else "-m \"print " ++ goal ++ "\"") mod
-    , bmCommand := ("./" ++ mod ++ ".state", [])
-    , bmCleanup := ("rm", ["-f", mod ++ ".state"])
+  [Benchmark
+    { bmName    = mkTag mod goal "PAKCS"
+    , bmPrepare = pakcsCompile (if goal == "main" then "" else "-m \"print " ++ goal ++ "\"") mod
+    , bmCommand = ("./" ++ mod ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", mod ++ ".state"])
     }
   ]
 mccBenchmark mod goal = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod "main" "MCC"
-    , bmPrepare := mccCompile (if goal == "main" then "" else "-e\"" ++ goal ++ "\"") mod
-    , bmCommand := ("./a.out +RTS -h512m -RTS", [])
-    , bmCleanup := ("rm", ["-f", "a.out", mod ++ ".icurry"])
+  [Benchmark
+    { bmName    = mkTag mod "main" "MCC"
+    , bmPrepare = mccCompile (if goal == "main" then "" else "-e\"" ++ goal ++ "\"") mod
+    , bmCommand = ("./a.out +RTS -h512m -RTS", [])
+    , bmCleanup = ("rm", ["-f", "a.out", mod ++ ".icurry"])
     }
   ]
 ghcBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod "main" "GHC"
-    , bmPrepare := ghcCompile mod
-    , bmCommand := ("./" ++ mod, [])
-    , bmCleanup := ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
+  [Benchmark
+    { bmName    = mkTag mod "main" "GHC"
+    , bmPrepare = ghcCompile mod
+    , bmCommand = ("./" ++ mod, [])
+    , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
     }
   ]
 ghcOBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod "main" "GHC+"
-    , bmPrepare := ghcCompileO mod
-    , bmCommand := ("./" ++ mod, [])
-    , bmCleanup := ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
+  [Benchmark
+    { bmName    = mkTag mod "main" "GHC+"
+    , bmPrepare = ghcCompileO mod
+    , bmCommand = ("./" ++ mod, [])
+    , bmCleanup = ("rm", ["-f", mod, mod ++ ".hi", mod ++ ".o"])
     }
   ]
 sicsBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod "main" "SICSTUS"
-    , bmPrepare := sicstusCompile src
-    , bmCommand := ("./" ++ src ++ ".state", [])
-    , bmCleanup := ("rm", ["-f", src ++ ".state"])
+  [Benchmark
+    { bmName    = mkTag mod "main" "SICSTUS"
+    , bmPrepare = sicstusCompile src
+    , bmCommand = ("./" ++ src ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", src ++ ".state"])
     }
   ] where src = map toLower mod
 swiBenchmark mod = if onlyKiCS2 then [] else
-  [ { bmName    := mkTag mod "main" "SWI"
-    , bmPrepare := swiCompile src
-    , bmCommand := ("./" ++ src ++ ".state", [])
-    , bmCleanup := ("rm", ["-f", src ++ ".state"])
+  [Benchmark
+    { bmName    = mkTag mod "main" "SWI"
+    , bmPrepare = swiCompile src
+    , bmCommand = ("./" ++ src ++ ".state", [])
+    , bmCleanup = ("rm", ["-f", src ++ ".state"])
     }
   ] where src = map toLower mod
 
