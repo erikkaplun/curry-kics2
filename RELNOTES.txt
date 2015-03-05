@@ -6,17 +6,19 @@ Release notes for KiCS2 Version 0.4.0
 
 Changes to version 0.3.3:
 
-  * The extension for records (with special Curry syntax) was removed. Instead,
-    the KiCS2 now supports Haskell's record syntax. For a detailed description
-    of the new record syntax please see the manual.
+  * The extension for records (with special Curry syntax) was removed.
+    Instead, PAKCS now supports Haskell's record syntax.
+    See the manual for a detailed description of the new record syntax.
   * A new representation of AbstractCurry was introduced:
 
     - AbstractCurry files now contain version information
     - support for new record syntax
     - support for newtype declarations
-    - removed evaluation annotations
-    - removed arity of constructor declarations
+    - evaluation annotations removed
+    - arity of constructor declarations removed
     - simplified representation of function rules
+    - String literals added
+  * Library `FunctionInversion` added.
 
 
 Release notes for KiCS2 Version 0.3.3
