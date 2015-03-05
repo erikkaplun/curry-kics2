@@ -25,8 +25,16 @@ test4 = assertTrue "eqUpdRecords" (john1 {age=50} == john3)
 
 -- Pattern matching:
 isJohn :: Person -> Bool
-isJohn (Person {name = n}) = n=="John"
+isJohn Person {name = n} = n=="John"
 
 test5 = assertTrue "isJohn1" (isJohn john1)
 
 test6 = assertTrue "isJohn2" (not (isJohn (john1 {name="Bill"})))
+
+
+-- Nested records:
+john1Home = Address { city = "New York", street = "Broadway", person = john1}
+john2Home = Address { person=john2, city="New York" }
+
+test7 = assertEqual "johnHome" john1Home john2Home{street="Broadway"}
+
