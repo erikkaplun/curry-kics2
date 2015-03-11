@@ -18,7 +18,11 @@ Changes to version 0.3.3:
     - arity of constructor declarations removed
     - simplified representation of function rules
     - String literals added
-  * Library `FunctionInversion` added.
+  * Library `FunctionInversion` added
+  * Library `AnnotatedFlatCurryPretty` added
+  * Library `Either` extended with functions `fromLeft` and `fromRight`
+  * Library `ShowS` added
+  * Library `AnsiCodes` added
 
 
 Release notes for KiCS2 Version 0.3.3
