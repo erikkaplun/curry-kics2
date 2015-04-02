@@ -3,16 +3,18 @@
 --- that is stored in $HOME/.kics2rc
 ---
 --- @author  Michael Hanus
---- @version January 2013
+--- @version April 2015
 ----------------------------------------------------------------------
 
-module RCFile (readRC, rcValue, setRCProperty) where
+module RCFile (readRC, rcValue, setRCProperty, extractRCArgs, updateRCDefs)
+  where
 
 import Char         (toLower, isSpace)
 import Directory    (getHomeDirectory, doesFileExist, copyFile, renameFile)
 import FilePath     (FilePath, (</>), (<.>))
 import Function     (first)
 import Installation (installDir)
+import List         (partition)
 import PropertyFile
 import Sort         (mergeSort)
 
@@ -71,3 +73,22 @@ setRCProperty pname pval = do
 rcValue :: [(String, String)] -> String -> String
 rcValue rcdefs var = strip $ maybe "" id $
   lookup (map toLower var) (map (first (map toLower)) rcdefs)
+
+
+--- Extract from a list of command-line arguments rc properties
+--- of the from "-Dprop=val" and return the remaining arguments and
+--- the extracted properties.
+extractRCArgs :: [String] -> ([String],[(String,String)])
+extractRCArgs args =
+  let (dargs,otherargs) = partition (\s -> take 2 s == "-D") args
+   in (otherargs, map splitDefs (map (drop 2) dargs))
+ where
+  splitDefs darg = case break (=='=') darg of
+    (var,_:val) -> (var,val)
+    _           -> (darg,"")
+
+--- Update list of rc properties w.r.t. a list new properties.
+updateRCDefs :: [(String,String)] -> [(String,String)] -> [(String,String)]
+updateRCDefs orgdefs newdefs =
+  map (\ (name,val) -> (name, maybe val id (lookup name newdefs))) orgdefs
+

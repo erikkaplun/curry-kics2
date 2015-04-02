@@ -1,8 +1,8 @@
 --- --------------------------------------------------------------------------
---- The main module for KiCS2c the ID based Curry to Haskell compiler
+--- The main module for KiCS2c Curry to Haskell compiler
 ---
 --- @author  Bernd Brassel, Michael Hanus, Bjoern Peemoeller, Fabian Reck
---- @version July 2012
+--- @version April 2015
 --- --------------------------------------------------------------------------
 module Compile where
 
@@ -16,6 +16,7 @@ import FiniteMap
 import FlatCurry
 import FlatCurryGoodies (updQNamesInProg)
 import ReadShowTerm     (readQTermFile)
+import System           (getArgs)
 
 import AnnotatedFlatCurryGoodies (unAnnProg)
 
@@ -45,9 +46,11 @@ import Utils                     (notNull, lpad, rpad)
 --- Parse the command-line arguments and build the specified modules.
 main :: IO ()
 main = do
-  rcdefs          <- readRC
+  rcFileDefs      <- readRC
+  args            <- getArgs
   (opts, modules) <- getCompilerOpts
-  mapIO_ (build opts { rcVars = rcdefs
+  mapIO_ (build opts { rcVars = updateRCDefs rcFileDefs
+                                             (snd (extractRCArgs args))
                      , optMainVerbosity = optVerbosity opts
                      })
          modules

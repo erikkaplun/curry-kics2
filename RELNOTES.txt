@@ -6,6 +6,8 @@ Release notes for KiCS2 Version 0.4.0
 
 Changes to version 0.3.3:
 
+  * The REPL and compiler accepts also property definitions of the form
+    "-Dprop=val" as arguments which overrides the kics2rc definitions.
   * The extension for records (with special Curry syntax) was removed.
     Instead, KiCS2 now supports Haskell's record syntax.
     See the manual for a detailed description of the new record syntax.
@@ -18,6 +20,7 @@ Changes to version 0.3.3:
     - arity of constructor declarations removed
     - simplified representation of function rules
     - String literals added
+
   * Library `FunctionInversion` added
   * Library `AnnotatedFlatCurryPretty` added
   * Library `Either` extended with functions `fromLeft` and `fromRight`

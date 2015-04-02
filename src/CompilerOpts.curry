@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------------
---- Compiler options for the ID-based curry compiler
+--- Compiler options for the KiCS2 Curry compiler
 ---
 --- @author Fabian Reck, Bjoern Peemoeller
---- @version April 2014
+--- @version April 2015
 ------------------------------------------------------------------------------
 module CompilerOpts
   ( Options (..), Verbosity (..), OptimLevel (..), DumpFormat (..)
@@ -266,7 +266,8 @@ removeFlag o opts = filter (/= o) opts
 ---  * no files for compilation are given (1)
 getCompilerOpts :: IO (Options, [String])
 getCompilerOpts = do
-  args <- getArgs
+  -- Ignore "-Dprop=val" parameters since they are processed in main
+  args <- getArgs >>= return . filter (\a -> take 2 a /= "-D")
   prog <- getProgName
   processOpts prog $ parseOpts args
 

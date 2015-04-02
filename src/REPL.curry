@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version June 2014
+--- @version April 2015
 --- --------------------------------------------------------------------------
 module REPL where
 
@@ -50,14 +50,21 @@ writeErrorMsg msg = putStrLn ("ERROR: " ++ msg)
 
 main :: IO ()
 main = do
-  rcDefs <- readRC
-  args   <- getArgs
-  let rst = initReplState { kics2Home = Inst.installDir
+  rcFileDefs <- readRC
+  args       <- getArgs
+  let (mainargs,defargs) = extractRCArgs args
+      rcDefs             = updateRCDefs rcFileDefs defargs
+      furtherRcDefs      = filter (\da -> fst da `notElem` map fst rcFileDefs)
+                                  defargs
+      rst = initReplState { kics2Home = Inst.installDir
                           , rcvars    = rcDefs
                           }
   ipath  <- defaultImportPaths rst
-  processArgsAndStart rst { importPaths = ipath }
-    (map strip (words (rcValue (rcvars rst) "defaultparams")) ++ args)
+  if null furtherRcDefs
+   then processArgsAndStart rst { importPaths = ipath }
+          (map strip (words (rcValue (rcvars rst) "defaultparams")) ++ mainargs)
+   else putStrLn $ "Error: rc property name '" ++ fst (head furtherRcDefs) ++
+                   "' not found in kics2rc file!"
 
 --- The default import paths of KiCS2.
 --- It consists of the path defined by the environment variable CURRYPATH,
@@ -89,7 +96,9 @@ processArgsAndStart rst (arg:args) =
           mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
           maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
  where
-  printHelp = putStrLn "Usage: kics2 <list of commands>\n" >> printHelpOnCommands
+  printHelp = do
+    putStrLn "Usage: kics2 [--noreadline] [-Dprop=val] <list of commands>\n"
+    printHelpOnCommands
 
 --- Retrieve the KiCS2 banner
 getBanner :: IO String
@@ -397,7 +406,9 @@ compileCurryProgram rst curryprog = do
  where
   kics2Bin  = kics2Home rst </> "bin" </> ".local" </> "kics2c"
   kics2Opts = unwords $
-    [ "-v" ++ show (transVerbose (verbose rst))
+    -- pass current value of "bindingoptimization" property to compiler:
+    [ "-Dbindingoptimization=" ++ rcValue (rcvars rst) "bindingoptimization"
+    , "-v" ++ show (transVerbose (verbose rst))
     , "-i" ++ intercalate ":" (loadPaths rst)
     ] ++
     (if null (parseOpts rst)

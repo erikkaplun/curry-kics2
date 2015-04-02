@@ -44,6 +44,18 @@ starts \CYS, loads the main module \code{Mod}, creates an executable,
 and terminates \CYS. This invocation could be useful in ``make'' files
 for systems implemented in Curry.
 
+There are also some specific options that can be used
+when invoking \CYS:
+\begin{description}
+\item[\code{--noreadline}:]
+Do not use input line editing (see Section~\ref{sec-readline}).
+\item[\code{-Dname=val}:]
+Overwrite values defined in the configuration file \ccode{.kics2rc}
+(see Section~\ref{sec-customization}),
+where \code{name} is a property defined in the configuration file
+and \code{val} its new value.
+\end{description}
+
 
 \subsection{Commands of \CYS}
 \label{sec:kics2-commands}
@@ -575,6 +587,7 @@ Hello World
 
 
 \subsection{Command Line Editing}
+\label{sec-readline}
 
 In order to have support for line editing or history functionality
 in the command line of \CYS (as often supported by the \code{readline}
