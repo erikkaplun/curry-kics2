@@ -121,11 +121,10 @@ T.~Johnsson.
 \newblock In {\em Functional Programming Languages and Computer Architecture},
   pages 190--203. Springer LNCS 201, 1985.
 
-\bibitem{Leijen05}
-D.~Leijen.
-\newblock Extensible records with scoped labels.
-\newblock In {\em Proceedings of the 2005 Symposium on Trends in Functional
-  Programming (TFP'05)}, 2005.
+\bibitem{PeytonJones03Haskell}
+S.~Peyton~Jones, editor.
+\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
+\newblock Cambridge University Press, 2003.
 
 \bibitem{Wadler87}
 P.~Wadler.
