@@ -203,10 +203,10 @@ ppComment = vsep . map (\c -> text "---" <+> text c) . lines
 --- Shows an AbstractHaskell type signature of a given function name.
 ppTypeSig :: Options -> String -> TypeSig -> Doc
 ppTypeSig _    _     Untyped     = empty
-ppTypeSig opts f (FType      ty) = indent $
-  ppPrefixOp f <+> text "::" <+> ppTypeExp opts ty
-ppTypeSig opts f (CType ctxt ty) = indent $
-  ppPrefixOp f <+> text "::" <> ppContexts opts ctxt <+> ppTypeExp opts ty
+ppTypeSig opts f (FType      ty) = ppPrefixOp f <+> text "::"
+                                   <+> ppTypeExp opts ty
+ppTypeSig opts f (CType ctxt ty) = ppPrefixOp f <+> text "::"
+                                   <> ppContexts opts ctxt <+> ppTypeExp opts ty
 
 ppRule :: Options -> String -> Rule -> Doc
 ppRule opts f (Rule ps rhs ds) = indent $

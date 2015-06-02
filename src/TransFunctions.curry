@@ -891,16 +891,13 @@ addCs = (basics, "addCs")
 -- expressions
 
 pair2ac :: (AH.Expr, AH.Expr) -> AH.Expr
-pair2ac (e1, e2) = consCall (prelude, "(,)") [e1, e2]
+pair2ac (e1, e2) = AH.Tuple [e1, e2]
 
 seqCall :: AH.Expr -> AH.Expr -> AH.Expr
-seqCall e1 e2 = funcCall (prelude, "seq") [e1, e2]
+seqCall e1 e2 = AH.InfixApply e1 (prelude, "seq") e2
 
 strictCall :: AH.Expr -> AH.Expr -> AH.Expr
-strictCall f e = funcCall (prelude, "$!") [f, e]
-
-consCall :: QName -> [AH.Expr] -> AH.Expr
-consCall = AHG.applyF
+strictCall f e = AH.InfixApply f (prelude, "$!") e
 
 funcCall :: QName -> [AH.Expr] -> AH.Expr
 funcCall = AHG.applyF
