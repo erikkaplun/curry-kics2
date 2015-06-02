@@ -35,18 +35,18 @@ genTypeDeclarations :: ConsHOResult -> FC.TypeDecl -> [TypeDecl]
 genTypeDeclarations hoResult tdecl = case tdecl of
   (FC.TypeSyn qf vis tnums texp)
     -> [TypeSyn qf (fcy2absVis vis) (map fcy2absTVar tnums) (fcy2absTExp texp)]
-  t@(FC.Type qf vis tnums cdecls)
+  t@(FC.Type qf vis tnums cs)
       -- type names are always exported to avoid ghc type errors.
       -- TODO: Describe why/which errors may occur.
-    | null cdecls -> Type qf Public targs []    : []
-    | otherwise   -> Type qf Public targs decls : instanceDecls
+    | null cs   -> Type qf Public targs [] : []
+    | otherwise -> Type qf Public targs ds : instanceDecls
     where
-      decls = concatMap (fcy2absCDecl hoResult) cdecls ++
-              [ Cons (mkChoiceName  qf) 3 acvis [coverType, idType, ctype, ctype]
-              , Cons (mkChoicesName qf) 2 acvis [coverType, idType, clisttype]
-              , Cons (mkFailName    qf) 2 acvis [coverType, failInfoType]
-              , Cons (mkGuardName   qf) 2 acvis [coverType, constraintType, ctype]
-              ]
+      ds = concatMap (fcy2absCDecl hoResult) cs ++
+            [ Cons (mkChoiceName  qf) 3 vis' [coverType, idType, ctype, ctype]
+            , Cons (mkChoicesName qf) 2 vis' [coverType, idType, clisttype]
+            , Cons (mkFailName    qf) 2 vis' [coverType, failInfoType]
+            , Cons (mkGuardName   qf) 2 vis' [coverType, constraintType, ctype]
+            ]
       instanceDecls = map ($t) [ showInstance       hoResult
                                , readInstance
                                , nondetInstance
@@ -55,7 +55,7 @@ genTypeDeclarations hoResult tdecl = case tdecl of
                                , unifiableInstance  hoResult
                                , curryInstance      hoResult
                                ]
-      acvis     = (fcy2absVis vis)
+      vis'     = fcy2absVis vis
       targs     = map fcy2absTVar tnums
       ctype     = TCons qf (map TVar targs)
       clisttype = listType ctype
@@ -82,17 +82,16 @@ fcy2absCDecl hoResult (FC.Cons qf ar vis texps)
 fcy2absTExp :: FC.TypeExpr -> TypeExpr
 fcy2absTExp (FC.TVar i)         = TVar (fcy2absTVar i)
 fcy2absTExp (FC.TCons qf texps) = TCons qf (map fcy2absTExp texps)
-fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1) (FuncType coverT (FuncType cStoreT (fcy2absTExp t2)))
-  where
- cStoreT = TCons (basics "ConstStore") []
- coverT  = TCons (basics "Cover") []
+fcy2absTExp (FC.FuncType t1 t2) = FuncType (fcy2absTExp t1)
+                                $ FuncType coverType
+                                $ FuncType consStoreType (fcy2absTExp t2)
 
 fcy2absHOTExp :: FC.TypeExpr -> TypeExpr
-fcy2absHOTExp (FC.TVar i)         = TVar (fcy2absTVar i)
-fcy2absHOTExp (FC.TCons qf texps) = TCons qf (map fcy2absHOTExp texps)
-fcy2absHOTExp (FC.FuncType t1 t2) = funcType (fcy2absHOTExp t1) (fcy2absHOTExp t2)
+fcy2absHOTExp (FC.TVar         i) = TVar (fcy2absTVar i)
+fcy2absHOTExp (FC.TCons   qf tys) = TCons qf (map fcy2absHOTExp tys)
+fcy2absHOTExp (FC.FuncType t1 t2) = funcType (fcy2absHOTExp t1)
+                                             (fcy2absHOTExp t2)
   where funcType ta tb = TCons (basics "Func") [ta, tb]
-
 
 -- ---------------------------------------------------------------------------
 -- Generate instance of Show class:
@@ -128,7 +127,7 @@ showInstance hoResult tdecl = case tdecl of
 showRule4List :: (QName, Rule)
 showRule4List =
     (pre "showsPrec",
-    Rule [] [noGuard (constF (pre "showsPrec4CurryList"))] [])
+    Rule [] (SimpleRhs (constF (pre "showsPrec4CurryList"))) [])
 
 -- Generate Show instance rule for a data constructor:
 showConsRule :: ConsHOResult -> FC.ConsDecl -> [(QName, Rule)]
@@ -150,7 +149,7 @@ showConsRule hoResult (FC.Cons qn carity _ _)
     showListCons name = simpleRule [PVar d, consPattern name "x" carity]
       $ applyF (pre "showParen")
           [ applyF (pre ">") [Var d, intc 5]
-          , foldr1 (\f1 f2 -> applyF (pre ".") [f1, f2])
+          , foldr1 (\f1 f2 -> InfixApply f1 (pre ".") f2)
               [ applyF (pre "showsPrec") [intc 6, Var x1]
               , applyF (pre "showChar")  [charc ':']
               , applyF (pre "showsPrec") [intc 5, Var x2]
@@ -160,26 +159,29 @@ showConsRule hoResult (FC.Cons qn carity _ _)
 
      -- specific definition to show a tuple constructor
     showTupleCons name = simpleRule [PVar (0,"_"), consPattern name "x" carity]
-      $ applyF (pre ".")
-          [ applyF (pre "showString") [string2ac "("]
-          , foldr (\x xs -> applyF (pre ".") [x,xs])
+      $ InfixApply
+          (applyF (pre "showString") [string2ac "("])
+          (pre ".")
+          (foldr (\f1 f2 -> InfixApply f1 (pre ".") f2)
                   (applyF (pre "showChar") [Lit (Charc ')')])
                   (intersperse (applyF (pre ":") [Lit (Charc ',')])
                       (map (\i->applyF (pre "shows") [mkVar "x" i])
-                        [1..carity]))]
+                        [1..carity])))
 
     showBody name = simpleRule [PVar (0,"_"), consPattern name "x" carity] $
       if carity == 0
       then applyF (pre "showString") [string2ac (unGenRename (snd qn))]
-      else applyF (pre ".")
-                  [applyF (pre "showString")
-                          [string2ac ('(':unGenRename (snd qn))],
-                   foldr (\x xs -> applyF (pre ".")
-                                    [applyF (pre "showChar") [Lit (Charc ' ')],
-                                     applyF (pre ".") [x,xs]])
-                         (applyF (pre "showChar") [Lit (Charc ')')])
-                         (map (\i -> applyF (pre "shows") [mkVar "x" i])
-                              [1..carity])]
+      else InfixApply
+            (applyF (pre "showString") [string2ac ('(':unGenRename (snd qn))])
+            (pre ".")
+            (foldr (\x xs -> InfixApply
+                            (applyF (pre "showChar") [Lit (Charc ' ')])
+                            (pre ".")
+                            (InfixApply x (pre ".") xs)
+                  )
+                  (applyF (pre "showChar") [Lit (Charc ')')])
+                  (map (\i -> applyF (pre "shows") [mkVar "x" i])
+                      [1..carity]))
 
 -- ---------------------------------------------------------------------------
 -- Generate instance of Read class:
@@ -211,9 +213,9 @@ readListRule :: QName -> (QName, Rule)
 readListRule (mn, _) =
   ( pre "readsPrec"
   , Rule [PVar d, PVar s]
-      [noGuard $ applyF (pre "map") [ constF (mn,"readList")
-                                    , applyF (pre "readsPrec") [Var d, Var s]
-                                    ]]
+      (SimpleRhs $ applyF (pre "map") [ constF (mn,"readList")
+                                      , applyF (pre "readsPrec") [Var d, Var s]
+                                      ])
       [LocalFunc (tfunc (mn, "readList") 1 Private
         (tupleType [listType (TVar (0, "a")), stringType] ~>
          tupleType [TCons (mn, "OP_List") [TVar (0, "a")], stringType])
@@ -238,9 +240,9 @@ readTupleRule :: FC.ConsDecl -> (QName, Rule)
 readTupleRule (FC.Cons qn@(mn,_) carity _ _) =
   ( pre "readsPrec"
   , Rule [PVar d, PVar s]
-      [noGuard $ applyF (pre "map") [ constF (mn,"readTuple")
-                                    , applyF (pre "readsPrec") [Var d, Var s]
-                                    ]]
+      (SimpleRhs $ applyF (pre "map") [ constF (mn,"readTuple")
+                                      , applyF (pre "readsPrec") [Var d, Var s]
+                                      ])
       [LocalFunc (tfunc (mn,"readTuple") 1 Private
         (tupleType [tupleType tvars, stringType] ~>
          tupleType [TCons (mn, "OP_Tuple" ++ show carity) tvars, stringType])
@@ -271,7 +273,7 @@ readRule :: [FC.ConsDecl] -> (QName, Rule)
 readRule cdecls =
   ( pre "readsPrec"
   ,  simpleRule [PVar maybeD, PVar (1,"s")]
-       (foldr1 (\e1 e2 -> applyF (pre "++") [e1, e2]) $ map readParen cdecls)
+       (foldr1 (\e1 e2 -> InfixApply e1 (pre "++") e2) $ map readParen cdecls)
   )
   where
     maybeD = if isDNeeded then (0,"d") else (0,"_")
@@ -358,10 +360,10 @@ matchRules qf = map nameRule
     $ applyV f [cd, i, xs]
   , simpleRule (PVar (0,"_") : underscores ++ [mkVarChoicesPattern qf])
     $ applyF (pre "error")
-      [ applyF (pre "++")
-        [ string2ac (showQName (unRenameQName qf) ++ ".match: Choices with ChoiceID ")
-        , applyF (pre "show") [i]
-        ]
+      [ InfixApply
+        (string2ac (showQName (unRenameQName qf) ++ ".match: Choices with ChoiceID "))
+        (pre "++")
+        (applyF (pre "show") [i])
       ]
   , simpleRule (matchAt 3 ++ [mkFailPattern qf])
     $ applyV f [cd,info]
@@ -499,11 +501,11 @@ showConsCatchRule qf
   = ( basics "showCons"
     , simpleRule [PVar x]
       ( applyF (pre "error")
-          [ applyF (pre "++")
-            [ string2ac (showQName (unRenameQName qf) ++ ".showCons: no constructor: ")
-            , applyF (pre "show") [Var x]
-            ]
-          ])
+        [ InfixApply
+          (string2ac (showQName (unRenameQName qf) ++ ".showCons: no constructor: "))
+          (pre "++")
+          (applyF (pre "show") [Var x])
+        ])
     )
   where [x] = newVars ["x"]
 
@@ -533,11 +535,11 @@ searchNFCatchRule qf
   = ( basics "searchNF"
     , simpleRule [PVar us1, PVar us2, PVar x]
       ( applyF (pre "error")
-          [ applyF (pre "++")
-            [ string2ac (showQName (unRenameQName qf) ++ ".searchNF: no constructor: ")
-            , applyF (pre "show") [Var x]
-            ]
-          ])
+        [ InfixApply
+          (string2ac (showQName (unRenameQName qf) ++ ".searchNF: no constructor: "))
+          (pre "++")
+          (applyF (pre "show") [Var x])
+        ])
     )
   where [us1,us2,x] = newVars ["_","_","x"]
 
@@ -555,7 +557,9 @@ unifiableInstance hoResult tdecl = case tdecl of
        , concatMap (unifiableConsRule hoResult (basics "=.<=") (basics "=:<=")) cdecls
        , [newFail (basics "=.<=")]
          -- bind
-       , concatMap (bindConsRule hoResult (basics "bind") (\cov ident arg -> applyF (basics "bind") [cov, ident, arg]) (applyF (pre "concat"))) (zip [0 ..] cdecls)
+       , concatMap (bindConsRule hoResult (basics "bind")
+                      (\cov ident arg -> applyF (basics "bind") [cov, ident, arg])
+                      (applyF (pre "concat"))) (zip [0 ..] cdecls)
        , [ bindChoiceRule   qf (basics "bind")
          , bindFreeRule     qf (basics "bind")
          , bindNarrowedRule qf (basics "bind")
@@ -564,7 +568,8 @@ unifiableInstance hoResult tdecl = case tdecl of
          , bindGuardRule    qf False
          ]
          -- lazy bind (function patterns)
-       , concatMap (bindConsRule hoResult (basics "lazyBind") (\cov ident arg -> applyF (basics ":=:") [ident, applyF (basics "LazyBind") [applyF (basics "lazyBind") [cov, ident, arg]]]) head) (zip [0 ..] cdecls)
+       , concatMap (bindConsRule hoResult (basics "lazyBind")
+                      (\cov ident arg -> InfixApply ident (basics ":=:") (applyF (basics "LazyBind") [applyF (basics "lazyBind") [cov, ident, arg]])) head) (zip [0 ..] cdecls)
        , [ bindChoiceRule   qf (basics "lazyBind")
          , bindFreeRule     qf (basics "lazyBind")
          , bindNarrowedRule qf (basics "lazyBind")
@@ -616,16 +621,15 @@ bindConsRule hoResult funcName bindArgs combine (num, (FC.Cons qn _ _ texps))
     isHoCons = lookupFM hoResult qn == Just ConsHO
     rule name = (funcName,
       simpleRule [PVar (1,"cd"), PVar (2, "i"), PComb name $ map (\i -> PVar (i, 'x':show i)) [3 .. (length texps) + 2] ]
-        ( applyF (pre ":")
-                  [ applyF (basics ":=:")
-                    [ Var (2, "i")
-                    , applyF (basics "ChooseN") [intc num, intc $ length texps]
-                    ]
-                  , combine [list2ac (zipWith3 bindArgs
+        ( InfixApply
+            (InfixApply (Var (2, "i")) (basics ":=:")
+              (applyF (basics "ChooseN") [intc num, intc $ length texps]))
+            (pre ":")
+            (combine [list2ac (zipWith3 bindArgs
                                         (repeat (Var (1, "cd")))
                                         (mkIdList (length texps) (Var (2, "i")))
                     (map (\i -> Var (i, 'x':show i)) [3 ..(length texps) + 2]))]
-                  ]))
+            )))
 
 -- bind i (Choice_TYPENAME j l r) = [ConstraintChoice j (bind i l) (bind i r)]
 -- lazyBind i (Choice_TYPENAME j l r) = [ConstraintChoice j (lazyBind i l) (lazyBind i r)]
@@ -670,11 +674,11 @@ bindChoicesRule qf funcName = (funcName,
   simpleRule
     [ PVar us1, PVar us2, mkVarChoicesPattern qf]
     ( applyF (pre "error")
-      [ applyF (pre "++")
-        [ string2ac (showQName (unRenameQName qf) ++ '.' : snd funcName
-                                  ++ ": Choices with ChoiceID: ")
-        , applyF (pre "show") [Var i]
-        ]
+      [ InfixApply
+        (string2ac (showQName (unRenameQName qf) ++ '.' : snd funcName
+                                  ++ ": Choices with ChoiceID: "))
+        (pre "++")
+        (applyF (pre "show") [Var i])
       ]
     ))
   where [us1,us2,i] = newVars ["_","_","i"]
@@ -692,17 +696,15 @@ bindFailRule qf funcName = (funcName,
 bindGuardRule :: QName -> Bool -> (QName, Rule)
 bindGuardRule qf lazy = (funcName,
   simpleRule [PVar d, PVar i, mkGuardPattern qf]
-    (applyF (pre "++") [applyF (basics "getConstrList") [Var c], bindings]))
+    (InfixApply (applyF (basics "getConstrList") [Var c]) (pre "++") bindings))
   where
     [d,i,c,e] = newVars ["d", "i","c","e"]
     funcName = basics $ if lazy then "lazyBind" else "bind"
     bindings = if lazy
-      then list2ac [applyF (basics ":=:")
-                    [ Var i
-                    , applyF (basics "LazyBind")
-                        [applyF funcName [Var d, Var i, Var e]]
-                    ]
-                  ]
+      then list2ac [InfixApply (Var i) (basics ":=:")
+                     (applyF (basics "LazyBind")
+                        [applyF funcName [Var d, Var i, Var e]])
+                   ]
       else applyF funcName [Var d, Var i, Var e]
 
 -- ---------------------------------------------------------------------------
@@ -890,7 +892,7 @@ catchAllCase qn retVal
   = [(qn, simpleRule [PVar (1,"_"), PVar (2,"_"), PVar (3, "d"), PVar (4,"_")] retVal)]
 
 simpleRule :: [Pattern] -> Expr -> Rule
-simpleRule patterns body = Rule patterns [noGuard body] []
+simpleRule ps e = Rule ps (SimpleRhs e) []
 
 intc :: Int -> Expr
 intc i = Lit $ Intc i
@@ -952,6 +954,9 @@ idType = baseType (basics "ID")
 
 coverType :: TypeExpr
 coverType = baseType (basics "Cover")
+
+consStoreType :: TypeExpr
+consStoreType = baseType (basics "ConstStore")
 
 failInfoType :: TypeExpr
 failInfoType = baseType (basics "FailInfo")

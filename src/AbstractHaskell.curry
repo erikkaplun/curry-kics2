@@ -9,8 +9,8 @@
 --- Haskell programs. It also contains representation of logic variables
 --- which are not part of Haskell.
 ---
---- @author Michael Hanus
---- @version April 2011
+--- @author Michael Hanus, Björn Peemöller
+--- @version May 2015
 ------------------------------------------------------------------------------
 
 module AbstractHaskell where
@@ -145,7 +145,11 @@ data Rules
 --- (left-hand side), a list of guards ("success" if not present in the
 --- source text) with their corresponding right-hand sides, and
 --- a list of local declarations.
-data Rule = Rule [Pattern] [(Expr,Expr)] [LocalDecl]
+data Rule = Rule [Pattern] Rhs [LocalDecl]
+
+data Rhs
+  = SimpleRhs  Expr
+  | GuardedRhs [(Expr, Expr)]
 
 --- Data type for representing local (let/where) declarations
 data LocalDecl
@@ -158,6 +162,7 @@ data Expr
   | Lit        Literal           -- literal (Integer/Float/Char constant)
   | Symbol     QName             -- a defined symbol with module and name
   | Apply      Expr Expr         -- application (e1 e2)
+  | InfixApply Expr QName Expr   -- infix application
   | Lambda     [Pattern] Expr    -- lambda abstraction
   | Let        [LocalDecl] Expr  -- local let declarations
   | DoExpr     [Statement]       -- do expression
@@ -165,6 +170,8 @@ data Expr
   | Case       Expr [BranchExpr] -- case expression
   | Typed      Expr TypeExpr     -- typed expression
   | IfThenElse Expr Expr Expr    -- if-then-else expression
+  | Tuple      [Expr]
+  | List       [Expr]
 
 --- Data type for representing statements in do expressions and
 --- list comprehensions.
@@ -180,7 +187,8 @@ data Pattern
   | PComb QName [Pattern]      -- application (m.c e1 ... en) of n-ary
                                -- constructor m.c (PComb (m,c) [e1,...,en])
   | PAs VarIName Pattern       -- as-pattern (extended Curry)
-  | PFuncComb QName [Pattern]  -- function pattern (extended Curry)
+  | PTuple [Pattern]
+  | PList [Pattern]
 
 --- Data type for representing branches in case expressions.
 data BranchExpr = Branch Pattern Expr

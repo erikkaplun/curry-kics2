@@ -22,7 +22,7 @@ import AnnotatedFlatCurryGoodies (unAnnProg)
 
 import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, typeOf)
-import AbstractHaskellPrinter (showModuleHeader, showDecls)
+import qualified AbstractHaskellPrinter as AHP
 import Analysis               (AnalysisResult, showAnalysisResult, readAnalysisResult)
 import CompilerOpts
 import RCFile
@@ -253,20 +253,23 @@ filterPrelude opts p@(Prog m imps td fd od)
 
 --
 integrateExternals :: Options -> AH.Prog -> FilePath -> IO String
-integrateExternals opts (AH.Prog m imps td fd od) fn = do
+integrateExternals opts (AH.Prog m is td fd od) fn = do
   exts <- lookupExternals opts (dropExtension fn)
   let (pragmas, extimps, extdecls) = splitExternals exts
-  return $ intercalate "\n\n" $ filter notNull
+  return $ intercalate "\n" $ filter notNull
     [ unlines (defaultPragmas ++ pragmas)
-    , showModuleHeader (optTraceFailure opts) m td fd imps
-    , unlines extimps
-    , showDecls (optTraceFailure opts) m od td fd
-    , unlines extdecls
+    , AHP.pPrint (AHP.ppHeader ppOpts m td fd)
+    , "\n" ++ AHP.pPrint (AHP.ppImports ppOpts is)
+    , "\n" ++ unlines extimps
+    , AHP.pPrint (AHP.ppDecls ppOpts od td fd)
+    , "\n" ++ unlines extdecls
     ]
  where
   defaultPragmas = [ "{-# LANGUAGE MagicHash #-}"
                    , "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
                    ]
+  ppOpts = AHP.defaultOptions { AHP.traceFailure  = optTraceFailure opts
+                              , AHP.currentModule = m }
 
 -- lookup an external file for a module and return either the content or an
 -- empty String
@@ -281,8 +284,11 @@ lookupExternals opts fn = do
 -- Split an external file into a pragma String, a list of imports and the rest
 -- TODO: This is a bloody hack
 splitExternals :: String -> ([String], [String], [String])
-splitExternals content = (pragmas, imports, decls)
+splitExternals content = ( dropTrailingSpaces pragmas
+                         , dropTrailingSpaces imports
+                         , decls)
   where
+  dropTrailingSpaces = reverse . dropWhile (all isSpace) . reverse
   (pragmas, rest ) = span isPragma (lines content)
   (imports, decls) = span isImport rest
   isPragma line    = all isSpace line || "{-#"    `isPrefixOf` line

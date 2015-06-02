@@ -109,10 +109,7 @@ commentOf :: FuncDecl -> String
 commentOf (Func cmt _ _ _ _ _) = cmt
 
 simpleRule :: [Pattern] -> Expr -> Rules
-simpleRule ps e = Rules [Rule ps [noGuard e] []]
-
-noGuard :: Expr -> (Expr, Expr)
-noGuard e = (Symbol (pre "success"), e)
+simpleRule ps e = Rules [Rule ps (SimpleRhs e) []]
 
 -- -----------------------------------------------------------------------------
 -- Building expressions
@@ -132,17 +129,11 @@ applyV v es = foldl Apply (Var v) es
 
 --- Constructs a tuple pattern from list of component patterns.
 tuplePat :: [Pattern] -> Pattern
-tuplePat ps | l == 0    = PComb (pre "()") []
-            | l == 1    = head ps
-            | otherwise = PComb (tupleName l) ps
- where l = length ps
+tuplePat ps = PTuple ps
 
 --- Constructs a tuple expression from list of component expressions.
 tupleExpr :: [Expr] -> Expr
-tupleExpr es | l == 0    = constF (pre "()")
-             | l == 1    = head es
-             | otherwise = applyF (tupleName l) es
- where l = length es
+tupleExpr es = Tuple es
 
 --- transform a string constant into AbstractHaskell term
 string2ac :: String -> Expr
@@ -159,8 +150,7 @@ clet :: [LocalDecl] -> Expr -> Expr
 clet locals cexp = if null locals then cexp else Let locals cexp
 
 list2ac :: [Expr] -> Expr
-list2ac []     = applyF (pre "[]") []
-list2ac (c:cs) = applyF (pre ":") [c, list2ac cs]
+list2ac es = List es
 
 declVar :: VarIName -> Expr -> LocalDecl
 declVar v e = LocalPat (PVar v) e []
@@ -209,7 +199,10 @@ renameSymbolInExpr ren exp = case exp of
   Lit _               -> exp
   Symbol qf           -> Symbol (ren qf)
   Apply e1 e2         -> Apply (renameSymbolInExpr ren e1)
-                                 (renameSymbolInExpr ren e2)
+                               (renameSymbolInExpr ren e2)
+  InfixApply e1 op e2 -> InfixApply (renameSymbolInExpr ren e1)
+                                    (ren op)
+                                    (renameSymbolInExpr ren e2)
   Lambda pats e       -> Lambda (map (renameSymbolInPat ren) pats)
                                   (renameSymbolInExpr ren e)
   Let locals e        -> Let (map (renameSymbolInLocal ren) locals)
@@ -221,15 +214,18 @@ renameSymbolInExpr ren exp = case exp of
                                 (map (renameSymbolInBranch ren) branches)
   Typed e ty          -> Typed (renameSymbolInExpr ren e) ty
   IfThenElse e1 e2 e3 -> IfThenElse (renameSymbolInExpr ren e1)
-                                      (renameSymbolInExpr ren e2)
-                                        (renameSymbolInExpr ren e3)
+                                    (renameSymbolInExpr ren e2)
+                                    (renameSymbolInExpr ren e3)
+  Tuple es            -> Tuple (map (renameSymbolInExpr ren) es)
+  List  es            -> List  (map (renameSymbolInExpr ren) es)
 
 renameSymbolInPat :: (QName -> QName) -> Pattern -> Pattern
 renameSymbolInPat ren pat = case pat of
   PComb qf pats    -> PComb (ren qf) (map (renameSymbolInPat ren) pats)
   PAs var apat     -> PAs var (renameSymbolInPat ren apat)
-  PFuncComb f pats -> PFuncComb (ren f) (map (renameSymbolInPat ren) pats)
-  _                 -> pat -- PVar or PLit
+  PTuple ps        -> PTuple (map (renameSymbolInPat ren) ps)
+  PList ps         -> PList (map (renameSymbolInPat ren) ps)
+  _                -> pat -- PVar or PLit
 
 renameSymbolInBranch :: (QName -> QName) -> BranchExpr -> BranchExpr
 renameSymbolInBranch ren (Branch pat e) =
@@ -267,11 +263,15 @@ renameSymbolInRules ren (Rules rs) = Rules (map (renameSymbolInRule ren) rs)
 renameSymbolInRules _   External   = External
 
 renameSymbolInRule :: (QName -> QName) -> Rule -> Rule
-renameSymbolInRule ren (Rule pats crhss locals) =
-  Rule (map (renameSymbolInPat ren) pats)
-        (map (\ (c,rhs)->(renameSymbolInExpr ren c,renameSymbolInExpr ren rhs))
-             crhss)
-        (map (renameSymbolInLocal ren) locals)
+renameSymbolInRule ren (Rule ps rhs ds) =
+  Rule (map (renameSymbolInPat ren) ps)
+       (renameSymbolInRhs ren rhs)
+       (map (renameSymbolInLocal ren) ds)
+
+renameSymbolInRhs :: (QName -> QName) -> Rhs -> Rhs
+renameSymbolInRhs ren (SimpleRhs   e) = SimpleRhs (renameSymbolInExpr ren e)
+renameSymbolInRhs ren (GuardedRhs gs) = GuardedRhs $
+  map (\ (c, e) -> (renameSymbolInExpr ren c, renameSymbolInExpr ren e)) gs
 
 renameOpDecl :: (QName -> QName) -> OpDecl -> OpDecl
 renameOpDecl ren (Op qf fix prio) = Op (ren qf) fix prio
