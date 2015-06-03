@@ -26,6 +26,7 @@ Changes to version 0.3.3:
   * Library `Either` extended with functions `fromLeft` and `fromRight`
   * Library `ShowS` added
   * Library `AnsiCodes` added
+  * Prelude operation `===` added
 
 
 Release notes for KiCS2 Version 0.3.3
