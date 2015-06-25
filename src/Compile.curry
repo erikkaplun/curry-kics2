@@ -156,16 +156,16 @@ compileModule progs total state ((mid, (fn, fcy)), current) = do
   let pElim = eliminateCond pLifted
   dump DumpEliminated opts elimName (show pElim)
 
-  showDetail opts "Extending imports"
-  let pExtImports = fixMissingImports pElim
-  dump DumpExtImports opts extImportsName (show pExtImports)
-
   showDetail opts "Default locally polymorphic sub-expressions"
-  let pDefaulted = defaultPolymorphic pExtImports
+  let pDefaulted = defaultPolymorphic pElim
   dump DumpDefaulted opts defaultedName (show pDefaulted)
 
+  showDetail opts "Extending imports"
+  let pExtImports = fixMissingImports pDefaulted
+  dump DumpExtImports opts extImportsName (show pExtImports)
+
   showDetail opts "Renaming symbols"
-  let renamed@(Prog _ _ ts _ _)  = rename (unAnnProg pDefaulted)
+  let renamed@(Prog _ _ ts _ _)  = rename (unAnnProg pExtImports)
   dump DumpRenamed opts renamedName (show renamed)
 
   showDetail opts "Transforming functions"
