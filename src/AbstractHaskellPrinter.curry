@@ -5,7 +5,7 @@
 --- an AbstractHaskell program in standard Haskell syntax.
 ---
 --- @author Björn Peemöller
---- @version May 2015
+--- @version July 2015
 ------------------------------------------------------------------------------
 module AbstractHaskellPrinter
   ( Options (..), defaultOptions, pPrint, ppProg, ppHeader, ppImports
@@ -46,7 +46,7 @@ ppProg opts (Prog m is ts fs os) = compose ($+$)
 ppHeader :: Options -> String -> [TypeDecl] -> [FuncDecl] -> Doc
 ppHeader opts m ts fs = indent $ sep
   [ text "module" <+> text (if traceFailure opts then addTrace m else m)
-  , ppExports ts fs
+  , ppExports opts ts fs
   , text "where"
   ]
 
@@ -73,22 +73,22 @@ ppDecls opts os ts fs = compose ($+$)
 --- This should be no problem since imported entities are always used fully
 --- qualified after the translation process.
 --- (bjp, jrt 2015-03-04)
-ppExports :: [TypeDecl] -> [FuncDecl] -> Doc
-ppExports ts fs = tupledSpaced $ filter (not . isEmpty)
-                $ map ppTypeExport ts ++ map ppFuncExport fs
+ppExports :: Options -> [TypeDecl] -> [FuncDecl] -> Doc
+ppExports opts ts fs = tupledSpaced $ filter (not . isEmpty)
+                     $ map ppTypeExport ts ++ map ppFuncExport fs
  where
   ppTypeExport :: TypeDecl -> Doc
-  ppTypeExport (Type     (_, name) vis _ _)
-    | vis == Public = text name <+> text "(..)"
+  ppTypeExport (Type     qn vis _ _)
+    | vis == Public = ppQName opts qn <+> text "(..)"
     | otherwise     = empty
-  ppTypeExport (TypeSyn  (_, name) vis _ _)
-    | vis == Public = text name
+  ppTypeExport (TypeSyn  qn vis _ _)
+    | vis == Public = ppQName opts qn
     | otherwise     = empty
-  ppTypeExport (Instance _         _   _ _) = empty
+  ppTypeExport (Instance _  _   _ _) = empty
 
   ppFuncExport :: FuncDecl -> Doc
-  ppFuncExport (Func _ (_,name) _ vis _ _)
-    | vis == Public = ppPrefixOp name
+  ppFuncExport (Func _ qn _ vis _ _)
+    | vis == Public = ppPrefixQOp opts qn
     | otherwise     = empty
 
 -- ---------------------------------------------------------------------------
@@ -258,8 +258,8 @@ ppExpr opts _ (ListComp       e qs) = brackets $
 ppExpr opts p (Case           e bs) = parensIf (p > 0)
   (text "case" <+> ppExpr opts 0 e <+> text "of"
   $$ align (vsep (map (ppBranchExpr opts) bs)))
-ppExpr opts p (Typed          e ty)
-  = parensIf (p > 0) (ppExpr opts 0 e <+> text "::" <+> ppTypeExp opts ty)
+ppExpr opts p (Typed          e ty) = parensIf (p > 0) $
+  ppExpr opts 0 e <+> text "::" <+> ppTypeExp opts ty
 ppExpr opts p (IfThenElse    c t e) = parensIf (p > 0) $
   text "if" <+> fillSep [ ppExpr opts 0 c
                         , text "then" <+> ppExpr opts 0 t
@@ -304,10 +304,10 @@ ppLiteral (Charc   c) = text  (show c)
 ppLiteral (Stringc s) = text  (show s)
 
 ppPrefixOp :: String -> Doc
-ppPrefixOp op = parensIf (isInfixOpName op) (text op)
+ppPrefixOp op = parensIf (isInfixOpName op) (ppName op)
 
 ppInfixOp :: String -> Doc
-ppInfixOp op = if isInfixOpName op then text op else bquotes (text op)
+ppInfixOp op = if isInfixOpName op then ppName op else bquotes (ppName op)
 
 ppPrefixQOp :: Options -> QName -> Doc
 ppPrefixQOp opts op = parensIf (isInfixOpName (snd op)) (ppQName opts op)
@@ -315,6 +315,9 @@ ppPrefixQOp opts op = parensIf (isInfixOpName (snd op)) (ppQName opts op)
 ppInfixQOp :: Options -> QName -> Doc
 ppInfixQOp opts op = if isInfixOpName (snd op) then ppQName opts op
                                                else bquotes (ppQName opts op)
+
+ppName :: String -> Doc
+ppName n = text n
 
 ppQName :: Options -> QName -> Doc
 ppQName opts (modName, symName)
