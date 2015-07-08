@@ -130,12 +130,12 @@ ppTypeDecls opts = compose ($+$) . map (ppTypeDecl opts)
 --- pretty-print an AbstractHaskell type declaration
 ppTypeDecl :: Options -> TypeDecl -> Doc
 ppTypeDecl opts (TypeSyn qname _ vs ty) = indent $
-   text "type" <+> ppQName opts qname <> fillSep (empty : map ppTypeVar vs)
+   text "type" <+> ppName qname <> fillSep (empty : map ppTypeVar vs)
                </> equals <+> ppTypeExp opts ty
-ppTypeDecl opts (Type qname _ vs cs)
+ppTypeDecl opts (Type    qname _ vs cs)
   | null cs   = empty
   | otherwise = indent $
-    (text "data" <+> ppQName opts qname <> fillSep (empty : map ppTypeVar vs))
+    (text "data" <+> ppName qname <> fillSep (empty : map ppTypeVar vs))
     $$ ppConsDecls opts cs
 ppTypeDecl opts (Instance qname ty ctxts rs) = indent $
   text "instance" <> ppContexts opts ctxts
@@ -304,10 +304,10 @@ ppLiteral (Charc   c) = text  (show c)
 ppLiteral (Stringc s) = text  (show s)
 
 ppPrefixOp :: String -> Doc
-ppPrefixOp op = parensIf (isInfixOpName op) (ppName op)
+ppPrefixOp op = parensIf (isInfixOpName op) (text op)
 
 ppInfixOp :: String -> Doc
-ppInfixOp op = if isInfixOpName op then ppName op else bquotes (ppName op)
+ppInfixOp op = if isInfixOpName op then text op else bquotes (text op)
 
 ppPrefixQOp :: Options -> QName -> Doc
 ppPrefixQOp opts op = parensIf (isInfixOpName (snd op)) (ppQName opts op)
@@ -316,8 +316,8 @@ ppInfixQOp :: Options -> QName -> Doc
 ppInfixQOp opts op = if isInfixOpName (snd op) then ppQName opts op
                                                else bquotes (ppQName opts op)
 
-ppName :: String -> Doc
-ppName n = text n
+ppName :: QName -> Doc
+ppName (_, n) = text n
 
 ppQName :: Options -> QName -> Doc
 ppQName opts (modName, symName)
