@@ -20,6 +20,7 @@ import FilePath      ((</>), dropExtension)
 import IO            (Handle, hFlush, hGetContents, hClose, stdout)
 import IOExts        (execCmd)
 import List          (intercalate, isInfixOf)
+import Maybe         (isNothing)
 import PropertyFile
 import ReadShowTerm  (readQTermFile)
 import System
@@ -241,10 +242,12 @@ mainModule rst isdet isio isTF mbBindings = unlines
   , if interactive rst then "import MonadList" else ""
   , "import Basics"
   , "import SafeExec"
-  , if mbBindings==Nothing
+  , if isNothing mbBindings
     then ""
-    else ("import Curry_"++ preludeName rst)
-  , if (traceFailure rst)
+    else if traceFailure rst
+          then "import Curry_Trace_" ++ preludeName rst
+          else "import Curry_"++ preludeName rst
+  , if traceFailure rst
       then "import Curry_Trace_" ++ dropExtension mainGoalFile
       else "import Curry_" ++ dropExtension mainGoalFile
   , ""
