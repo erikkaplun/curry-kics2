@@ -21,6 +21,9 @@ Changes to version 0.3.3:
     - simplified representation of function rules
     - String literals added
 
+  * Library `Pretty`: code and interface updated, e.g., some combinators
+    renamed and new combinators added (e.g., to support ANSI formatting
+    and colorisation of documents)
   * Library `FunctionInversion` added
   * Library `AnnotatedFlatCurryPretty` added
   * Library `Either` extended with functions `fromLeft` and `fromRight`
