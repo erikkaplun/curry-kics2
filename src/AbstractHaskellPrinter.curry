@@ -36,7 +36,7 @@ pPrint = pretty 80
 --- The potential comments in function declarations are formatted as
 --- documentation comments.
 ppProg :: Options ->  Prog -> Doc
-ppProg opts (Prog m is ts fs os) = compose ($+$)
+ppProg opts (Prog m is ts fs os) = compose (<$+$>)
   [ ppHeader  opts' m ts fs
   , ppImports opts' is
   , ppDecls   opts' os ts fs
@@ -51,7 +51,7 @@ ppHeader opts m ts fs = indent $ sep
   ]
 
 ppDecls :: Options -> [OpDecl] -> [TypeDecl] -> [FuncDecl] -> Doc
-ppDecls opts os ts fs = compose ($+$)
+ppDecls opts os ts fs = compose (<$+$>)
   [ ppOpDecls        os
   , ppTypeDecls opts ts
   , ppFuncDecls opts fs
@@ -125,7 +125,7 @@ ppFixity InfixrOp = text "infixr"
 
 --- pretty-print a list of AbstractHaskell type declarations
 ppTypeDecls :: Options -> [TypeDecl] -> Doc
-ppTypeDecls opts = compose ($+$) . map (ppTypeDecl opts)
+ppTypeDecls opts = compose (<$+$>) . map (ppTypeDecl opts)
 
 --- pretty-print an AbstractHaskell type declaration
 ppTypeDecl :: Options -> TypeDecl -> Doc
@@ -169,7 +169,7 @@ ppTypeExp o = ppTypeExpr o 0
 ppTypeExpr :: Options -> Int -> TypeExpr -> Doc
 ppTypeExpr _ _ (TVar         v)  = ppTypeVar v
 ppTypeExpr o p (FuncType t1 t2)  = parensIf (p > 0) $
-  ppTypeExpr o 1 t1 </> arrow <+> ppTypeExp o t2
+  ppTypeExpr o 1 t1 </> rarrow <+> ppTypeExp o t2
 ppTypeExpr o p (TCons   qn tys)
   | isList qn && length tys == 1 = brackets (ppTypeExp o (head tys))
   | isTuple qn                   = tupled (map (ppTypeExp o) tys)
@@ -188,7 +188,7 @@ ppFunc :: FuncDecl -> Doc
 ppFunc = ppFuncDecl defaultOptions
 
 ppFuncDecls :: Options -> [FuncDecl] -> Doc
-ppFuncDecls opts = compose ($+$) . map (ppFuncDecl opts)
+ppFuncDecls opts = compose (<$+$>) . map (ppFuncDecl opts)
 
 ppFuncDecl :: Options -> FuncDecl -> Doc
 ppFuncDecl opts (Func cmt (_,name) _ _ ty (Rules rs))
@@ -246,7 +246,7 @@ ppExpr opts p (Apply         e1 e2) = parensIf (p > 1) $
 ppExpr opts p (InfixApply e1 op e2) = parensIf (p > 0) $
   fillSep [ppExpr opts 1 e1 <+> ppInfixQOp opts op, ppExpr opts 1 e2]
 ppExpr opts p (Lambda         ps e) = parensIf (p > 0) $
-  fillSep [ char '\\' <> hsep (map (ppPattern opts 1) ps) <+> arrow
+  fillSep [ char '\\' <> hsep (map (ppPattern opts 1) ps) <+> rarrow
           , ppExpr opts 0 e
           ]
 ppExpr opts p (Let            ds e) = parensIf (p > 0) $
@@ -295,7 +295,7 @@ ppLitPattern opts l = case l of
 
 ppBranchExpr :: Options -> BranchExpr -> Doc
 ppBranchExpr opts (Branch p e) = indent $
-  ppPattern opts 0 p <+> arrow <+> ppExpr opts 0 e
+  ppPattern opts 0 p <+> rarrow <+> ppExpr opts 0 e
 
 ppLiteral :: Literal -> Doc
 ppLiteral (Intc    i) = int   i
