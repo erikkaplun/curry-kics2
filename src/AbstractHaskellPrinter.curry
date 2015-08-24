@@ -156,7 +156,7 @@ ppConsDecl o (Cons (_, qn) _ _ tys) = indent $ fillSep
 ppContexts :: Options -> [Context] -> Doc
 ppContexts opts cs
   | null cs   = empty
-  | otherwise = space <> tupled (map (ppContext opts) cs) <+> text "=>"
+  | otherwise = tupled (map (ppContext opts) cs) <+> text "=>"
 
 ppContext :: Options -> Context -> Doc
 ppContext opts (Context qn tvs) = ppTypeExp opts (TCons qn (map TVar tvs))
