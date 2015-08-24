@@ -130,15 +130,15 @@ ppTypeDecls opts = compose (<$+$>) . map (ppTypeDecl opts)
 --- pretty-print an AbstractHaskell type declaration
 ppTypeDecl :: Options -> TypeDecl -> Doc
 ppTypeDecl opts (TypeSyn qname _ vs ty) = indent $
-   text "type" <+> ppName qname <> fillSep (empty : map ppTypeVar vs)
+   text "type" <+> ppName qname <+> fillSep (map ppTypeVar vs)
                </> equals <+> ppTypeExp opts ty
 ppTypeDecl opts (Type    qname _ vs cs)
   | null cs   = empty
   | otherwise = indent $
-    (text "data" <+> ppName qname <> fillSep (empty : map ppTypeVar vs))
+    (text "data" <+> ppName qname <+> fillSep (map ppTypeVar vs))
     $$ ppConsDecls opts cs
 ppTypeDecl opts (Instance qname ty ctxts rs) = indent $
-  text "instance" <> ppContexts opts ctxts
+  text "instance" <+> ppContexts opts ctxts
     <+> ppQName opts qname <+> ppTypeExpr opts 2 ty
     <+> (text "where" $$ vsep (map ppInstRule rs))
  where ppInstRule ((_, f), r) = ppRule opts f  r
