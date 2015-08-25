@@ -51,19 +51,18 @@ deps :: Options -> ModuleIdent -> FilePath
      -> IO ([(ModuleIdent, Source)], Errors)
 deps opts mn fn = do
   mEnv <- sourceDeps opts mn fn (emptyFM (<))
-  fcyvalid <- isFlatCurryValid mn fn
   let (mods1, errs1) = filterMissing mEnv -- handle missing modules
       (mods2, errs2) = flattenDeps mods1  -- check for cyclic imports
                                           -- and sort topologically
-      errs3 | fcyvalid  = []
-            | otherwise = ["Compilation aborted"]
+  errs3 <- checkFlatCurry mn fn
   return (mods2, concat [errs1, errs2, errs3])
 
 -- Has the given program name a valid FlatCurry file?
 -- Used to check the result of the front end.
-isFlatCurryValid :: ModuleIdent -> String -> IO Bool
-isFlatCurryValid mname fname
-  | isFlatCurryFile fname = return True
+-- Used to check the result of the front end compilation process.
+checkFlatCurry :: ModuleIdent -> String -> IO Errors
+checkFlatCurry mname fname
+  | isFlatCurryFile fname = return []
   | otherwise             = do
     let fcyname = flatCurryFileName mname
     existcy  <- doesFileExist fname
@@ -71,8 +70,11 @@ isFlatCurryValid mname fname
     if existcy && existfcy
       then do cymtime  <- getModificationTime fname
               fcymtime <- getModificationTime fcyname
-              return (fcymtime >= cymtime)
-      else return False
+              return [ "FlatCurry file " ++ fcyname ++
+                       " is older than Curry file " ++ fname
+                     | fcymtime < cymtime ]
+      else return $    [ "Missing Curry file "     ++ fname   | not existcy  ]
+                    ++ [ "Missing FlatCurry file " ++ fcyname | not existfcy ]
 
 moduleDeps :: Options -> SourceEnv -> ModuleIdent -> IO SourceEnv
 moduleDeps opts mEnv m = case lookupFM mEnv m of
