@@ -11,7 +11,7 @@ module ModuleDeps (ModuleIdent, Source, Errors, deps) where
 
 import Directory    (doesFileExist, getModificationTime)
 import Distribution (defaultParams, setFullPath, setQuiet, setSpecials
-                    , stripCurrySuffix
+                    , stripCurrySuffix, inCurrySubdirModule
                     , FrontendTarget(..), FrontendParams, callFrontendWithParams
                     , installDir
                     )
@@ -58,13 +58,12 @@ deps opts mn fn = do
   return (mods2, concat [errs1, errs2, errs3])
 
 -- Has the given program name a valid FlatCurry file?
--- Used to check the result of the front end.
 -- Used to check the result of the front end compilation process.
 checkFlatCurry :: ModuleIdent -> String -> IO Errors
 checkFlatCurry mname fname
   | isFlatCurryFile fname = return []
   | otherwise             = do
-    let fcyname = flatCurryFileName mname
+    let fcyname = stripCurrySuffix (inCurrySubdirModule mname fname) <.> "fcy"
     existcy  <- doesFileExist fname
     existfcy <- doesFileExist fcyname
     if existcy && existfcy
