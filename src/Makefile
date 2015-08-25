@@ -43,7 +43,15 @@ bootstrap:
 
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
+ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)	
 	${MAKE} CompileBoot
+else
+	# Compile in several steps to avoid memory overflow with PAKCS:
+	${MAKE} $(SUBDIR)/Curry_ModuleDeps.hs
+	${MAKE} $(SUBDIR)/Curry_TransTypes.hs
+	${MAKE} $(SUBDIR)/Curry_TransFunctions.hs
+	${MAKE} CompileBoot
+endif
 	cp ${COMP} ${LOCALBIN}/stage2
 	$(CLEANCURRY) -r
 
