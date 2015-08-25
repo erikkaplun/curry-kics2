@@ -11,7 +11,7 @@ import IO (hFlush, hPutStrLn, stderr, stdout)
 import CompilerOpts
 
 putErrLn :: String -> IO ()
-putErrLn msg = hPutStrLn stderr msg >> hFlush stderr
+putErrLn msg = hPutStrLn stderr ("Compilation Error: " ++ msg) >> hFlush stderr
 
 showStatus :: Options -> String -> IO ()
 showStatus opts msg = showLevel VerbStatus opts msg
