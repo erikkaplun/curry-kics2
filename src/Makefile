@@ -15,7 +15,7 @@ GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR)
 # Call to ghc binary
 GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_OPTS2) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
-KICS2C     = $(COMP) -v1 --parse-options=-Wall -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
+KICS2C     = $(COMP) -v2 --parse-options=-Wall -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
 # options for the bootstrapping compiler
 CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
 
@@ -43,7 +43,7 @@ bootstrap:
 
 	# Create kics2 via kics2 (stage 2)
 	@echo "Compiling stage 2"
-ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)	
+ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
 	${MAKE} CompileBoot
 else
 	# Compile in several steps to avoid memory overflow with PAKCS:
@@ -82,12 +82,12 @@ cleanall: clean
 CompileInitial: Compile.curry
 	mkdir -p $(LOCALBIN)
 ifeq ($(shell test -x "$(KICS2)" ; echo $$?),0)
-	$(KICS2) $(CURRY_OPTS) :set parser -Wall :set v2 :l Compile :save :quit
+	$(KICS2) $(CURRY_OPTS) :set parser -Wall :set v2 :load Compile :save :quit
 	mv Compile $(COMP)
 else
 	mv $(INSTALLCURRY) $(INSTALLCURRY).bak
 	cp $(INSTALLHS) $(INSTALLCURRY)
-	pakcs $(CURRY_OPTS) :l Compile :save :quit || (mv $(INSTALLCURRY).bak $(INSTALLCURRY) ; exit 1)
+	pakcs $(CURRY_OPTS) :load Compile :save :quit || (mv $(INSTALLCURRY).bak $(INSTALLCURRY) ; exit 1)
 	mv $(INSTALLCURRY).bak $(INSTALLCURRY)
 	mv Compile $(COMP)
 endif
