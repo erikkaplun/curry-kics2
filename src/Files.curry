@@ -65,7 +65,7 @@ removeFileIfExists file = do
   exists <- doesFileExist file
   when exists $ removeFile file
 
---- `dir </?> subdir` appends the only the path components of `subdir` to `dir`
+--- `dir </?> subdir` appends only the path components of `subdir` to `dir`
 --- which are not already the suffix if `dir`. Examples:
 ---
 --- `"debug"              </?> ".curry/kics2"` -> "debug/.curry/kics2"

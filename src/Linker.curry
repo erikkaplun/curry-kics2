@@ -4,7 +4,7 @@
 --- and compiling this main file together with all compiled Curry modules.
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version January 2014
+--- @version August 2015
 --- --------------------------------------------------------------------------
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
@@ -16,7 +16,7 @@ module Linker
 
 import AbstractCurry
 import Directory
-import FilePath      ((</>), dropExtension)
+import FilePath      ((</>), dropExtension, searchPathSeparator)
 import IO            (Handle, hFlush, hGetContents, hClose, stdout)
 import IOExts        (execCmd)
 import List          (intercalate, isInfixOf)
@@ -210,7 +210,7 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
       -- XRelaxedPolyRec due to problem in FlatCurryShow
   , "-XMultiParamTypeClasses", "-XFlexibleInstances", "-XRelaxedPolyRec"
   , ghcOpts rst
-  , "-i" ++ (intercalate ":" ghcImports)
+  , "-i" ++ (intercalate [searchPathSeparator] ghcImports)
   , mainFile
   ]
  where

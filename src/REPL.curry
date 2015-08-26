@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version April 2015
+--- @version August 2015
 --- --------------------------------------------------------------------------
 module REPL where
 
@@ -13,7 +13,7 @@ import Directory
 import Distribution
 import FilePath         ( (</>), (<.>)
                         , splitSearchPath, splitFileName, splitExtension
-                        )
+                        , searchPathSeparator)
 import Files            (lookupFileInPath)
 import FlatCurry        (flatCurryFileName, readFlatCurryFile)
 import FlatCurryGoodies (progImports)
@@ -946,12 +946,24 @@ showFunctionInModule rst mod fun = do
     if m==md then (m,(fn,h)):sguis
             else (m,(f,h)) : updateFun sguis md fn
 
+-- Call a tool of the KiCS2 distribution (first argument) with some
+-- arguments (second argument). The root dir of KiCS2 is prepended
+-- and it is checked whether this tool exists. Furthermore,
+-- the current import path is exported to the tool via the environment
+-- variable CURRYPATH (if it is not empty).
 callTool :: ReplState -> String -> String -> IO (Maybe ReplState)
 callTool rst cmd args = do
   let path = kics2Home rst </> cmd
+      setpath = if null (importPaths rst)
+                then ""
+		else "CURRYPATH=" ++
+		     intercalate [searchPathSeparator]  (importPaths rst) ++
+		     " && export CURRYPATH && "
+      syscmd = setpath ++ path ++ ' ' : args
   exists <- doesFileExist path
   if exists
-    then system (path ++ ' ' : args) >> return (Just rst)
+    then do writeVerboseInfo rst 2 $ "Executing: " ++ syscmd
+            system syscmd >> return (Just rst)
     else errorMissingTool cmd
 
 errorMissingTool :: String -> IO (Maybe ReplState)
