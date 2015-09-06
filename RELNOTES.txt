@@ -1,6 +1,31 @@
 Release Notes for KiCS2
 =======================
 
+Release notes for KiCS2 Version 0.4.1
+-------------------------------------
+
+Changes to version 0.4.0:
+
+  * Hierarchical libraries for AbstractCurry added and extended:
+    in order to to compatible with future versions, the following
+    imports should be adapted in programs working with AbstractCurry:
+
+    - replace `import AbstractCurry` by
+
+          import AbstractCurry.Types
+          import AbstractCurry.Files
+
+    - replace `import AbstractCurryGoodies` by
+
+          import AbstractCurry.Select
+          import AbstractCurry.Build
+
+    - replace `import PrettyAbstract` by
+
+          import AbstractCurry.Pretty
+
+
+
 Release notes for KiCS2 Version 0.4.0
 -------------------------------------
 
