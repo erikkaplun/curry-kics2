@@ -9,8 +9,8 @@
 --- --------------------------------------------------------------------------
 module Utils(showMonoTypeExpr, notNull, strip, lpad, rpad) where
 
-import AbstractCurry
-import AbstractCurryGoodies (isFunctionalType, pre)
+import AbstractCurry.Types
+import AbstractCurry.Select (isFunctionalType)
 import List                 (intercalate)
 import Char                 (isSpace)
 

@@ -14,7 +14,6 @@ module Linker
   , getTimeCmd
   ) where
 
-import AbstractCurry
 import Directory
 import FilePath      ((</>), dropExtension, searchPathSeparator)
 import IO            (Handle, hFlush, hGetContents, hClose, stdout)

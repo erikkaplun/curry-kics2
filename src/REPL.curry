@@ -7,7 +7,9 @@
 --- --------------------------------------------------------------------------
 module REPL where
 
-import AbstractCurry
+import AbstractCurry.Types
+import AbstractCurry.Files
+import AbstractCurry.Select
 import Char             (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
 import Directory
 import Distribution
@@ -26,7 +28,6 @@ import Sort             (mergeSort)
 import System           (system, getArgs, getEnviron, getPID, exitWith)
 import Time
 
-import AbstractCurryGoodies
 import Files                (removeFileIfExists)
 import GhciComm             (stopGhciComm)
 import qualified Installation as Inst
