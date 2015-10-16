@@ -89,13 +89,13 @@ instance NormalForm BinInt where
 
 instance Unifiable BinInt where
   (=.=) (Neg x1) (Neg y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) Zero Zero _ _ = C_Success
+  (=.=) Zero Zero _ _ = C_True
   (=.=) (Pos x1) (Pos y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
   (=.<=) (Neg x1) (Neg y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) Zero Zero _ _ = C_Success
+  (=.<=) Zero Zero _ _ = C_True
   (=.<=) (Pos x1) (Pos y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) _ _ cd _= Fail_C_Success cd  defFailInfo
+  (=.<=) _ _ cd _= Fail_C_Bool cd  defFailInfo
   bind cd i (Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind cd (leftID i) x2)]))
   bind _  i Zero = ((i :=: (ChooseN 1 0)):(concat []))
   bind cd i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
@@ -203,14 +203,14 @@ instance NormalForm Nat where
 
 
 instance Unifiable Nat where
-  (=.=) IHi IHi _ _ = C_Success
+  (=.=) IHi IHi _ _ = C_True
   (=.=) (O x1) (O y1) cd cs = (x1 =:= y1) cd cs
   (=.=) (I x1) (I y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  (=.<=) IHi IHi _ _ = C_Success
+  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
+  (=.<=) IHi IHi _ _ = C_True
   (=.<=) (O x1) (O y1) cd cs = (x1 =:<= y1) cd cs
   (=.<=) (I x1) (I y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Bool cd defFailInfo
   bind _  i IHi = ((i :=: (ChooseN 0 0)):(concat []))
   bind cd i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind cd (leftID i) x2)]))
   bind cd i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
@@ -284,8 +284,8 @@ instance (NormalForm t0,NormalForm t1) => NormalForm (Func t0 t1) where
   searchNF _ _ x = internalError ("Prelude.Func.searchNF: no constructor: " ++ (show x))
 
 instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Bool cd defFailInfo
   bind _  _ (Func _) = internalError "can not bind a Func"
   bind cd i (Choice_Func d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
   bind cd i (Choices_Func d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
@@ -354,8 +354,8 @@ instance (NormalForm t0) => NormalForm (C_IO t0) where
   searchNF _ _ x = internalError ("Prelude.IO.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable t0 => Unifiable (C_IO t0) where
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Bool cd defFailInfo
   bind _  _(C_IO _) = internalError "can not bind IO"
   bind _  _(HO_C_IO _) = internalError "can not bind IO"
   bind cd i (Choice_C_IO d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
@@ -435,8 +435,8 @@ instance NormalForm (PrimData a) where
   searchNF _ _ x = internalError ("Prelude.PrimData.searchNF: no constructor: " ++ (show x))
 
 instance Unifiable (PrimData t0) where
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  (=.<=) _ _ cd _ = Fail_C_Success cd  defFailInfo
+  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
+  (=.<=) _ _ cd _ = Fail_C_Bool cd  defFailInfo
   bind _  _ (PrimData _) = internalError "can not bind PrimData"
   bind cd i (Choice_PrimData d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
   bind cd i (Choices_PrimData d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs

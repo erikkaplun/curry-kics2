@@ -176,17 +176,17 @@ matchNat rules value cd cs = case value of
   Fail_Nat    d  info -> failCons   d info
   Guard_Nat   d c nat -> guardCons  d c $ matchNat rules nat cd $! addCs c cs
 
-(&) :: C_Success -> C_Success -> Cover -> ConstStore -> C_Success
+(&) :: C_Bool -> C_Bool -> Cover -> ConstStore -> C_Bool
 (&) s1 s2 _ cs = amp s1 s2 cs
   where
-   amp C_Success                   s _   = s
-   amp x@(Fail_C_Success _ _)      _ _   = x
-   amp (Guard_C_Success cd c e)    s cs' =
-         Guard_C_Success   cd c (amp e s $! addCs c cs')
-   amp (Choice_C_Success cd i a b) s cs' =
-         Choice_C_Success  cd i (amp a s cs') (amp b s cs')
-   amp (Choices_C_Success cd i xs) s cs' =
-         Choices_C_Success cd (narrowID i) (map (\x -> amp x s cs') xs)
+   amp C_True                   s _   = s
+   amp x@(Fail_C_Bool _ _)      _ _   = x
+   amp (Guard_C_Bool cd c e)    s cs' =
+         Guard_C_Bool   cd c (amp e s $! addCs c cs')
+   amp (Choice_C_Bool cd i a b) s cs' =
+         Choice_C_Bool  cd i (amp a s cs') (amp b s cs')
+   amp (Choices_C_Bool cd i xs) s cs' =
+         Choices_C_Bool cd (narrowID i) (map (\x -> amp x s cs') xs)
 
 {- interleaved (&) from Bernd
 (&) :: C_Success -> C_Success -> C_Success

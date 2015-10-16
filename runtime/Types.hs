@@ -205,24 +205,24 @@ class NonDet a => Generable a where
 -- Class for data that supports unification
 class (NormalForm a) => Unifiable a where
   -- |Unification on constructor-rooted terms
-  (=.=)    :: a -> a -> Cover -> ConstStore -> C_Success
+  (=.=)    :: a -> a -> Cover -> ConstStore -> C_Bool
   -- |Lazy unification on constructor-rooted terms,
   --  used for functional patterns
-  (=.<=)   :: a -> a -> Cover -> ConstStore -> C_Success
+  (=.<=)   :: a -> a -> Cover -> ConstStore -> C_Bool
   -- |Bind a free variable to a value
   bind     :: Cover -> ID -> a -> [Constraint]
   -- |Lazily bind a free variable to a value
   lazyBind :: Cover -> ID -> a -> [Constraint]
 
 -- |Unification on general terms
-(=:=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+(=:=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 #ifdef TRY
 (=:=) = unifyTry
 #else
 (=:=) = unifyMatch
 #endif
 
-unifyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+unifyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
   uniChoice d i x1 x2 = checkFail (choiceCons d i ((x1 =:= y) cd cs) ((x2 =:= y) cd cs)) y
@@ -238,7 +238,7 @@ unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uni
       bindFree     cdj j ys    = lookupCs cs j (bindTo cs') $
                if cdj < cd
                then unifyMatch x (narrows cs cdj j id ys) cd cs
-               else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_Success
+               else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_True
       bindGuard cdj c    = guardCons cdj c . (bindTo $! c `addCs` cs')
       bindVal v          = bindToVal i v cd cs'
 
@@ -257,7 +257,7 @@ unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uni
   checkFail e = match (\_ _ _ _ -> e) const3 const3 failCons const3 (const e)
     where const3 _ _ _ = e
 
-unifyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+unifyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HNF hx, hy
   where
   -- failure
@@ -284,7 +284,7 @@ unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HN
                     then unify (try (narrows cs cdi i id xs)) hy cs
                     else (if cdj < cd
                            then unify hx (try (narrows cs cdj j id nfy)) cs
-                           else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_Success)))
+                           else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_True)))
   -- one free variable and one value
   unify (Free cdi i xs) hy@(Val y) cs = lookupCs cs i
     (\x -> unify (try x) hy cs)
@@ -296,27 +296,27 @@ unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HN
     (if cdj < cd then unify hx (try (narrows cs cdj j id ys)) cs
                  else bindToVal j x cd cs)
 
-bindToVal :: Unifiable a => ID -> a -> Cover -> ConstStore -> C_Success
+bindToVal :: Unifiable a => ID -> a -> Cover -> ConstStore -> C_Bool
 #ifdef STRICT_VAL_BIND
 bindToVal i v cd cs = ((\w _ -> constrain cd i w) $!! v) cs
 #else
 bindToVal i v cd _ =           constrain cd i v
 #endif
 
-constrain :: Unifiable a => Cover -> ID -> a -> C_Success
-constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_Success
+constrain :: Unifiable a => Cover -> ID -> a -> C_Bool
+constrain cd i v = guardCons cd (ValConstr i v (bind cd i v)) C_True
 
   -- TODO2: Occurs check?
 
 -- Lazy unification on general terms, used for function patterns
-(=:<=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+(=:<=) :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 #ifdef TRY
 (=:<=) = lazyTry
 #else
 (=:<=) = lazyMatch
 #endif
 
-lazyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+lazyMatch :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniVal x
   where
   -- binary choice
@@ -329,7 +329,7 @@ lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniV
   uniFree d i xs   = lookupCs cs i (\xVal -> (xVal =:<= y) cd cs)
                        (if d < cd
                         then (narrows cs d i id xs =:<= y) cd cs
-                        else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_Success)
+                        else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_True)
   -- constructor-rooted term
   uniVal vx = unifyWith cs y
     where
@@ -346,7 +346,7 @@ lazyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uniV
            else guardCons d (StructConstr [head (lazyBind cd j vx)])
                                           (choicesCons d (narrowID j) (map (\z -> ((vx =:<= z)  cd cs')) ys)))
 
-lazyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Success
+lazyTry :: Unifiable a => a -> a -> Cover -> ConstStore -> C_Bool
 lazyTry x y cd cs = case try x of
   -- failure
   Fail     d info    -> failCons d info
@@ -360,7 +360,7 @@ lazyTry x y cd cs = case try x of
   Free     d i xs    -> lookupCs cs i (\xVal -> (xVal =:<= y) cd cs)
                         (if d < cd
                           then (narrows cs d i id xs =:<= y) cd cs
-                          else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_Success)
+                          else guardCons d (StructConstr [i :=: LazyBind (lazyBind cd i y)]) C_True)
   Val        vx      -> lazyVal cs y
     where
     lazyVal cs' y' = case try y' of
@@ -430,83 +430,106 @@ readQualified mdl name r =
               , name' == name]
 
 -- ---------------------------------------------------------------------------
--- Success type
+-- Boolean type
 -- ---------------------------------------------------------------------------
 
--- BEGIN GENERATED FROM PrimTypes.curry
-data C_Success
-     = C_Success
-     | Choice_C_Success Cover ID C_Success C_Success
-     | Choices_C_Success Cover ID ([C_Success])
-     | Fail_C_Success Cover FailInfo
-     | Guard_C_Success Cover Constraints C_Success
+data C_Bool
+  = C_False
+  | C_True
+  | Choice_C_Bool Cover ID C_Bool C_Bool
+  | Choices_C_Bool Cover ID [C_Bool]
+  | Fail_C_Bool Cover FailInfo
+  | Guard_C_Bool Cover Constraints C_Bool
 
-instance Show C_Success where
-  showsPrec d (Choice_C_Success cd i x y) = showsChoice d cd i x y
-  showsPrec d (Choices_C_Success cd i xs) = showsChoices d cd i xs
-  showsPrec d (Guard_C_Success cd cs e) = showsGuard d cd cs e
-  showsPrec _ (Fail_C_Success _ _) = showChar '!'
-  showsPrec _ C_Success = showString "Success"
+instance Show C_Bool where
+  showsPrec d (Choice_C_Bool cd i x y) = showsChoice d cd i x y
+  showsPrec d (Choices_C_Bool cd i xs) = showsChoices d cd i xs
+  showsPrec d (Guard_C_Bool cd c e) = showsGuard d cd c e
+  showsPrec _ (Fail_C_Bool cd info) = showChar '!'
+  showsPrec _ C_False = showString "False"
+  showsPrec _ C_True = showString "True"
 
-instance Read C_Success where
-  readsPrec _ s = readParen False (\r -> [ (C_Success,r0) | (_,r0) <- readQualified "Prelude" "Success" r]) s
+instance Read C_Bool where
+  readsPrec _ s = readParen False (\r -> [(C_False, r0) | (_, r0) <-
+    readQualified "Prelude" "False" r]) s ++ readParen False (\r -> [(C_True
+    , r0) | (_, r0) <- readQualified "Prelude" "True" r]) s
 
-instance NonDet C_Success where
-  choiceCons = Choice_C_Success
-  choicesCons = Choices_C_Success
-  failCons = Fail_C_Success
-  guardCons = Guard_C_Success
-  try (Choice_C_Success cd i x y) = tryChoice cd i x y
-  try (Choices_C_Success cd i xs) = tryChoices cd i xs
-  try (Fail_C_Success cd info) = Fail cd info
-  try (Guard_C_Success cd cs e) = Guard cd cs e
+instance NonDet C_Bool where
+  choiceCons = Choice_C_Bool
+  choicesCons = Choices_C_Bool
+  failCons = Fail_C_Bool
+  guardCons = Guard_C_Bool
+  try (Choice_C_Bool cd i x y) = tryChoice cd i x y
+  try (Choices_C_Bool cd i xs) = tryChoices cd i xs
+  try (Fail_C_Bool cd info) = Fail cd info
+  try (Guard_C_Bool cd c e) = Guard cd c e
   try x = Val x
-  match f _ _ _ _ _ (Choice_C_Success cd i x y) = f cd i x y
-  match _ f _ _ _ _ (Choices_C_Success cd i@(NarrowedID _ _) xs) = f cd i xs
-  match _ _ f _ _ _ (Choices_C_Success cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_C_Success _  i@(ChoiceID _) _) = internalError ("Prelude.Success.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ (Fail_C_Success cd info) = f cd info
-  match _ _ _ _ f _ (Guard_C_Success cd cs e) = f cd cs e
+  match f _ _ _ _ _ (Choice_C_Bool cd i x y) = f cd i x y
+  match _ f _ _ _ _ (Choices_C_Bool cd i@(NarrowedID _ _) xs) = f cd i xs
+  match _ _ f _ _ _ (Choices_C_Bool cd i@(FreeID _ _) xs) = f cd i xs
+  match _ _ _ _ _ _ (Choices_C_Bool cd i _) = error
+    ("Prelude.Bool.match: Choices with ChoiceID " ++ show i)
+  match _ _ _ f _ _ (Fail_C_Bool cd info) = f cd info
+  match _ _ _ _ f _ (Guard_C_Bool cd c e) = f cd c e
   match _ _ _ _ _ f x = f x
 
-instance Generable C_Success where
-  generate s cd = Choices_C_Success cd (freeID [0] s) [C_Success]
+instance Generable C_Bool where
+  generate s c = Choices_C_Bool c (freeID [0, 0] s) [C_False, C_True]
 
-instance NormalForm C_Success where
-  ($!!) cont C_Success = cont C_Success
-  ($!!) cont (Choice_C_Success cd i x y) = nfChoice cont cd i x y
-  ($!!) cont (Choices_C_Success cd i xs) = nfChoices cont cd i xs
-  ($!!) cont (Guard_C_Success cd c x) = guardCons cd c (cont $!! x)
-  ($!!) _    (Fail_C_Success cd info) = failCons cd info
-  ($##) cont C_Success = cont C_Success
-  ($##) cont (Choice_C_Success cd i x y) = gnfChoice cont cd i x y
-  ($##) cont (Choices_C_Success cd i xs) = gnfChoices cont cd i xs
-  ($##) cont (Guard_C_Success cd c x) = guardCons cd c (cont $## x)
-  ($##) _    (Fail_C_Success cd info) = failCons cd info
-  searchNF _ cont C_Success = cont C_Success
-  searchNF _ _ x = internalError ("Prelude.Success.searchNF: no constructor: " ++ (show x))
+instance NormalForm C_Bool where
+  ($!!) cont C_False d cs = cont C_False d cs
+  ($!!) cont C_True d cs = cont C_True d cs
+  ($!!) cont (Choice_C_Bool cd i x y) d cs = nfChoice cont cd i x y cd cs
+  ($!!) cont (Choices_C_Bool cd i xs) d cs = nfChoices cont cd i xs d cs
+  ($!!) cont (Guard_C_Bool cd c e) d cs = guardCons cd c (($!!) cont e d (addCs
+    c cs))
+  ($!!) _ (Fail_C_Bool cd info) _ _ = failCons cd info
+  ($##) cont C_False d cs = cont C_False d cs
+  ($##) cont C_True d cs = cont C_True d cs
+  ($##) cont (Choice_C_Bool cd i x y) d cs = gnfChoice cont cd i x y cd cs
+  ($##) cont (Choices_C_Bool cd i xs) d cs = gnfChoices cont cd i xs d cs
+  ($##) cont (Guard_C_Bool cd c e) d cs = guardCons cd c (($##) cont e d (addCs
+    c cs))
+  ($##) _ (Fail_C_Bool cd info) _ _ = failCons cd info
+  showCons C_False = "Prelude.False"
+  showCons C_True = "Prelude.True"
+  showCons x = error ("Prelude.Bool.showCons: no constructor: " ++ show x)
+  searchNF _ cont C_False = cont C_False
+  searchNF _ cont C_True = cont C_True
+  searchNF _ _ x = error ("Prelude.Bool.searchNF: no constructor: " ++ show x)
 
-instance Unifiable C_Success where
-  (=.=) C_Success C_Success _ _ = C_Success
-  (=.=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  (=.<=) C_Success C_Success _ _ = C_Success
-  (=.<=) _ _ cd _ = Fail_C_Success cd defFailInfo
-  bind _ i C_Success = ((i :=: (ChooseN 0 0)):(concat []))
-  bind cd i (Choice_C_Success  d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_C_Success d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
-  bind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
-  bind _ _  (Choices_C_Success  _ i@(ChoiceID _) _) = internalError ("Prelude.Success.bind: Choices with ChoiceID: " ++ (show i))
-  bind _ _ (Fail_C_Success _ info) = [Unsolvable info]
-  bind cd i (Guard_C_Success _ cs e) = (getConstrList cs) ++ (bind cd i e)
-  lazyBind _  i C_Success = [(i :=: (ChooseN 0 0))]
-  lazyBind cd i (Choice_C_Success d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
-  lazyBind cd i (Choices_C_Success d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
-  lazyBind cd i (Choices_C_Success d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
-  lazyBind _  _ (Choices_C_Success _ i@(ChoiceID _) _) = internalError ("Prelude.Success.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _  _(Fail_C_Success _ info) = [Unsolvable info]
-  lazyBind cd i (Guard_C_Success _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
-
--- END GENERATED FROM PrimTypes.curry
+instance Unifiable C_Bool where
+  (=.=) C_False C_False d cs = C_True
+  (=.=) C_True C_True d cs = C_True
+  (=.=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons b))
+  (=.<=) C_False C_False d cs = C_True
+  (=.<=) C_True C_True d cs = C_True
+  (=.<=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons
+    b))
+  bind cd i C_False = (i :=: ChooseN 0 0) : concat []
+  bind cd i C_True = (i :=: ChooseN 1 0) : concat []
+  bind d i (Choice_C_Bool cd j x y) = [ConstraintChoice cd j (bind d i x) (bind
+    d i y)]
+  bind d i (Choices_C_Bool cd j@(FreeID _ _) xs) = bindOrNarrow d i cd j xs
+  bind d i (Choices_C_Bool cd j@(NarrowedID _ _) xs) = [ConstraintChoices cd j
+    (map (bind d i) xs)]
+  bind _ _ (Choices_C_Bool cd i _) = error
+    ("Prelude.Bool.bind: Choices with ChoiceID: " ++ show i)
+  bind _ _ (Fail_C_Bool cd info) = [Unsolvable info]
+  bind d i (Guard_C_Bool cd c e) = getConstrList c ++ bind d i e
+  lazyBind cd i C_False = (i :=: ChooseN 0 0) : []
+  lazyBind cd i C_True = (i :=: ChooseN 1 0) : []
+  lazyBind d i (Choice_C_Bool cd j x y) = [ConstraintChoice cd j (lazyBind d i
+    x) (lazyBind d i y)]
+  lazyBind d i (Choices_C_Bool cd j@(FreeID _ _) xs) = lazyBindOrNarrow d i cd j
+    xs
+  lazyBind d i (Choices_C_Bool cd j@(NarrowedID _ _) xs) = [ConstraintChoices cd
+    j (map (lazyBind d i) xs)]
+  lazyBind _ _ (Choices_C_Bool cd i _) = error
+    ("Prelude.Bool.lazyBind: Choices with ChoiceID: " ++ show i)
+  lazyBind _ _ (Fail_C_Bool cd info) = [Unsolvable info]
+  lazyBind d i (Guard_C_Bool cd c e) = getConstrList c ++ [i :=: LazyBind
+    (lazyBind d i e)]
 
 -- ---------------------------------------------------------------------------
 -- Functions
