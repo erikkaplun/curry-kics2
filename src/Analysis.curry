@@ -59,8 +59,8 @@ initTypeMap = listToFM (<) primTypes
 primTypes :: [(QName, QName)]
 primTypes = map (\ (x, y) -> ( renameQName (prelude, x)
                              , renameQName (prelude, y))) $
-  [ ("Success","Success"), ("True", "Bool"), ("False", "Bool")
-  , ("Int", "Int")  , ("Float", "Float"), ("Char", "Char")
+  [ ("True", "Bool"), ("False", "Bool"), ("Int", "Int")
+  , ("Float", "Float"), ("Char", "Char")
   ]
 
 --- Register the types names of constructors to be able to retrieve

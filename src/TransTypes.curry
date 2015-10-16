@@ -38,9 +38,20 @@ genTypeDeclarations hoResult tdecl = case tdecl of
   t@(FC.Type qf vis tnums cs)
       -- type names are always exported to avoid ghc type errors.
       -- TODO: Describe why/which errors may occur.
-    | null cs   -> Type qf Public targs [] : []
-    | otherwise -> Type qf Public targs ds : instanceDecls
+    | null cs       -> Type qf Public targs [] : []
+      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      -- !!! HACK: Since the C_Bool type and some of its type class    !!!
+      -- !!! instances need to be defined in the runtime system,       !!!
+      -- !!! we do NOT generate them here.                             !!!
+      -- !!! Only the Curry type class instance and a type declaration !!!
+      -- !!! without constructors is generated.                        !!!
+      -- !!! The latter is required to generate an export declaration  !!!
+      -- !!! for type C_Bool in the Curry_Prelude.                     !!!
+      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    | isBoolType qf -> Type qf Public []    [] : [curryInstance hoResult t]
+    | otherwise     -> Type qf Public targs ds : instanceDecls
     where
+      isBoolType = (==) ("Curry_Prelude", "C_Bool")
       ds = concatMap (fcy2absCDecl hoResult) cs ++
             [ Cons (mkChoiceName  qf) 3 vis' [coverType, idType, ctype, ctype]
             , Cons (mkChoicesName qf) 2 vis' [coverType, idType, clisttype]
@@ -581,7 +592,7 @@ unifiableInstance hoResult tdecl = case tdecl of
        where targs = map fcy2absTVar tnums
              ctype = TCons qf (map TVar targs)
              newFail qn = (qn, simpleRule [PVar (1,"a"), PVar (2,"b"), PVar (3, "cd"), PVar (4, "_")]
-                                (applyF (basics "Fail_C_Success") [Var (3, "cd"), applyF (basics "unificationFail") [applyF (basics "showCons") [Var (1,"a")], applyF (basics "showCons") [Var (2,"b")]]])
+                                (applyF (basics "Fail_C_Bool") [Var (3, "cd"), applyF (basics "unificationFail") [applyF (basics "showCons") [Var (1,"a")], applyF (basics "showCons") [Var (2,"b")]]])
                           )
   _ -> error "TransTypes.unifiableInstance"
 
@@ -599,7 +610,7 @@ unifiableConsRule hoResult consFunc genFunc (FC.Cons qn _ _ texps)
                                        , PVar cs]
               (unifBody genFunc) )
     unifBody funcName
-      | carity == 0 = constF (basics "C_Success")
+      | carity == 0 = constF (basics "C_True")
       | otherwise   = foldr1 (\x xs -> applyF (basics "&")
                              [x, xs, Var nestingDepth, Var cs])
                         (map (\i -> applyF funcName

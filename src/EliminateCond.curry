@@ -41,7 +41,7 @@ eliminateCond p = updProgFuncs (concatMap transFunc) p
 
 -- eliminates cond calls in a function by introducing new functions
 -- that perform pattern matching. The transformed function is
--- returnd along with the auxiliary functions
+-- returned along with the auxiliary functions
 transFunc :: AFuncDecl TypeExpr -> [AFuncDecl TypeExpr]
 transFunc f@(AFunc _ _ _ _ (AExternal _ _)) = [f]
 transFunc (AFunc f k v t (ARule ty vs e)) =
@@ -113,7 +113,7 @@ makeAuxFuncCall name ty cond newBody =
   newFun i = AFunc (mkNewName name i) numArgs Private funtype rule
   rule =  ARule funtype argVars
             (ACase ty Flex (AVar condType numArgs)
-                  [ABranch (APattern condType (successId, successType) [])
+                  [ABranch (APattern condType (trueId, boolType) [])
                           (rnmAllVars renameVarFun newBody)])
 
   funtype = foldr FuncType ty (map snd argVars)
@@ -124,11 +124,11 @@ makeAuxFuncCall name ty cond newBody =
   renameVarFun v = maybe v (+1) (elemIndex v (map fst typedVars))
   mkNewName (mod,oldName) idx = (mod, "__cond_" ++ show idx ++ "_" ++ oldName)
 
-successId :: QName
-successId = ("Prelude", "Success")
+boolType :: TypeExpr
+boolType = TCons ("Prelude", "Bool") []
 
-successType :: TypeExpr
-successType = TCons successId []
+trueId :: QName
+trueId = ("Prelude", "True")
 
 --- Return all variables in an expression that are unbound in the expression.
 unboundVars :: AExpr TypeExpr -> [(VarIndex, TypeExpr)]
