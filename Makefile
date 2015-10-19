@@ -249,16 +249,17 @@ clean: $(CLEANCURRY)
 	rm -f $(MAKELOG) $(CURRYSYSTEMBIN)
 	rm -f $(INSTALLHS)
 
-# clean everything (including compiler binaries)
+# clean everything (including compiler and tool binaries)
 .PHONY: cleanall
 cleanall: clean
-	-cd docs/src && $(MAKE) cleanall
-	cd frontend  && $(MAKE) cleanall
-	-cd lib      && $(MAKE) cleanall
-	cd scripts   && $(MAKE) cleanall
-	cd src       && $(MAKE) cleanall
-	-cd talks    && $(MAKE) cleanall
-	cd utils     && $(MAKE) cleanall
+	cd currytools && $(MAKE) uninstall
+	-cd docs/src  && $(MAKE) cleanall
+	cd frontend   && $(MAKE) cleanall
+	-cd lib       && $(MAKE) cleanall
+	cd scripts    && $(MAKE) cleanall
+	cd src        && $(MAKE) cleanall
+	-cd talks     && $(MAKE) cleanall
+	cd utils      && $(MAKE) cleanall
 	rm -rf $(LOCALBIN) $(CYMAKE) $(LOCALPKG)
 	rm -f  $(CLEANCURRY)
 
