@@ -1,6 +1,15 @@
 Release Notes for KiCS2
 =======================
 
+Release notes for KiCS2 Version 0.5.0
+-------------------------------------
+
+Changes to version 0.4.1:
+
+  * Type `Success` is now a type synonym for `Bool` and
+    `success` is defined as `True` in the prelude.
+
+
 Release notes for KiCS2 Version 0.4.1
 -------------------------------------
 
