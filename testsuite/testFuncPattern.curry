@@ -29,11 +29,11 @@ test2 = assertValues "last2" (last (take 10000 (repeat failed) ++ [1])) [1]
 
 --------------------------------------------------------------------------------
 -- define a palindrome constraint:
-pali :: [a] -> Success
-pali (xs ++ reverse xs) = success
---pali l | xs ++ reverse xs =:<= l = success      where xs free
+pali :: [a] -> Bool
+pali (xs ++ reverse xs) = True
+--pali l | xs ++ reverse xs =:<= l = True      where xs free
 
-test3 = assertEqual "palindrome1" (pali "otto") success
+test3 = assertEqual "palindrome1" (pali "otto") True
 test4 = assertValues "palindrome2" (pali "toto") []
 
 --------------------------------------------------------------------------------
@@ -91,8 +91,8 @@ solve (x++[White]++y++[Red  ]++z) = solve (x++[Red]++y++[White]++z)
 solve (x++[Blue ]++y++[Red  ]++z) = solve (x++[Red]++y++[Blue]++z)
 solve (x++[Blue ]++y++[White]++z) = solve (x++[White]++y++[Blue]++z)
 solve flag | isDutchFlag flag = flag
- where isDutchFlag (uni Red ++ uni White ++ uni Blue) = success
-       --isDutchFlag flag | uni Red ++ uni White ++ uni Blue =:<= flag = success
+ where isDutchFlag (uni Red ++ uni White ++ uni Blue) = True
+       --isDutchFlag flag | uni Red ++ uni White ++ uni Blue =:<= flag = True
        uni _ = []
        uni color = color : uni color
 
@@ -102,7 +102,7 @@ test8 = assertEqual "Dutch Flag"
 
 --------------------------------------------------------------------------------
 
-test9 = assertValues "test9" (y =:<= True & x =:= True & x =:= y) [success]
+test9 = assertValues "test9" (y =:<= True & x =:= True & x =:= y) [True]
   where x, y free
 
 test10 = assertValues "test10"
@@ -131,11 +131,11 @@ data Nat = O | S Nat
 
 g x y = (x,y)
 
-pair x | g y y =:<= x = success where y free
+pair x | g y y =:<= x = True where y free
 
 test13 = assertValues "test13" (pair (0,1)) []
 
-test14 = assertValues "test14" (pair (0,0)) [success]
+test14 = assertValues "test14" (pair (0,0)) [True]
 
 -- This call should fail due to an occure check
 -- However, an occure check is not yet implemented
@@ -145,12 +145,12 @@ test14 = assertValues "test14" (pair (0,0)) [success]
 test16 = assertValues "test16" (pair (x,failed)) []
   where x free 
 
-f x | g (const 0 y) y =:<= x = success where y free
+f x | g (const 0 y) y =:<= x = True where y free
 
-test17 = assertValues "test17" (f (x,failed)) [success]
+test17 = assertValues "test17" (f (x,failed)) [True]
   where x free 
 
-h x | g (id y) y =:<= x = success where y free
+h x | g (id y) y =:<= x = True where y free
 
 test18 = assertValues "test18" (h (x,failed)) []
   where x free

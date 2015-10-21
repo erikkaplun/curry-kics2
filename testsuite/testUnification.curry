@@ -3,18 +3,18 @@
 import Assertion
 
 -- simple types
-test0 = assertValues "test0" (True =:= True)  [success]
+test0 = assertValues "test0" (True =:= True)  [True]
 test1 = assertValues "test1" (True =:= False) []
-test2 = assertValues "test2" (x =:= True) [success] where x free
+test2 = assertValues "test2" (x =:= True) [True] where x free
 test3 =  assertValues "test3" (x =:= True &> x) [True] where x free
 test4 =  assertValues "test4" (x =:= True &> [x,x]) [[True,True]] where x free
 test5 =  assertValues "test5" ([x =:= True &> x,x])  [[True,True]] where x free
 test6 =  assertValues "test6" ([x,x =:= True &> x]) [[True,True]] where x free
 
-uni :: Bool -> Bool -> Success
+uni :: Bool -> Bool -> Bool
 uni x y = x =:= y
 
-test7 =  assertValues "test7" (uni x y) [success] where x,y free
+test7 =  assertValues "test7" (uni x y) [True] where x,y free
 test8 =   assertValues "test8" (x =:= y    
       &> y=:= True
       &> [x,y]) [[True,True]]   where x,y free
@@ -54,19 +54,19 @@ test17 =  assertValues "test17" (x=:=[True] &> x) [[True]] where x free
 
 test18 =  assertValues "test18" (x=:=y &> (y=:= [True] &> x)) [[True]] where x,y free
 
-f [False] = success
+f [False] = True
 test19 =  assertValues "test19" (x=:=y &> y=:= [True] &> f x &> x) [] where x,y free
 
-g [True] = success
+g [True] = True
 test20 =  assertValues "test20" (x=:=y &> y=:= [True] &> g x &> x) [[True]] where x,y free
 
 
 test21 =  assertValues "test21" (x=:=(y?[False]) &> y=:=[True] &> x)[[True],[False]] where x,y free
 
-uni2 :: [Bool] -> [Bool] -> Success
+uni2 :: [Bool] -> [Bool] -> Bool
 uni2 x y = x =:= y
 
-test22 =  assertValues "test22" (uni2 x [y]) [success] where x,y free
+test22 =  assertValues "test22" (uni2 x [y]) [True] where x,y free
 --test23 =  assertValues "test23" (uni2 x [y] &> x)  [y] where x,y free TODO: how to test this?
 test24 =  assertValues "test24" (x =:= [y] &> y=:=True &> x) [[True]] where x,y free
 -- test25 =  assertValues "test25" (x =:= (y:z) &> x=:=(False:z1:z2) &> z2 =:=[] &> x) [[False,z1]]

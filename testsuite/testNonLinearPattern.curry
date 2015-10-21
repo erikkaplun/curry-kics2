@@ -20,7 +20,7 @@ test3 = assertValues "nonlinear first" (f [1] [2]) []
 
 
 -- member constraint with non-linear patterns
-member x (x:_) = success
+member x (x:_) = True
 member x (_:xs) = member x xs
 
 test4 = assertSolutions "member" (\x -> member x [1,2,3]) [1,2,3]
