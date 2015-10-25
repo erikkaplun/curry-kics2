@@ -31,8 +31,8 @@ import FiniteMap
 import List ((\\), nub)
 
 import AFCSubst
-import AnnotatedFlatCurry
-import AnnotatedFlatCurryGoodies
+import FlatCurry.Annotated.Types
+import FlatCurry.Annotated.Goodies
 import State
 
 --- The Default Polymorphic Monad contains a type substitution as its state.

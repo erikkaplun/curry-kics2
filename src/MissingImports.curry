@@ -15,8 +15,8 @@ module MissingImports (fixMissingImports) where
 
 import SetRBT
 
-import AnnotatedFlatCurry
-import AnnotatedFlatCurryGoodies
+import FlatCurry.Annotated.Types
+import FlatCurry.Annotated.Goodies
 import State
 
 type ModuleName = String

@@ -10,22 +10,22 @@ module REPL where
 import AbstractCurry.Types
 import AbstractCurry.Files
 import AbstractCurry.Select
-import Char             (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
+import Char              (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
 import Directory
 import Distribution
-import FilePath         ( (</>), (<.>)
-                        , splitSearchPath, splitFileName, splitExtension
-                        , searchPathSeparator)
-import Files            (lookupFileInPath)
-import FlatCurry        (flatCurryFileName, readFlatCurryFile)
-import FlatCurryGoodies (progImports)
+import FilePath          ( (</>), (<.>)
+                         , splitSearchPath, splitFileName, splitExtension
+                         , searchPathSeparator)
+import Files             (lookupFileInPath)
+import FlatCurry.Files   (flatCurryFileName, readFlatCurryFile)
+import FlatCurry.Goodies (progImports)
 import IO
 import IOExts
-import List             (intercalate, intersperse, isPrefixOf, nub)
-import ReadNumeric      (readNat)
-import ReadShowTerm     (readsTerm)
-import Sort             (mergeSort)
-import System           (system, getArgs, getEnviron, getPID, exitWith)
+import List              (intercalate, intersperse, isPrefixOf, nub)
+import ReadNumeric       (readNat)
+import ReadShowTerm      (readsTerm)
+import Sort              (mergeSort)
+import System            (system, getArgs, getEnviron, getPID, exitWith)
 import Time
 
 import Files                (removeFileIfExists)

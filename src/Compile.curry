@@ -6,19 +6,19 @@
 --- --------------------------------------------------------------------------
 module Compile where
 
-import Char             (isSpace)
-import Maybe            (fromJust)
-import List             (intercalate, isPrefixOf)
-import Directory        (doesFileExist)
+import Char              (isSpace)
+import Maybe             (fromJust)
+import List              (intercalate, isPrefixOf)
+import Directory         (doesFileExist)
 import Distribution
-import FilePath         (FilePath, (</>), dropExtension, normalise)
+import FilePath          (FilePath, (</>), dropExtension, normalise)
 import FiniteMap
-import FlatCurry
-import FlatCurryGoodies (updQNamesInProg)
-import ReadShowTerm     (readQTermFile)
-import System           (getArgs)
-
-import AnnotatedFlatCurryGoodies (unAnnProg)
+import FlatCurry.Types
+import FlatCurry.Files   (flatCurryFileName)
+import FlatCurry.Goodies (updQNamesInProg)
+import FlatCurry.Annotated.Goodies (unAnnProg)
+import ReadShowTerm      (readQTermFile)
+import System            (getArgs)
 
 import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG (funcName, renameSymbolInProg, typeOf)

@@ -14,7 +14,7 @@ import qualified AbstractHaskell        as AH
 import qualified AbstractHaskellGoodies as AHG
 import           Analysis
 import           CompilerOpts  (Options (..), defaultOptions, OptimLevel (..))
-import           FlatCurry
+import           FlatCurry.Types
 import           LiftCase      (isCaseAuxFuncName)
 import           Message       (showAnalysis)
 import           Names

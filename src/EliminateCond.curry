@@ -29,8 +29,8 @@
 
 module EliminateCond (eliminateCond) where
 
-import AnnotatedFlatCurry
-import AnnotatedFlatCurryGoodies
+import FlatCurry.Annotated.Types
+import FlatCurry.Annotated.Goodies
 import State
 import List (elemIndex,nub)
 

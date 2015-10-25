@@ -18,8 +18,8 @@ module Analysis
   ) where
 
 import FiniteMap
-import FlatCurry
-import FlatCurryGoodies
+import FlatCurry.Types
+import FlatCurry.Goodies
 import Maybe            (fromJust, fromMaybe)
 import List             (partition)
 import SetRBT

@@ -20,9 +20,10 @@ import FilePath     ( FilePath, dropExtension, takeExtension, takeBaseName
                     )
 import Files        (lookupFileInPath, getFileInPath)
 import FiniteMap    (FM, emptyFM, addToFM, fmToList, lookupFM)
-import FlatCurry    ( Prog (..), readFlatCurryFile, flatCurryFileName
-                    , readFlatCurryWithParseOptions
-                    )
+import FlatCurry.Types ( Prog (..))
+import FlatCurry.Files ( readFlatCurryFile, flatCurryFileName
+                       , readFlatCurryWithParseOptions
+                       )
 import Function     (second)
 import List         (intercalate, partition)
 import Maybe        (fromJust, isJust, isNothing)

@@ -9,8 +9,8 @@
 -- ---------------------------------------------------------------------------
 module TransTypes (transTypes) where
 
-import qualified FlatCurry as FC
-import FlatCurryGoodies
+import qualified FlatCurry.Types as FC
+import FlatCurry.Goodies
 import AbstractHaskell
 import AbstractHaskellGoodies
 import FiniteMap
