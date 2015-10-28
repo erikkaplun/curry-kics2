@@ -9,7 +9,8 @@ Changes to version 0.4.1:
   * Type `Success` is now a type synonym for `Bool` and
     `success` is defined as `True` in the prelude.
   * Prelude: operations `(===)` and `(&&>)` removed
-  * Libraries `meta/AbstractCurry...` removed
+  * Libraries `meta/*` removed (since they have been replaced
+    by libraries with hierachical names, see below)
   * Hierarchical libraries for FlatCurry added and extended:
     in order to to compatible with future versions, the following
     imports should be adapted in programs working with AbstractCurry:
