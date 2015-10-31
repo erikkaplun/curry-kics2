@@ -4,7 +4,7 @@
 --- and compiling this main file together with all compiled Curry modules.
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version August 2015
+--- @version October 2015
 --- --------------------------------------------------------------------------
 module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
@@ -76,7 +76,7 @@ initReplState = ReplState
   , idSupply     = "ioref"
   , verbose      = 1
   , importPaths  = []
-  , libPaths     = map (Inst.installDir </>) ["lib", "lib" </> "meta"]
+  , libPaths     = map (Inst.installDir </>) ["lib"]
   , preludeName  = "Prelude"
   , outputSubdir = ".curry" </> "kics2"
   , mainMod      = "Prelude"

@@ -79,10 +79,13 @@ locateCurryFile mn = do
   exists <- doesFileExist mn
   if exists
     then return (Just mn)
-    else lookupModuleSourceInLoadPath (stripCurrySuffix mn) >>=
-         maybe (-- try to find a FlatCurry file without source
-	        lookupFileInLoadPath (flatCurryFileName mn))
-	       (\ (_,fn) -> return (Just fn))
+    else let modname = stripCurrySuffix mn
+             fcyname = flatCurryFileName modname
+          in lookupModuleSourceInLoadPath modname >>=
+             maybe (-- try to find a FlatCurry file without source
+                    getLoadPathForModule modname >>=
+                    lookupFileInPath fcyname [""] )
+	           (\ (_,fn) -> return (Just fn))
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State

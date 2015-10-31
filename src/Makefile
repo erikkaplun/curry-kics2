@@ -11,13 +11,13 @@ GHC_OPTS2  = -O2 --make -v1 -cpp -fno-spec-constr
 # ghc language extensions for compiling translated Curry programs
 GHC_EXTS   = -XMultiParamTypeClasses -XFlexibleInstances -XRelaxedPolyRec
 # ghc includes for compiling translated Curry programs
-GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR):$(LIBDIR)/$(SUBDIR):$(LIBDIR)/meta/$(SUBDIR):$(TYPEINFDIR)/$(SUBDIR)
+GHC_INCL   = -i$(ROOT)/runtime:$(ROOT)/runtime/idsupplyghc:$(ROOT)/src/$(SUBDIR):$(LIBDIR)/$(SUBDIR):$(TYPEINFDIR)/$(SUBDIR)
 # Call to ghc binary
 GHC_CALL   = "$(GHC)" $(GHC_OPTS) $(GHC_OPTS2) $(GHC_EXTS) $(GHC_INCL)
 # The kics2c call
-KICS2C     = $(COMP) -v2 --parse-options=-Wall -i$(LIBDIR) -i$(LIBDIR)/meta -i$(TYPEINFDIR)
+KICS2C     = $(COMP) -v2 --parse-options=-Wall -i$(LIBDIR) -i$(TYPEINFDIR)
 # options for the bootstrapping compiler
-CURRY_OPTS = :set path $(TYPEINFDIR):$(LIBDIR)/meta
+CURRY_OPTS = :set path $(TYPEINFDIR)
 
 # Source modules of the compiler (without standard libraries)
 COMPILE_DEPS = AbstractHaskell AbstractHaskellGoodies AbstractHaskellPrinter \
