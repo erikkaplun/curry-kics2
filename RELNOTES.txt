@@ -9,6 +9,12 @@ Changes to version 0.4.1:
   * Type `Success` is now a type synonym for `Bool` and
     `success` is defined as `True` in the prelude.
   * Prelude: operations `(===)` and `(&&>)` removed
+  * Library Distribution: some load path handling operations
+    (`findFileInLoadPath`, `lookupFileInLoadPath`, `readFirstFileInLoadPath`,
+    `getLoadPath`, `getLoadPathForFile`) removed since they are deprecated
+    (use operations like `getLoadPathForModule` and
+    `lookupModuleSourceInLoadPath` instead of the deprecated operations
+    since they handle hierarchical module names better)
   * Libraries `meta/*` removed (since they have been replaced
     by libraries with hierachical names, see below)
   * Hierarchical libraries for FlatCurry added and extended:
