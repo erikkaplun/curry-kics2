@@ -5,6 +5,10 @@
 # The installation directory of KiCS2
 KICS2HOME=`echo KICS2HOME must be defined here!`
 
+# Add KiCS2 bin directory to path so that currypp can be found:
+PATH=$PATH:$KICS2HOME/bin
+export PATH
+
 REPL="$KICS2HOME/bin/.local/kics2i"
 if [ ! -x "$REPL" ] ; then
   echo "ERROR: executable '$REPL' not found!" >&2
