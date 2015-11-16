@@ -1,4 +1,4 @@
-{-# OPTIONS_CYMAKE -F --pgmF=currypp --optF=--foreigncode #-}
+{-# OPTIONS_CYMAKE -F --pgmF=currypp --optF=foreigncode #-}
 
 -----------------------------------------------------------------------
 --- Benchmark different Curry systems with various example programs.
@@ -126,15 +126,15 @@ benchExpResult currysystem (progname,options,mainexp) =
 
 -- Executes a benchmark (program name, compile options, main expression or "")
 -- on a given Curry system and return the required cpu time.
-benchProgram :: CurrySystem -> (String,String,String)
+benchProgram :: CurrySystem -> (CmdResult -> Float) -> (String,String,String)
              -> Benchmark (Maybe Float)
-benchProgram currysystem (progname,options,mainexp) =
+benchProgram currysystem timeofbench (progname,options,mainexp) =
   (numberOfRuns *>- execProgBench progname)
     `withPrepare` compileCurry currysystem options progname mainexp
     `withCleanup` cleanCurry   currysystem progname
  where
   execProgBench prog =
-    mapBench (maybe Nothing (Just . cpuTime))
+    mapBench (maybe Nothing (Just . timeofbench))
              (benchCommandWithLimit (runCurryCmd currysystem prog) timeLimit)
 
 -- Executes a list of benchmarks on a given Curry system and
@@ -146,7 +146,7 @@ benchPrograms currysystem programs =
   mapBench (map (\ ((p,o,m),f) -> (p ++ (if null m then "" else '.':m)
                                      ++ showOpts o,
                                    maybe "--" showF f)))
-           (runOn (benchProgram currysystem) programs)
+           (runOn (benchProgram currysystem cpuTime) programs)
  where
   showOpts o = if null o then ""
                else " ("++ (unwords . filter (/=":set") . words) o ++")"
@@ -159,17 +159,11 @@ showF x = ``format "%04.2f",x''
 benchParProg :: CurrySystem -> String -> Benchmark [(String,String)]
 benchParProg currysystem progname =
   mapBench (map (\ (p,mbf) -> (p, maybe "-" showF mbf)))
-   ((runOn execProgBench [""," +RTS -N2 -RTS"," +RTS -N4 -RTS"," +RTS -N -RTS"])
-      `withPrepare` compileCurry currysystem options progname ""
-      `withCleanup` cleanCurry   currysystem progname)
+    (runOn benchProg
+           (map (":set "++)
+	        (["dfs","bfs"] ++ map ("parallel "++) ["2","4","8",""])))
  where
-  options = ":set parallel"
-
-  execProgBench rtsopt = numberOfRuns *>- 
-    mapBench (maybe Nothing (Just . elapsedTime))
-             (benchCommandWithLimit
-                (runCurryCmd currysystem progname ++ rtsopt)
-                timeLimit)
+  benchProg options = benchProgram currysystem elapsedTime (progname,options,"")
 
 -----------------------------------------------------------------------
 -- The naive reverse benchmark executed for different list lengths
@@ -268,7 +262,7 @@ nondetBenchFirst :: CurrySystem -> [(String,String,String)]
 nondetBenchFirst _ = "NDNums" `withSearchFirst` ["bfs","ids"]
 
 -- Parallel search benchmark programs:
-parSearchBench = ["PermSort","PermSortPeano"]
+parSearchBench = ["PermSort","PermSortPeano","SearchMAC"]
 
 -- Encapsulated search benchmarks:
 encapsBench :: CurrySystem -> [(String,String,String)]
@@ -300,7 +294,7 @@ mainParBench system benchprogs = do
   let tabledata = map (\ ((prg,p):ds) -> prg:p:map snd ds)
                       (transpose bdata)
   setCurrentDirectory curdir
-  return (benchResultsAsTable ("RTS Parameters" : benchprogs)
+  return (benchResultsAsTable ("kics2 option" : benchprogs)
                               tabledata)
 
 -----------------------------------------------------------------------
