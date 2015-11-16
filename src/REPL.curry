@@ -424,16 +424,8 @@ compileCurryProgram rst curryprog = do
 --- Execute main program and show run time:
 execMain :: ReplState -> MainCompile -> String -> IO ReplState
 execMain rst _ mainexp = do -- _ was cmpstatus
-  let parOpts = case ndMode rst of
-                  Par n -> "-N" ++ (if n == 0 then "" else show n)
-                  _     -> ""
-      mainCall  = unwords [mainCmd, rtsParams, rtsArgs rst]
+  let mainCall  = unwords [mainCmd, rtsArgs rst]
       mainCmd   = "." </> outputSubdir rst </> "Main"
-      rtsParams = if null (rtsOpts rst) && null parOpts && not withProf
-                  then []
-                  else unwords ["+RTS", rtsOpts rst, parOpts, profOpt, "-RTS"]
-      profOpt   = if withProf then "-p" else []
-      withProf  = profile rst
   timecmd <- getTimeCmd rst "Execution" mainCall
   writeVerboseInfo rst 1 $ "Evaluating expression: " ++ strip mainexp
   writeVerboseInfo rst 3 $ "Executing: " ++ timecmd

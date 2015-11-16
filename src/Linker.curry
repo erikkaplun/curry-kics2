@@ -204,7 +204,10 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
   , if withGhcSupply            then "-package ghc"      else ""
   , if isParSearch              then "-threaded"         else ""
   , if withProfiling            then "-prof -fprof-auto" else ""
-  , if withRtsOpts              then "-rtsopts"          else ""
+  , if withRtsOpts
+    then "-rtsopts -with-rtsopts=\"" ++
+         unwords [rtsOpts rst, parOpts, profOpt] ++ "\""
+    else ""
   , if recompile                then "-fforce-recomp"    else ""
       -- XRelaxedPolyRec due to problem in FlatCurryShow
   , "-XMultiParamTypeClasses", "-XFlexibleInstances", "-XRelaxedPolyRec"
@@ -216,9 +219,12 @@ ghcCall rst useGhci recompile mainFile = unwords . filter notNull $
   withGhcSupply = (idSupply rst) `elem` ["ghc", "ioref"]
   withRtsOpts   = notNull (rtsOpts rst) || isParSearch || withProfiling
   withProfiling = profile rst
-  isParSearch   = case ndMode rst of
-    Par _ -> True
-    _     -> False
+  profOpt   = if withProfiling then "-p" else ""
+  isParSearch   = case ndMode rst of Par _ -> True
+                                     _     -> False
+  parOpts       = case ndMode rst of
+                    Par n -> "-N" ++ (if n == 0 then "" else show n)
+                    _     -> ""
   ghcImports
     | Inst.installGlobal
     = map (</> outputSubdir rst) ("." : importPaths rst)

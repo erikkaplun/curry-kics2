@@ -3,8 +3,13 @@
 CPNSD=CPNSD
 LOGFILE="/tmp/CurryPNSD.log"
 
+# set additional options for Profile.getProcessInfos used in CPNS logging:
+ifeq ($(CURRYSYSTEM),kics2)
+ADD_OPTS = :set rts -T
+endif
+
 ${CPNSD}: ../lib/CPNS.curry
-	$(REPL) $(REPL_OPTS) :load CPNSD :save :q
+	$(REPL) $(REPL_OPTS) $(ADD_OPTS) :load CPNSD :save :q
 
 # Shows the currently registered ports:
 .PHONY: show
