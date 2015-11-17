@@ -91,12 +91,10 @@ M.~Hanus.
   on Principles and Practice of Declarative Programming (PPDP'06)}, pages
   27--38. ACM Press, 2006.
 
-\bibitem{HanusKoschnicke10PADL}
+\bibitem{HanusKoschnicke14TPLP}
 M.~Hanus and S.~Koschnicke.
 \newblock An {ER-based} framework for declarative web programming.
-\newblock In {\em Proc. of the 12th International Symposium on Practical
-  Aspects of Declarative Languages (PADL 2010)}, pages 201--216. Springer LNCS
-  5937, 2010.
+\newblock {\em Theory and Practice of Logic Programming}, 14(3):269--291, 2014.
 
 \bibitem{HanusSteiner98PLILP}
 M.~Hanus and F.~Steiner.
@@ -105,26 +103,16 @@ M.~Hanus and F.~Steiner.
   International Symposium PLILP/ALP'98)}, pages 374--390. Springer LNCS 1490,
   1998.
 
-\bibitem{Hanus06Curry}
+\bibitem{Hanus15Curry}
 M.~Hanus~(ed.).
-\newblock Curry: An integrated functional logic language (vers.\ 0.8.2).
-\newblock Available at \url{http://www.curry-language.org}, 2006.
-
-\bibitem{Hanus12Curry}
-M.~Hanus~(ed.).
-\newblock Curry: An integrated functional logic language (vers.\ 0.8.3).
-\newblock Available at \url{http://www.curry-language.org}, 2012.
+\newblock Curry: An integrated functional logic language (vers.\ 0.9.0).
+\newblock Available at \url{http://www.curry-language.org}, 2015.
 
 \bibitem{Johnsson85}
 T.~Johnsson.
 \newblock Lambda lifting: Transforming programs to recursive functions.
 \newblock In {\em Functional Programming Languages and Computer Architecture},
   pages 190--203. Springer LNCS 201, 1985.
-
-\bibitem{PeytonJones03Haskell}
-S.~Peyton~Jones, editor.
-\newblock {\em Haskell 98 Language and Libraries---The Revised Report}.
-\newblock Cambridge University Press, 2003.
 
 \bibitem{Wadler87}
 P.~Wadler.

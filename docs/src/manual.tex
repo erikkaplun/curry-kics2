@@ -8,6 +8,9 @@
 
 \input{version}
 
+% define home dir of the Curry system in order to locate tool manuals:
+\newcommand{\curryhome}{../..}
+
 %%% ------------------------------------------------------------------
 
 \usepackage[colorlinks,linkcolor=blue]{hyperref}
@@ -99,12 +102,14 @@ Michael Hanus$^1$ [editor] \\[3ex]
 {\large Additional Contributors:}\\[2ex]
 Bernd Bra\ss{}el$^2$ \\
 Bj\"orn Peem\"oller$^3$\\
-Fabian Reck$^4$ \\[4ex]
+Fabian Reck$^4$ \\
+Jan Rasmus Tikovsky$^5$ \\[4ex]
 \normalsize
 (1) University of Kiel, Germany, {\tt mh@informatik.uni-kiel.de} \\
 (2) University of Kiel, Germany, {\tt bbr@informatik.uni-kiel.de} \\
 (3) University of Kiel, Germany, {\tt bjp@informatik.uni-kiel.de} \\
-(4) University of Kiel, Germany, {\tt fre@informatik.uni-kiel.de} \\[5ex]~
+(4) University of Kiel, Germany, {\tt fre@informatik.uni-kiel.de} \\
+(4) University of Kiel, Germany, {\tt jrt@informatik.uni-kiel.de} \\[5ex]~
 \end{center}
 \end{minipage}}
 \end{center}
@@ -118,11 +123,16 @@ Fabian Reck$^4$ \\[4ex]
 \include{usage}
 \include{extensions}
 \include{syntax}
-\include{currydoc}
-\include{currybrowser}
-\include{currytest}
-\include{erd2curry}
-\include{spicey}
+\clearpage
+\input{\curryhome/currytools/currydoc/Docs/manual}
+\clearpage
+\input{\curryhome/currytools/browser/Docs/manual}
+\clearpage
+\input{\curryhome/currytools/currytest/Docs/manual}
+\clearpage
+\input{\curryhome/currytools/erd2curry/Docs/manual}
+\clearpage
+\input{\curryhome/currytools/spicey/Docs/manual}
 \include{problems}
 
 % Bibliography

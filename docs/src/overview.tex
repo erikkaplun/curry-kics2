@@ -72,10 +72,10 @@ Since the translation of Curry programs with \CYS creates
 some auxiliary files (see Section~\ref{sec-auxfiles} for details),
 you need write permission
 in the directory where you have stored your Curry programs.
-Moreover, the current implementation also recompiles
-system libraries according to the setting of some options.
-Therefore, the \CYS system should be locally installed
-in your user account.
+%Moreover, the current implementation also recompiles
+%system libraries according to the setting of some options.
+%Therefore, the \CYS system should be locally installed
+%in your user account.
 The auxiliary files for all Curry programs in the current
 directory can be deleted by the command\pindex{cleancurry}
 \begin{curry}
@@ -178,8 +178,8 @@ x*y=:=1 where x,y free
 \end{curry}
 is non-deterministically evaluated to the two solutions
 \begin{curry}
-{x = -1, y = -1} Success
-{x = 1, y = 1} Success
+{x = -1, y = -1} True
+{x = 1, y = 1} True
 \end{curry}
 \item
 Unification is performed without an occur check.
@@ -193,8 +193,8 @@ There is currently no general connection to external constraint solvers.
 
 \CYS searches for imported modules in various directories.
 By default, imported modules are searched in the directory
-of the main program and the system module directories
-\ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
+of the main program and the system module directory
+\ccode{\cyshome/lib}.
 This search path can be extended
 by setting the environment variable \code{CURRYPATH}\pindex{CURRYPATH}
 (which can be also set in a \CYS session by the option
@@ -214,7 +214,7 @@ if one loads the Curry program \ccode{/home/joe/curryprogs/main}).
 \item The directories enumerated in the environment variable \code{CURRYPATH}.
 \item The directories enumerated in the \ccode{.kics2rc} variable
       \ccode{libraries}.
-\item The directories \ccode{\cyshome/lib} and \ccode{\cyshome/lib/meta}.
+\item The directory \ccode{\cyshome/lib}.
 \end{enumerate}
 The same strategy also applies to modules with a hierarchical
 module name with the only difference that the hierarchy prefix
