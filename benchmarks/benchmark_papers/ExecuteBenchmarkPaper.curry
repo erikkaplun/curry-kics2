@@ -100,6 +100,7 @@ extractCode bminstalldir textfile = do
               (dirName absmacrofile++'/':currycodeFile)
      hPutStrLn hc $
        concatMap genMacro (zip [1..] codesnippets) ++
+       "\nmain :: IO ()" ++
        "\nmain = genMacroFile [" ++
                  intercalate "," (map (\i->macroOpName i)
                                       [1 .. length codesnippets]) ++

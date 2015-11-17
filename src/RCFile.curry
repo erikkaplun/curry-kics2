@@ -76,11 +76,11 @@ rcValue rcdefs var = strip $ maybe "" id $
 
 
 --- Extract from a list of command-line arguments rc properties
---- of the from "-Dprop=val" and return the remaining arguments and
---- the extracted properties.
+--- of the from "-Dprop=val", which must be the first arguments,
+--- and return the remaining arguments and the extracted properties.
 extractRCArgs :: [String] -> ([String],[(String,String)])
 extractRCArgs args =
-  let (dargs,otherargs) = partition (\s -> take 2 s == "-D") args
+  let (dargs,otherargs) = break (\s -> take 2 s /= "-D") args
    in (otherargs, map splitDefs (map (drop 2) dargs))
  where
   splitDefs darg = case break (=='=') darg of
