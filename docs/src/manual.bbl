@@ -14,6 +14,27 @@ S.~Antoy and M.~Hanus.
   on Principles and Practice of Declarative Programming (PPDP'09)}, pages
   73--82. ACM Press, 2009.
 
+\bibitem{AntoyHanus14}
+S.~Antoy and M.~Hanus.
+\newblock Curry without {Success}.
+\newblock In {\em Proc.\ of the 23rd International Workshop on Functional and
+  (Constraint) Logic Programming (WFLP 2014)}, volume 1335 of {\em {CEUR}
+  Workshop Proceedings}, pages 140--154. CEUR-WS.org, 2014.
+
+\bibitem{AntoyHanus15LOPSTR}
+S.~Antoy and M.~Hanus.
+\newblock From boolean equalities to constraints.
+\newblock In {\em Proceedings of the 25th International Symposium on
+  Logic-based Program Synthesis and Transformation (LOPSTR 2015)}. Springer
+  LNCS (to appear), 2015.
+
+\bibitem{AntoyHanus16PADL}
+S.~Antoy and M.~Hanus.
+\newblock Default rules for {Curry}.
+\newblock In {\em Proc. of the 18th International Symposium on Practical
+  Aspects of Declarative Languages (PADL 2016)}. Springer LNCS (to appear),
+  2016.
+
 \bibitem{AugustssonRittriSynek94}
 L.~Augustsson, M.~Rittri, and D.~Synek.
 \newblock On generating unique names.

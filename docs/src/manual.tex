@@ -5,6 +5,7 @@
 \usepackage{url}
 \usepackage{xspace}
 \usepackage{graphicx}
+\usepackage{syntax}
 
 \input{version}
 
@@ -72,8 +73,6 @@
 \newcommand{\cb}{CurryBrowser\xspace}
 \newcommand{\curryrc}{.kics2rc} % name of the system's rc file
 
-\usepackage{syntax}
-
 % allow underscores in programs:
 \catcode`\_=\active
 \let_=\sb
@@ -118,17 +117,22 @@ Jan Rasmus Tikovsky$^5$ \\[4ex]
 \pdfbookmark[1]{Contents}{Contents}
 \tableofcontents
 
+\clearpage
 \include{preface}
 \include{overview}
 \include{usage}
 \include{extensions}
 \include{syntax}
 \clearpage
+\input{\curryhome/currytools/optimize/Docs/manual}
+\clearpage
 \input{\curryhome/currytools/currydoc/Docs/manual}
 \clearpage
 \input{\curryhome/currytools/browser/Docs/manual}
 \clearpage
 \input{\curryhome/currytools/currytest/Docs/manual}
+\clearpage
+\input{\curryhome/currytools/currypp/Docs/manual}
 \clearpage
 \input{\curryhome/currytools/erd2curry/Docs/manual}
 \clearpage
