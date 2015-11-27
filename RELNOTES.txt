@@ -66,6 +66,8 @@ Changes to version 0.4.1:
 
           import FlatCurry.FlexRigid
 
+  * New libraries added: ErrorState, SCC, Rewriting.*,
+    FlatCurry.Annotated.TypeInference
 
 
 Release notes for KiCS2 Version 0.4.1
