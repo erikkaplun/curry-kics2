@@ -455,7 +455,6 @@ $(TARBALL): $(COMP) $(CYMAKE) $(MANUAL)
 	cd $(DISTDIR) && $(MAKE) Compile       # translate compiler
 	cd $(DISTDIR) && $(MAKE) REPL          # translate REPL
 	cd $(DISTDIR) && $(MAKE) clean         # clean object files
-	cd $(DISTDIR) && $(MAKE) typeinference # precompile typeinference
 	cd $(DISTDIR) && $(MAKE) cleandist     # delete unnessary files
 	# copy documentation
 	mkdir -p $(DISTDIR)/docs
@@ -491,10 +490,6 @@ Compile: $(PKGDB) $(INSTALLHS) scripts copylibs
 .PHONY: REPL
 REPL: $(PKGDB) $(INSTALLHS) scripts copylibs
 	cd src && $(MAKE) REPLBoot
-
-.PHONY: typeinference
-typeinference: $(CURRYSYSTEMBIN)
-	cd currytools && $(MAKE) typeinference
 
 # install the benchmark system
 .PHONY: benchmarks
