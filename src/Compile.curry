@@ -34,7 +34,7 @@ import LiftCase                  (liftCases)
 import EliminateCond             (eliminateCond)
 import DefaultPolymorphic        (defaultPolymorphic)
 import MissingImports            (fixMissingImports)
-import Inference                 (inferProgFromProgEnv)
+import FlatCurry.Annotated.TypeInference (inferProgFromProgEnv)
 import Message                   (putErrLn, showStatus, showDetail)
 import ModuleDeps                (ModuleIdent, Source, deps)
 import Names
@@ -85,7 +85,7 @@ locateCurryFile mn = do
              maybe (-- try to find a FlatCurry file without source
                     getLoadPathForModule modname >>=
                     lookupFileInPath fcyname [""] )
-	           (\ (_,fn) -> return (Just fn))
+                   (\ (_,fn) -> return (Just fn))
 
 makeModule :: [(ModuleIdent, Source)] -> State -> ((ModuleIdent, Source), Int)
            -> IO State

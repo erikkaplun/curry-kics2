@@ -68,6 +68,9 @@ Changes to version 0.4.1:
 
   * New libraries added: ErrorState, SCC, Rewriting.*,
     FlatCurry.Annotated.TypeInference
+  * currytools: typeinference removed since it is now contained
+    in the standard system libraries
+    
 
 
 Release notes for KiCS2 Version 0.4.1

@@ -30,9 +30,9 @@ module DefaultPolymorphic (defaultPolymorphic) where
 import FiniteMap
 import List ((\\), nub)
 
-import AFCSubst
 import FlatCurry.Annotated.Types
 import FlatCurry.Annotated.Goodies
+import FlatCurry.Annotated.TypeSubst
 import State
 
 --- The Default Polymorphic Monad contains a type substitution as its state.
