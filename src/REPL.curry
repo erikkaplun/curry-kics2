@@ -84,22 +84,30 @@ defaultImportPathsWith rst dirs = do
 
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []
-  | quit rst = cleanUpRepl rst
-  | otherwise   = do
+  | quit rst  = cleanUpRepl rst
+  | otherwise = do
       getBanner >>= writeVerboseInfo rst 1
       writeVerboseInfo rst 1
         "Type \":h\" for help  (contact: kics2@curry-language.org)"
       repl rst
-processArgsAndStart rst (arg:args) =
-  if head arg /= ':'
-  then writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
-  else do let (cmdargs,more) = break (\a -> head a == ':') args
-          mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
-          maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
+processArgsAndStart rst (arg:args)
+  -- ignore empty arguments which can be provided by single or double quotes
+  | null      arg = processArgsAndStart rst args
+  | isCommand arg = do
+    let (cmdargs, more) = break isCommand args
+    mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
+    maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
+  | otherwise     = writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
  where
   printHelp = do
     putStrLn "Usage: kics2 [--noreadline] [-Dprop=val] <list of commands>\n"
     printHelpOnCommands
+
+--- May a `String` be a REPL command?
+isCommand :: String -> Bool
+isCommand s = case s of
+  ':' : _ -> True
+  _       -> False
 
 --- Retrieve the KiCS2 banner
 getBanner :: IO String
@@ -151,7 +159,6 @@ processInput rst g
                                                     else repl rst')
                            mbrst
   | otherwise   = evalExpression rst g >>= repl
- where isCommand str = notNull str && head str == ':'
 
 --- Evaluate an expression w.r.t. currently loaded modules
 evalExpression :: ReplState -> String -> IO ReplState
