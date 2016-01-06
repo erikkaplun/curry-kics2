@@ -238,7 +238,10 @@ unifyMatch x y cd cs = match uniChoice uniNarrowed uniFree failCons uniGuard uni
       bindFree     cdj j ys    = lookupCs cs j (bindTo cs') $
                if cdj < cd
                then unifyMatch x (narrows cs cdj j id ys) cd cs
-               else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_True
+-- if a variable is bound to itself, no constraint is generated at all
+-- in order to prevent a loop caused by the constraint store optimization
+               else if i == j then C_True
+                              else guardCons cd (ValConstr i y' [i :=: BindTo j]) C_True
       bindGuard cdj c    = guardCons cdj c . (bindTo $! c `addCs` cs')
       bindVal v          = bindToVal i v cd cs'
 
@@ -284,7 +287,11 @@ unifyTry xVal yVal cd csVal = unify (try xVal) (try yVal) csVal -- 1. compute HN
                     then unify (try (narrows cs cdi i id xs)) hy cs
                     else (if cdj < cd
                            then unify hx (try (narrows cs cdj j id nfy)) cs
-                           else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_True)))
+-- if a variable is bound to itself, no constraint is generated at all
+-- in order to prevent a loop caused by the constraint store optimization
+                           else (if i == j
+                                  then C_True
+                                  else guardCons cdi (ValConstr i nfy [i :=: BindTo j]) C_True))))
   -- one free variable and one value
   unify (Free cdi i xs) hy@(Val y) cs = lookupCs cs i
     (\x -> unify (try x) hy cs)
