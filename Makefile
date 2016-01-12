@@ -228,9 +228,7 @@ utils/%: .FORCE
 .PHONY: runtest
 runtest: testsuite/doTest
 	cd testsuite && ./doTest --nogui
-	cd currytools/optimize/binding_optimization/Examples && ./test.sh
-	cd currytools/currypp/SequentialRules/Examples && ./test.sh
-	cd currytools/currypp/DefaultRules/Examples && ./test.sh
+	cd currytools && $(MAKE) runtest
 
 .PHONY: clean
 clean: $(CLEANCURRY)
