@@ -224,7 +224,6 @@ extractFuncInfos funs =
   map (\fd -> (AHG.funcName fd, isIO (AHG.typeOf fd))) funs
  where
   isIO AH.Untyped      = False
-  isIO (AH.FType   ty) = withIOResult ty
   isIO (AH.CType _ ty) = withIOResult ty
 
   withIOResult (AH.TVar        _) = False
@@ -269,6 +268,7 @@ integrateExternals opts (AH.Prog m is td fd od) fn = do
     ]
  where
   defaultPragmas = [ "{-# LANGUAGE MagicHash #-}"
+                   , "{-# LANGUAGE ScopedTypeVariables #-}"
                    , "{-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}"
                    ]
   ppOpts = AHP.defaultOptions { AHP.traceFailure  = optTraceFailure opts

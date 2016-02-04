@@ -83,7 +83,7 @@ tyVarsOf (TCons    _ tys) = foldr union [] (map tyVarsOf tys)
 
 --- A typed function declaration.
 tfunc :: QName -> Int -> Visibility -> TypeExpr -> [Rule] -> FuncDecl
-tfunc name arity v t rules = Func "" name arity v (FType t) (Rules rules)
+tfunc name arity v t rules = Func "" name arity v (CType [] t) (Rules rules)
 
 --- A typed function declaration with a type context.
 ctfunc :: QName -> Int -> Visibility -> [Context] -> TypeExpr -> [Rule]
@@ -246,8 +246,7 @@ renameSymbolInLocal ren local = case local of
                                       (map (renameSymbolInLocal ren) locals)
 
 renameSymbolInTypeSig :: (QName -> QName) -> TypeSig -> TypeSig
-renameSymbolInTypeSig _ Untyped = Untyped
-renameSymbolInTypeSig ren (FType te) = FType (renameSymbolInTypeExpr ren te)
+renameSymbolInTypeSig _   Untyped       = Untyped
 renameSymbolInTypeSig ren (CType tc te) =
   CType (map (\ (Context qn tvars) -> Context (ren qn) tvars) tc)
         (renameSymbolInTypeExpr ren te)

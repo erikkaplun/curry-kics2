@@ -383,11 +383,9 @@ renameCons qn@(q, n) =
 -- -----------------------------------------------------------------------------
 
 toTypeSig :: AH.TypeExpr -> AH.TypeSig
-toTypeSig ty | null tyVars = AH.FType ty
-             | otherwise   = AH.CType ctxt ty
+toTypeSig ty = AH.CType ctxt ty
   where
-  tyVars = AHG.tyVarsOf ty
-  ctxt   = map (\tv -> AH.Context (curryPrelude, "Curry") [tv]) tyVars
+  ctxt = map (\tv -> AH.Context (curryPrelude, "Curry") [tv]) (AHG.tyVarsOf ty)
 
 trDetType :: Int -> TypeExpr -> M AH.TypeExpr
 trDetType = trTypeExpr detFuncType

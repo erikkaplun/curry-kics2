@@ -15,6 +15,7 @@ module AbstractHaskellPrinter
 import Pretty
 
 import AbstractHaskell
+import AbstractHaskellGoodies (tyVarsOf)
 import Names           (isHaskellModule, prelude, curryPrelude, addTrace)
 
 data Options = Options { currentModule :: String, traceFailure :: Bool }
@@ -156,7 +157,7 @@ ppConsDecl o (Cons (_, qn) _ _ tys) = indent $ fillSep
 ppContexts :: Options -> [Context] -> Doc
 ppContexts opts cs
   | null cs   = empty
-  | otherwise = tupled (map (ppContext opts) cs) <+> text "=>"
+  | otherwise = tupled (map (ppContext opts) cs) <+> doubleArrow
 
 ppContext :: Options -> Context -> Doc
 ppContext opts (Context qn tvs) = ppTypeExp opts (TCons qn (map TVar tvs))
@@ -202,11 +203,18 @@ ppComment = vsep . map (\c -> text "---" <+> text c) . lines
 
 --- Shows an AbstractHaskell type signature of a given function name.
 ppTypeSig :: Options -> String -> TypeSig -> Doc
-ppTypeSig _    _     Untyped     = empty
-ppTypeSig opts f (FType      ty) = ppPrefixOp f <+> text "::"
-                                   <+> ppTypeExp opts ty
-ppTypeSig opts f (CType ctxt ty) = ppPrefixOp f <+> text "::"
-                                   <> ppContexts opts ctxt <+> ppTypeExp opts ty
+ppTypeSig _    _ Untyped         = empty
+ppTypeSig opts f (CType ctxt ty) = hsep [ ppPrefixOp f, doubleColon
+                                        , ppScopedTyVars ty
+                                        , ppContexts opts ctxt
+                                        , ppTypeExp opts ty
+                                        ]
+
+ppScopedTyVars :: TypeExpr -> Doc
+ppScopedTyVars ty
+  | null tvs  = empty
+  | otherwise = text "forall" <+> fillSep (map ppTypeVar tvs) <+> dot
+  where tvs = tyVarsOf ty
 
 ppRule :: Options -> String -> Rule -> Doc
 ppRule opts f (Rule ps rhs ds) = indent $
@@ -259,7 +267,7 @@ ppExpr opts p (Case           e bs) = parensIf (p > 0)
   (text "case" <+> ppExpr opts 0 e <+> text "of"
   $$ align (vsep (map (ppBranchExpr opts) bs)))
 ppExpr opts p (Typed          e ty) = parensIf (p > 0) $
-  ppExpr opts 0 e <+> text "::" <+> ppTypeExp opts ty
+  ppExpr opts 0 e <+> doubleColon <+> ppTypeExp opts ty
 ppExpr opts p (IfThenElse    c t e) = parensIf (p > 0) $
   text "if" <+> fillSep [ ppExpr opts 0 c
                         , text "then" <+> ppExpr opts 0 t
@@ -270,7 +278,7 @@ ppExpr opts _ (List         es) = list   (map (ppExpr opts 0) es)
 
 ppStmt :: Options -> Statement -> Doc
 ppStmt opts (SExpr  e) = ppExpr opts 0 e
-ppStmt opts (SPat p e) = fillSep [ppPattern opts 0 p, text "<-", ppExpr opts 0 e]
+ppStmt opts (SPat p e) = fillSep [ppPattern opts 0 p, larrow, ppExpr opts 0 e]
 ppStmt opts (SLet  ds) = text "let" <+> ppBlock opts ds
 
 ppPattern :: Options -> Int -> Pattern -> Doc
