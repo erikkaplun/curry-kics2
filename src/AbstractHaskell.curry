@@ -91,10 +91,9 @@ data TypeExpr
                                 -- (TCons (module,name) arguments)
 
 --- Data type to represent the type signature of a defined function.
---- The type can be missing, a simple type, or a type with a context.
+--- The type can be missing or a type with an optional context.
 data TypeSig
   = Untyped
-  | FType TypeExpr
   | CType [Context] TypeExpr
 
 --- Data type for operator declarations.
