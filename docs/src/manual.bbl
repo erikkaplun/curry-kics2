@@ -25,15 +25,15 @@ S.~Antoy and M.~Hanus.
 S.~Antoy and M.~Hanus.
 \newblock From boolean equalities to constraints.
 \newblock In {\em Proceedings of the 25th International Symposium on
-  Logic-based Program Synthesis and Transformation (LOPSTR 2015)}. Springer
-  LNCS (to appear), 2015.
+  Logic-based Program Synthesis and Transformation (LOPSTR 2015)}, pages
+  73--88. Springer LNCS 9527, 2015.
 
 \bibitem{AntoyHanus16PADL}
 S.~Antoy and M.~Hanus.
 \newblock Default rules for {Curry}.
 \newblock In {\em Proc. of the 18th International Symposium on Practical
-  Aspects of Declarative Languages (PADL 2016)}. Springer LNCS (to appear),
-  2016.
+  Aspects of Declarative Languages (PADL 2016)}, pages 65--82. Springer LNCS
+  9585, 2016.
 
 \bibitem{AugustssonRittriSynek94}
 L.~Augustsson, M.~Rittri, and D.~Synek.
@@ -124,10 +124,10 @@ M.~Hanus and F.~Steiner.
   International Symposium PLILP/ALP'98)}, pages 374--390. Springer LNCS 1490,
   1998.
 
-\bibitem{Hanus15Curry}
+\bibitem{Hanus16Curry}
 M.~Hanus~(ed.).
 \newblock Curry: An integrated functional logic language (vers.\ 0.9.0).
-\newblock Available at \url{http://www.curry-language.org}, 2015.
+\newblock Available at \url{http://www.curry-language.org}, 2016.
 
 \bibitem{Johnsson85}
 T.~Johnsson.
