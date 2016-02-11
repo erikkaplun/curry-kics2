@@ -240,7 +240,6 @@ clean: $(CLEANCURRY)
 	-cd lib        && $(MAKE) clean
 	cd runtime     && $(MAKE) clean
 	cd src         && $(MAKE) clean
-	-cd talks      && $(MAKE) clean
 	cd tools       && $(MAKE) clean
 	cd utils       && $(MAKE) clean
 	cd www         && $(MAKE) clean
@@ -256,7 +255,6 @@ cleanall: clean
 	-cd lib       && $(MAKE) cleanall
 	cd scripts    && $(MAKE) cleanall
 	cd src        && $(MAKE) cleanall
-	-cd talks     && $(MAKE) cleanall
 	cd utils      && $(MAKE) cleanall
 	rm -rf $(LOCALBIN) $(CYMAKE) $(LOCALPKG)
 	rm -f  $(CLEANCURRY)
@@ -419,7 +417,7 @@ testdist: $(TARBALL)
 	@echo "Integration test successfully completed."
 
 # Directories containing development stuff only
-DEV_DIRS = benchmarks debug docs experiments talks
+DEV_DIRS = benchmarks debug docs experiments
 
 # Clean all files that should not be included in a distribution
 .PHONY: cleandist
