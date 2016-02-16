@@ -15,6 +15,7 @@ Changes to version 0.4.1:
     (use operations like `getLoadPathForModule` and
     `lookupModuleSourceInLoadPath` instead of the deprecated operations
     since they handle hierarchical module names better)
+  * Libraries `List`: `diagonal` added
   * Libraries `meta/*` removed (since they have been replaced
     by libraries with hierachical names, see below)
   * Hierarchical libraries for FlatCurry added and extended:
