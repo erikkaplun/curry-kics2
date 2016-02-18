@@ -67,6 +67,19 @@ B.~Bra{\ss}el, M.~Hanus, B.~Peem{\"o}ller, and F.~Reck.
   (Constraint) Logic Programming (WFLP 2011)}, pages 1--18. Springer LNCS 6816,
   2011.
 
+\bibitem{ChristiansenFischer08FLOPS}
+J.~Christiansen and S.~Fischer.
+\newblock {EasyCheck} - test data for free.
+\newblock In {\em Proc. of the 9th International Symposium on Functional and
+  Logic Programming (FLOPS 2008)}, pages 322--336. Springer LNCS 4989, 2008.
+
+\bibitem{ClaessenHughes00}
+K.~Claessen and J.~Hughes.
+\newblock Quickcheck: A lightweight tool for random testing of haskell
+  programs.
+\newblock In {\em International Conference on Functional Programming
+  (ICFP'00)}, pages 268--279. ACM Press, 2000.
+
 \bibitem{Hanus97POPL}
 M.~Hanus.
 \newblock A unified computation model for functional and logic programming.
