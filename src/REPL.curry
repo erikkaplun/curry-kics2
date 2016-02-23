@@ -3,11 +3,11 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version August 2015
+--- @version February 2016
 --- --------------------------------------------------------------------------
 module REPL where
 
-import AbstractCurry.Types
+import AbstractCurry.Types hiding (preludeName)
 import AbstractCurry.Files
 import AbstractCurry.Select
 import Char              (isAlpha, isAlphaNum, isDigit, isSpace, toLower)
