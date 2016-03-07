@@ -21,10 +21,7 @@ TESTLIBS="testPrelude testAbstractCurry testArray testCombinatorial testDequeue 
 # testGlobalVariable # not yet implemented
 # testFlatCurryXML # causes memory overflow
 
-# test tools
-TESTTOOLS="testData2Xml"
-
-ALLTESTS="$TESTLANG $TESTLIBS $TESTTOOLS"
+ALLTESTS="$TESTLANG $TESTLIBS"
 
 # clean up before
 $CURRYBIN/cleancurry
