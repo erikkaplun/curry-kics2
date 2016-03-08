@@ -8,135 +8,30 @@ import Debug
 import FailInfo
 import Types
 
--- BinInt
-
-data BinInt
-     = Neg Nat
-     | Zero
-     | Pos Nat
-     | Choice_BinInt Cover ID BinInt BinInt
-     | Choices_BinInt Cover ID ([BinInt])
-     | Fail_BinInt Cover FailInfo
-     | Guard_BinInt Cover (Constraints) BinInt
-
-instance Show BinInt where
-  showsPrec d (Choice_BinInt cd i x y) = showsChoice d cd i x y
-  showsPrec d (Choices_BinInt cd i xs) = showsChoices d cd i xs
-  showsPrec _ (Fail_BinInt        _ _) = showChar '!'
-  showsPrec d (Guard_BinInt    cd c e) = showsGuard d cd c e
-#ifdef BinaryInt
-  showsPrec _ (Neg                 x1) = (showString "(Neg") . ((showChar ' ')
-                                       . ((shows x1) . (showChar ')')))
-  showsPrec _ Zero                     = showString "Zero"
-  showsPrec _ (Pos                 x1) = (showString "(Pos") . ((showChar ' ')
-                                       . ((shows x1) . (showChar ')')))
-#else
-  showsPrec d (Neg                  x) = showString "(-" . showsPrec d x
-                                       . showChar ')'
-  showsPrec _ Zero                     = showChar '0'
-  showsPrec d (Pos                  x) = showsPrec d x
-#endif
-
-
-
-instance Read BinInt where
-  readsPrec d s = (readParen (d > 10) (\r -> [ (Neg x1,r1) | (_,r0) <- readQualified "Prelude" "Neg" r, (x1,r1) <- readsPrec 11 r0]) s) ++ ((readParen False (\r -> [ (Zero,r0) | (_,r0) <- readQualified "Prelude" "Zero" r]) s) ++ (readParen (d > 10) (\r -> [ (Pos x1,r1) | (_,r0) <- readQualified "Prelude" "Pos" r, (x1,r1) <- readsPrec 11 r0]) s))
-
-
-instance NonDet BinInt where
-  choiceCons = Choice_BinInt
-  choicesCons = Choices_BinInt
-  failCons = Fail_BinInt
-  guardCons = Guard_BinInt
-  try (Choice_BinInt cd i x y) = tryChoice cd i x y
-  try (Choices_BinInt cd i xs) = tryChoices cd i xs
-  try (Fail_BinInt cd info) = Fail cd info
-  try (Guard_BinInt cd c e) = Guard cd c e
-  try x = Val x
-  match f _ _ _ _ _ (Choice_BinInt  cd i x y) = f cd i x y
-  match _ f _ _ _ _ (Choices_BinInt cd i@(NarrowedID _ _) xs) = f cd i xs
-  match _ _ f _ _ _ (Choices_BinInt cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_BinInt _ i _) = internalError ("Prelude.BinInt.match: Choices with ChoiceID " ++ (show i))
-  match _ _ _ f _ _ (Fail_BinInt cd info) = f cd info
-  match _ _ _ _ f _ (Guard_BinInt cd cs e) = f cd cs e
-  match _ _ _ _ _ f x = f x
-
-
-instance Generable BinInt where
-  generate s cd = Choices_BinInt cd (freeID [1,0,1] s) [(Neg (generate (leftSupply s) cd )),Zero,(Pos (generate (leftSupply s) cd))]
-
-
-instance NormalForm BinInt where
-  ($!!) cont (Neg x1) cd cs = ((\y1 cd1 cs1 -> cont (Neg y1) cd1 cs1) $!! x1) cd cs
-  ($!!) cont Zero cd cs = cont Zero cd cs
-  ($!!) cont (Pos x1) cd cs = ((\y1 cd1 cs1 -> cont (Pos y1) cd1 cs1) $!! x1) cd cs
-  ($!!) cont (Choice_BinInt d i x y) cd cs = nfChoice cont d i x y cd cs
-  ($!!) cont (Choices_BinInt d i xs) cd cs = nfChoices cont d i xs cd cs
-  ($!!) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
-  ($!!) _ (Fail_BinInt d info) _ _ = failCons d info
-  ($##) cont (Neg x1) cd cs = ((\y1 cd1 cs1 -> cont (Neg y1) cd1 cs1) $## x1) cd cs
-  ($##) cont Zero cd cs = cont Zero cd cs
-  ($##) cont (Pos x1) cd cs = ((\y1 cd1 cs1 -> cont (Pos y1) cd1 cs1) $## x1)cd  cs
-  ($##) cont (Choice_BinInt d i x y) cd cs = gnfChoice cont d i x y cd cs
-  ($##) cont (Choices_BinInt d i xs) cd cs = gnfChoices cont d i xs cd cs
-  ($##) cont (Guard_BinInt d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
-  ($##) _ (Fail_BinInt d info) _ _ = failCons d info
-  searchNF search cont (Neg x1) = search (\y1 -> cont (Neg y1)) x1
-  searchNF _ cont Zero = cont Zero
-  searchNF search cont (Pos x1) = search (\y1 -> cont (Pos y1)) x1
-  searchNF _ _ x = internalError ("PrimTypes.BinInt.searchNF: no constructor: " ++ (show x))
-
-
-instance Unifiable BinInt where
-  (=.=) (Neg x1) (Neg y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) Zero Zero _ _ = C_True
-  (=.=) (Pos x1) (Pos y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
-  (=.<=) (Neg x1) (Neg y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) Zero Zero _ _ = C_True
-  (=.<=) (Pos x1) (Pos y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) _ _ cd _= Fail_C_Bool cd  defFailInfo
-  bind cd i (Neg x2) = ((i :=: (ChooseN 0 1)):(concat [(bind cd (leftID i) x2)]))
-  bind _  i Zero = ((i :=: (ChooseN 1 0)):(concat []))
-  bind cd i (Pos x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
-  bind cd i (Choice_BinInt d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_BinInt d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
-  bind cd i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
-  bind _  _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ (show i))
-  bind _  _ (Fail_BinInt _ info) = [Unsolvable info]
-  bind cd i (Guard_BinInt _ cs e) = (getConstrList cs) ++ (bind cd i e)
-  lazyBind cd i (Neg x2) = [(i :=: (ChooseN 0 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
-  lazyBind _  i Zero = [(i :=: (ChooseN 1 0))]
-  lazyBind cd i (Pos x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
-  lazyBind cd i (Choice_BinInt d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
-  lazyBind cd i (Choices_BinInt d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
-  lazyBind cd i (Choices_BinInt d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
-  lazyBind _  _ (Choices_BinInt _ i@(ChoiceID _) _) = internalError ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _  _ (Fail_BinInt _ info) = [Unsolvable info]
-  lazyBind cd i (Guard_BinInt _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
-
--- Nats
+-- -----------------------------------------------------------------------------
+-- Nat
+-- -----------------------------------------------------------------------------
 
 data Nat
-     = IHi
-     | O Nat
-     | I Nat
-     | Choice_Nat Cover ID Nat Nat
-     | Choices_Nat Cover ID ([Nat])
-     | Fail_Nat Cover  FailInfo
-     | Guard_Nat Cover (Constraints) Nat
+  = IHi
+  | O Nat
+  | I Nat
+  | Choice_Nat Cover ID Nat Nat
+  | Choices_Nat Cover ID [Nat]
+  | Fail_Nat Cover FailInfo
+  | Guard_Nat Cover Constraints Nat
 
 instance Show Nat where
   showsPrec d (Choice_Nat cd i x y) = showsChoice d cd i x y
   showsPrec d (Choices_Nat cd i xs) = showsChoices d cd i xs
-  showsPrec d (Guard_Nat    cd c e) = showsGuard d cd c e
-  showsPrec _ (Fail_Nat        _ _) = showChar '!'
+  showsPrec d (Guard_Nat cd c e) = showsGuard d cd c e
+  showsPrec _ (Fail_Nat cd info) = showChar '!'
 #ifdef BinaryInt
-  showsPrec _ IHi                   = showString "IHi"
-  showsPrec _ (O x1)                = showString "(O" . showChar ' '
-                                    . shows x1 . showChar ')'
-  showsPrec _ (I x1)                = showString "(I" . showChar ' '
-                                    . shows x1 . showChar ')'
+  showsPrec _ IHi = showString "IHi"
+  showsPrec _ (O x1) = showString "(O" . (showChar ' ' . (shows x1 . showChar
+    ')'))
+  showsPrec _ (I x1) = showString "(I" . (showChar ' ' . (shows x1 . showChar
+    ')'))
 #else
   showsPrec d x1                    = showTerm 1 0 x1
     where
@@ -145,18 +40,20 @@ instance Show Nat where
     showTerm a c (O n) = showTerm (2 * a) c       n
     showTerm a c (I n) = showTerm (2 * a) (c + a) n
     showTerm a c x
-      | a <= 1         = showsPrec d x
-      | c == 0         = showChar '(' . shows a . showString " * "
-                       . showsPrec d x . showChar ')'
-      | otherwise      = showChar '(' . shows a . showString " * "
-                       . showsPrec d x . showString " + "
-                       . shows c . showChar ')'
+      | a <= 1           = showsPrec d x
+      | c == 0           = showChar '(' . shows a . showString " * "
+                         . showsPrec d x . showChar ')'
+      | otherwise        = showChar '(' . shows a . showString " * "
+                         . showsPrec d x . showString " + "
+                         . shows c . showChar ')'
 #endif
 
-
 instance Read Nat where
-  readsPrec d s = (readParen False (\r -> [ (IHi,r0) | (_,r0) <- readQualified "Prelude" "IHi" r]) s) ++ ((readParen (d > 10) (\r -> [ (O x1,r1) | (_,r0) <- readQualified "Prelude" "O" r, (x1,r1) <- readsPrec 11 r0]) s) ++ (readParen (d > 10) (\r -> [ (I x1,r1) | (_,r0) <- readQualified "Prelude" "I" r, (x1,r1) <- readsPrec 11 r0]) s))
-
+  readsPrec d s = readParen False (\r -> [(IHi, r0) | (_, r0) <- readQualified
+    "Prelude" "IHi" r]) s ++ (readParen ((>) d 10) (\r -> [(O x1, r1) | (_, r0) <-
+    readQualified "Prelude" "O" r, (x1, r1) <- readsPrec 11 r0]) s ++ readParen ((>)
+    d 10) (\r -> [(I x1, r1) | (_, r0) <- readQualified "Prelude" "I" r, (x1, r1)
+    <- readsPrec 11 r0]) s)
 
 instance NonDet Nat where
   choiceCons = Choice_Nat
@@ -171,66 +68,208 @@ instance NonDet Nat where
   match f _ _ _ _ _ (Choice_Nat cd i x y) = f cd i x y
   match _ f _ _ _ _ (Choices_Nat cd i@(NarrowedID _ _) xs) = f cd i xs
   match _ _ f _ _ _ (Choices_Nat cd i@(FreeID _ _) xs) = f cd i xs
-  match _ _ _ _ _ _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.match: Choices with ChoiceID " ++ (show i))
+  match _ _ _ _ _ _ (Choices_Nat cd i _) = error
+    ("Prelude.Nat.match: Choices with ChoiceID " ++ show i)
   match _ _ _ f _ _ (Fail_Nat cd info) = f cd info
-  match _ _ _ _ f _ (Guard_Nat cd cs e) = f cd cs e
+  match _ _ _ _ f _ (Guard_Nat cd c e) = f cd c e
   match _ _ _ _ _ f x = f x
 
-
 instance Generable Nat where
-  generate s cd = Choices_Nat cd (freeID [0,1,1] s) [IHi,O (generate (leftSupply s) cd),I (generate (leftSupply s) cd )]
-
+  generate s c = Choices_Nat c (freeID [0, 1, 1] s) [IHi, O (generate
+    (leftSupply s) c), I (generate (leftSupply s) c)]
 
 instance NormalForm Nat where
-  ($!!) cont IHi cd cs = cont IHi cd cs
-  ($!!) cont (O x1) cd cs = ((\y1 cd1 cs1 -> cont (O y1) cd1 cs1) $!! x1) cd cs
-  ($!!) cont (I x1) cd cs = ((\y1 cd1 cs1 -> cont (I y1) cd1 cs1) $!! x1) cd cs
-  ($!!) cont (Choice_Nat d i x y) cd cs = nfChoice cont d i x y cd cs
-  ($!!) cont (Choices_Nat d i xs) cd cs = nfChoices cont d i xs cd cs
-  ($!!) cont (Guard_Nat d c x) cd cs = guardCons d c ((cont $!! x) cd $! addCs c cs)
-  ($!!) _ (Fail_Nat d info) _ _ = failCons d info
-  ($##) cont IHi cd  cs = cont IHi cd cs
-  ($##) cont (O x1) cd cs = ((\y1 cd1 cs1 -> cont (O y1) cd1 cs1) $## x1) cd cs
-  ($##) cont (I x1) cd cs = ((\y1 cd1 cs1 -> cont (I y1) cd1 cs1) $## x1) cd cs
-  ($##) cont (Choice_Nat d i x y) cd cs = gnfChoice cont d i x y cd cs
-  ($##) cont (Choices_Nat d i xs) cd cs = gnfChoices cont d i xs cd cs
-  ($##) cont (Guard_Nat d c x) cd cs = guardCons d c ((cont $## x) cd $! addCs c cs)
-  ($##) _ (Fail_Nat d info) _ _ = failCons d info
+  ($!!) cont IHi d cs = cont IHi d cs
+  ($!!) cont (O x1) d cs = ($!!) (\y1 d cs -> cont (O y1) d cs) x1 d cs
+  ($!!) cont (I x1) d cs = ($!!) (\y1 d cs -> cont (I y1) d cs) x1 d cs
+  ($!!) cont (Choice_Nat cd i x y) d cs = nfChoice cont cd i x y cd cs
+  ($!!) cont (Choices_Nat cd i xs) d cs = nfChoices cont cd i xs d cs
+  ($!!) cont (Guard_Nat cd c e) d cs = guardCons cd c (($!!) cont e d (addCs c
+    cs))
+  ($!!) _ (Fail_Nat cd info) _ _ = failCons cd info
+  ($##) cont IHi d cs = cont IHi d cs
+  ($##) cont (O x1) d cs = ($##) (\y1 d cs -> cont (O y1) d cs) x1 d cs
+  ($##) cont (I x1) d cs = ($##) (\y1 d cs -> cont (I y1) d cs) x1 d cs
+  ($##) cont (Choice_Nat cd i x y) d cs = gnfChoice cont cd i x y cd cs
+  ($##) cont (Choices_Nat cd i xs) d cs = gnfChoices cont cd i xs d cs
+  ($##) cont (Guard_Nat cd c e) d cs = guardCons cd c (($##) cont e d (addCs c
+    cs))
+  ($##) _ (Fail_Nat cd info) _ _ = failCons cd info
+  showCons IHi = "Prelude.IHi"
+  showCons (O _) = "Prelude.O _"
+  showCons (I _) = "Prelude.I _"
+  showCons x = error ("Prelude.Nat.showCons: no constructor: " ++ show x)
   searchNF _ cont IHi = cont IHi
   searchNF search cont (O x1) = search (\y1 -> cont (O y1)) x1
   searchNF search cont (I x1) = search (\y1 -> cont (I y1)) x1
-  searchNF _ _ x = internalError ("PrimTypes.Nat.searchNF: no constructor: " ++ (show x))
-
+  searchNF _ _ x = error ("Prelude.Nat.searchNF: no constructor: " ++ show x)
 
 instance Unifiable Nat where
-  (=.=) IHi IHi _ _ = C_True
-  (=.=) (O x1) (O y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) (I x1) (I y1) cd cs = (x1 =:= y1) cd cs
-  (=.=) _ _ cd _ = Fail_C_Bool cd defFailInfo
-  (=.<=) IHi IHi _ _ = C_True
-  (=.<=) (O x1) (O y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) (I x1) (I y1) cd cs = (x1 =:<= y1) cd cs
-  (=.<=) _ _ cd _ = Fail_C_Bool cd defFailInfo
-  bind _  i IHi = ((i :=: (ChooseN 0 0)):(concat []))
-  bind cd i (O x2) = ((i :=: (ChooseN 1 1)):(concat [(bind cd (leftID i) x2)]))
-  bind cd i (I x2) = ((i :=: (ChooseN 2 1)):(concat [(bind cd (leftID i) x2)]))
-  bind cd i (Choice_Nat d j l r) = [(ConstraintChoice d j (bind cd i l) (bind cd i r))]
-  bind cd i (Choices_Nat d j@(FreeID _ _) xs) = bindOrNarrow cd i d j xs
-  bind cd i (Choices_Nat d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (bind cd i) xs))]
-  bind _  _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.bind: Choices with ChoiceID: " ++ (show i))
-  bind _  _ (Fail_Nat _ info) = [Unsolvable info]
-  bind cd i (Guard_Nat _ cs e) = (getConstrList cs) ++ (bind cd i e)
-  lazyBind _  i IHi = [(i :=: (ChooseN 0 0))]
-  lazyBind cd i (O x2) = [(i :=: (ChooseN 1 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
-  lazyBind cd i (I x2) = [(i :=: (ChooseN 2 1)),((leftID i) :=: (LazyBind (lazyBind cd (leftID i) x2)))]
-  lazyBind cd i (Choice_Nat d j l r) = [(ConstraintChoice d j (lazyBind cd i l) (lazyBind cd i r))]
-  lazyBind cd i (Choices_Nat d j@(FreeID _ _) xs) = lazyBindOrNarrow cd i d j xs
-  lazyBind cd i (Choices_Nat d j@(NarrowedID _ _) xs) = [(ConstraintChoices d j (map (lazyBind cd i) xs))]
-  lazyBind _  _ (Choices_Nat _ i@(ChoiceID _) _) = internalError ("Prelude.Nat.lazyBind: Choices with ChoiceID: " ++ (show i))
-  lazyBind _  _ (Fail_Nat _ info) = [Unsolvable info]
-  lazyBind cd i (Guard_Nat _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+  (=.=) IHi IHi d cs = C_True
+  (=.=) (O x1) (O y1) d cs = (=:=) x1 y1 d cs
+  (=.=) (I x1) (I y1) d cs = (=:=) x1 y1 d cs
+  (=.=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons b))
+  (=.<=) IHi IHi d cs = C_True
+  (=.<=) (O x1) (O y1) d cs = (=:<=) x1 y1 d cs
+  (=.<=) (I x1) (I y1) d cs = (=:<=) x1 y1 d cs
+  (=.<=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons b))
+  bind cd i IHi = (i :=: ChooseN 0 0) : concat []
+  bind cd i (O x3) = (i :=: ChooseN 1 1) : concat [bind cd (leftID i) x3]
+  bind cd i (I x3) = (i :=: ChooseN 2 1) : concat [bind cd (leftID i) x3]
+  bind d i (Choice_Nat cd j x y) = [ConstraintChoice cd j (bind d i x) (bind d
+    i y)]
+  bind d i (Choices_Nat cd j@(FreeID _ _) xs) = bindOrNarrow d i cd j xs
+  bind d i (Choices_Nat cd j@(NarrowedID _ _) xs) = [ConstraintChoices cd j
+    (map (bind d i) xs)]
+  bind _ _ (Choices_Nat cd i _) = error
+    ("Prelude.Nat.bind: Choices with ChoiceID: " ++ show i)
+  bind _ _ (Fail_Nat cd info) = [Unsolvable info]
+  bind d i (Guard_Nat cd c e) = getConstrList c ++ bind d i e
+  lazyBind cd i IHi = (i :=: ChooseN 0 0) : []
+  lazyBind cd i (O x3) = (i :=: ChooseN 1 1) : [leftID i :=: LazyBind
+    (lazyBind cd (leftID i) x3)]
+  lazyBind cd i (I x3) = (i :=: ChooseN 2 1) : [leftID i :=: LazyBind
+    (lazyBind cd (leftID i) x3)]
+  lazyBind d i (Choice_Nat cd j x y) = [ConstraintChoice cd j (lazyBind d i x)
+    (lazyBind d i y)]
+  lazyBind d i (Choices_Nat cd j@(FreeID _ _) xs) = lazyBindOrNarrow d i cd j
+    xs
+  lazyBind d i (Choices_Nat cd j@(NarrowedID _ _) xs) = [ConstraintChoices cd
+    j (map (lazyBind d i) xs)]
+  lazyBind _ _ (Choices_Nat cd i _) = error
+    ("Prelude.Nat.lazyBind: Choices with ChoiceID: " ++ show i)
+  lazyBind _ _ (Fail_Nat cd info) = [Unsolvable info]
+  lazyBind d i (Guard_Nat cd c e) = getConstrList c ++ [i :=: LazyBind
+    (lazyBind d i e)]
 
+-- -----------------------------------------------------------------------------
+-- BinInt
+-- -----------------------------------------------------------------------------
+
+data BinInt
+  = Neg Nat
+  | Zero
+  | Pos Nat
+  | Choice_BinInt Cover ID BinInt BinInt
+  | Choices_BinInt Cover ID [BinInt]
+  | Fail_BinInt Cover FailInfo
+  | Guard_BinInt Cover Constraints BinInt
+
+instance Show BinInt where
+  showsPrec d (Choice_BinInt cd i x y) = showsChoice d cd i x y
+  showsPrec d (Choices_BinInt cd i xs) = showsChoices d cd i xs
+  showsPrec d (Guard_BinInt cd c e) = showsGuard d cd c e
+  showsPrec _ (Fail_BinInt cd info) = showChar '!'
+#ifdef BinaryInt
+  showsPrec _ (Neg x1) = showString "(Neg" . (showChar ' ' . (shows x1 .
+    showChar ')'))
+  showsPrec _ Zero = showString "Zero"
+  showsPrec _ (Pos x1) = showString "(Pos" . (showChar ' ' . (shows x1 .
+    showChar ')'))
+#else
+  showsPrec d (Neg                x) = showString "(-" . showsPrec d x
+                                       . showChar ')'
+  showsPrec _ Zero                   = showChar '0'
+  showsPrec d (Pos                x) = showsPrec d x
+#endif
+
+instance Read BinInt where
+  readsPrec d s = readParen ((>) d 10) (\r -> [(Neg x1, r1) | (_, r0) <-
+    readQualified "Prelude" "Neg" r, (x1, r1) <- readsPrec 11 r0]) s ++ (readParen
+    False (\r -> [(Zero, r0) | (_, r0) <- readQualified "Prelude" "Zero" r]) s ++
+    readParen ((>) d 10) (\r -> [(Pos x1, r1) | (_, r0) <- readQualified "Prelude"
+    "Pos" r, (x1, r1) <- readsPrec 11 r0]) s)
+
+instance NonDet BinInt where
+  choiceCons = Choice_BinInt
+  choicesCons = Choices_BinInt
+  failCons = Fail_BinInt
+  guardCons = Guard_BinInt
+  try (Choice_BinInt cd i x y) = tryChoice cd i x y
+  try (Choices_BinInt cd i xs) = tryChoices cd i xs
+  try (Fail_BinInt cd info) = Fail cd info
+  try (Guard_BinInt cd c e) = Guard cd c e
+  try x = Val x
+  match f _ _ _ _ _ (Choice_BinInt cd i x y) = f cd i x y
+  match _ f _ _ _ _ (Choices_BinInt cd i@(NarrowedID _ _) xs) = f cd i xs
+  match _ _ f _ _ _ (Choices_BinInt cd i@(FreeID _ _) xs) = f cd i xs
+  match _ _ _ _ _ _ (Choices_BinInt cd i _) = error
+    ("Prelude.BinInt.match: Choices with ChoiceID " ++ show i)
+  match _ _ _ f _ _ (Fail_BinInt cd info) = f cd info
+  match _ _ _ _ f _ (Guard_BinInt cd c e) = f cd c e
+  match _ _ _ _ _ f x = f x
+
+instance Generable BinInt where
+  generate s c = Choices_BinInt c (freeID [1, 0, 1] s) [Neg (generate
+    (leftSupply s) c), Zero, Pos (generate (leftSupply s) c)]
+
+instance NormalForm BinInt where
+  ($!!) cont (Neg x1) d cs = ($!!) (\y1 d cs -> cont (Neg y1) d cs) x1 d cs
+  ($!!) cont Zero d cs = cont Zero d cs
+  ($!!) cont (Pos x1) d cs = ($!!) (\y1 d cs -> cont (Pos y1) d cs) x1 d cs
+  ($!!) cont (Choice_BinInt cd i x y) d cs = nfChoice cont cd i x y cd cs
+  ($!!) cont (Choices_BinInt cd i xs) d cs = nfChoices cont cd i xs d cs
+  ($!!) cont (Guard_BinInt cd c e) d cs = guardCons cd c (($!!) cont e d
+    (addCs c cs))
+  ($!!) _ (Fail_BinInt cd info) _ _ = failCons cd info
+  ($##) cont (Neg x1) d cs = ($##) (\y1 d cs -> cont (Neg y1) d cs) x1 d cs
+  ($##) cont Zero d cs = cont Zero d cs
+  ($##) cont (Pos x1) d cs = ($##) (\y1 d cs -> cont (Pos y1) d cs) x1 d cs
+  ($##) cont (Choice_BinInt cd i x y) d cs = gnfChoice cont cd i x y cd cs
+  ($##) cont (Choices_BinInt cd i xs) d cs = gnfChoices cont cd i xs d cs
+  ($##) cont (Guard_BinInt cd c e) d cs = guardCons cd c (($##) cont e d
+    (addCs c cs))
+  ($##) _ (Fail_BinInt cd info) _ _ = failCons cd info
+  showCons (Neg _) = "Prelude.Neg _"
+  showCons Zero = "Prelude.Zero"
+  showCons (Pos _) = "Prelude.Pos _"
+  showCons x = error ("Prelude.BinInt.showCons: no constructor: " ++ show x)
+  searchNF search cont (Neg x1) = search (\y1 -> cont (Neg y1)) x1
+  searchNF _ cont Zero = cont Zero
+  searchNF search cont (Pos x1) = search (\y1 -> cont (Pos y1)) x1
+  searchNF _ _ x = error ("Prelude.BinInt.searchNF: no constructor: " ++ show x)
+
+instance Unifiable BinInt where
+  (=.=) (Neg x1) (Neg y1) d cs = (=:=) x1 y1 d cs
+  (=.=) Zero Zero d cs = C_True
+  (=.=) (Pos x1) (Pos y1) d cs = (=:=) x1 y1 d cs
+  (=.=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons b))
+  (=.<=) (Neg x1) (Neg y1) d cs = (=:<=) x1 y1 d cs
+  (=.<=) Zero Zero d cs = C_True
+  (=.<=) (Pos x1) (Pos y1) d cs = (=:<=) x1 y1 d cs
+  (=.<=) a b cd _ = Fail_C_Bool cd (unificationFail (showCons a) (showCons b))
+  bind cd i (Neg x3) = (i :=: ChooseN 0 1) : concat [bind cd (leftID i) x3]
+  bind cd i Zero = (i :=: ChooseN 1 0) : concat []
+  bind cd i (Pos x3) = (i :=: ChooseN 2 1) : concat [bind cd (leftID i) x3]
+  bind d i (Choice_BinInt cd j x y) = [ConstraintChoice cd j (bind d i x)
+    (bind d i y)]
+  bind d i (Choices_BinInt cd j@(FreeID _ _) xs) = bindOrNarrow d i cd j xs
+  bind d i (Choices_BinInt cd j@(NarrowedID _ _) xs) = [ConstraintChoices cd j
+    (map (bind d i) xs)]
+  bind _ _ (Choices_BinInt cd i _) = error
+    ("Prelude.BinInt.bind: Choices with ChoiceID: " ++ show i)
+  bind _ _ (Fail_BinInt cd info) = [Unsolvable info]
+  bind d i (Guard_BinInt cd c e) = getConstrList c ++ bind d i e
+  lazyBind cd i (Neg x3) = (i :=: ChooseN 0 1) : [leftID i :=: LazyBind
+    (lazyBind cd (leftID i) x3)]
+  lazyBind cd i Zero = (i :=: ChooseN 1 0) : []
+  lazyBind cd i (Pos x3) = (i :=: ChooseN 2 1) : [leftID i :=: LazyBind
+    (lazyBind cd (leftID i) x3)]
+  lazyBind d i (Choice_BinInt cd j x y) = [ConstraintChoice cd j (lazyBind d i
+    x) (lazyBind d i y)]
+  lazyBind d i (Choices_BinInt cd j@(FreeID _ _) xs) = lazyBindOrNarrow d i cd
+    j xs
+  lazyBind d i (Choices_BinInt cd j@(NarrowedID _ _) xs) = [ConstraintChoices
+    cd j (map (lazyBind d i) xs)]
+  lazyBind _ _ (Choices_BinInt cd i _) = error
+    ("Prelude.BinInt.lazyBind: Choices with ChoiceID: " ++ show i)
+  lazyBind _ _ (Fail_BinInt cd info) = [Unsolvable info]
+  lazyBind d i (Guard_BinInt cd c e) = getConstrList c ++ [i :=: LazyBind
+    (lazyBind d i e)]
+
+-- -----------------------------------------------------------------------------
 -- Higher Order Funcs
+-- -----------------------------------------------------------------------------
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 data Func t0 t1
@@ -301,6 +340,10 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   lazyBind _ _ (Fail_Func _ info) = [Unsolvable info]
   lazyBind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 -- END GENERATED FROM PrimTypes.curry
+
+-- -----------------------------------------------------------------------------
+-- IO
+-- -----------------------------------------------------------------------------
 
 -- BEGIN GENERATED FROM PrimTypes.curry
 data C_IO t0

@@ -159,7 +159,7 @@ matchInteger rules value cd cs = case value of
   Choices_BinInt d  i xs -> narrows cs d i (\x -> matchInteger rules x cd cs) xs
   Fail_BinInt    d  info -> failCons   d   info
   Guard_BinInt   d c int -> guardCons  d c
-                            (matchInteger rules int cd $! addCs c cs)
+                              (matchInteger rules int cd $! addCs c cs)
 
 matchNat :: NonDet a => [(Int, a)] -> Nat -> Cover -> ConstStore -> a
 matchNat []    _     cd _  = failCons cd defFailInfo
@@ -179,14 +179,14 @@ matchNat rules value cd cs = case value of
 (&) :: C_Bool -> C_Bool -> Cover -> ConstStore -> C_Bool
 (&) s1 s2 _ cs = amp s1 s2 cs
   where
-   amp C_True                   s _   = s
-   amp x@(Fail_C_Bool _ _)      _ _   = x
-   amp (Guard_C_Bool cd c e)    s cs' =
-         Guard_C_Bool   cd c (amp e s $! addCs c cs')
-   amp (Choice_C_Bool cd i a b) s cs' =
-         Choice_C_Bool  cd i (amp a s cs') (amp b s cs')
-   amp (Choices_C_Bool cd i xs) s cs' =
-         Choices_C_Bool cd (narrowID i) (map (\x -> amp x s cs') xs)
+  amp C_True                   s _   = s
+  amp x@(Fail_C_Bool _ _)      _ _   = x
+  amp (Guard_C_Bool cd c e)    s cs' = Guard_C_Bool   cd c
+                                        (amp e s $! addCs c cs')
+  amp (Choice_C_Bool cd i a b) s cs' = Choice_C_Bool  cd i (amp a s cs')
+                                                           (amp b s cs')
+  amp (Choices_C_Bool cd i xs) s cs' = Choices_C_Bool cd (narrowID i)
+                                        (map (\x -> amp x s cs') xs)
 
 {- interleaved (&) from Bernd
 (&) :: C_Success -> C_Success -> C_Success
