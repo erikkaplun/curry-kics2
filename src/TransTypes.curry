@@ -39,16 +39,15 @@ genTypeDeclarations hoResult tdecl = case tdecl of
       -- type names are always exported to avoid ghc type errors.
       -- TODO: Describe why/which errors may occur.
     | null cs       -> Type qf Public targs [] : []
-      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      -- !!! HACK: Since the C_Bool type and some of its type class    !!!
-      -- !!! instances need to be defined in the runtime system,       !!!
-      -- !!! we do NOT generate them here.                             !!!
-      -- !!! Only the Curry type class instance and a type declaration !!!
-      -- !!! without constructors is generated.                        !!!
-      -- !!! The latter is required to generate an export declaration  !!!
-      -- !!! for type C_Bool in the Curry_Prelude.                     !!!
-      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    | isBoolType qf -> Type qf Public []    [] : [curryInstance hoResult t]
+      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      -- !!! HACK: Since the C_Bool type and some of its type class     !!!
+      -- !!! instances need to be defined in the runtime system,        !!!
+      -- !!! we do NOT generate them here.                              !!!
+      -- !!! Only a type declaration without constructors is generated. !!!
+      -- !!! It is required to generate an export declaration for type  !!!
+      -- !!! C_Bool in the Curry_Prelude.                               !!!
+      -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    | isBoolType qf -> Type qf Public []    [] : []
     | otherwise     -> Type qf Public targs ds : instanceDecls
     where
       isBoolType = (==) ("Curry_Prelude", "C_Bool")

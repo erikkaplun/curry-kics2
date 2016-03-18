@@ -552,6 +552,39 @@ instance Unifiable C_Bool where
   lazyBind d i (Guard_C_Bool cd c e) = getConstrList c ++ [i :=: LazyBind
     (lazyBind d i e)]
 
+instance Curry C_Bool where
+  (=?=) (Choice_C_Bool cd i x y) z d cs = narrow cd i ((=?=) x z d cs) ((=?=) y
+    z d cs)
+  (=?=) (Choices_C_Bool cd i xs) y d cs = narrows cs cd i (\x -> (=?=) x y d cs)
+    xs
+  (=?=) (Guard_C_Bool cd c e) y d cs = guardCons cd c ((=?=) e y d (addCs c cs))
+  (=?=) (Fail_C_Bool cd info) _ _ _ = failCons cd info
+  (=?=) z (Choice_C_Bool cd i x y) d cs = narrow cd i ((=?=) z x d cs) ((=?=) z
+    y d cs)
+  (=?=) y (Choices_C_Bool cd i xs) d cs = narrows cs cd i (\x -> (=?=) y x d cs)
+    xs
+  (=?=) y (Guard_C_Bool cd c e) d cs = guardCons cd c ((=?=) y e d (addCs c cs))
+  (=?=) _ (Fail_C_Bool cd info) _ _ = failCons cd info
+  (=?=) C_False C_False d cs = C_True
+  (=?=) C_True C_True d cs = C_True
+  (=?=) _ _ d _ = C_False
+  (<?=) (Choice_C_Bool cd i x y) z d cs = narrow cd i ((<?=) x z d cs) ((<?=) y
+    z d cs)
+  (<?=) (Choices_C_Bool cd i xs) y d cs = narrows cs cd i (\x -> (<?=) x y d cs)
+    xs
+  (<?=) (Guard_C_Bool cd c e) y d cs = guardCons cd c ((<?=) e y d (addCs c cs))
+  (<?=) (Fail_C_Bool cd info) _ _ _ = failCons cd info
+  (<?=) z (Choice_C_Bool cd i x y) d cs = narrow cd i ((<?=) z x d cs) ((<?=) z
+    y d cs)
+  (<?=) y (Choices_C_Bool cd i xs) d cs = narrows cs cd i (\x -> (<?=) y x d cs)
+    xs
+  (<?=) y (Guard_C_Bool cd c e) d cs = guardCons cd c ((<?=) y e d (addCs c cs))
+  (<?=) _ (Fail_C_Bool cd info) _ _ = failCons cd info
+  (<?=) C_False C_False d cs = C_True
+  (<?=) C_False C_True _ _ = C_True
+  (<?=) C_True C_True d cs = C_True
+  (<?=) _ _ d _ = C_False
+
 -- ---------------------------------------------------------------------------
 -- Functions
 -- ---------------------------------------------------------------------------
