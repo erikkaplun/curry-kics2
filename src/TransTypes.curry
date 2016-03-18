@@ -725,21 +725,21 @@ bindGuardRule qf lazy = (funcName,
 curryInstance :: ConsHOResult -> FC.TypeDecl -> TypeDecl
 curryInstance hoResult tdecl = case tdecl of
   (FC.Type qf _ tnums cdecls)
-    -> mkInstance (curryPre "Curry") [] ctype targs $ concat
+    -> mkInstance (basics "Curry") [] ctype targs $ concat
            [ -- rules for equality
-             extConsRules (curryPre "=?=") qf
+             extConsRules (basics "=?=") qf
            , eqConsRules hoResult cdecls
-           , catchAllPattern (curryPre "=?=")
+           , catchAllPattern (basics "=?=")
              -- rules for less than
-           , extConsRules (curryPre "<?=") qf
+           , extConsRules (basics "<?=") qf
            , ordConsRules hoResult cdecls
-           , catchAllPattern (curryPre "<?=")
+           , catchAllPattern (basics "<?=")
            ]
          where
            targs = map fcy2absTVar tnums
            ctype = TCons qf (map TVar targs)
            catchAllPattern qn
-             | length cdecls > 1 = catchAllCase qn (constF (curryPre "C_False"))
+             | length cdecls > 1 = catchAllCase qn (constF (basics "C_False"))
              | otherwise         = []
   _ -> error "TransTypes.curryInstance"
 
@@ -787,7 +787,7 @@ eqConsRule hoResult (FC.Cons qn carity _ _)
   | otherwise = [rule qn]
   where
     isHoCons  = lookupFM hoResult qn == Just ConsHO
-    rule name = ( curryPre "=?="
+    rule name = ( basics "=?="
                 , simpleRule [ consPattern name "x" carity
                              , consPattern name "y" carity
                              , PVar cd
@@ -795,10 +795,10 @@ eqConsRule hoResult (FC.Cons qn carity _ _)
                              ] eqBody
                 )
     eqBody    = if carity == 0
-      then constF (curryPre "C_True")
+      then constF (basics "C_True")
       else foldr1
           (\x xs -> applyF curryAnd [x, xs, Var cd, Var cs])
-          (map (\i -> applyF (curryPre "=?=") [mkVar "x" i, mkVar "y" i, Var cd, Var cs])
+          (map (\i -> applyF (basics "=?=") [mkVar "x" i, mkVar "y" i, Var cd, Var cs])
                 [1..carity])
     cd = (2 * carity + 2, "d")
     cs = (2 * carity + 2, "cs")
@@ -812,17 +812,17 @@ ordConsRules hoResult (FC.Cons qn carity _ _ : cds)
   where
     isHoCons    = lookupFM hoResult qn == Just ConsHO
     rule name   = firstRule name : concatMap (ordCons2Rule hoResult (name, carity)) cds
-    firstRule n = ( curryPre "<?=", simpleRule
+    firstRule n = ( basics "<?=", simpleRule
                     [consPattern n "x" carity, consPattern n "y" carity, PVar cd, PVar cs]
                     (ordBody [1..carity]))
 
     ordBody l = case l of
-      []     -> constF (curryPre "C_True")
-      [i]    -> applyF (curryPre "<?=") [mkVar "x" i, mkVar "y" i, Var cd, Var cs]
+      []     -> constF (basics "C_True")
+      [i]    -> applyF (basics "<?=") [mkVar "x" i, mkVar "y" i, Var cd, Var cs]
       (i:is) -> applyF curryOr
                   [ applyF curryLt xiyi
                   , applyF curryAnd
-                      [applyF (curryPre "=?=") xiyi, ordBody is, Var cd, Var cs]
+                      [applyF (basics "=?=") xiyi, ordBody is, Var cd, Var cs]
                   , Var cd, Var cs
                   ] where xiyi = [mkVar "x" i, mkVar "y" i, Var cd, Var cs]
     cd = (2,"d")
@@ -834,9 +834,9 @@ ordCons2Rule hoResult (qn1, ar1) (FC.Cons qn2 carity2 _ _)
   | otherwise = [rule qn2]
   where
     isHoCons2 = lookupFM hoResult qn2 == Just ConsHO
-    rule name = (curryPre "<?=", simpleRule
+    rule name = (basics "<?=", simpleRule
                     [consPattern qn1 "_" ar1, consPattern name "_" carity2, PVar (1,"_"), PVar (2,"_")]
-                    (constF $ curryPre "C_True"))
+                    (constF $ basics "C_True"))
 
 -- ---------------------------------------------------------------------------
 -- Auxiliary functions

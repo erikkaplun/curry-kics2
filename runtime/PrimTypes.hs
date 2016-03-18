@@ -142,6 +142,35 @@ instance Unifiable Nat where
   lazyBind d i (Guard_Nat cd c e) = getConstrList c ++ [i :=: LazyBind
     (lazyBind d i e)]
 
+instance Curry Nat where
+  (=?=) (Choice_Nat cd i x y) z d cs = narrow cd i (((x =?= z) d) cs) (((y =?= z) d) cs)
+  (=?=) (Choices_Nat  cd i xs) y d cs = narrows cs cd i (\x -> ((x =?= y) d) cs) xs
+  (=?=) (Guard_Nat  cd c e) y d cs = guardCons cd c (((e =?= y) d) (addCs c cs))
+  (=?=) (Fail_Nat  cd info) _ _ _ = failCons cd info
+  (=?=) z (Choice_Nat  cd i x y) d cs = narrow cd i (((z =?= x) d) cs) (((z =?= y) d) cs)
+  (=?=) y (Choices_Nat  cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
+  (=?=) y (Guard_Nat  cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
+  (=?=) _ (Fail_Nat  cd info) _ _ = failCons cd info
+  (=?=) IHi IHi d cs = C_True
+  (=?=) (O x1) (O y1) d cs = ((x1 =?= y1) d) cs
+  (=?=) (I x1) (I y1) d cs = ((x1 =?= y1) d) cs
+  (=?=) _ _ d _ = C_False
+  (<?=) (Choice_Nat  cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
+  (<?=) (Choices_Nat  cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
+  (<?=) (Guard_Nat  cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
+  (<?=) (Fail_Nat  cd info) _ _ _ = failCons cd info
+  (<?=) z (Choice_Nat  cd i x y) d cs = narrow cd i (((z <?= x) d) cs) (((z <?= y) d) cs)
+  (<?=) y (Choices_Nat  cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
+  (<?=) y (Guard_Nat  cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
+  (<?=) _ (Fail_Nat  cd info) _ _ = failCons cd info
+  (<?=) IHi IHi d cs = C_True
+  (<?=) IHi (O _) _ _ = C_True
+  (<?=) IHi (I _) _ _ = C_True
+  (<?=) (O x1) (O y1) d cs = ((x1 <?= y1) d) cs
+  (<?=) (O _) (I _) _ _ = C_True
+  (<?=) (I x1) (I y1) d cs = ((x1 <?= y1) d) cs
+  (<?=) _ _ d _ = C_False
+
 -- -----------------------------------------------------------------------------
 -- BinInt
 -- -----------------------------------------------------------------------------
@@ -267,6 +296,35 @@ instance Unifiable BinInt where
   lazyBind d i (Guard_BinInt cd c e) = getConstrList c ++ [i :=: LazyBind
     (lazyBind d i e)]
 
+instance Curry BinInt where
+  (=?=) (Choice_BinInt cd i x y) z d cs = narrow cd i (((x =?= z) d) cs) (((y =?= z) d) cs)
+  (=?=) (Choices_BinInt cd i xs) y d cs = narrows cs cd i (\x -> ((x =?= y) d) cs) xs
+  (=?=) (Guard_BinInt cd c e) y d cs = guardCons cd c (((e =?= y) d) (addCs c cs))
+  (=?=) (Fail_BinInt cd info) _ _ _ = failCons cd info
+  (=?=) z (Choice_BinInt cd i x y) d cs = narrow cd i (((z =?= x) d) cs) (((z =?= y) d) cs)
+  (=?=) y (Choices_BinInt cd i xs) d cs = narrows cs cd i (\x -> ((y =?= x) d) cs) xs
+  (=?=) y (Guard_BinInt cd c e) d cs = guardCons cd c (((y =?= e) d) (addCs c cs))
+  (=?=) _ (Fail_BinInt cd info) _ _ = failCons cd info
+  (=?=) (Neg x1) (Neg y1) d cs = ((x1 =?= y1) d) cs
+  (=?=) Zero Zero d cs = C_True
+  (=?=) (Pos x1) (Pos y1) d cs = ((x1 =?= y1) d) cs
+  (=?=) _ _ d _ = C_False
+  (<?=) (Choice_BinInt cd i x y) z d cs = narrow cd i (((x <?= z) d) cs) (((y <?= z) d) cs)
+  (<?=) (Choices_BinInt cd i xs) y d cs = narrows cs cd i (\x -> ((x <?= y) d) cs) xs
+  (<?=) (Guard_BinInt cd c e) y d cs = guardCons cd c (((e <?= y) d) (addCs c cs))
+  (<?=) (Fail_BinInt cd info) _ _ _ = failCons cd info
+  (<?=) z (Choice_BinInt cd i x y) d cs = narrow cd i (((z <?= x) d) cs) (((z <?= y) d) cs)
+  (<?=) y (Choices_BinInt cd i xs) d cs = narrows cs cd i (\x -> ((y <?= x) d) cs) xs
+  (<?=) y (Guard_BinInt cd c e) d cs = guardCons cd c (((y <?= e) d) (addCs c cs))
+  (<?=) _ (Fail_BinInt cd info) _ _ = failCons cd info
+  (<?=) (Neg x1) (Neg y1) d cs = ((x1 <?= y1) d) cs
+  (<?=) (Neg _) Zero _ _ = C_True
+  (<?=) (Neg _) (Pos _) _ _ = C_True
+  (<?=) Zero Zero d cs = C_True
+  (<?=) Zero (Pos _) _ _ = C_True
+  (<?=) (Pos x1) (Pos y1) d cs = ((x1 <?= y1) d) cs
+  (<?=) _ _ d _ = C_False
+
 -- -----------------------------------------------------------------------------
 -- Higher Order Funcs
 -- -----------------------------------------------------------------------------
@@ -339,6 +397,10 @@ instance (Unifiable t0,Unifiable t1) => Unifiable (Func t0 t1) where
   lazyBind _  _ (Choices_Func _ i _) = internalError ("Prelude.Func.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _ _ (Fail_Func _ info) = [Unsolvable info]
   lazyBind cd i (Guard_Func _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+
+instance (Curry t0, Curry t1) => Curry (Func t0 t1) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
 -- END GENERATED FROM PrimTypes.curry
 
 -- -----------------------------------------------------------------------------
@@ -415,6 +477,10 @@ instance Unifiable t0 => Unifiable (C_IO t0) where
   lazyBind _  _ (Choices_C_IO _ i@(ChoiceID _) _) = internalError ("Prelude.IO.lazyBind: Choices with ChoiceID: " ++ (show i))
   lazyBind _  _ (Fail_C_IO _ info) = [Unsolvable info]
   lazyBind cd i (Guard_C_IO _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
+
+instance Curry t0 => Curry (C_IO t0) where
+  (=?=) = error "(==) is undefined for IO actions"
+  (<?=) = error "(<=) is undefined for IO actions"
 -- END GENERATED FROM PrimTypes.curry
 
 -- Convert an IO action to a Curry IO action without converting the result.
@@ -495,6 +561,9 @@ instance Unifiable (PrimData t0) where
   lazyBind _  _ (Fail_PrimData _ info) = [Unsolvable info]
   lazyBind cd i (Guard_PrimData _ cs e) = (getConstrList cs) ++ [(i :=: (LazyBind (lazyBind cd i e)))]
 
+instance Curry (PrimData a) where
+  (=?=) = error "(==) is undefined for primitive data"
+  (<?=) = error "(<=) is undefined for primitive data"
 
 -- END GENERATED FROM PrimTypes.curry
 

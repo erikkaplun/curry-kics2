@@ -388,6 +388,20 @@ lazyTry x y cd cs = case try x of
       Val        vy      -> (vx =.<= vy) cd cs'
 
 -- ---------------------------------------------------------------------------
+-- Curry types
+-- ---------------------------------------------------------------------------
+
+-- Class for Curry types
+class (Show a, Read a, NonDet a, Generable a, NormalForm a, Unifiable a)
+      => Curry a where
+  -- implementation of strict equalit (==) for a data type
+  (=?=) :: a -> a -> Cover -> ConstStore -> C_Bool
+  (=?=) = error "(==) is undefined"
+  -- implementation of less-or-equal (<=) for a data type
+  (<?=) :: a -> a -> Cover -> ConstStore -> C_Bool
+  (<?=) = error "(<=) is undefined"
+
+-- ---------------------------------------------------------------------------
 -- Conversion between Curry and Haskell data types
 -- ---------------------------------------------------------------------------
 
@@ -569,3 +583,7 @@ instance NonDet b => Unifiable (a -> b) where
   (=.<=)   = internalError "(=.<=) for function is undefined"
   bind     = internalError "bind for function is undefined"
   lazyBind = internalError "lazyBind for function is undefined"
+
+instance NonDet b => Curry (a -> b) where
+  (=?=) = error "(==) is undefined for functions"
+  (<?=) = error "(<=) is undefined for functions"
