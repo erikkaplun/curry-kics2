@@ -62,7 +62,8 @@ main = do
                           }
   ipath  <- defaultImportPaths rst
   if null furtherRcDefs
-   then processArgsAndStart rst { importPaths = ipath }
+   then processArgsAndStart
+          rst { importPaths = ipath }
           (map strip (words (rcValue (rcvars rst) "defaultparams")) ++ mainargs)
    else putStrLn $ "Error: rc property name '" ++ fst (head furtherRcDefs) ++
                    "' not found in kics2rc file!"
@@ -84,7 +85,7 @@ defaultImportPathsWith rst dirs = do
 
 processArgsAndStart :: ReplState -> [String] -> IO ()
 processArgsAndStart rst []
-  | quit rst  = cleanUpRepl rst
+  | quit rst  = cleanUpAndExitRepl rst
   | otherwise = do
       getBanner >>= writeVerboseInfo rst 1
       writeVerboseInfo rst 1
@@ -93,11 +94,16 @@ processArgsAndStart rst []
 processArgsAndStart rst (arg:args)
   -- ignore empty arguments which can be provided by single or double quotes
   | null      arg = processArgsAndStart rst args
+  | arg == "-V" || arg == "--version"
+  = getBanner >>= putStrLn >> cleanUpAndExitRepl rst
+  | arg == "-h" || arg == "--help" || arg == "-?"
+  = printHelp >> cleanUpAndExitRepl rst
   | isCommand arg = do
     let (cmdargs, more) = break isCommand args
     mbrst <- processCommand rst (tail (unwords (arg:cmdargs)))
     maybe printHelp (\rst' -> processArgsAndStart rst' more) mbrst
-  | otherwise     = writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
+  | otherwise
+  = writeErrorMsg ("unknown command: " ++ unwords (arg:args)) >> printHelp
  where
   printHelp = do
     putStrLn "Usage: kics2 [--noreadline] [-Dprop=val] <list of commands>\n"
@@ -128,7 +134,7 @@ repl rst = do
   putStr (calcPrompt rst) >> hFlush stdout
   eof <- isEOF
   if eof
-    then cleanUpRepl rst
+    then cleanUpAndExitRepl rst
     else do getLine >>= processInput rst . strip
 
 calcPrompt :: ReplState -> String
@@ -144,9 +150,9 @@ calcPrompt rst = subst (prompt rst)
       _   -> c : d : subst cs
     _   -> c : subst (d:cs)
 
--- Clean resources of REPL before terminating it.
-cleanUpRepl :: ReplState -> IO ()
-cleanUpRepl rst = do
+-- Clean resources of REPL and terminate it with exit status.
+cleanUpAndExitRepl :: ReplState -> IO ()
+cleanUpAndExitRepl rst = do
   terminateSourceProgGUIs rst
   exitWith (exitStatus rst)
 
@@ -155,7 +161,7 @@ processInput rst g
   | null g      = repl rst
   | isCommand g = do mbrst <- processCommand rst (strip (tail g))
                      maybe (repl (setExitStatus 1 rst))
-                           (\rst' -> if (quit rst') then cleanUpRepl rst'
+                           (\rst' -> if (quit rst') then cleanUpAndExitRepl rst'
                                                     else repl rst')
                            mbrst
   | otherwise   = evalExpression rst g >>= repl
