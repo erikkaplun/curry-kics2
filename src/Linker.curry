@@ -10,7 +10,7 @@ module Linker
   ( ReplState (..), NonDetMode (..), MainCompile (..), loadPaths
   , setExitStatus
   , writeVerboseInfo, mainGoalFile, mainModuleIdent, initReplState
-  , createAndCompileMain
+  , createAndCompileMain, compileModuleWithGHC
   , getTimeCmd
   ) where
 
@@ -26,7 +26,7 @@ import System
 
 import qualified Installation as Inst
 import GhciComm
-import Names         (funcInfoFile)
+import Names         (funcInfoFile, moduleToFileName, renameModule)
 import RCFile
 import Utils         (notNull, strip)
 
@@ -193,6 +193,18 @@ compileWithGhci rst ghcCompile mainExp = do
     where refresh = case ghcicomm rst of
                     Nothing  -> initGhciComm
                     Just old -> restartGhciComm old
+
+--- Compile a Haskell module (used for :compile command)
+compileModuleWithGHC :: ReplState -> String -> IO ReplState
+compileModuleWithGHC rst modname = do
+  let ghcCompile = ghcCall rst False True mainFile
+  tghcCompile <- getTimeCmd rst "GHC compilation" ghcCompile
+  writeVerboseInfo rst 3 $ "Compiling " ++ mainFile ++ " with: " ++ tghcCompile
+  status <- system tghcCompile
+  return (setExitStatus (if status > 0 then 1 else 0) rst)
+ where
+  mainFile = "." </> outputSubdir rst
+                 </> moduleToFileName (renameModule modname) ++ ".hs"
 
 ghcCall :: ReplState -> Bool -> Bool -> String -> String
 ghcCall rst useGhci recompile mainFile = unwords . filter notNull $

@@ -72,7 +72,8 @@ Changes to version 0.4.1:
   * currytools: typeinference removed since it is now contained
     in the standard system libraries
   * currytools: new tool `currycheck` for automated test execution added
-    
+  * REPL command `:compile` added    
+
 
 
 Release notes for KiCS2 Version 0.4.1

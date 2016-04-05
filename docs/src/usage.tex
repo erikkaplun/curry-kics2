@@ -83,6 +83,13 @@ together with all its imported modules.
 \item[\fbox{\code{:reload}}]\pindex{:reload}
 Recompile all currently loaded modules.
 
+\item[\fbox{\code{:compile $prog$}}]\pindex{:compile}
+Compile and load the program stored in \code{$prog$.curry},
+as with the command \ccode{:load $prog$},
+but compile also the generated Haskell modules.
+Usually, this is automatically done when an expression is evaluated.
+Hence, it is not necessary to use this command.
+
 \item[\fbox{\code{:add} $m_1 \ldots m_n$}]\pindex{:add}
 Add modules $m_1,\ldots,m_n$ to the set of currently loaded modules
 so that their exported entities are available in the top-level environment.

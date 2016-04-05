@@ -479,6 +479,7 @@ replCommands =
   , ("add"        , processAdd         )
   , ("browse"     , processBrowse      )
   , ("cd"         , processCd          )
+  , ("compile"    , processCompile     )
   , ("edit"       , processEdit        )
   , ("eval"       , processEval        )
   , ("fork"       , processFork        )
@@ -516,6 +517,14 @@ processHelp rst _ = do
   printHelpOnCommands
   putStrLn "... or type any <expression> to evaluate\n"
   return (Just rst)
+
+--- Process :compile command
+processCompile :: ReplState -> String -> IO (Maybe ReplState)
+processCompile rst args = processLoad rst args >>= maybe (return Nothing)
+  (\rst' -> do
+    rst'' <- compileModuleWithGHC rst' (mainMod rst')
+    return (Just rst'')
+  )
 
 --- Process :load command
 processLoad :: ReplState -> String -> IO (Maybe ReplState)
@@ -885,6 +894,7 @@ printHelpOnCommands = putStrLn $ unlines
   , ":load <prog>       - load program '<prog>.[l]curry' as main module"
   , ":add  <m1> .. <mn> - add modules '<m1>' to '<mn>' to currently loaded modules"
   , ":reload            - recompile currently loaded modules"
+  , ":compile <prog>    - like ':load <prog>' but also compile Haskell code"
   , ":eval <expr>       - evaluate expression <expr>"
   , ":type <expr>       - show type of expression <expr>"
   , ":programs          - show names of all Curry programs available in load path"

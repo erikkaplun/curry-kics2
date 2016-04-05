@@ -81,7 +81,7 @@ removeTrace = renameModule . onLastIdentifier (dropPrefix "Trace_")
             . unRenameModule
 
 onLastIdentifier :: (String -> String) -> String -> String
-onLastIdentifier f = joinIdentifiers . onLast f . splitIdentifiers
+onLastIdentifier f = joinModuleIdentifiers . onLast f . splitModuleIdentifiers
 
 onLast :: (a -> a) -> [a] -> [a]
 onLast _ []           = error "Names.onLast: empty list"
@@ -89,7 +89,7 @@ onLast f [x]          = [f x]
 onLast f (x:xs@(_:_)) = x : onLast f xs
 
 isCurryModule :: String -> Bool
-isCurryModule = ("Curry_" `isPrefixOf`) . last . splitIdentifiers
+isCurryModule = ("Curry_" `isPrefixOf`) . last . splitModuleIdentifiers
 
 isHaskellModule :: String -> Bool
 isHaskellModule = not . isCurryModule
@@ -291,7 +291,7 @@ spanAll p xs = (if null pfx then id else (pfx:)) $ case rest of
 --- This can be useful to compute output directories while retaining the
 --- hierarchical module structure.
 splitModuleFileName :: String -> FilePath -> (FilePath, FilePath)
-splitModuleFileName mid fn = case splitIdentifiers mid of
+splitModuleFileName mid fn = case splitModuleIdentifiers mid of
   [_] -> splitFileName fn
   ms  -> let (base, ext)      = splitExtension fn
              dirs             = splitDirectories base
@@ -303,18 +303,30 @@ splitModuleFileName mid fn = case splitIdentifiers mid of
 --- Transforms a hierarchical module identifier into a file path.
 --- `moduleNameToPath "Data.Set"` evaluates to `"Data/Set"`.
 moduleNameToPath :: String -> FilePath
-moduleNameToPath = foldr1 (</>) . splitIdentifiers
+moduleNameToPath = foldr1 (</>) . splitModuleIdentifiers
 
 --- Split up the components of a module identifier. For instance,
---- `splitIdentifiers "Data.Set"` evaluates to `["Data", "Set"]`.
-splitIdentifiers :: String -> [String]
-splitIdentifiers s = let (pref, rest) = break (== '.') s in
+--- `splitModuleIdentifiers "Data.Set"` evaluates to `["Data", "Set"]`.
+splitModuleIdentifiers :: String -> [String]
+splitModuleIdentifiers s = let (pref, rest) = break (== '.') s in
   pref : case rest of
     []     -> []
-    _ : s' -> splitIdentifiers s'
+    _ : s' -> splitModuleIdentifiers s'
 
 --- Join the components of a module identifier. For instance,
---- `joinIdentifiers ["Data", "Set"]` evaluates to `"Data.Set"`.
-joinIdentifiers :: [String] -> String
-joinIdentifiers = foldr1 combine
+--- `joinModuleIdentifiers ["Data", "Set"]` evaluates to `"Data.Set"`.
+joinModuleIdentifiers :: [String] -> String
+joinModuleIdentifiers = foldr1 combine
   where combine xs ys = xs ++ '.' : ys
+
+--- Transform a (hierarchical) module name into a corresponding file name
+--- where the hierarchy corresponds to directories. For instance,
+--- `moduleToFileName "Data.Set"` evaluates to `"Data/Set"`.
+moduleToFileName :: String -> String
+moduleToFileName = joinModuleIdentifiersToFileName . splitModuleIdentifiers
+
+--- Join the components of a module identifier to directory name. For instance,
+--- `joinModuleIdentifiersToFileName ["Data", "Set"]` evaluates to `"Data/Set"`.
+joinModuleIdentifiersToFileName :: [String] -> String
+joinModuleIdentifiersToFileName = foldr1 combine
+  where combine xs ys = xs </> ys
