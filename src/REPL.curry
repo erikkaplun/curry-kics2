@@ -928,7 +928,7 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms (loadPaths rst)
     files <- getDirectoryContents dir
     putStrLn $ concat $ mergeSort (<=) $
       map (\f -> let (base, sfx) = splitExtension f
-                  in if sfx `elem` ["curry", "lcurry"] && notNull base
+                  in if sfx `elem` [".curry", ".lcurry"] && notNull base
                        then f ++ " "
                        else "") files
     putStrLn ""
