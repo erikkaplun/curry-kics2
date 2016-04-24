@@ -6,6 +6,8 @@ Release notes for KiCS2 Version 0.5.1
 
 Changes to version 0.5.0:
 
+  * Library `Sort`: ...Sort operations renamed to ...SortBy and
+    ...*Sort operations with standard ordering added.
   * Library `Test.EasyCheck` split into two modules to have less
     import dependencies when putting properties into a module.
   * CurryDoc puts properties in source files into HTML documentation

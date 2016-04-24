@@ -926,7 +926,7 @@ printAllLoadPathPrograms rst = mapIO_ printDirPrograms (loadPaths rst)
   printDirPrograms dir = do
     putStrLn $ "Curry programs in directory " ++ dir ++ ":"
     files <- getDirectoryContents dir
-    putStrLn $ unwords $ mergeSort (<=) $
+    putStrLn $ unwords $ mergeSort $
       concatMap (\f -> let (base, sfx) = splitExtension f
                         in if sfx `elem` [".curry", ".lcurry"] && notNull base
                              then [base]

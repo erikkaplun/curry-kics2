@@ -41,7 +41,7 @@ readRC = do
   readPropertyFile rcName
 
 rcKeys :: [(String, String)] -> [String]
-rcKeys = mergeSort (<=) . map fst
+rcKeys = mergeSort . map fst
 
 --- Reads the rc file (which must be present) and compares the definitions
 --- with the distribution rc file. If the set of variables is different,
