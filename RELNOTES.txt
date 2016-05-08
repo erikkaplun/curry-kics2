@@ -16,6 +16,9 @@ Changes to version 0.5.0:
     import dependencies when putting properties into a module.
   * CurryDoc shows properties and contracts, if they are present
     in source files, in the HTML documentation.
+  * The Curry Preprocessor supports a new option `contracts`
+    to transform contracts (specifications, pre/postconditions)
+    into run-time assertions.
 
 
 Release notes for KiCS2 Version 0.5.0
