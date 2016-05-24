@@ -2,7 +2,7 @@
 --- A simple command-based manager for CGI servers.
 --- 
 --- @author Michael Hanus
---- @version April 2007
+--- @version March 2012
 ------------------------------------------------------------------------
 
 import ReadShowTerm
@@ -11,6 +11,7 @@ import IOExts
 import HtmlCgi
 import Directory(doesFileExist)
 
+main :: IO ()
 main = do
   args <- getArgs
   case args of
