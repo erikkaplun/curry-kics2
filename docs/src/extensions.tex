@@ -122,7 +122,7 @@ In general, a pattern of the form \code{($f$ $t_1$\ldots$t_n$)} for $n>0$
 (or of the qualified form \code{($M.f$ $t_1$\ldots$t_n$)} for $n \geq 0$)
 is interpreted as a functional pattern if $f$ is not a visible constructor
 but a defined function that is visible in the scope of the pattern.
-Furthermore, for a functional pattern to be well-defined,
+Furthermore, for a functional pattern to be well defined,
 there are two additional requirements to be satisfied:
 
 \begin{enumerate}
@@ -143,26 +143,27 @@ and is necessary to assign a semantics to funtions employing functional patterns
 Only functions that are globally defined may occur inside a functional pattern.
 This restriction ensures that no local variable
 might occur in the value of a functional pattern,
-which might lead to a wrong semantics.
+which might lead to an non-intuitive semantics.
 Consider, for instance, the following (complicated) equality operation
 \begin{curry}
 eq :: a -> a -> Bool
 eq x y = h y
-  where
+ where
   g True  = x
   h (g a) = a
 \end{curry}
 where the locally defined function \code{g} occurs in the functional
-pattern \code{g a} of \code{h}.
-Since \code{g a} evaluates to the value of \code{x} whereas \code{a}
-is narrowed to \code{True}, the call \code{h y} now evaluates to \code{True}
+pattern \code{(g a)} of \code{h}.
+Since \code{(g a)} evaluates to the value of \code{x} whereas \code{a}
+is instantiated to \code{True}, the call \code{h y} now evaluates to \code{True}
 if the value of \code{y} equals the value of \code{x}.
-This requires a strict unification between \code{x} and \code{y},
-so that a equivalent definition without functional patterns would be:
+In order to check this equality condition,
+a strict unification between \code{x} and \code{y} is required
+so that an equivalent definition without functional patterns would be:
 \begin{curry}
 eq :: a -> a -> Bool
 eq x y = h y
-  where
+ where
   h x1 | x =:= x1 = True
 \end{curry}
 However, this implies that variables occuring in the value
@@ -171,12 +172,13 @@ if they are defined in an outer scope,
 whereas variables defined \emph{inside} a functional pattern
 behave like pattern variables.
 In consequence, the occurrence of variables from an outer scope
-inside a functional pattern might lead to an unintuitive behavior,
-which is why this is excluded by a restriction to globally defined functions.
+inside a functional pattern might lead to an non-intuitive behavior.
+To avoid such problems, locally defined functions are excluded
+as functional patterns.
 Note that this does not exclude a functional pattern inside a local function,
 which is still perfectly reasonable.
 \end{enumerate}
-
+%
 It is also possible to combine functional patterns with
 as-patterns.\index{as-pattern}\pindex{"@}
 Similarly to the meaning of as-patterns
