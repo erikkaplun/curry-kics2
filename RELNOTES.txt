@@ -6,6 +6,7 @@ Release notes for KiCS2 Version 0.5.1
 
 Changes to version 0.5.0:
 
+  * Library `Database.ERD...` added (formerly part of ER currytools).
   * Library `Nat` for Peano numbers added.
   * Library `Sort`: ...Sort operations renamed to ...SortBy and
     ...Sort operations with standard ordering added.
