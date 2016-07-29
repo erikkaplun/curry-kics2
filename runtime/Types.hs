@@ -13,7 +13,7 @@ module Types
   ) where
 
 import ConstStore
-import Debug
+import KiCS2Debug
 import FailInfo
 import ID
 

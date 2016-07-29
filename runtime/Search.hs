@@ -7,7 +7,7 @@ import Control.Monad.State.Strict
 import Data.List (intercalate)
 import qualified Data.Map as Map
 
-import Debug
+import KiCS2Debug
 import CurryException
 import PrimTypes -- for C_IO
 import MonadList

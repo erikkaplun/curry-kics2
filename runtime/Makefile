@@ -53,7 +53,7 @@ endif
 	echo "Library"                                           >> $@
 	echo "  Build-Depends: $(CABAL_RUNTIMEDEPS)"             >> $@
 	echo "  Exposed-modules:"                                >> $@
-	echo "      Basics, CurryException, Debug, FailInfo"     >> $@
+	echo "      Basics, CurryException, KiCS2Debug, FailInfo">> $@
 	echo "    , FailTrace, IDSupply, Installation"           >> $@
 	echo "    , MonadList, MonadSearch, PrimTypes, SafeExec" >> $@
 	echo "  Other-modules:"                                  >> $@

@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Debug  where
+module KiCS2Debug  where
 
 trace :: String -> IO ()
 #ifdef DEBUG

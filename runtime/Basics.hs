@@ -12,7 +12,7 @@ import Control.Arrow (first)
 import Data.Char     (ord)
 import GHC.Exts      (Int#, Char#, chr#)
 
-import Debug         (internalError)
+import KiCS2Debug    (internalError)
 import FailInfo
 import PrimTypes
 import Search

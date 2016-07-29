@@ -20,7 +20,7 @@ module ID
 
 import           Control.Monad   (liftM, when, zipWithM_)
 
-import           Debug
+import           KiCS2Debug
 import           FailInfo        (FailInfo)
 import           IDSupply hiding (getDecisionRaw, setDecisionRaw, unsetDecisionRaw)
 import qualified IDSupply

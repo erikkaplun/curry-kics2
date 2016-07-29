@@ -4,7 +4,7 @@ module PrimTypes where
 
 import System.IO (Handle)
 
-import Debug
+import KiCS2Debug
 import FailInfo
 import Types
 
