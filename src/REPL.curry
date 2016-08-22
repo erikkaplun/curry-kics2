@@ -3,7 +3,7 @@
 --- It implements the Read-Eval-Print loop for KiCS2
 ---
 --- @author Michael Hanus, Bjoern Peemoeller
---- @version February 2016
+--- @version August 2016
 --- --------------------------------------------------------------------------
 module REPL where
 
@@ -570,7 +570,7 @@ processAdd rst args
       if validModuleName mdl
       then do
         mbf <- lookupFileInPath (moduleNameToPath mdl) [".curry", ".lcurry"]
-	                        (loadPaths rst')
+                                (loadPaths rst')
         case mbf of
           Nothing -> do
             writeErrorMsg $ "Source file of module '" ++ mdl ++ "' not found"
@@ -665,7 +665,7 @@ processShow rst args = do
 processInterface :: ReplState -> String -> IO (Maybe ReplState)
 processInterface rst args = do
   modname <- getModuleName rst args
-  let toolexec = "currytools" </> "genint" </> "GenInt"
+  let toolexec = "currytools" </> "browser" </> "GenInt"
   callTool rst toolexec ("-int " ++ modname)
 
 processBrowse :: ReplState -> String -> IO (Maybe ReplState)
@@ -973,9 +973,9 @@ callTool rst cmd args = do
   let path = kics2Home rst </> cmd
       setpath = if null (importPaths rst)
                 then ""
-		else "CURRYPATH=" ++
-		     intercalate [searchPathSeparator]  (importPaths rst) ++
-		     " && export CURRYPATH && "
+                else "CURRYPATH=" ++
+                     intercalate [searchPathSeparator]  (importPaths rst) ++
+                     " && export CURRYPATH && "
       syscmd = setpath ++ path ++ ' ' : args
   exists <- doesFileExist path
   if exists
