@@ -29,7 +29,7 @@ $(MANUAL): manual.pdf
 
 manual.pdf: $(wildcard *.tex *.bbl *.jpg) version.tex markdown_syntax.tex libdoc
 	pdflatex manual
-	#bibtex manual
+	bibtex manual
 	pdflatex manual
 	makeindex manual.idx
 	pdflatex manual
